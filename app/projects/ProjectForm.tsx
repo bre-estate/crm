@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Project, Partner } from "@/lib/schema";
+import MoneyInput from "@/components/MoneyInput";
 
 type Props = {
   project?: Project;
@@ -131,20 +132,10 @@ export default function ProjectForm({ project, partners, onSave, onDelete }: Pro
             />
           </Field>
           <Field label="Phí admin (VND, gồm VAT)">
-            <input
-              name="adminFee"
-              defaultValue={project?.adminFee ?? 0}
-              className="input"
-              type="number"
-            />
+            <MoneyInput name="adminFee" defaultValue={project?.adminFee ?? 0} className="input" />
           </Field>
           <Field label="Phí admin sale">
-            <input
-              name="adminFeeSale"
-              defaultValue={project?.adminFeeSale ?? 0}
-              className="input"
-              type="number"
-            />
+            <MoneyInput name="adminFeeSale" defaultValue={project?.adminFeeSale ?? 0} className="input" />
           </Field>
           <Field label="Biểu PMG (text - ghi chú)" full>
             <textarea
@@ -189,36 +180,16 @@ export default function ProjectForm({ project, partners, onSave, onDelete }: Pro
       <Section title="Thưởng / Chi phí khác">
         <div className="grid grid-cols-2 gap-4">
           <Field label="CĐT thưởng sale (VND, gồm VAT)">
-            <input
-              name="cdtBonusSale"
-              type="number"
-              defaultValue={project?.cdtBonusSale ?? 0}
-              className="input"
-            />
+            <MoneyInput name="cdtBonusSale" defaultValue={project?.cdtBonusSale ?? 0} className="input" />
           </Field>
           <Field label="CĐT thưởng quản lý">
-            <input
-              name="cdtBonusManager"
-              type="number"
-              defaultValue={project?.cdtBonusManager ?? 0}
-              className="input"
-            />
+            <MoneyInput name="cdtBonusManager" defaultValue={project?.cdtBonusManager ?? 0} className="input" />
           </Field>
           <Field label="CTY thưởng sale">
-            <input
-              name="ctyBonusSale"
-              type="number"
-              defaultValue={project?.ctyBonusSale ?? 0}
-              className="input"
-            />
+            <MoneyInput name="ctyBonusSale" defaultValue={project?.ctyBonusSale ?? 0} className="input" />
           </Field>
           <Field label="CTY thưởng quản lý">
-            <input
-              name="ctyBonusManager"
-              type="number"
-              defaultValue={project?.ctyBonusManager ?? 0}
-              className="input"
-            />
+            <MoneyInput name="ctyBonusManager" defaultValue={project?.ctyBonusManager ?? 0} className="input" />
           </Field>
         </div>
       </Section>

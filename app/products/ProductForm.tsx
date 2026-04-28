@@ -3,6 +3,7 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Product, Project, Partner } from "@/lib/schema";
+import MoneyInput from "@/components/MoneyInput";
 
 type ProjectWithPartner = Project & { partnerName?: string | null };
 
@@ -103,28 +104,13 @@ export default function ProductForm({ product, projects, onSave, onDelete }: Pro
       <Section title="Doanh thu (CĐT/F1 trả BRE)">
         <div className="grid grid-cols-2 gap-4">
           <Field label="Giá bán (VND)">
-            <input
-              name="sellPrice"
-              type="number"
-              defaultValue={product?.sellPrice ?? 0}
-              className="input"
-            />
+            <MoneyInput name="sellPrice" defaultValue={product?.sellPrice ?? 0} className="input" />
           </Field>
           <Field label="Tổng doanh thu (VND, gồm VAT)">
-            <input
-              name="totalRevenue"
-              type="number"
-              defaultValue={product?.totalRevenue ?? 0}
-              className="input"
-            />
+            <MoneyInput name="totalRevenue" defaultValue={product?.totalRevenue ?? 0} className="input" />
           </Field>
           <Field label="Giá tính PMG (VND)">
-            <input
-              name="pmgBasePrice"
-              type="number"
-              defaultValue={product?.pmgBasePrice ?? 0}
-              className="input"
-            />
+            <MoneyInput name="pmgBasePrice" defaultValue={product?.pmgBasePrice ?? 0} className="input" />
           </Field>
           <Field label="%PMG_LK (vd: 5.5)">
             <input
@@ -145,44 +131,19 @@ export default function ProductForm({ product, projects, onSave, onDelete }: Pro
             />
           </Field>
           <Field label="Doanh thu khác (VND)">
-            <input
-              name="otherRevenue"
-              type="number"
-              defaultValue={product?.otherRevenue ?? 0}
-              className="input"
-            />
+            <MoneyInput name="otherRevenue" defaultValue={product?.otherRevenue ?? 0} className="input" />
           </Field>
           <Field label="Khoản giảm doanh thu (VND)">
-            <input
-              name="revenueReduction"
-              type="number"
-              defaultValue={product?.revenueReduction ?? 0}
-              className="input"
-            />
+            <MoneyInput name="revenueReduction" defaultValue={product?.revenueReduction ?? 0} className="input" />
           </Field>
           <Field label="Phí admin (VND, gồm VAT)">
-            <input
-              name="adminFee"
-              type="number"
-              defaultValue={product?.adminFee ?? 0}
-              className="input"
-            />
+            <MoneyInput name="adminFee" defaultValue={product?.adminFee ?? 0} className="input" />
           </Field>
           <Field label="CĐT thưởng sale (VND)">
-            <input
-              name="cdtBonusSale"
-              type="number"
-              defaultValue={product?.cdtBonusSale ?? 0}
-              className="input"
-            />
+            <MoneyInput name="cdtBonusSale" defaultValue={product?.cdtBonusSale ?? 0} className="input" />
           </Field>
           <Field label="CĐT thưởng QL (VND)">
-            <input
-              name="cdtBonusManager"
-              type="number"
-              defaultValue={product?.cdtBonusManager ?? 0}
-              className="input"
-            />
+            <MoneyInput name="cdtBonusManager" defaultValue={product?.cdtBonusManager ?? 0} className="input" />
           </Field>
         </div>
       </Section>
@@ -190,12 +151,7 @@ export default function ProductForm({ product, projects, onSave, onDelete }: Pro
       <Section title="Giá vốn (BRE trả nội bộ + F2 dưới)">
         <div className="grid grid-cols-2 gap-4">
           <Field label="Tổng giá vốn (VND)">
-            <input
-              name="totalCost"
-              type="number"
-              defaultValue={product?.totalCost ?? 0}
-              className="input"
-            />
+            <MoneyInput name="totalCost" defaultValue={product?.totalCost ?? 0} className="input" />
           </Field>
           <Field label="%PMG_LK_sale (trả F2 dưới)">
             <input
@@ -216,36 +172,16 @@ export default function ProductForm({ product, projects, onSave, onDelete }: Pro
             />
           </Field>
           <Field label="Phí admin sale (VND)">
-            <input
-              name="adminFeeSale"
-              type="number"
-              defaultValue={product?.adminFeeSale ?? 0}
-              className="input"
-            />
+            <MoneyInput name="adminFeeSale" defaultValue={product?.adminFeeSale ?? 0} className="input" />
           </Field>
           <Field label="Hỗ trợ khách (VND)">
-            <input
-              name="customerSupport"
-              type="number"
-              defaultValue={product?.customerSupport ?? 0}
-              className="input"
-            />
+            <MoneyInput name="customerSupport" defaultValue={product?.customerSupport ?? 0} className="input" />
           </Field>
           <Field label="CTY thưởng NVKD (VND)">
-            <input
-              name="bonusSale"
-              type="number"
-              defaultValue={product?.bonusSale ?? 0}
-              className="input"
-            />
+            <MoneyInput name="bonusSale" defaultValue={product?.bonusSale ?? 0} className="input" />
           </Field>
           <Field label="CTY thưởng QL (VND)">
-            <input
-              name="bonusManager"
-              type="number"
-              defaultValue={product?.bonusManager ?? 0}
-              className="input"
-            />
+            <MoneyInput name="bonusManager" defaultValue={product?.bonusManager ?? 0} className="input" />
           </Field>
           <Field label="%KPI CEO">
             <input
@@ -275,12 +211,7 @@ export default function ProductForm({ product, projects, onSave, onDelete }: Pro
             />
           </Field>
           <Field label="CP giá vốn khác (VND)">
-            <input
-              name="otherCost"
-              type="number"
-              defaultValue={product?.otherCost ?? 0}
-              className="input"
-            />
+            <MoneyInput name="otherCost" defaultValue={product?.otherCost ?? 0} className="input" />
           </Field>
         </div>
       </Section>

@@ -10,7 +10,8 @@ function toNum(v: FormDataEntryValue | null): number {
   if (v === null || v === undefined) return 0;
   const s = String(v).trim();
   if (!s) return 0;
-  const n = Number(s.replace(/,/g, ""));
+  // Strip both Vietnamese (`.` thousand) and US (`,` thousand) separators.
+  const n = Number(s.replace(/[.,\s]/g, ""));
   return isNaN(n) ? 0 : n;
 }
 function toStr(v: FormDataEntryValue | null): string {
@@ -21,8 +22,13 @@ function toStrOrNull(v: FormDataEntryValue | null): string | null {
   return s === "" ? null : s;
 }
 // Form input raw percent (5.5 = 5.5%); DB stores decimal (0.055).
+// Don't strip dots (they're decimal separators here).
 function toPct(v: FormDataEntryValue | null): number {
-  return toNum(v) / 100;
+  if (v === null || v === undefined) return 0;
+  const s = String(v).trim().replace(/,/g, ".").replace(/\s/g, "");
+  if (!s) return 0;
+  const n = Number(s);
+  return isNaN(n) ? 0 : n / 100;
 }
 
 async function buildProductCode(projectId: number, unitCode: string): Promise<string> {
