@@ -60,6 +60,12 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
             Mỗi dòng = 1 căn đã chốt cọc = 1 sản phẩm (mã SP). Tương ứng sheet 2.1_TT DU AN.
           </p>
         </div>
+        <Link
+          href="/products/new"
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"
+        >
+          + Thêm giao dịch
+        </Link>
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl p-4 flex gap-4 items-end flex-wrap">

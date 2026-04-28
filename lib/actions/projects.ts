@@ -16,6 +16,10 @@ function toNum(v: FormDataEntryValue | null): number {
 function toStr(v: FormDataEntryValue | null): string {
   return v === null ? "" : String(v).trim();
 }
+// Form input is raw percent (5.5 = 5.5%); DB stores decimal (0.055).
+function toPct(v: FormDataEntryValue | null): number {
+  return toNum(v) / 100;
+}
 
 function buildProjectData(fd: FormData) {
   const code = toStr(fd.get("code"));
@@ -30,16 +34,16 @@ function buildProjectData(fd: FormData) {
     contractInfo: toStr(fd.get("contractInfo")),
     contractStatus: toStr(fd.get("contractStatus")) as "chua_ky" | "dang_dam_phan" | "da_ky" | "ngung_hop_tac",
     contractDocs: toStr(fd.get("contractDocs")),
-    brokerageRate: toNum(fd.get("brokerageRate")),
-    brokerageRateSale: toNum(fd.get("brokerageRateSale")),
+    brokerageRate: toPct(fd.get("brokerageRate")),
+    brokerageRateSale: toPct(fd.get("brokerageRateSale")),
     adminFee: toNum(fd.get("adminFee")),
     adminFeeSale: toNum(fd.get("adminFeeSale")),
     paymentPhases: toNum(fd.get("paymentPhases")) || 1,
-    phaseRate1: toNum(fd.get("phaseRate1")),
-    phaseRate2: toNum(fd.get("phaseRate2")),
-    phaseRate3: toNum(fd.get("phaseRate3")),
-    phaseRate4: toNum(fd.get("phaseRate4")),
-    phaseRate5: toNum(fd.get("phaseRate5")),
+    phaseRate1: toPct(fd.get("phaseRate1")),
+    phaseRate2: toPct(fd.get("phaseRate2")),
+    phaseRate3: toPct(fd.get("phaseRate3")),
+    phaseRate4: toPct(fd.get("phaseRate4")),
+    phaseRate5: toPct(fd.get("phaseRate5")),
     cdtBonusSale: toNum(fd.get("cdtBonusSale")),
     cdtBonusManager: toNum(fd.get("cdtBonusManager")),
     ctyBonusSale: toNum(fd.get("ctyBonusSale")),

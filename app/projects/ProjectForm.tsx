@@ -112,10 +112,10 @@ export default function ProjectForm({ project, partners, onSave, onDelete }: Pro
 
       <Section title="Tỷ lệ phí môi giới">
         <div className="grid grid-cols-2 gap-4">
-          <Field label="%PMG_LK (BRE nhận) — dạng thập phân, VD: 0.055">
+          <Field label="%PMG_LK (BRE nhận) — VD: 5.5 nghĩa là 5,5%">
             <input
               name="brokerageRate"
-              defaultValue={project?.brokerageRate ?? 0}
+              defaultValue={Number(((project?.brokerageRate ?? 0) * 100).toFixed(4))}
               className="input"
               type="number"
               step="any"
@@ -124,7 +124,7 @@ export default function ProjectForm({ project, partners, onSave, onDelete }: Pro
           <Field label="%PMG_LK_sale (trả F2 dưới, nếu có)">
             <input
               name="brokerageRateSale"
-              defaultValue={project?.brokerageRateSale ?? 0}
+              defaultValue={Number(((project?.brokerageRateSale ?? 0) * 100).toFixed(4))}
               className="input"
               type="number"
               step="any"
@@ -176,7 +176,9 @@ export default function ProjectForm({ project, partners, onSave, onDelete }: Pro
                 name={`phaseRate${n}`}
                 type="number"
                 step="any"
-                defaultValue={(project?.[`phaseRate${n}` as keyof Project] as number) ?? 0}
+                defaultValue={Number(
+                  (((project?.[`phaseRate${n}` as keyof Project] as number) ?? 0) * 100).toFixed(4),
+                )}
                 className="input"
               />
             </Field>

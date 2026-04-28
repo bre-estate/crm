@@ -89,14 +89,22 @@ export default async function ProductDetailPage({
         <span className="font-mono">{p.productCode}</span>
       </div>
 
-      <div>
-        <h1 className="text-2xl font-bold">
-          {row.project?.name} · <span className="font-mono">{p.unitCode}</span>
-        </h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Đối tác: {row.partner?.name} · NVKD: {p.salesPerson ?? "—"} · Phòng:{" "}
-          {p.deptName ?? "—"} · Ngày cọc: {fmtDate(p.depositDate)}
-        </p>
+      <div className="flex justify-between items-start gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">
+            {row.project?.name} · <span className="font-mono">{p.unitCode}</span>
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Đối tác: {row.partner?.name} · NVKD: {p.salesPerson ?? "—"} · Phòng:{" "}
+            {p.deptName ?? "—"} · Ngày cọc: {fmtDate(p.depositDate)}
+          </p>
+        </div>
+        <Link
+          href={`/products/${id}/edit`}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 whitespace-nowrap"
+        >
+          Sửa giao dịch
+        </Link>
       </div>
 
       <div className="grid grid-cols-4 gap-3">
