@@ -30,6 +30,7 @@ export default function ProjectForm({ project, partners, onSave, onDelete }: Pro
           try {
             await onSave(fd);
           } catch (e) {
+            if (e && typeof e === "object" && "digest" in e && String((e as { digest?: unknown }).digest ?? "").startsWith("NEXT_REDIRECT")) throw e;
             alert(e instanceof Error ? e.message : "Lỗi khi lưu");
           }
         });
@@ -220,6 +221,7 @@ export default function ProjectForm({ project, partners, onSave, onDelete }: Pro
                   try {
                     await onDelete();
                   } catch (e) {
+                    if (e && typeof e === "object" && "digest" in e && String((e as { digest?: unknown }).digest ?? "").startsWith("NEXT_REDIRECT")) throw e;
                     alert(e instanceof Error ? e.message : "Không xóa được");
                   }
                 });

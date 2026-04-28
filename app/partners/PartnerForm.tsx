@@ -76,6 +76,7 @@ export default function PartnerForm({ partner, onSave, onDelete }: Props) {
                   try {
                     await onDelete();
                   } catch (e) {
+                    if (e && typeof e === "object" && "digest" in e && String((e as { digest?: unknown }).digest ?? "").startsWith("NEXT_REDIRECT")) throw e;
                     alert(e instanceof Error ? e.message : "Không xóa được");
                   }
                 });
