@@ -79,11 +79,19 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold">Đối chiếu giá vốn</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Tương ứng sheet 2.3_Gia von. Mỗi dòng = 1 cá nhân × 1 căn × 1 lần đối chiếu.
-        </p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold">Đối chiếu giá vốn</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Tương ứng sheet 2.3_Gia von. Mỗi dòng = 1 cá nhân × 1 căn × 1 lần đối chiếu.
+          </p>
+        </div>
+        <Link
+          href="/costs/new"
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"
+        >
+          + Thêm dòng đối chiếu
+        </Link>
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl p-4 flex gap-4 items-end flex-wrap">
@@ -158,6 +166,7 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
               <th className="text-right p-2">Hỗ trợ khách</th>
               <th className="text-right p-2">Phải trả</th>
               <th className="text-right p-2">Đã trả</th>
+              <th className="text-right p-2"></th>
             </tr>
           </thead>
           <tbody>
@@ -199,12 +208,20 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
                   <td className="p-2 text-right tabular-nums text-green-700">
                     {paid > 0 ? fmtMoney(paid) : "—"}
                   </td>
+                  <td className="p-2 text-right">
+                    <Link
+                      href={`/costs/${r.id}/edit`}
+                      className="text-blue-600 hover:underline text-xs"
+                    >
+                      Sửa
+                    </Link>
+                  </td>
                 </tr>
               );
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={10} className="p-6 text-center text-slate-500">
+                <td colSpan={11} className="p-6 text-center text-slate-500">
                   Chưa có dòng giá vốn nào.
                 </td>
               </tr>

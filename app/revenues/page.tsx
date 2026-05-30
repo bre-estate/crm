@@ -74,11 +74,19 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold">Đối chiếu doanh thu</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Tương ứng sheet 2.2_Doanh thu. Mỗi dòng = 1 sản phẩm × 1 đợt × 1 hóa đơn.
-        </p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold">Đối chiếu doanh thu</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Tương ứng sheet 2.2_Doanh thu. Mỗi dòng = 1 sản phẩm × 1 đợt × 1 hóa đơn.
+          </p>
+        </div>
+        <Link
+          href="/revenues/new"
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"
+        >
+          + Thêm đợt đối chiếu
+        </Link>
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl p-4 flex gap-4 items-end flex-wrap">
@@ -142,6 +150,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
               <th className="text-right p-2">Phải thu</th>
               <th className="text-right p-2">Đã thu</th>
               <th className="text-right p-2">Còn phải thu</th>
+              <th className="text-right p-2"></th>
             </tr>
           </thead>
           <tbody>
@@ -180,12 +189,20 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
                   >
                     {remaining > 0 ? fmtMoney(remaining) : "—"}
                   </td>
+                  <td className="p-2 text-right">
+                    <Link
+                      href={`/revenues/${r.id}/edit`}
+                      className="text-blue-600 hover:underline text-xs"
+                    >
+                      Sửa
+                    </Link>
+                  </td>
                 </tr>
               );
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={10} className="p-6 text-center text-slate-500">
+                <td colSpan={11} className="p-6 text-center text-slate-500">
                   Chưa có đợt đối chiếu nào.
                 </td>
               </tr>
