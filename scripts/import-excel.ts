@@ -125,7 +125,7 @@ async function main() {
     { code: "BLD", name: "Ban Lãnh Đạo", leaderName: "Đoàn Lê Bách (CEO)" },
     { code: "HoGia", name: "Phòng Hồ Gia", leaderName: "Hồ Nguyễn Công Thành" },
     { code: "MotTy", name: "Phòng 1 Tỷ", leaderName: "Lê Thị Cẩm Giang" },
-    { code: "Freelancer", name: "Freelancer / Đối tác liên kết" },
+    { code: "Freelancer", name: "Đối tác liên kết" },
   ];
   const deptIdByCode = new Map<string, number>();
   for (const d of deptSeeds) {
