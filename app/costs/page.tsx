@@ -83,7 +83,8 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
         <div>
           <h1 className="text-2xl font-bold">Đối chiếu giá vốn</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Tương ứng sheet 2.3_Gia von. Mỗi dòng = 1 cá nhân × 1 căn × 1 lần đối chiếu.
+            Tương ứng sheet 2.3_Gia von. Mỗi dòng = 1 cá nhân × 1 căn × 1 lần đối chiếu.{" "}
+            <span className="text-red-600">Số âm = điều chỉnh / hoàn trả</span> (vd thưởng đã trả thừa).
           </p>
         </div>
         <Link
@@ -196,13 +197,26 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
                   <td className="p-2 text-right tabular-nums">
                     {r.pmgThis ? fmtMoney(r.pmgThis) : "—"}
                   </td>
-                  <td className="p-2 text-right tabular-nums">
+                  <td
+                    className={`p-2 text-right tabular-nums ${
+                      Number(r.kpiAmount) < 0 ? "text-red-600" : ""
+                    }`}
+                  >
                     {r.kpiAmount ? fmtMoney(r.kpiAmount) : "—"}
                   </td>
-                  <td className="p-2 text-right tabular-nums">
+                  <td
+                    className={`p-2 text-right tabular-nums ${
+                      Number(r.customerSupport) < 0 ? "text-red-600" : ""
+                    }`}
+                  >
                     {r.customerSupport ? fmtMoney(r.customerSupport) : "—"}
                   </td>
-                  <td className="p-2 text-right tabular-nums font-semibold">
+                  <td
+                    className={`p-2 text-right tabular-nums font-semibold ${
+                      Number(r.amountPayable) < 0 ? "text-red-600" : ""
+                    }`}
+                    title={Number(r.amountPayable) < 0 ? "Số âm = điều chỉnh / hoàn trả" : ""}
+                  >
                     {fmtMoney(r.amountPayable)}
                   </td>
                   <td className="p-2 text-right tabular-nums text-green-700">
