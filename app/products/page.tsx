@@ -5,8 +5,6 @@ import {
   partners,
   departments,
   revenueReconciliations,
-  paymentsIn,
-  invoices,
 } from "@/lib/schema";
 import { fmtMoney, fmtDate, fmtPct } from "@/lib/format";
 import { eq, asc, desc, and, type SQL } from "drizzle-orm";
@@ -48,6 +46,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
     pmgBasePrice: products.pmgBasePrice,
     pmgRate: products.pmgRate,
     totalRevenue: products.totalRevenue,
+    adminFee: products.adminFee,
     totalCost: products.totalCost,
     projectName: projects.name,
     partnerName: partners.name,
@@ -72,61 +71,53 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
         .orderBy(desc(products.depositDate))
     : await baseQuery.orderBy(desc(products.depositDate));
 
-  // Payment/invoice status per product
-  const productIds = rows.map((r) => r.id);
-  const recRows =
-    productIds.length === 0
-      ? []
-      : await db
-          .select({
-            id: revenueReconciliations.id,
-            productId: revenueReconciliations.productId,
-            receivable: revenueReconciliations.totalReceivableThisTime,
-            invoiceId: revenueReconciliations.invoiceId,
-          })
-          .from(revenueReconciliations);
-  const paymentRows = await db
-    .select({ recId: paymentsIn.reconciliationId, amount: paymentsIn.amount })
-    .from(paymentsIn);
-  const invoiceCountRows = await db
-    .select({ id: invoices.id })
-    .from(invoices);
-
-  const paidByRec = new Map<number, { sum: number; count: number }>();
-  for (const p of paymentRows) {
-    if (p.recId === null) continue;
-    const cur = paidByRec.get(p.recId) ?? { sum: 0, count: 0 };
-    cur.sum += Number(p.amount ?? 0);
-    cur.count += 1;
-    paidByRec.set(p.recId, cur);
-  }
+  // For each căn: tính phí dự kiến BRE nhận (= % PMG × giá tính PMG, trước VAT, đã trừ admin)
+  //   primary:   (totalRevenue gồm VAT − adminFee) / 1.1
+  //   secondary: totalRevenue (đã ở thang trước VAT, không có admin)
+  // Đã thu = sum(revenue_recons.revenueThisTime) — mỗi recon = 1 đợt CĐT đã trả
+  const recRows = await db
+    .select({
+      id: revenueReconciliations.id,
+      productId: revenueReconciliations.productId,
+      revenueThisTime: revenueReconciliations.revenueThisTime,
+      invoiceId: revenueReconciliations.invoiceId,
+    })
+    .from(revenueReconciliations);
 
   type Stats = {
-    receivable: number;
-    paid: number;
-    paymentCount: number;
+    expectedFee: number;
+    collected: number;
+    phaseCount: number;
     invoiceIds: Set<number>;
   };
   const statsByProduct = new Map<number, Stats>();
-  for (const r of recRows) {
-    if (!statsByProduct.has(r.productId)) {
-      statsByProduct.set(r.productId, { receivable: 0, paid: 0, paymentCount: 0, invoiceIds: new Set() });
-    }
-    const s = statsByProduct.get(r.productId)!;
-    s.receivable += Number(r.receivable ?? 0);
-    const paid = paidByRec.get(r.id);
-    if (paid) {
-      s.paid += paid.sum;
-      s.paymentCount += paid.count;
-    }
-    if (r.invoiceId !== null) s.invoiceIds.add(r.invoiceId);
+  for (const r of rows) {
+    const expected =
+      r.saleType === "secondary"
+        ? Number(r.totalRevenue ?? 0)
+        : Math.max(0, (Number(r.totalRevenue ?? 0) - Number(r.adminFee ?? 0)) / 1.1);
+    statsByProduct.set(r.id, {
+      expectedFee: expected,
+      collected: 0,
+      phaseCount: 0,
+      invoiceIds: new Set<number>(),
+    });
   }
-  void invoiceCountRows;
+  for (const rec of recRows) {
+    const s = statsByProduct.get(rec.productId);
+    if (!s) continue;
+    const amt = Number(rec.revenueThisTime ?? 0);
+    if (amt > 0) {
+      s.collected += amt;
+      s.phaseCount += 1;
+    }
+    if (rec.invoiceId !== null) s.invoiceIds.add(rec.invoiceId);
+  }
 
   const totalRev = rows.reduce((s, r) => s + Number(r.totalRevenue ?? 0), 0);
   const totalCost = rows.reduce((s, r) => s + Number(r.totalCost ?? 0), 0);
-  const totalPaid = Array.from(statsByProduct.values()).reduce((s, x) => s + x.paid, 0);
-  const totalRecv = Array.from(statsByProduct.values()).reduce((s, x) => s + x.receivable, 0);
+  const totalCollected = Array.from(statsByProduct.values()).reduce((s, x) => s + x.collected, 0);
+  const totalExpected = Array.from(statsByProduct.values()).reduce((s, x) => s + x.expectedFee, 0);
 
   const deptColor = (code: string | null | undefined): string => {
     switch ((code ?? "").toLowerCase()) {
@@ -220,11 +211,11 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
             <div className="font-bold tabular-nums">{fmtMoney(totalRev)}</div>
           </div>
           <div>
-            <div className="text-xs text-slate-500">Đã thu / Phải thu</div>
+            <div className="text-xs text-slate-500">Đã thu / Phải thu (HH BRE)</div>
             <div className="font-bold tabular-nums">
-              <span className="text-green-700">{fmtMoney(totalPaid)}</span>
+              <span className="text-green-700">{fmtMoney(totalCollected)}</span>
               <span className="text-slate-400"> / </span>
-              <span>{fmtMoney(totalRecv)}</span>
+              <span>{fmtMoney(totalExpected)}</span>
             </div>
           </div>
           <div>
@@ -257,14 +248,14 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
           <tbody>
             {rows.map((r) => {
               const stats = statsByProduct.get(r.id) ?? {
-                receivable: 0,
-                paid: 0,
-                paymentCount: 0,
+                expectedFee: 0,
+                collected: 0,
+                phaseCount: 0,
                 invoiceIds: new Set<number>(),
               };
-              const pctPaid = stats.receivable > 0 ? (stats.paid / stats.receivable) * 100 : 0;
-              const fullyPaid = pctPaid >= 99.9;
-              const noData = stats.receivable === 0 && stats.paymentCount === 0;
+              const pctPaid = stats.expectedFee > 0 ? (stats.collected / stats.expectedFee) * 100 : 0;
+              const fullyPaid = pctPaid >= 99.5;
+              const noData = stats.expectedFee === 0 && stats.phaseCount === 0;
               return (
                 <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50">
                   <td className="p-2 font-mono text-xs">{r.unitCode}</td>
@@ -320,8 +311,8 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
                     )}
                   </td>
                   <td className="p-2 text-center text-xs">
-                    {stats.paymentCount > 0 ? (
-                      <span className="font-medium">{stats.paymentCount}</span>
+                    {stats.phaseCount > 0 ? (
+                      <span className="font-medium">{stats.phaseCount}</span>
                     ) : (
                       <span className="text-slate-400">—</span>
                     )}
