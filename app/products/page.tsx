@@ -20,35 +20,6 @@ type SearchParams = Promise<{
   to?: string;
 }>;
 
-// Compute preset date ranges based on "today" (server time)
-function presetRanges() {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = now.getMonth();
-  const q = Math.floor(m / 3);
-  const fmt = (d: Date) =>
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  return {
-    thisMonth: { from: fmt(new Date(y, m, 1)), to: fmt(new Date(y, m + 1, 0)), label: "Tháng này" },
-    lastMonth: {
-      from: fmt(new Date(y, m - 1, 1)),
-      to: fmt(new Date(y, m, 0)),
-      label: "Tháng trước",
-    },
-    thisQuarter: {
-      from: fmt(new Date(y, q * 3, 1)),
-      to: fmt(new Date(y, q * 3 + 3, 0)),
-      label: "Quý này",
-    },
-    last6Months: {
-      from: fmt(new Date(y, m - 5, 1)),
-      to: fmt(new Date(y, m + 1, 0)),
-      label: "6 tháng gần nhất",
-    },
-    thisYear: { from: `${y}-01-01`, to: `${y}-12-31`, label: "Năm nay" },
-  };
-}
-
 export default async function ProductsPage({ searchParams }: { searchParams: SearchParams }) {
   const { projectId, departmentId, saleType, from, to } = await searchParams;
   const filterProjectId = projectId ? Number(projectId) : null;
@@ -56,7 +27,6 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
   const filterSaleType = saleType === "primary" || saleType === "secondary" ? saleType : null;
   const dateFrom = from?.trim() || null;
   const dateTo = to?.trim() || null;
-  const presets = presetRanges();
 
   const allProjects = await db
     .select({ id: projects.id, name: projects.name, fullCode: projects.fullCode })
@@ -158,7 +128,6 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
   }
 
   const totalRev = rows.reduce((s, r) => s + Number(r.totalRevenue ?? 0), 0);
-  const totalCost = rows.reduce((s, r) => s + Number(r.totalCost ?? 0), 0);
   const totalCollected = Array.from(statsByProduct.values()).reduce((s, x) => s + x.collected, 0);
   const totalExpected = Array.from(statsByProduct.values()).reduce((s, x) => s + x.expectedFee, 0);
 
@@ -216,49 +185,15 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
             </div>
           </div>
           <div>
-            <div className="text-xs text-slate-500">Tổng GV</div>
-            <div className="font-bold tabular-nums">{fmtMoney(totalCost)}</div>
-          </div>
-        </div>
-
-        <div className="flex gap-2 items-center flex-wrap text-xs">
-          <span className="text-slate-500">Khoảng ngày cọc:</span>
-          {Object.entries(presets).map(([key, p]) => {
-            const params = new URLSearchParams();
-            if (projectId) params.set("projectId", projectId);
-            if (departmentId) params.set("departmentId", departmentId);
-            if (saleType) params.set("saleType", saleType);
-            params.set("from", p.from);
-            params.set("to", p.to);
-            const active = dateFrom === p.from && dateTo === p.to;
-            return (
-              <Link
-                key={key}
-                href={`/products?${params.toString()}`}
-                className={
-                  active
-                    ? "px-2.5 py-1 rounded border border-blue-500 bg-blue-50 text-blue-700"
-                    : "px-2.5 py-1 rounded border border-slate-300 hover:bg-slate-50"
-                }
-              >
-                {p.label}
-              </Link>
-            );
-          })}
-          {(dateFrom || dateTo) && (
-            <Link
-              href={(() => {
-                const params = new URLSearchParams();
-                if (projectId) params.set("projectId", projectId);
-                if (departmentId) params.set("departmentId", departmentId);
-                if (saleType) params.set("saleType", saleType);
-                return params.toString() ? `/products?${params.toString()}` : "/products";
-              })()}
-              className="px-2.5 py-1 rounded text-slate-500 hover:bg-slate-50"
+            <div className="text-xs text-slate-500">Còn phải thu</div>
+            <div
+              className={`font-bold tabular-nums ${
+                totalExpected - totalCollected > 0 ? "text-orange-700" : "text-slate-400"
+              }`}
             >
-              ✕ bỏ lọc ngày
-            </Link>
-          )}
+              {fmtMoney(Math.max(0, totalExpected - totalCollected))}
+            </div>
+          </div>
         </div>
 
         <form className="flex gap-2 items-end flex-wrap">
