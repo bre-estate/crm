@@ -3,10 +3,18 @@ export const fmtMoney = (v: number | null | undefined): string => {
   return new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 0 }).format(Number(v));
 };
 
+// Pad to fixed digits: 7.00%, 5.50%, 4.45%
 export const fmtPct = (v: number | null | undefined, digits = 2): string => {
   if (v === null || v === undefined || isNaN(Number(v))) return "0%";
-  // if v is stored as decimal (e.g. 0.055), show as percent
   return `${(Number(v) * 100).toFixed(digits)}%`;
+};
+
+// Compact: drop trailing zeros (7% / 5.5% / 4.45%)
+export const fmtPctTight = (v: number | null | undefined, maxDigits = 2): string => {
+  if (v === null || v === undefined || isNaN(Number(v))) return "0%";
+  const fixed = (Number(v) * 100).toFixed(maxDigits);
+  const trimmed = fixed.replace(/\.?0+$/, "");
+  return `${trimmed || "0"}%`;
 };
 
 export const fmtPctRaw = (v: number | null | undefined, digits = 2): string => {

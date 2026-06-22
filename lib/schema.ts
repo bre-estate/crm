@@ -134,6 +134,7 @@ export const products = pgTable("products", {
 
   cdtBonusSale: real("cdt_bonus_sale").default(0),
   cdtBonusManager: real("cdt_bonus_manager").default(0),
+  discountCk: real("discount_ck").default(0), // chiết khấu (cột Q Excel mới)
 
   pmgSaleRate: real("pmg_sale_rate").default(0),
   saleCommissionRate: real("sale_commission_rate").default(0),

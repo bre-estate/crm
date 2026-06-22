@@ -122,9 +122,9 @@ async function main() {
 
   console.log("\n=== Seeding departments ===");
   const deptSeeds = [
-    { code: "BLD", name: "Ban Lãnh Đạo", leaderName: "Đoàn Lê Bách (CEO)" },
-    { code: "HoGia", name: "Phòng Hồ Gia", leaderName: "Hồ Nguyễn Công Thành" },
-    { code: "MotTy", name: "Phòng 1 Tỷ", leaderName: "Lê Thị Cẩm Giang" },
+    { code: "BLD", name: "BLĐ", leaderName: "Đoàn Lê Bách (CEO)" },
+    { code: "HoGia", name: "Hồ Gia", leaderName: "Hồ Nguyễn Công Thành" },
+    { code: "MotTy", name: "1 Tỷ", leaderName: "Lê Thị Cẩm Giang" },
     { code: "Freelancer", name: "Đối tác liên kết" },
   ];
   const deptIdByCode = new Map<string, number>();
@@ -227,6 +227,7 @@ async function main() {
     const pmgRate = toNum(row[4]);
     const totalRevenueWithVat = toNum(row[14]);
     const adminFee = toNum(row[15]);
+    const discountCk = toNum(row[16]); // col Q = CK (chiết khấu)
     const saleCommissionRate = toNum(row[18]);
     const note = toStr(row[29]);
 
@@ -246,6 +247,7 @@ async function main() {
         pmgRate,
         totalRevenue: totalRevenueWithVat,
         adminFee,
+        discountCk,
         saleCommissionRate,
         note: note || null,
       })

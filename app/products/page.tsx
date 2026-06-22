@@ -6,7 +6,7 @@ import {
   departments,
   revenueReconciliations,
 } from "@/lib/schema";
-import { fmtMoney, fmtDate, fmtPct } from "@/lib/format";
+import { fmtMoney, fmtDate, fmtPctTight } from "@/lib/format";
 import { eq, asc, desc, and, type SQL } from "drizzle-orm";
 import Link from "next/link";
 
@@ -47,6 +47,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
     pmgRate: products.pmgRate,
     totalRevenue: products.totalRevenue,
     adminFee: products.adminFee,
+    discountCk: products.discountCk,
     totalCost: products.totalCost,
     projectName: projects.name,
     partnerName: partners.name,
@@ -92,10 +93,16 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
   };
   const statsByProduct = new Map<number, Stats>();
   for (const r of rows) {
+    // Primary: HH BRE nhận = (DT gồm VAT − admin) / 1.1 − chiết khấu (CK)
+    // Secondary: totalRevenue đã là phí về cty
     const expected =
       r.saleType === "secondary"
         ? Number(r.totalRevenue ?? 0)
-        : Math.max(0, (Number(r.totalRevenue ?? 0) - Number(r.adminFee ?? 0)) / 1.1);
+        : Math.max(
+            0,
+            (Number(r.totalRevenue ?? 0) - Number(r.adminFee ?? 0)) / 1.1 -
+              Number(r.discountCk ?? 0),
+          );
     statsByProduct.set(r.id, {
       expectedFee: expected,
       collected: 0,
@@ -154,8 +161,31 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
         </Link>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-wrap gap-3 items-end">
-        <form className="flex gap-2 items-end">
+      <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+        <div className="flex gap-6 text-sm flex-wrap">
+          <div>
+            <div className="text-xs text-slate-500">Số căn</div>
+            <div className="font-bold tabular-nums">{rows.length}</div>
+          </div>
+          <div>
+            <div className="text-xs text-slate-500">Tổng DT (dự kiến)</div>
+            <div className="font-bold tabular-nums">{fmtMoney(totalRev)}</div>
+          </div>
+          <div>
+            <div className="text-xs text-slate-500">Đã thu / Phải thu (HH BRE)</div>
+            <div className="font-bold tabular-nums">
+              <span className="text-green-700">{fmtMoney(totalCollected)}</span>
+              <span className="text-slate-400"> / </span>
+              <span>{fmtMoney(totalExpected)}</span>
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-slate-500">Tổng GV</div>
+            <div className="font-bold tabular-nums">{fmtMoney(totalCost)}</div>
+          </div>
+        </div>
+
+        <form className="flex gap-2 items-end flex-wrap">
           <div>
             <label className="block text-xs text-slate-600 mb-1">Dự án</label>
             <select name="projectId" defaultValue={projectId ?? ""} className="input min-w-60">
@@ -202,47 +232,26 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
             </Link>
           )}
         </form>
-        <div className="flex gap-4 text-sm ml-auto">
-          <div>
-            <div className="text-xs text-slate-500">{rows.length} căn</div>
-          </div>
-          <div>
-            <div className="text-xs text-slate-500">Tổng DT (dự kiến)</div>
-            <div className="font-bold tabular-nums">{fmtMoney(totalRev)}</div>
-          </div>
-          <div>
-            <div className="text-xs text-slate-500">Đã thu / Phải thu (HH BRE)</div>
-            <div className="font-bold tabular-nums">
-              <span className="text-green-700">{fmtMoney(totalCollected)}</span>
-              <span className="text-slate-400"> / </span>
-              <span>{fmtMoney(totalExpected)}</span>
-            </div>
-          </div>
-          <div>
-            <div className="text-xs text-slate-500">Tổng GV</div>
-            <div className="font-bold tabular-nums">{fmtMoney(totalCost)}</div>
-          </div>
-        </div>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-xs text-slate-600">
             <tr>
-              <th className="text-left p-2">Mã căn</th>
+              <th className="text-left p-2 whitespace-nowrap">Mã căn</th>
               <th className="text-left p-2">Dự án / Đối tác</th>
-              <th className="text-left p-2">Loại</th>
-              <th className="text-left p-2">Phòng</th>
-              <th className="text-left p-2">NVKD</th>
-              <th className="text-left p-2">Ngày cọc</th>
-              <th className="text-left p-2">Ghi nhận DT</th>
-              <th className="text-right p-2">Giá tính PMG</th>
-              <th className="text-right p-2">%PMG</th>
-              <th className="text-right p-2">Tổng DT</th>
-              <th className="text-center p-2">% thu</th>
-              <th className="text-center p-2">Lần TT</th>
-              <th className="text-center p-2">HĐ</th>
-              <th className="text-right p-2">Thao tác</th>
+              <th className="text-left p-2 whitespace-nowrap">Loại</th>
+              <th className="text-left p-2 whitespace-nowrap">Phòng</th>
+              <th className="text-left p-2 whitespace-nowrap">NVKD</th>
+              <th className="text-left p-2 whitespace-nowrap">Cọc</th>
+              <th className="text-left p-2 whitespace-nowrap">Ghi nhận</th>
+              <th className="text-right p-2 whitespace-nowrap">Giá PMG</th>
+              <th className="text-right p-2 whitespace-nowrap">%PMG</th>
+              <th className="text-right p-2 whitespace-nowrap">Tổng DT</th>
+              <th className="text-center p-2 whitespace-nowrap">% thu</th>
+              <th className="text-center p-2 whitespace-nowrap">Lần</th>
+              <th className="text-center p-2 whitespace-nowrap">HĐ</th>
+              <th className="text-right p-2"></th>
             </tr>
           </thead>
           <tbody>
@@ -265,7 +274,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
                   </td>
                   <td className="p-2">
                     <span
-                      className={`text-xs px-2 py-0.5 rounded ${
+                      className={`text-xs px-2 py-0.5 rounded whitespace-nowrap ${
                         r.saleType === "secondary"
                           ? "bg-orange-100 text-orange-700"
                           : "bg-sky-100 text-sky-700"
@@ -277,7 +286,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
                   <td className="p-2">
                     {r.departmentName ? (
                       <span
-                        className={`text-xs px-2 py-0.5 rounded ${deptColor(
+                        className={`text-xs px-2 py-0.5 rounded whitespace-nowrap ${deptColor(
                           r.deptName ?? r.departmentName,
                         )}`}
                       >
@@ -291,7 +300,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
                   <td className="p-2 text-xs">{fmtDate(r.depositDate)}</td>
                   <td className="p-2 text-xs font-mono">{r.recognitionMonth ?? "—"}</td>
                   <td className="p-2 text-right tabular-nums">{fmtMoney(r.pmgBasePrice)}</td>
-                  <td className="p-2 text-right tabular-nums">{fmtPct(r.pmgRate)}</td>
+                  <td className="p-2 text-right tabular-nums">{fmtPctTight(r.pmgRate)}</td>
                   <td className="p-2 text-right tabular-nums">{fmtMoney(r.totalRevenue)}</td>
                   <td className="p-2 text-center">
                     {noData ? (

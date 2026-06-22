@@ -15,6 +15,13 @@
       "when": 1782125437721,
       "tag": "0001_breezy_satana",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782137253173,
+      "tag": "0002_luxuriant_vertigo",
+      "breakpoints": true
     }
   ]
 }
