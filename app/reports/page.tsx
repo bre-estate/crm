@@ -3,6 +3,7 @@ import {
   products,
   projects,
   partners,
+  departments,
   revenueReconciliations,
   costReconciliations,
   paymentsIn,
@@ -33,8 +34,14 @@ export default async function ReportsPage() {
       totalCost: products.totalCost,
       cdtBonusSale: products.cdtBonusSale,
       cdtBonusManager: products.cdtBonusManager,
+      departmentId: products.departmentId,
+      departmentName: departments.name,
+      salesPerson: products.salesPerson,
+      recognitionMonth: products.recognitionMonth,
+      saleType: products.saleType,
     })
     .from(products)
+    .leftJoin(departments, eq(products.departmentId, departments.id));
   const revRows = await db
     .select({
       id: revenueReconciliations.id,
@@ -199,6 +206,148 @@ export default async function ReportsPage() {
           sub={`Thu: ${fmtMoney(grandTotals.paidIn)} · Chi: ${fmtMoney(grandTotals.paidOut)}`}
         />
       </div>
+
+      {/* ============ Theo Phòng ============ */}
+      {(() => {
+        const byDept = new Map<string, {
+          name: string;
+          numProducts: number;
+          totalRevenue: number;
+          totalCost: number;
+        }>();
+        for (const p of prodRows) {
+          const key = p.departmentName ?? "(Chưa phân phòng)";
+          if (!byDept.has(key)) byDept.set(key, { name: key, numProducts: 0, totalRevenue: 0, totalCost: 0 });
+          const agg = byDept.get(key)!;
+          agg.numProducts++;
+          agg.totalRevenue += Number(p.totalRevenue ?? 0);
+          agg.totalCost += Number(p.totalCost ?? 0);
+        }
+        const sorted = Array.from(byDept.values()).sort((a, b) => b.totalRevenue - a.totalRevenue);
+        return (
+          <div>
+            <h2 className="text-lg font-semibold mb-3">Theo phòng</h2>
+            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-xs text-slate-600">
+                  <tr>
+                    <th className="text-left p-2">Phòng</th>
+                    <th className="text-center p-2">Số căn</th>
+                    <th className="text-right p-2">Tổng DT</th>
+                    <th className="text-right p-2">Giá vốn</th>
+                    <th className="text-right p-2">Lãi gộp (không VAT)</th>
+                    <th className="text-right p-2">% trên tổng</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sorted.map((d) => {
+                    const profit = d.totalRevenue / 1.1 - d.totalCost;
+                    const pct = grandTotals.revenueExp ? (d.totalRevenue / grandTotals.revenueExp) * 100 : 0;
+                    return (
+                      <tr key={d.name} className="border-t border-slate-100">
+                        <td className="p-2 font-medium">{d.name}</td>
+                        <td className="p-2 text-center">{d.numProducts}</td>
+                        <td className="p-2 text-right tabular-nums">{fmtMoney(d.totalRevenue)}</td>
+                        <td className="p-2 text-right tabular-nums">{fmtMoney(d.totalCost)}</td>
+                        <td className={`p-2 text-right tabular-nums font-semibold ${profit >= 0 ? "text-green-700" : "text-red-700"}`}>
+                          {fmtMoney(profit)}
+                        </td>
+                        <td className="p-2 text-right tabular-nums">{pct.toFixed(1)}%</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ============ Theo NVKD (top 10) ============ */}
+      {(() => {
+        const byNvkd = new Map<string, {
+          name: string;
+          numProducts: number;
+          totalRevenue: number;
+        }>();
+        for (const p of prodRows) {
+          const key = p.salesPerson?.trim() || "(Chưa có NVKD)";
+          if (!byNvkd.has(key)) byNvkd.set(key, { name: key, numProducts: 0, totalRevenue: 0 });
+          const agg = byNvkd.get(key)!;
+          agg.numProducts++;
+          agg.totalRevenue += Number(p.totalRevenue ?? 0);
+        }
+        const sorted = Array.from(byNvkd.values()).sort((a, b) => b.totalRevenue - a.totalRevenue).slice(0, 15);
+        return (
+          <div>
+            <h2 className="text-lg font-semibold mb-3">Top NVKD theo doanh thu</h2>
+            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-xs text-slate-600">
+                  <tr>
+                    <th className="text-left p-2">Hạng</th>
+                    <th className="text-left p-2">NVKD</th>
+                    <th className="text-center p-2">Số căn</th>
+                    <th className="text-right p-2">Tổng DT (gồm VAT)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sorted.map((n, i) => (
+                    <tr key={n.name} className="border-t border-slate-100">
+                      <td className="p-2 text-xs">#{i + 1}</td>
+                      <td className="p-2 font-medium">{n.name}</td>
+                      <td className="p-2 text-center">{n.numProducts}</td>
+                      <td className="p-2 text-right tabular-nums">{fmtMoney(n.totalRevenue)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ============ Theo Tháng ghi nhận ============ */}
+      {(() => {
+        const byMonth = new Map<string, {
+          month: string;
+          numProducts: number;
+          totalRevenue: number;
+        }>();
+        for (const p of prodRows) {
+          const key = p.recognitionMonth?.trim() || "(Chưa có tháng)";
+          if (!byMonth.has(key)) byMonth.set(key, { month: key, numProducts: 0, totalRevenue: 0 });
+          const agg = byMonth.get(key)!;
+          agg.numProducts++;
+          agg.totalRevenue += Number(p.totalRevenue ?? 0);
+        }
+        const sorted = Array.from(byMonth.values()).sort((a, b) => b.month.localeCompare(a.month));
+        return (
+          <div>
+            <h2 className="text-lg font-semibold mb-3">Ghi nhận DT theo tháng</h2>
+            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-xs text-slate-600">
+                  <tr>
+                    <th className="text-left p-2">Tháng</th>
+                    <th className="text-center p-2">Số căn</th>
+                    <th className="text-right p-2">Tổng DT</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sorted.map((m) => (
+                    <tr key={m.month} className="border-t border-slate-100">
+                      <td className="p-2 font-mono text-sm">{m.month}</td>
+                      <td className="p-2 text-center">{m.numProducts}</td>
+                      <td className="p-2 text-right tabular-nums">{fmtMoney(m.totalRevenue)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })()}
 
       <div>
         <h2 className="text-lg font-semibold mb-3">Chi tiết theo dự án</h2>

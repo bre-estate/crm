@@ -23,6 +23,16 @@ export const profiles = pgTable("profiles", {
     .defaultNow(),
 });
 
+// ===================== 0.5 DEPARTMENTS (phòng kinh doanh) =====================
+export const departments = pgTable("departments", {
+  id: serial("id").primaryKey(),
+  code: text("code").notNull().unique(),
+  name: text("name").notNull(),
+  leaderName: text("leader_name"), // tên leader (text, không FK để giữ đơn giản)
+  note: text("note"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // ===================== 1. PARTNERS =====================
 export const partners = pgTable("partners", {
   id: serial("id").primaryKey(),
@@ -104,7 +114,10 @@ export const products = pgTable("products", {
   customerName: text("customer_name"),
   salesPerson: text("sales_person"),
   deptName: text("dept_name"),
+  departmentId: integer("department_id").references(() => departments.id),
   depositDate: text("deposit_date"),
+  recognitionMonth: text("recognition_month"), // YYYY-MM, tháng ghi nhận DT
+  saleType: text("sale_type", { enum: ["primary", "secondary"] }).default("primary"),
   expectedCompleteDate: text("expected_complete_date"),
   paymentMethod: text("payment_method"),
 
@@ -261,8 +274,13 @@ export const pmgTiersRelations = relations(pmgTiers, ({ one }) => ({
 
 export const productsRelations = relations(products, ({ one, many }) => ({
   project: one(projects, { fields: [products.projectId], references: [projects.id] }),
+  department: one(departments, { fields: [products.departmentId], references: [departments.id] }),
   revenueReconciliations: many(revenueReconciliations),
   costReconciliations: many(costReconciliations),
+}));
+
+export const departmentsRelations = relations(departments, ({ many }) => ({
+  products: many(products),
 }));
 
 export const invoicesRelations = relations(invoices, ({ one, many }) => ({
@@ -298,6 +316,8 @@ export const paymentsOutRelations = relations(paymentsOut, ({ one }) => ({
 // ===================== EXPORT TYPES =====================
 export type Profile = typeof profiles.$inferSelect;
 export type NewProfile = typeof profiles.$inferInsert;
+export type Department = typeof departments.$inferSelect;
+export type NewDepartment = typeof departments.$inferInsert;
 export type Partner = typeof partners.$inferSelect;
 export type NewPartner = typeof partners.$inferInsert;
 export type Project = typeof projects.$inferSelect;

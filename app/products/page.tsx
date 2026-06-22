@@ -1,21 +1,30 @@
 import { db } from "@/lib/db";
-import { products, projects, partners } from "@/lib/schema";
+import { products, projects, partners, departments } from "@/lib/schema";
 import { fmtMoney, fmtDate, fmtPct } from "@/lib/format";
-import { eq, asc, desc } from "drizzle-orm";
+import { eq, asc, desc, and, type SQL } from "drizzle-orm";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-type SearchParams = Promise<{ projectId?: string }>;
+type SearchParams = Promise<{
+  projectId?: string;
+  departmentId?: string;
+  saleType?: string;
+}>;
 
 export default async function ProductsPage({ searchParams }: { searchParams: SearchParams }) {
-  const { projectId } = await searchParams;
+  const { projectId, departmentId, saleType } = await searchParams;
   const filterProjectId = projectId ? Number(projectId) : null;
+  const filterDeptId = departmentId ? Number(departmentId) : null;
+  const filterSaleType = saleType === "primary" || saleType === "secondary" ? saleType : null;
 
   const allProjects = await db
     .select({ id: projects.id, name: projects.name, fullCode: projects.fullCode })
     .from(projects)
-    .orderBy(asc(projects.name))
+    .orderBy(asc(projects.name));
+
+  const allDepts = await db.select().from(departments).orderBy(asc(departments.name));
+
   const selectCols = {
     id: products.id,
     productCode: products.productCode,
@@ -23,7 +32,11 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
     customerName: products.customerName,
     salesPerson: products.salesPerson,
     deptName: products.deptName,
+    departmentId: products.departmentId,
+    departmentName: departments.name,
     depositDate: products.depositDate,
+    recognitionMonth: products.recognitionMonth,
+    saleType: products.saleType,
     pmgBasePrice: products.pmgBasePrice,
     pmgRate: products.pmgRate,
     totalRevenue: products.totalRevenue,
@@ -33,23 +46,44 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
     projectId: products.projectId,
   };
 
-  const rows = filterProjectId
-    ? await db
-        .select(selectCols)
-        .from(products)
-        .leftJoin(projects, eq(products.projectId, projects.id))
-        .leftJoin(partners, eq(projects.partnerId, partners.id))
-        .where(eq(products.projectId, filterProjectId))
+  const whereParts: SQL[] = [];
+  if (filterProjectId) whereParts.push(eq(products.projectId, filterProjectId));
+  if (filterDeptId) whereParts.push(eq(products.departmentId, filterDeptId));
+  if (filterSaleType) whereParts.push(eq(products.saleType, filterSaleType));
+
+  const baseQuery = db
+    .select(selectCols)
+    .from(products)
+    .leftJoin(projects, eq(products.projectId, projects.id))
+    .leftJoin(partners, eq(projects.partnerId, partners.id))
+    .leftJoin(departments, eq(products.departmentId, departments.id));
+
+  const rows = whereParts.length
+    ? await baseQuery
+        .where(whereParts.length === 1 ? whereParts[0] : and(...whereParts))
         .orderBy(desc(products.depositDate))
-    : await db
-        .select(selectCols)
-        .from(products)
-        .leftJoin(projects, eq(products.projectId, projects.id))
-        .leftJoin(partners, eq(projects.partnerId, partners.id))
-        .orderBy(desc(products.depositDate));
+    : await baseQuery.orderBy(desc(products.depositDate));
 
   const totalRev = rows.reduce((s, r) => s + Number(r.totalRevenue ?? 0), 0);
   const totalCost = rows.reduce((s, r) => s + Number(r.totalCost ?? 0), 0);
+
+  const deptColor = (code: string | null | undefined): string => {
+    switch ((code ?? "").toLowerCase()) {
+      case "hồ gia":
+      case "ho gia":
+        return "bg-blue-100 text-blue-700";
+      case "blđ":
+      case "bld":
+        return "bg-purple-100 text-purple-700";
+      case "1 tỷ":
+      case "1 ty":
+        return "bg-emerald-100 text-emerald-700";
+      case "freelancer":
+        return "bg-amber-100 text-amber-700";
+      default:
+        return "bg-slate-100 text-slate-500";
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -57,7 +91,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
         <div>
           <h1 className="text-2xl font-bold">Giao dịch (căn chốt)</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Mỗi dòng = 1 căn đã chốt cọc = 1 sản phẩm (mã SP). Tương ứng sheet 2.1_TT DU AN.
+            Mỗi dòng = 1 căn đã chốt cọc = 1 sản phẩm. Sơ cấp = HĐ CĐT, Thứ cấp = mua bán lại.
           </p>
         </div>
         <Link
@@ -68,15 +102,11 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
         </Link>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl p-4 flex gap-4 items-end flex-wrap">
-        <div>
-          <label className="block text-xs text-slate-600 mb-1">Lọc theo dự án</label>
-          <form className="flex gap-2">
-            <select
-              name="projectId"
-              defaultValue={projectId ?? ""}
-              className="input min-w-60"
-            >
+      <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-wrap gap-3 items-end">
+        <form className="flex gap-2 items-end">
+          <div>
+            <label className="block text-xs text-slate-600 mb-1">Dự án</label>
+            <select name="projectId" defaultValue={projectId ?? ""} className="input min-w-60">
               <option value="">— Tất cả —</option>
               {allProjects.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -84,36 +114,53 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
                 </option>
               ))}
             </select>
-            <button className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200">
-              Lọc
-            </button>
-            {filterProjectId && (
-              <Link
-                href="/products"
-                className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200"
-              >
-                Reset
-              </Link>
-            )}
-          </form>
-        </div>
-        <div className="flex gap-4 text-sm ml-auto">
-          <div>
-            <div className="text-xs text-slate-500">Tổng {rows.length} căn</div>
           </div>
           <div>
-            <div className="text-xs text-slate-500">Tổng doanh thu (dự kiến)</div>
+            <label className="block text-xs text-slate-600 mb-1">Phòng</label>
+            <select
+              name="departmentId"
+              defaultValue={departmentId ?? ""}
+              className="input min-w-40"
+            >
+              <option value="">— Tất cả —</option>
+              {allDepts.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-slate-600 mb-1">Loại</label>
+            <select name="saleType" defaultValue={saleType ?? ""} className="input min-w-32">
+              <option value="">— Tất cả —</option>
+              <option value="primary">Sơ cấp</option>
+              <option value="secondary">Thứ cấp</option>
+            </select>
+          </div>
+          <button className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200">
+            Lọc
+          </button>
+          {(filterProjectId || filterDeptId || filterSaleType) && (
+            <Link
+              href="/products"
+              className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200"
+            >
+              Reset
+            </Link>
+          )}
+        </form>
+        <div className="flex gap-4 text-sm ml-auto">
+          <div>
+            <div className="text-xs text-slate-500">{rows.length} căn</div>
+          </div>
+          <div>
+            <div className="text-xs text-slate-500">Tổng DT (dự kiến)</div>
             <div className="font-bold tabular-nums">{fmtMoney(totalRev)}</div>
           </div>
           <div>
-            <div className="text-xs text-slate-500">Tổng giá vốn</div>
+            <div className="text-xs text-slate-500">Tổng GV</div>
             <div className="font-bold tabular-nums">{fmtMoney(totalCost)}</div>
-          </div>
-          <div>
-            <div className="text-xs text-slate-500">Lãi gộp (không VAT)</div>
-            <div className="font-bold tabular-nums text-green-700">
-              {fmtMoney(totalRev / 1.1 - totalCost)}
-            </div>
           </div>
         </div>
       </div>
@@ -122,36 +169,58 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-xs text-slate-600">
             <tr>
-              <th className="text-left p-3">Mã căn</th>
-              <th className="text-left p-3">Dự án / Đối tác</th>
-              <th className="text-left p-3">Khách</th>
-              <th className="text-left p-3">NVKD</th>
-              <th className="text-left p-3">Phòng</th>
-              <th className="text-left p-3">Ngày cọc</th>
-              <th className="text-right p-3">Giá tính PMG</th>
-              <th className="text-right p-3">%PMG</th>
-              <th className="text-right p-3">Tổng DT</th>
-              <th className="text-right p-3">Giá vốn</th>
-              <th className="text-right p-3">Thao tác</th>
+              <th className="text-left p-2">Mã căn</th>
+              <th className="text-left p-2">Dự án / Đối tác</th>
+              <th className="text-left p-2">Loại</th>
+              <th className="text-left p-2">Phòng</th>
+              <th className="text-left p-2">NVKD</th>
+              <th className="text-left p-2">Ngày cọc</th>
+              <th className="text-left p-2">Ghi nhận DT</th>
+              <th className="text-right p-2">Giá tính PMG</th>
+              <th className="text-right p-2">%PMG</th>
+              <th className="text-right p-2">Tổng DT</th>
+              <th className="text-right p-2">Thao tác</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
               <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50">
-                <td className="p-3 font-mono text-xs">{r.unitCode}</td>
-                <td className="p-3">
+                <td className="p-2 font-mono text-xs">{r.unitCode}</td>
+                <td className="p-2">
                   <div className="font-medium text-xs">{r.projectName}</div>
                   <div className="text-xs text-slate-500">{r.partnerName}</div>
                 </td>
-                <td className="p-3 text-xs">{r.customerName ?? "—"}</td>
-                <td className="p-3 text-xs">{r.salesPerson ?? "—"}</td>
-                <td className="p-3 text-xs">{r.deptName ?? "—"}</td>
-                <td className="p-3 text-xs">{fmtDate(r.depositDate)}</td>
-                <td className="p-3 text-right tabular-nums">{fmtMoney(r.pmgBasePrice)}</td>
-                <td className="p-3 text-right tabular-nums">{fmtPct(r.pmgRate)}</td>
-                <td className="p-3 text-right tabular-nums">{fmtMoney(r.totalRevenue)}</td>
-                <td className="p-3 text-right tabular-nums">{fmtMoney(r.totalCost)}</td>
-                <td className="p-3 text-right">
+                <td className="p-2">
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded ${
+                      r.saleType === "secondary"
+                        ? "bg-orange-100 text-orange-700"
+                        : "bg-sky-100 text-sky-700"
+                    }`}
+                  >
+                    {r.saleType === "secondary" ? "Thứ cấp" : "Sơ cấp"}
+                  </span>
+                </td>
+                <td className="p-2">
+                  {r.departmentName ? (
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded ${deptColor(
+                        r.deptName ?? r.departmentName,
+                      )}`}
+                    >
+                      {r.departmentName}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-slate-400">—</span>
+                  )}
+                </td>
+                <td className="p-2 text-xs">{r.salesPerson ?? "—"}</td>
+                <td className="p-2 text-xs">{fmtDate(r.depositDate)}</td>
+                <td className="p-2 text-xs font-mono">{r.recognitionMonth ?? "—"}</td>
+                <td className="p-2 text-right tabular-nums">{fmtMoney(r.pmgBasePrice)}</td>
+                <td className="p-2 text-right tabular-nums">{fmtPct(r.pmgRate)}</td>
+                <td className="p-2 text-right tabular-nums">{fmtMoney(r.totalRevenue)}</td>
+                <td className="p-2 text-right">
                   <Link href={`/products/${r.id}`} className="text-blue-600 hover:underline text-sm">
                     Chi tiết
                   </Link>
@@ -161,7 +230,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
             {rows.length === 0 && (
               <tr>
                 <td colSpan={11} className="p-6 text-center text-slate-500 text-sm">
-                  Chưa có giao dịch nào.
+                  Không có giao dịch nào theo bộ lọc.
                 </td>
               </tr>
             )}

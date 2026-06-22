@@ -8,6 +8,13 @@
       "when": 1776940090384,
       "tag": "0000_natural_professor_monster",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1782125437721,
+      "tag": "0001_breezy_satana",
+      "breakpoints": true
     }
   ]
 }

@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { Product, Project, Partner } from "@/lib/schema";
+import type { Product, Project, Partner, Department } from "@/lib/schema";
 import MoneyInput from "@/components/MoneyInput";
 
 type ProjectWithPartner = Project & { partnerName?: string | null };
@@ -11,6 +11,7 @@ type Props = {
   product?: Product;
   projects: ProjectWithPartner[];
   partners: Partner[];
+  departments?: Department[];
   onSave: (fd: FormData) => Promise<void>;
   onDelete?: () => Promise<void>;
 };
@@ -18,7 +19,7 @@ type Props = {
 const pctDisplay = (v: number | null | undefined): string =>
   v == null ? "" : String(Number((Number(v) * 100).toFixed(4)));
 
-export default function ProductForm({ product, projects, onSave, onDelete }: Props) {
+export default function ProductForm({ product, projects, departments = [], onSave, onDelete }: Props) {
   const [pending, start] = useTransition();
   const router = useRouter();
 
@@ -74,7 +75,34 @@ export default function ProductForm({ product, projects, onSave, onDelete }: Pro
             <input name="salesPerson" defaultValue={product?.salesPerson ?? ""} className="input" />
           </Field>
           <Field label="Phòng kinh doanh">
-            <input name="deptName" defaultValue={product?.deptName ?? ""} className="input" />
+            <select
+              name="departmentId"
+              defaultValue={product?.departmentId ?? ""}
+              className="input"
+            >
+              <option value="">— Chưa phân phòng —</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                  {d.leaderName ? ` (Leader: ${d.leaderName})` : ""}
+                </option>
+              ))}
+            </select>
+            <input type="hidden" name="deptName" defaultValue={product?.deptName ?? ""} />
+          </Field>
+          <Field label="Loại giao dịch">
+            <select name="saleType" defaultValue={product?.saleType ?? "primary"} className="input">
+              <option value="primary">Sơ cấp (HĐ với CĐT)</option>
+              <option value="secondary">Thứ cấp (mua bán lại)</option>
+            </select>
+          </Field>
+          <Field label="Tháng ghi nhận DT (YYYY-MM)">
+            <input
+              name="recognitionMonth"
+              defaultValue={product?.recognitionMonth ?? ""}
+              className="input"
+              placeholder="vd: 2025-06"
+            />
           </Field>
           <Field label="Ngày cọc">
             <input

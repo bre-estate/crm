@@ -42,6 +42,8 @@ async function buildProductCode(projectId: number, unitCode: string): Promise<st
 }
 
 function buildProductData(fd: FormData) {
+  const saleTypeRaw = toStr(fd.get("saleType"));
+  const saleType: "primary" | "secondary" = saleTypeRaw === "secondary" ? "secondary" : "primary";
   return {
     unitCode: toStr(fd.get("unitCode")),
     projectId: toNum(fd.get("projectId")),
@@ -49,8 +51,11 @@ function buildProductData(fd: FormData) {
     unitDescription: toStrOrNull(fd.get("unitDescription")),
     salesPerson: toStrOrNull(fd.get("salesPerson")),
     deptName: toStrOrNull(fd.get("deptName")),
+    departmentId: toNum(fd.get("departmentId")) || null,
     depositDate: toStrOrNull(fd.get("depositDate")),
     expectedCompleteDate: toStrOrNull(fd.get("expectedCompleteDate")),
+    recognitionMonth: toStrOrNull(fd.get("recognitionMonth")),
+    saleType,
     paymentMethod: toStrOrNull(fd.get("paymentMethod")),
 
     sellPrice: toNum(fd.get("sellPrice")),
