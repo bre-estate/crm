@@ -7,7 +7,7 @@ import {
   revenueReconciliations,
 } from "@/lib/schema";
 import { fmtMoney, fmtDate, fmtPctTight } from "@/lib/format";
-import { eq, asc, desc, and, type SQL } from "drizzle-orm";
+import { eq, asc, desc, and, gte, lte, type SQL } from "drizzle-orm";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -16,13 +16,47 @@ type SearchParams = Promise<{
   projectId?: string;
   departmentId?: string;
   saleType?: string;
+  from?: string;
+  to?: string;
 }>;
 
+// Compute preset date ranges based on "today" (server time)
+function presetRanges() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const q = Math.floor(m / 3);
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return {
+    thisMonth: { from: fmt(new Date(y, m, 1)), to: fmt(new Date(y, m + 1, 0)), label: "Tháng này" },
+    lastMonth: {
+      from: fmt(new Date(y, m - 1, 1)),
+      to: fmt(new Date(y, m, 0)),
+      label: "Tháng trước",
+    },
+    thisQuarter: {
+      from: fmt(new Date(y, q * 3, 1)),
+      to: fmt(new Date(y, q * 3 + 3, 0)),
+      label: "Quý này",
+    },
+    last6Months: {
+      from: fmt(new Date(y, m - 5, 1)),
+      to: fmt(new Date(y, m + 1, 0)),
+      label: "6 tháng gần nhất",
+    },
+    thisYear: { from: `${y}-01-01`, to: `${y}-12-31`, label: "Năm nay" },
+  };
+}
+
 export default async function ProductsPage({ searchParams }: { searchParams: SearchParams }) {
-  const { projectId, departmentId, saleType } = await searchParams;
+  const { projectId, departmentId, saleType, from, to } = await searchParams;
   const filterProjectId = projectId ? Number(projectId) : null;
   const filterDeptId = departmentId ? Number(departmentId) : null;
   const filterSaleType = saleType === "primary" || saleType === "secondary" ? saleType : null;
+  const dateFrom = from?.trim() || null;
+  const dateTo = to?.trim() || null;
+  const presets = presetRanges();
 
   const allProjects = await db
     .select({ id: projects.id, name: projects.name, fullCode: projects.fullCode })
@@ -58,6 +92,8 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
   if (filterProjectId) whereParts.push(eq(products.projectId, filterProjectId));
   if (filterDeptId) whereParts.push(eq(products.departmentId, filterDeptId));
   if (filterSaleType) whereParts.push(eq(products.saleType, filterSaleType));
+  if (dateFrom) whereParts.push(gte(products.depositDate, dateFrom));
+  if (dateTo) whereParts.push(lte(products.depositDate, dateTo));
 
   const baseQuery = db
     .select(selectCols)
@@ -69,8 +105,8 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
   const rows = whereParts.length
     ? await baseQuery
         .where(whereParts.length === 1 ? whereParts[0] : and(...whereParts))
-        .orderBy(desc(products.depositDate))
-    : await baseQuery.orderBy(desc(products.depositDate));
+        .orderBy(desc(products.depositDate), desc(products.id))
+    : await baseQuery.orderBy(desc(products.depositDate), desc(products.id));
 
   // For each căn: tính phí dự kiến BRE nhận (= % PMG × giá tính PMG, trước VAT, đã trừ admin)
   //   primary:   (totalRevenue gồm VAT − adminFee) / 1.1
@@ -185,7 +221,65 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
           </div>
         </div>
 
+        <div className="flex gap-2 items-center flex-wrap text-xs">
+          <span className="text-slate-500">Khoảng ngày cọc:</span>
+          {Object.entries(presets).map(([key, p]) => {
+            const params = new URLSearchParams();
+            if (projectId) params.set("projectId", projectId);
+            if (departmentId) params.set("departmentId", departmentId);
+            if (saleType) params.set("saleType", saleType);
+            params.set("from", p.from);
+            params.set("to", p.to);
+            const active = dateFrom === p.from && dateTo === p.to;
+            return (
+              <Link
+                key={key}
+                href={`/products?${params.toString()}`}
+                className={
+                  active
+                    ? "px-2.5 py-1 rounded border border-blue-500 bg-blue-50 text-blue-700"
+                    : "px-2.5 py-1 rounded border border-slate-300 hover:bg-slate-50"
+                }
+              >
+                {p.label}
+              </Link>
+            );
+          })}
+          {(dateFrom || dateTo) && (
+            <Link
+              href={(() => {
+                const params = new URLSearchParams();
+                if (projectId) params.set("projectId", projectId);
+                if (departmentId) params.set("departmentId", departmentId);
+                if (saleType) params.set("saleType", saleType);
+                return params.toString() ? `/products?${params.toString()}` : "/products";
+              })()}
+              className="px-2.5 py-1 rounded text-slate-500 hover:bg-slate-50"
+            >
+              ✕ bỏ lọc ngày
+            </Link>
+          )}
+        </div>
+
         <form className="flex gap-2 items-end flex-wrap">
+          <div>
+            <label className="block text-xs text-slate-600 mb-1">Từ ngày cọc</label>
+            <input
+              type="date"
+              name="from"
+              defaultValue={dateFrom ?? ""}
+              className="input"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-600 mb-1">Đến ngày cọc</label>
+            <input
+              type="date"
+              name="to"
+              defaultValue={dateTo ?? ""}
+              className="input"
+            />
+          </div>
           <div>
             <label className="block text-xs text-slate-600 mb-1">Dự án</label>
             <select name="projectId" defaultValue={projectId ?? ""} className="input min-w-60">
@@ -223,7 +317,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
           <button className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200">
             Lọc
           </button>
-          {(filterProjectId || filterDeptId || filterSaleType) && (
+          {(filterProjectId || filterDeptId || filterSaleType || dateFrom || dateTo) && (
             <Link
               href="/products"
               className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200"

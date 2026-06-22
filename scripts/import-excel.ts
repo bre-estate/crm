@@ -62,7 +62,17 @@ const toDateStr = (v: unknown): string | null => {
     const d = String(v.getDate()).padStart(2, "0");
     return `${y}-${m}-${d}`;
   }
-  return String(v).trim() || null;
+  const s = String(v).trim();
+  if (!s) return null;
+  // VN format: DD/MM/YYYY (e.g. "17/04/2026")
+  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (m) {
+    const day = m[1].padStart(2, "0");
+    const month = m[2].padStart(2, "0");
+    const year = m[3].length === 2 ? "20" + m[3] : m[3];
+    return `${year}-${month}-${day}`;
+  }
+  return s;
 };
 
 // Auto-derive partner code from partner name (4-letter slug-ish)
