@@ -1,5 +1,13 @@
 import { db } from "@/lib/db";
-import { products, projects, partners, departments } from "@/lib/schema";
+import {
+  products,
+  projects,
+  partners,
+  departments,
+  revenueReconciliations,
+  paymentsIn,
+  invoices,
+} from "@/lib/schema";
 import { fmtMoney, fmtDate, fmtPct } from "@/lib/format";
 import { eq, asc, desc, and, type SQL } from "drizzle-orm";
 import Link from "next/link";
@@ -64,8 +72,61 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
         .orderBy(desc(products.depositDate))
     : await baseQuery.orderBy(desc(products.depositDate));
 
+  // Payment/invoice status per product
+  const productIds = rows.map((r) => r.id);
+  const recRows =
+    productIds.length === 0
+      ? []
+      : await db
+          .select({
+            id: revenueReconciliations.id,
+            productId: revenueReconciliations.productId,
+            receivable: revenueReconciliations.totalReceivableThisTime,
+            invoiceId: revenueReconciliations.invoiceId,
+          })
+          .from(revenueReconciliations);
+  const paymentRows = await db
+    .select({ recId: paymentsIn.reconciliationId, amount: paymentsIn.amount })
+    .from(paymentsIn);
+  const invoiceCountRows = await db
+    .select({ id: invoices.id })
+    .from(invoices);
+
+  const paidByRec = new Map<number, { sum: number; count: number }>();
+  for (const p of paymentRows) {
+    if (p.recId === null) continue;
+    const cur = paidByRec.get(p.recId) ?? { sum: 0, count: 0 };
+    cur.sum += Number(p.amount ?? 0);
+    cur.count += 1;
+    paidByRec.set(p.recId, cur);
+  }
+
+  type Stats = {
+    receivable: number;
+    paid: number;
+    paymentCount: number;
+    invoiceIds: Set<number>;
+  };
+  const statsByProduct = new Map<number, Stats>();
+  for (const r of recRows) {
+    if (!statsByProduct.has(r.productId)) {
+      statsByProduct.set(r.productId, { receivable: 0, paid: 0, paymentCount: 0, invoiceIds: new Set() });
+    }
+    const s = statsByProduct.get(r.productId)!;
+    s.receivable += Number(r.receivable ?? 0);
+    const paid = paidByRec.get(r.id);
+    if (paid) {
+      s.paid += paid.sum;
+      s.paymentCount += paid.count;
+    }
+    if (r.invoiceId !== null) s.invoiceIds.add(r.invoiceId);
+  }
+  void invoiceCountRows;
+
   const totalRev = rows.reduce((s, r) => s + Number(r.totalRevenue ?? 0), 0);
   const totalCost = rows.reduce((s, r) => s + Number(r.totalCost ?? 0), 0);
+  const totalPaid = Array.from(statsByProduct.values()).reduce((s, x) => s + x.paid, 0);
+  const totalRecv = Array.from(statsByProduct.values()).reduce((s, x) => s + x.receivable, 0);
 
   const deptColor = (code: string | null | undefined): string => {
     switch ((code ?? "").toLowerCase()) {
@@ -159,6 +220,14 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
             <div className="font-bold tabular-nums">{fmtMoney(totalRev)}</div>
           </div>
           <div>
+            <div className="text-xs text-slate-500">Đã thu / Phải thu</div>
+            <div className="font-bold tabular-nums">
+              <span className="text-green-700">{fmtMoney(totalPaid)}</span>
+              <span className="text-slate-400"> / </span>
+              <span>{fmtMoney(totalRecv)}</span>
+            </div>
+          </div>
+          <div>
             <div className="text-xs text-slate-500">Tổng GV</div>
             <div className="font-bold tabular-nums">{fmtMoney(totalCost)}</div>
           </div>
@@ -179,57 +248,107 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
               <th className="text-right p-2">Giá tính PMG</th>
               <th className="text-right p-2">%PMG</th>
               <th className="text-right p-2">Tổng DT</th>
+              <th className="text-center p-2">% thu</th>
+              <th className="text-center p-2">Lần TT</th>
+              <th className="text-center p-2">HĐ</th>
               <th className="text-right p-2">Thao tác</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
-              <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50">
-                <td className="p-2 font-mono text-xs">{r.unitCode}</td>
-                <td className="p-2">
-                  <div className="font-medium text-xs">{r.projectName}</div>
-                  <div className="text-xs text-slate-500">{r.partnerName}</div>
-                </td>
-                <td className="p-2">
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded ${
-                      r.saleType === "secondary"
-                        ? "bg-orange-100 text-orange-700"
-                        : "bg-sky-100 text-sky-700"
-                    }`}
-                  >
-                    {r.saleType === "secondary" ? "Thứ cấp" : "Sơ cấp"}
-                  </span>
-                </td>
-                <td className="p-2">
-                  {r.departmentName ? (
+            {rows.map((r) => {
+              const stats = statsByProduct.get(r.id) ?? {
+                receivable: 0,
+                paid: 0,
+                paymentCount: 0,
+                invoiceIds: new Set<number>(),
+              };
+              const pctPaid = stats.receivable > 0 ? (stats.paid / stats.receivable) * 100 : 0;
+              const fullyPaid = pctPaid >= 99.9;
+              const noData = stats.receivable === 0 && stats.paymentCount === 0;
+              return (
+                <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50">
+                  <td className="p-2 font-mono text-xs">{r.unitCode}</td>
+                  <td className="p-2">
+                    <div className="font-medium text-xs">{r.projectName}</div>
+                    <div className="text-xs text-slate-500">{r.partnerName}</div>
+                  </td>
+                  <td className="p-2">
                     <span
-                      className={`text-xs px-2 py-0.5 rounded ${deptColor(
-                        r.deptName ?? r.departmentName,
-                      )}`}
+                      className={`text-xs px-2 py-0.5 rounded ${
+                        r.saleType === "secondary"
+                          ? "bg-orange-100 text-orange-700"
+                          : "bg-sky-100 text-sky-700"
+                      }`}
                     >
-                      {r.departmentName}
+                      {r.saleType === "secondary" ? "Thứ cấp" : "Sơ cấp"}
                     </span>
-                  ) : (
-                    <span className="text-xs text-slate-400">—</span>
-                  )}
-                </td>
-                <td className="p-2 text-xs">{r.salesPerson ?? "—"}</td>
-                <td className="p-2 text-xs">{fmtDate(r.depositDate)}</td>
-                <td className="p-2 text-xs font-mono">{r.recognitionMonth ?? "—"}</td>
-                <td className="p-2 text-right tabular-nums">{fmtMoney(r.pmgBasePrice)}</td>
-                <td className="p-2 text-right tabular-nums">{fmtPct(r.pmgRate)}</td>
-                <td className="p-2 text-right tabular-nums">{fmtMoney(r.totalRevenue)}</td>
-                <td className="p-2 text-right">
-                  <Link href={`/products/${r.id}`} className="text-blue-600 hover:underline text-sm">
-                    Chi tiết
-                  </Link>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="p-2">
+                    {r.departmentName ? (
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded ${deptColor(
+                          r.deptName ?? r.departmentName,
+                        )}`}
+                      >
+                        {r.departmentName}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-400">—</span>
+                    )}
+                  </td>
+                  <td className="p-2 text-xs">{r.salesPerson ?? "—"}</td>
+                  <td className="p-2 text-xs">{fmtDate(r.depositDate)}</td>
+                  <td className="p-2 text-xs font-mono">{r.recognitionMonth ?? "—"}</td>
+                  <td className="p-2 text-right tabular-nums">{fmtMoney(r.pmgBasePrice)}</td>
+                  <td className="p-2 text-right tabular-nums">{fmtPct(r.pmgRate)}</td>
+                  <td className="p-2 text-right tabular-nums">{fmtMoney(r.totalRevenue)}</td>
+                  <td className="p-2 text-center">
+                    {noData ? (
+                      <span className="text-xs text-slate-400">—</span>
+                    ) : (
+                      <span
+                        className={`text-xs font-semibold ${
+                          fullyPaid
+                            ? "text-green-700"
+                            : pctPaid > 0
+                              ? "text-amber-700"
+                              : "text-red-600"
+                        }`}
+                      >
+                        {pctPaid.toFixed(0)}%
+                      </span>
+                    )}
+                  </td>
+                  <td className="p-2 text-center text-xs">
+                    {stats.paymentCount > 0 ? (
+                      <span className="font-medium">{stats.paymentCount}</span>
+                    ) : (
+                      <span className="text-slate-400">—</span>
+                    )}
+                  </td>
+                  <td className="p-2 text-center text-xs">
+                    {stats.invoiceIds.size > 0 ? (
+                      <span
+                        className="px-2 py-0.5 rounded bg-green-100 text-green-700 font-medium"
+                        title={`${stats.invoiceIds.size} hóa đơn`}
+                      >
+                        ✓ {stats.invoiceIds.size}
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-500">—</span>
+                    )}
+                  </td>
+                  <td className="p-2 text-right">
+                    <Link href={`/products/${r.id}`} className="text-blue-600 hover:underline text-sm">
+                      Chi tiết
+                    </Link>
+                  </td>
+                </tr>
+              );
+            })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={11} className="p-6 text-center text-slate-500 text-sm">
+                <td colSpan={14} className="p-6 text-center text-slate-500 text-sm">
                   Không có giao dịch nào theo bộ lọc.
                 </td>
               </tr>
