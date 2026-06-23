@@ -7,7 +7,7 @@ import {
   revenueReconciliations,
 } from "@/lib/schema";
 import { fmtMoney, fmtDate, fmtPctTight } from "@/lib/format";
-import { eq, asc, desc, and, gte, lte, type SQL } from "drizzle-orm";
+import { eq, asc, desc, and, gte, lte, inArray, type SQL } from "drizzle-orm";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -78,18 +78,23 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
         .orderBy(desc(products.depositDate), desc(products.id))
     : await baseQuery.orderBy(desc(products.depositDate), desc(products.id));
 
-  // For each căn: tính phí dự kiến BRE nhận (= % PMG × giá tính PMG, trước VAT, đã trừ admin)
-  //   primary:   (totalRevenue gồm VAT − adminFee) / 1.1
-  //   secondary: totalRevenue (đã ở thang trước VAT, không có admin)
-  // Đã thu = sum(revenue_recons.revenueThisTime) — mỗi recon = 1 đợt CĐT đã trả
-  const recRows = await db
-    .select({
-      id: revenueReconciliations.id,
-      productId: revenueReconciliations.productId,
-      revenueThisTime: revenueReconciliations.revenueThisTime,
-      invoiceId: revenueReconciliations.invoiceId,
-    })
-    .from(revenueReconciliations);
+  // For each căn: tính phí dự kiến BRE nhận
+  //   primary:   (totalRevenue gồm VAT − adminFee) / 1.1 − discountCk
+  //   secondary: totalRevenue
+  // Đã thu = sum(revenue_recons.revenueThisTime)
+  const productIds = rows.map((r) => r.id);
+  const recRows =
+    productIds.length === 0
+      ? []
+      : await db
+          .select({
+            id: revenueReconciliations.id,
+            productId: revenueReconciliations.productId,
+            revenueThisTime: revenueReconciliations.revenueThisTime,
+            invoiceId: revenueReconciliations.invoiceId,
+          })
+          .from(revenueReconciliations)
+          .where(inArray(revenueReconciliations.productId, productIds));
 
   type Stats = {
     expectedFee: number;
