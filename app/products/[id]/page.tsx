@@ -265,7 +265,7 @@ export default async function ProductDetailPage({
       </SectionCard>
 
       {/* === 3. CƠ CẤU PHÂN BỔ TIỀN === */}
-      <SectionCard title="3. Cơ cấu phân bổ tiền (dựa trên đối chiếu thực + config)" icon="📊">
+      <SectionCard title="3. Cơ cấu phân bổ tiền (dự kiến khi thu đủ 100%)" icon="📊">
         {(() => {
           const salePrice = Number(p.sellPrice ?? 0) || Number(p.pmgBasePrice ?? 0);
           const pmgBase = Number(p.pmgBasePrice ?? 0);
@@ -279,79 +279,36 @@ export default async function ProductDetailPage({
           const feeAfterVat = feeAfterAdminCk / 1.1;
           const netBreFee = isSecondary ? Number(p.totalRevenue ?? 0) : feeAfterVat - discountCk;
 
-          // ACTUAL từ cost_reconciliations
-          // Group by cost_type, sum amountPayableThisTime
-          const actualByType: Record<string, { amount: number; rateSample: number }> = {};
-          for (const r of costRecs) {
-            const t = r.costType;
-            if (!actualByType[t]) actualByType[t] = { amount: 0, rateSample: 0 };
-            actualByType[t].amount += Number(r.amountPayableThisTime ?? 0);
-            const rate = Number(r.kpiRate ?? 0) || Number(r.commissionRate ?? 0);
-            if (rate > 0 && !actualByType[t].rateSample) actualByType[t].rateSample = rate;
-          }
-          const getActual = (
-            type: string,
+          // === DỰ KIẾN: % dựa trên rate (thực từ đối chiếu, fallback config) × netBreFee ===
+          // Cho hiển thị "cơ cấu phân bổ" theo đúng logic user: 100% - 65% HH - 3.5% CEO = 31.5% cty
+          // (Actual đã trả có thể khác — xem Section 5)
+          const mkPct = (
+            configRate: number | null,
+            costType: string,
           ): { amount: number; rate: number; hasData: boolean } => {
-            const rec = actualByType[type];
-            return {
-              amount: rec?.amount ?? 0,
-              rate: rec?.rateSample ?? 0,
-              hasData: !!rec && rec.amount !== 0,
-            };
+            const rate =
+              derivedRateByType.get(costType) || Number(configRate ?? 0) || 0;
+            return { amount: netBreFee * rate, rate, hasData: rate > 0 };
+          };
+          const mkFlat = (
+            configAmount: number | null,
+            costType: string,
+          ): { amount: number; rate: number; hasData: boolean } => {
+            // Flat: ưu tiên actual (max qua các đợt vì lặp lại cùng số cho từng đợt)
+            const actualSum = derivedFlatByType.get(costType) ?? 0;
+            const cfg = Number(configAmount ?? 0);
+            const amount = actualSum || cfg;
+            return { amount, rate: 0, hasData: amount > 0 };
           };
 
-          // Combined: ưu tiên actual, fallback config
-          const hhSale =
-            getActual("sale_commission").hasData
-              ? getActual("sale_commission")
-              : {
-                  amount: netBreFee * Number(p.saleCommissionRate ?? 0),
-                  rate: Number(p.saleCommissionRate ?? 0),
-                  hasData: Number(p.saleCommissionRate ?? 0) > 0,
-                };
-          const kpiCeo = getActual("kpi_ceo").hasData
-            ? getActual("kpi_ceo")
-            : {
-                amount: netBreFee * Number(p.kpiCeoRate ?? 0),
-                rate: Number(p.kpiCeoRate ?? 0),
-                hasData: Number(p.kpiCeoRate ?? 0) > 0,
-              };
-          const kpiTpkd = getActual("kpi_tpkd").hasData
-            ? getActual("kpi_tpkd")
-            : {
-                amount: netBreFee * Number(p.kpiTpkdRate ?? 0),
-                rate: Number(p.kpiTpkdRate ?? 0),
-                hasData: Number(p.kpiTpkdRate ?? 0) > 0,
-              };
-          const kpiAdmin = getActual("kpi_admin").hasData
-            ? getActual("kpi_admin")
-            : {
-                amount: netBreFee * Number(p.kpiAdminRate ?? 0),
-                rate: Number(p.kpiAdminRate ?? 0),
-                hasData: Number(p.kpiAdminRate ?? 0) > 0,
-              };
-          const custSupport = getActual("customer_support").hasData
-            ? getActual("customer_support")
-            : {
-                amount: Number(p.customerSupport ?? 0),
-                rate: 0,
-                hasData: Number(p.customerSupport ?? 0) > 0,
-              };
-          const bonusSaleCty = getActual("bonus_sale").hasData
-            ? getActual("bonus_sale")
-            : {
-                amount: Number(p.bonusSale ?? 0),
-                rate: 0,
-                hasData: Number(p.bonusSale ?? 0) > 0,
-              };
-          const bonusMgrCty = getActual("bonus_manager").hasData
-            ? getActual("bonus_manager")
-            : {
-                amount: Number(p.bonusManager ?? 0),
-                rate: 0,
-                hasData: Number(p.bonusManager ?? 0) > 0,
-              };
-          const adminFeeSaleAmt = Number(p.adminFeeSale ?? 0);
+          const hhSale = mkPct(p.saleCommissionRate, "sale_commission");
+          const kpiCeo = mkPct(p.kpiCeoRate, "kpi_ceo");
+          const kpiTpkd = mkPct(p.kpiTpkdRate, "kpi_tpkd");
+          const kpiAdmin = mkPct(p.kpiAdminRate, "kpi_admin");
+          const custSupport = mkFlat(p.customerSupport, "customer_support");
+          const bonusSaleCty = mkFlat(p.bonusSale, "bonus_sale");
+          const bonusMgrCty = mkFlat(p.bonusManager, "bonus_manager");
+          const adminFeeSaleAmt = effAdminFeeSale;
           const otherCostAmt = Number(p.otherCost ?? 0);
 
           const totalOut =
@@ -520,8 +477,10 @@ export default async function ProductDetailPage({
               </div>
 
               <div className="text-xs text-slate-500 mt-3 italic">
-                Ưu tiên dùng số <b>thực</b> từ bảng đối chiếu giá vốn ({costRecs.length} dòng ở
-                mục 4). Nếu chưa có đối chiếu, fallback tính từ tỷ lệ cấu hình.
+                Đây là <b>cơ cấu dự kiến</b> khi thu đủ 100% phí: tỷ lệ × Phí HH BRE net. Số
+                thực đã trả (có thể khác do đàm phán/nhiều đợt) xem ở mục 5 —{" "}
+                <b>{costRecs.length}</b> dòng đối chiếu, tổng đã trả{" "}
+                <b>{fmtMoney(totalCostPayable)}</b>.
               </div>
             </div>
           );
