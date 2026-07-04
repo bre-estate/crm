@@ -119,14 +119,15 @@ export default async function ProductDetailPage({
     const flat = Number(r.amountPayableThisTime ?? 0);
     derivedFlatByType.set(t, (derivedFlatByType.get(t) ?? 0) + flat);
   }
+  // Ưu tiên số thực từ cost_recons (đã đối chiếu = ground truth), fallback config nếu chưa có.
   const effRate = (configRate: number | null, costType: string): number =>
-    Number(configRate ?? 0) || derivedRateByType.get(costType) || 0;
+    derivedRateByType.get(costType) || Number(configRate ?? 0) || 0;
   const effAmount = (configAmount: number | null, costType: string): number => {
-    const c = Number(configAmount ?? 0);
-    if (c > 0) return c;
-    return derivedFlatByType.get(costType) ?? 0;
+    const actual = derivedFlatByType.get(costType);
+    if (actual !== undefined && actual !== 0) return actual;
+    return Number(configAmount ?? 0);
   };
-  const effAdminFeeSale = Number(p.adminFeeSale ?? 0) || derivedAdminFeeSaleFromRecons;
+  const effAdminFeeSale = derivedAdminFeeSaleFromRecons || Number(p.adminFeeSale ?? 0);
 
   return (
     <div className="space-y-6 max-w-6xl">
