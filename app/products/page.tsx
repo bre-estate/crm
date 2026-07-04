@@ -133,6 +133,12 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
   }
 
   const totalRev = rows.reduce((s, r) => s + Number(r.totalRevenue ?? 0), 0);
+  // Snap to 0 chênh lệch < 1k VND per product (float precision + Excel rounding)
+  for (const s of statsByProduct.values()) {
+    if (Math.abs(s.expectedFee - s.collected) < 1000) {
+      s.expectedFee = s.collected;
+    }
+  }
   const totalCollected = Array.from(statsByProduct.values()).reduce((s, x) => s + x.collected, 0);
   const totalExpected = Array.from(statsByProduct.values()).reduce((s, x) => s + x.expectedFee, 0);
 

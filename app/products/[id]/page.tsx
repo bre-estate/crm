@@ -87,8 +87,15 @@ export default async function ProductDetailPage({
     (s, r) => s + Number(r.rec.revenueThisTime ?? 0),
     0,
   );
-  const remainingFromCDT = Math.max(0, expectedFee - collectedFromCDT);
-  const pctCollected = expectedFee > 0 ? (collectedFromCDT / expectedFee) * 100 : 0;
+  // Threshold: chênh lệch dưới 1.000 VND coi như thu đủ (Excel hay làm tròn số lẻ)
+  const rawRemaining = expectedFee - collectedFromCDT;
+  const remainingFromCDT = Math.abs(rawRemaining) < 1000 ? 0 : Math.max(0, rawRemaining);
+  const pctCollected =
+    expectedFee > 0
+      ? remainingFromCDT === 0
+        ? 100
+        : (collectedFromCDT / expectedFee) * 100
+      : 0;
   const invoiceCount = new Set(revRecs.map((r) => r.invoice?.id).filter(Boolean)).size;
 
   const totalPaidInCash = revPayments.reduce((s, r) => s + Number(r.payment.amount ?? 0), 0);
