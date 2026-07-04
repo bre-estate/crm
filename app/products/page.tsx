@@ -307,7 +307,11 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
               const noData = stats.expectedFee === 0 && stats.phaseCount === 0;
               return (
                 <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50">
-                  <td className="p-2 font-mono text-xs">{r.unitCode}</td>
+                  <td className="p-2 font-mono text-xs">
+                    <Link href={`/products/${r.id}`} className="text-blue-600 hover:underline">
+                      {r.unitCode}
+                    </Link>
+                  </td>
                   <td className="p-2">
                     <div className="font-medium text-xs">{r.projectName}</div>
                     <div className="text-xs text-slate-500">{r.partnerName}</div>

@@ -324,7 +324,7 @@ export default async function ProductDetailPage({
       </SectionCard>
 
       {/* === 5. CƠ CẤU PHÂN BỔ TIỀN === */}
-      <SectionCard title="5. Cơ cấu phân bổ tiền (dự kiến — theo tỷ lệ config)" icon="📊">
+      <SectionCard title="5. Cơ cấu phân bổ tiền (dựa trên đối chiếu thực + config)" icon="📊">
         {(() => {
           const salePrice = Number(p.sellPrice ?? 0) || Number(p.pmgBasePrice ?? 0);
           const pmgBase = Number(p.pmgBasePrice ?? 0);
@@ -334,33 +334,95 @@ export default async function ProductDetailPage({
 
           // HH thô CĐT trả BRE (gồm VAT + admin)
           const grossFee = pmgBase * pmgRate;
-          // Sau khi trừ admin (CĐT giữ) + CK (BRE trả) rồi chia VAT
           const feeAfterAdminCk = grossFee - adminFee;
           const feeAfterVat = feeAfterAdminCk / 1.1;
           const netBreFee = isSecondary ? Number(p.totalRevenue ?? 0) : feeAfterVat - discountCk;
 
-          // Chi phí BRE trả nội bộ (dự kiến theo config)
-          const hhSaleRate = Number(p.saleCommissionRate ?? 0);
-          const hhSale = netBreFee * hhSaleRate;
-          const kpiCeo = netBreFee * Number(p.kpiCeoRate ?? 0);
-          const kpiTpkd = netBreFee * Number(p.kpiTpkdRate ?? 0);
-          const kpiAdmin = netBreFee * Number(p.kpiAdminRate ?? 0);
-          const custSupport = Number(p.customerSupport ?? 0);
-          const bonusSaleCty = Number(p.bonusSale ?? 0);
-          const bonusMgrCty = Number(p.bonusManager ?? 0);
-          const adminFeeSale = Number(p.adminFeeSale ?? 0);
-          const otherCost = Number(p.otherCost ?? 0);
+          // ACTUAL từ cost_reconciliations
+          // Group by cost_type, sum amountPayableThisTime
+          const actualByType: Record<string, { amount: number; rateSample: number }> = {};
+          for (const r of costRecs) {
+            const t = r.costType;
+            if (!actualByType[t]) actualByType[t] = { amount: 0, rateSample: 0 };
+            actualByType[t].amount += Number(r.amountPayableThisTime ?? 0);
+            const rate = Number(r.kpiRate ?? 0) || Number(r.commissionRate ?? 0);
+            if (rate > 0 && !actualByType[t].rateSample) actualByType[t].rateSample = rate;
+          }
+          const getActual = (
+            type: string,
+          ): { amount: number; rate: number; hasData: boolean } => {
+            const rec = actualByType[type];
+            return {
+              amount: rec?.amount ?? 0,
+              rate: rec?.rateSample ?? 0,
+              hasData: !!rec && rec.amount !== 0,
+            };
+          };
+
+          // Combined: ưu tiên actual, fallback config
+          const hhSale =
+            getActual("sale_commission").hasData
+              ? getActual("sale_commission")
+              : {
+                  amount: netBreFee * Number(p.saleCommissionRate ?? 0),
+                  rate: Number(p.saleCommissionRate ?? 0),
+                  hasData: Number(p.saleCommissionRate ?? 0) > 0,
+                };
+          const kpiCeo = getActual("kpi_ceo").hasData
+            ? getActual("kpi_ceo")
+            : {
+                amount: netBreFee * Number(p.kpiCeoRate ?? 0),
+                rate: Number(p.kpiCeoRate ?? 0),
+                hasData: Number(p.kpiCeoRate ?? 0) > 0,
+              };
+          const kpiTpkd = getActual("kpi_tpkd").hasData
+            ? getActual("kpi_tpkd")
+            : {
+                amount: netBreFee * Number(p.kpiTpkdRate ?? 0),
+                rate: Number(p.kpiTpkdRate ?? 0),
+                hasData: Number(p.kpiTpkdRate ?? 0) > 0,
+              };
+          const kpiAdmin = getActual("kpi_admin").hasData
+            ? getActual("kpi_admin")
+            : {
+                amount: netBreFee * Number(p.kpiAdminRate ?? 0),
+                rate: Number(p.kpiAdminRate ?? 0),
+                hasData: Number(p.kpiAdminRate ?? 0) > 0,
+              };
+          const custSupport = getActual("customer_support").hasData
+            ? getActual("customer_support")
+            : {
+                amount: Number(p.customerSupport ?? 0),
+                rate: 0,
+                hasData: Number(p.customerSupport ?? 0) > 0,
+              };
+          const bonusSaleCty = getActual("bonus_sale").hasData
+            ? getActual("bonus_sale")
+            : {
+                amount: Number(p.bonusSale ?? 0),
+                rate: 0,
+                hasData: Number(p.bonusSale ?? 0) > 0,
+              };
+          const bonusMgrCty = getActual("bonus_manager").hasData
+            ? getActual("bonus_manager")
+            : {
+                amount: Number(p.bonusManager ?? 0),
+                rate: 0,
+                hasData: Number(p.bonusManager ?? 0) > 0,
+              };
+          const adminFeeSaleAmt = Number(p.adminFeeSale ?? 0);
+          const otherCostAmt = Number(p.otherCost ?? 0);
 
           const totalOut =
-            hhSale +
-            kpiCeo +
-            kpiTpkd +
-            kpiAdmin +
-            custSupport +
-            bonusSaleCty +
-            bonusMgrCty +
-            adminFeeSale +
-            otherCost;
+            hhSale.amount +
+            kpiCeo.amount +
+            kpiTpkd.amount +
+            kpiAdmin.amount +
+            custSupport.amount +
+            bonusSaleCty.amount +
+            bonusMgrCty.amount +
+            adminFeeSaleAmt +
+            otherCostAmt;
 
           const profit = netBreFee - totalOut;
           const profitPct = netBreFee > 0 ? (profit / netBreFee) * 100 : 0;
@@ -418,59 +480,66 @@ export default async function ProductDetailPage({
                 <div className="text-xs uppercase text-orange-700 font-semibold mb-2">
                   BRE chi ra
                 </div>
-                {hhSaleRate > 0 && (
+                {hhSale.hasData && (
                   <Row
-                    label={`HH NVKD (${fmtPctTight(hhSaleRate)})`}
-                    value={`− ${fmtMoney(hhSale)}`}
+                    label={`HH NVKD${hhSale.rate ? ` (${fmtPctTight(hhSale.rate)})` : ""}`}
+                    value={`− ${fmtMoney(hhSale.amount)}`}
                     color="red"
-                    sub={`${fmtPctTight(hhSaleRate)} × Phí HH BRE net`}
                   />
                 )}
-                {custSupport > 0 && (
-                  <Row label="Hỗ trợ khách" value={`− ${fmtMoney(custSupport)}`} color="red" />
+                {custSupport.hasData && (
+                  <Row
+                    label="Hỗ trợ khách"
+                    value={`− ${fmtMoney(custSupport.amount)}`}
+                    color="red"
+                  />
                 )}
-                {bonusSaleCty > 0 && (
+                {bonusSaleCty.hasData && (
                   <Row
                     label="Thưởng NVKD (CTY)"
-                    value={`− ${fmtMoney(bonusSaleCty)}`}
+                    value={`− ${fmtMoney(bonusSaleCty.amount)}`}
                     color="red"
                   />
                 )}
-                {bonusMgrCty > 0 && (
-                  <Row label="Thưởng QL (CTY)" value={`− ${fmtMoney(bonusMgrCty)}`} color="red" />
-                )}
-                {kpiCeo > 0 && (
+                {bonusMgrCty.hasData && (
                   <Row
-                    label={`KPI CEO (${fmtPctTight(p.kpiCeoRate)})`}
-                    value={`− ${fmtMoney(kpiCeo)}`}
+                    label="Thưởng QL (CTY)"
+                    value={`− ${fmtMoney(bonusMgrCty.amount)}`}
                     color="red"
                   />
                 )}
-                {kpiTpkd > 0 && (
+                {kpiCeo.hasData && (
                   <Row
-                    label={`KPI TPKD (${fmtPctTight(p.kpiTpkdRate)})`}
-                    value={`− ${fmtMoney(kpiTpkd)}`}
+                    label={`KPI CEO${kpiCeo.rate ? ` (${fmtPctTight(kpiCeo.rate)})` : ""}`}
+                    value={`− ${fmtMoney(kpiCeo.amount)}`}
                     color="red"
                   />
                 )}
-                {kpiAdmin > 0 && (
+                {kpiTpkd.hasData && (
                   <Row
-                    label={`KPI Admin (${fmtPctTight(p.kpiAdminRate)})`}
-                    value={`− ${fmtMoney(kpiAdmin)}`}
+                    label={`KPI TPKD${kpiTpkd.rate ? ` (${fmtPctTight(kpiTpkd.rate)})` : ""}`}
+                    value={`− ${fmtMoney(kpiTpkd.amount)}`}
                     color="red"
                   />
                 )}
-                {adminFeeSale > 0 && (
+                {kpiAdmin.hasData && (
+                  <Row
+                    label={`KPI Admin${kpiAdmin.rate ? ` (${fmtPctTight(kpiAdmin.rate)})` : ""}`}
+                    value={`− ${fmtMoney(kpiAdmin.amount)}`}
+                    color="red"
+                  />
+                )}
+                {adminFeeSaleAmt > 0 && (
                   <Row
                     label="Phí admin sale"
-                    value={`− ${fmtMoney(adminFeeSale)}`}
+                    value={`− ${fmtMoney(adminFeeSaleAmt)}`}
                     color="red"
                   />
                 )}
-                {otherCost !== 0 && (
+                {otherCostAmt !== 0 && (
                   <Row
                     label="Chi phí khác"
-                    value={`− ${fmtMoney(otherCost)}`}
+                    value={`− ${fmtMoney(otherCostAmt)}`}
                     color="red"
                   />
                 )}
@@ -510,9 +579,8 @@ export default async function ProductDetailPage({
               </div>
 
               <div className="text-xs text-slate-500 mt-3 italic">
-                Số dự kiến tính từ tỷ lệ cấu hình trong tab Giao dịch. Số thực đã trả xem ở
-                mục 4 (bảng dòng đối chiếu). Chênh lệch nếu có = điều chỉnh do đàm phán / hoàn
-                trả.
+                Ưu tiên dùng số <b>thực</b> từ bảng đối chiếu giá vốn ({costRecs.length} dòng ở
+                mục 4). Nếu chưa có đối chiếu, fallback tính từ tỷ lệ cấu hình.
               </div>
             </div>
           );
