@@ -323,6 +323,202 @@ export default async function ProductDetailPage({
         )}
       </SectionCard>
 
+      {/* === 5. CƠ CẤU PHÂN BỔ TIỀN === */}
+      <SectionCard title="5. Cơ cấu phân bổ tiền (dự kiến — theo tỷ lệ config)" icon="📊">
+        {(() => {
+          const salePrice = Number(p.sellPrice ?? 0) || Number(p.pmgBasePrice ?? 0);
+          const pmgBase = Number(p.pmgBasePrice ?? 0);
+          const pmgRate = Number(p.pmgRate ?? 0);
+          const adminFee = Number(p.adminFee ?? 0);
+          const discountCk = Number(p.discountCk ?? 0);
+
+          // HH thô CĐT trả BRE (gồm VAT + admin)
+          const grossFee = pmgBase * pmgRate;
+          // Sau khi trừ admin (CĐT giữ) + CK (BRE trả) rồi chia VAT
+          const feeAfterAdminCk = grossFee - adminFee;
+          const feeAfterVat = feeAfterAdminCk / 1.1;
+          const netBreFee = isSecondary ? Number(p.totalRevenue ?? 0) : feeAfterVat - discountCk;
+
+          // Chi phí BRE trả nội bộ (dự kiến theo config)
+          const hhSaleRate = Number(p.saleCommissionRate ?? 0);
+          const hhSale = netBreFee * hhSaleRate;
+          const kpiCeo = netBreFee * Number(p.kpiCeoRate ?? 0);
+          const kpiTpkd = netBreFee * Number(p.kpiTpkdRate ?? 0);
+          const kpiAdmin = netBreFee * Number(p.kpiAdminRate ?? 0);
+          const custSupport = Number(p.customerSupport ?? 0);
+          const bonusSaleCty = Number(p.bonusSale ?? 0);
+          const bonusMgrCty = Number(p.bonusManager ?? 0);
+          const adminFeeSale = Number(p.adminFeeSale ?? 0);
+          const otherCost = Number(p.otherCost ?? 0);
+
+          const totalOut =
+            hhSale +
+            kpiCeo +
+            kpiTpkd +
+            kpiAdmin +
+            custSupport +
+            bonusSaleCty +
+            bonusMgrCty +
+            adminFeeSale +
+            otherCost;
+
+          const profit = netBreFee - totalOut;
+          const profitPct = netBreFee > 0 ? (profit / netBreFee) * 100 : 0;
+
+          return (
+            <div className="text-sm">
+              {/* Đầu vào */}
+              <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3 mb-3">
+                <div className="text-xs uppercase text-blue-700 font-semibold mb-2">
+                  Đầu vào
+                </div>
+                <Row label="Giá bán căn" value={fmtMoney(salePrice)} />
+                <Row label="Giá tính PMG" value={fmtMoney(pmgBase)} />
+              </div>
+
+              {/* Vào cty */}
+              <div className="rounded-lg border border-green-200 bg-green-50/50 p-3 mb-3">
+                <div className="text-xs uppercase text-green-700 font-semibold mb-2">
+                  Phí HH BRE nhận từ CĐT
+                </div>
+                {!isSecondary && (
+                  <>
+                    <Row
+                      label={`× %PMG_LK (${fmtPctTight(pmgRate)}) — HH thô CĐT trả BRE`}
+                      value={fmtMoney(grossFee)}
+                      color="green"
+                    />
+                    {adminFee > 0 && (
+                      <Row
+                        label="− Phí admin CĐT giữ"
+                        value={`− ${fmtMoney(adminFee)}`}
+                        color="red"
+                      />
+                    )}
+                    <Row label="÷ 1,1 (loại VAT)" value={fmtMoney(feeAfterVat)} />
+                    {discountCk > 0 && (
+                      <Row
+                        label="− Chiết khấu (CK, BRE chi ngoài)"
+                        value={`− ${fmtMoney(discountCk)}`}
+                        color="red"
+                      />
+                    )}
+                  </>
+                )}
+                <Row
+                  label="= Phí HH BRE nhận (net)"
+                  value={fmtMoney(netBreFee)}
+                  bold
+                  color="green"
+                />
+              </div>
+
+              {/* Ra khỏi cty */}
+              <div className="rounded-lg border border-orange-200 bg-orange-50/50 p-3 mb-3">
+                <div className="text-xs uppercase text-orange-700 font-semibold mb-2">
+                  BRE chi ra
+                </div>
+                {hhSaleRate > 0 && (
+                  <Row
+                    label={`HH NVKD (${fmtPctTight(hhSaleRate)})`}
+                    value={`− ${fmtMoney(hhSale)}`}
+                    color="red"
+                    sub={`${fmtPctTight(hhSaleRate)} × Phí HH BRE net`}
+                  />
+                )}
+                {custSupport > 0 && (
+                  <Row label="Hỗ trợ khách" value={`− ${fmtMoney(custSupport)}`} color="red" />
+                )}
+                {bonusSaleCty > 0 && (
+                  <Row
+                    label="Thưởng NVKD (CTY)"
+                    value={`− ${fmtMoney(bonusSaleCty)}`}
+                    color="red"
+                  />
+                )}
+                {bonusMgrCty > 0 && (
+                  <Row label="Thưởng QL (CTY)" value={`− ${fmtMoney(bonusMgrCty)}`} color="red" />
+                )}
+                {kpiCeo > 0 && (
+                  <Row
+                    label={`KPI CEO (${fmtPctTight(p.kpiCeoRate)})`}
+                    value={`− ${fmtMoney(kpiCeo)}`}
+                    color="red"
+                  />
+                )}
+                {kpiTpkd > 0 && (
+                  <Row
+                    label={`KPI TPKD (${fmtPctTight(p.kpiTpkdRate)})`}
+                    value={`− ${fmtMoney(kpiTpkd)}`}
+                    color="red"
+                  />
+                )}
+                {kpiAdmin > 0 && (
+                  <Row
+                    label={`KPI Admin (${fmtPctTight(p.kpiAdminRate)})`}
+                    value={`− ${fmtMoney(kpiAdmin)}`}
+                    color="red"
+                  />
+                )}
+                {adminFeeSale > 0 && (
+                  <Row
+                    label="Phí admin sale"
+                    value={`− ${fmtMoney(adminFeeSale)}`}
+                    color="red"
+                  />
+                )}
+                {otherCost !== 0 && (
+                  <Row
+                    label="Chi phí khác"
+                    value={`− ${fmtMoney(otherCost)}`}
+                    color="red"
+                  />
+                )}
+                <div className="border-t border-orange-200 mt-1 pt-1">
+                  <Row
+                    label="Tổng chi ra"
+                    value={`− ${fmtMoney(totalOut)}`}
+                    bold
+                    color="red"
+                  />
+                </div>
+              </div>
+
+              {/* Còn lại */}
+              <div
+                className={`rounded-lg border-2 p-4 ${
+                  profit >= 0 ? "border-green-400 bg-green-50" : "border-red-400 bg-red-50"
+                }`}
+              >
+                <div className="flex justify-between items-center">
+                  <div>
+                    <div className="text-xs uppercase font-semibold text-slate-600">
+                      Lợi nhuận công ty (dự kiến)
+                    </div>
+                    <div className="text-xs text-slate-500 mt-0.5">
+                      Phí HH BRE − Tổng chi = {profitPct.toFixed(1)}% biên lợi nhuận
+                    </div>
+                  </div>
+                  <div
+                    className={`text-2xl font-bold tabular-nums ${
+                      profit >= 0 ? "text-green-700" : "text-red-700"
+                    }`}
+                  >
+                    {fmtMoney(profit)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-xs text-slate-500 mt-3 italic">
+                Số dự kiến tính từ tỷ lệ cấu hình trong tab Giao dịch. Số thực đã trả xem ở
+                mục 4 (bảng dòng đối chiếu). Chênh lệch nếu có = điều chỉnh do đàm phán / hoàn
+                trả.
+              </div>
+            </div>
+          );
+        })()}
+      </SectionCard>
+
       {/* === 4. TRẢ PHÍ NỘI BỘ === */}
       <SectionCard title="4. Trả phí nội bộ (HH sale, KPI, thưởng)" icon="🏦">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
@@ -392,6 +588,37 @@ export default async function ProductDetailPage({
           </table>
         </div>
       </SectionCard>
+    </div>
+  );
+}
+
+function Row({
+  label,
+  value,
+  bold,
+  color,
+  sub,
+}: {
+  label: string;
+  value: string;
+  bold?: boolean;
+  color?: "green" | "red";
+  sub?: string;
+}) {
+  const valCls = [
+    "tabular-nums",
+    bold ? "font-semibold" : "",
+    color === "green" ? "text-green-700" : color === "red" ? "text-red-600" : "text-slate-800",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  return (
+    <div className="flex justify-between items-baseline py-0.5">
+      <div className="flex-1 text-sm text-slate-700">
+        {label}
+        {sub && <span className="text-xs text-slate-400 ml-1">({sub})</span>}
+      </div>
+      <div className={valCls}>{value}</div>
     </div>
   );
 }
