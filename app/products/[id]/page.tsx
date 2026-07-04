@@ -105,6 +105,29 @@ export default async function ProductDetailPage({
   );
   const totalPaidOut = costPayments.reduce((s, r) => s + Number(r.payment.amount ?? 0), 0);
 
+  // === Rate derivation từ cost_recons cho Section 2 (nếu config = 0) ===
+  const derivedRateByType = new Map<string, number>();
+  const derivedFlatByType = new Map<string, number>();
+  const derivedAdminFeeSaleFromRecons = costRecs.reduce(
+    (max, r) => Math.max(max, Number(r.adminFeeSale ?? 0)),
+    0,
+  );
+  for (const r of costRecs) {
+    const t = r.costType;
+    const rate = Number(r.kpiRate ?? 0) || Number(r.commissionRate ?? 0);
+    if (rate > 0 && !derivedRateByType.has(t)) derivedRateByType.set(t, rate);
+    const flat = Number(r.amountPayableThisTime ?? 0);
+    derivedFlatByType.set(t, (derivedFlatByType.get(t) ?? 0) + flat);
+  }
+  const effRate = (configRate: number | null, costType: string): number =>
+    Number(configRate ?? 0) || derivedRateByType.get(costType) || 0;
+  const effAmount = (configAmount: number | null, costType: string): number => {
+    const c = Number(configAmount ?? 0);
+    if (c > 0) return c;
+    return derivedFlatByType.get(costType) ?? 0;
+  };
+  const effAdminFeeSale = Number(p.adminFeeSale ?? 0) || derivedAdminFeeSaleFromRecons;
+
   return (
     <div className="space-y-6 max-w-6xl">
       {/* Breadcrumb + title */}
@@ -207,10 +230,13 @@ export default async function ProductDetailPage({
           <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
             <Info label="%PMG_LK (BRE nhận)" value={fmtPctTight(p.pmgRate)} />
             <Info label="%PMG_LK_sale (trả F2)" value={fmtPctTight(p.pmgSaleRate)} />
-            <Info label="%HH sale (NVKD)" value={fmtPctTight(p.saleCommissionRate)} />
-            <Info label="%KPI CEO" value={fmtPctTight(p.kpiCeoRate)} />
-            <Info label="%KPI TPKD" value={fmtPctTight(p.kpiTpkdRate)} />
-            <Info label="%KPI Admin" value={fmtPctTight(p.kpiAdminRate)} />
+            <Info
+              label="%HH sale (NVKD)"
+              value={fmtPctTight(effRate(p.saleCommissionRate, "sale_commission"))}
+            />
+            <Info label="%KPI CEO" value={fmtPctTight(effRate(p.kpiCeoRate, "kpi_ceo"))} />
+            <Info label="%KPI TPKD" value={fmtPctTight(effRate(p.kpiTpkdRate, "kpi_tpkd"))} />
+            <Info label="%KPI Admin" value={fmtPctTight(effRate(p.kpiAdminRate, "kpi_admin"))} />
             <Info label="%phí khác" value={fmtPctTight(p.otherFeePct)} />
           </div>
         </div>
@@ -220,111 +246,25 @@ export default async function ProductDetailPage({
             Khoản thưởng / hỗ trợ
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Info label="Hỗ trợ khách" value={fmtMoney(p.customerSupport)} />
-            <Info label="Thưởng NVKD (CTY)" value={fmtMoney(p.bonusSale)} />
-            <Info label="Thưởng QL (CTY)" value={fmtMoney(p.bonusManager)} />
+            <Info
+              label="Hỗ trợ khách"
+              value={fmtMoney(effAmount(p.customerSupport, "customer_support"))}
+            />
+            <Info label="Thưởng NVKD (CTY)" value={fmtMoney(effAmount(p.bonusSale, "bonus_sale"))} />
+            <Info
+              label="Thưởng QL (CTY)"
+              value={fmtMoney(effAmount(p.bonusManager, "bonus_manager"))}
+            />
             <Info label="Thưởng sale (CĐT)" value={fmtMoney(p.cdtBonusSale)} />
             <Info label="Thưởng QL (CĐT)" value={fmtMoney(p.cdtBonusManager)} />
-            <Info label="Phí admin sale" value={fmtMoney(p.adminFeeSale)} />
+            <Info label="Phí admin sale" value={fmtMoney(effAdminFeeSale)} />
             <Info label="CP giá vốn khác" value={fmtMoney(p.otherCost)} />
           </div>
         </div>
       </SectionCard>
 
-      {/* === 3. THU PHÍ TỪ CĐT === */}
-      <SectionCard title="3. Thu phí HH từ CĐT" icon="💰">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-          <Info label="Phí HH dự kiến" value={fmtMoney(expectedFee)} />
-          <Info label="Đã thu" value={fmtMoney(collectedFromCDT)} accent="green" />
-          <Info label="Còn phải thu" value={fmtMoney(remainingFromCDT)} accent="orange" />
-          <Info label="% thu" value={`${pctCollected.toFixed(1)}%`} />
-        </div>
-
-        <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
-          Các đợt đối chiếu với CĐT ({revRecs.length})
-        </div>
-        <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead className="bg-slate-50 text-slate-600">
-              <tr>
-                <th className="text-center p-2 whitespace-nowrap">Đợt</th>
-                <th className="text-left p-2 whitespace-nowrap">Ngày ĐC</th>
-                <th className="text-left p-2 whitespace-nowrap">Số HĐ</th>
-                <th className="text-left p-2 whitespace-nowrap">Ngày HĐ</th>
-                <th className="text-right p-2 whitespace-nowrap">%PMG</th>
-                <th className="text-right p-2 whitespace-nowrap">Số tiền đợt</th>
-                <th className="text-right p-2 whitespace-nowrap">Phải thu</th>
-              </tr>
-            </thead>
-            <tbody>
-              {revRecs.map(({ rec, invoice }) => (
-                <tr key={rec.id} className="border-t border-slate-100">
-                  <td className="p-2 text-center font-semibold">{rec.phaseNumber ?? "—"}</td>
-                  <td className="p-2">{fmtDate(rec.reconciliationDate)}</td>
-                  <td className="p-2 font-mono">{invoice?.invoiceNumber ?? "—"}</td>
-                  <td className="p-2">{fmtDate(invoice?.invoiceDate)}</td>
-                  <td className="p-2 text-right tabular-nums">
-                    {rec.pmgCumulativePct ? fmtPct(rec.pmgCumulativePct) : "—"}
-                  </td>
-                  <td className="p-2 text-right tabular-nums font-medium">
-                    {fmtMoney(rec.revenueThisTime)}
-                  </td>
-                  <td className="p-2 text-right tabular-nums font-semibold">
-                    {fmtMoney(rec.totalReceivableThisTime)}
-                  </td>
-                </tr>
-              ))}
-              {revRecs.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="p-4 text-center text-slate-500">
-                    Chưa có đợt đối chiếu nào.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {revPayments.length > 0 && (
-          <div className="mt-4">
-            <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
-              Đã nhận thanh toán ({revPayments.length})
-            </div>
-            <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
-              <table className="w-full text-xs">
-                <thead className="bg-slate-50 text-slate-600">
-                  <tr>
-                    <th className="text-left p-2">Ngày nhận</th>
-                    <th className="text-right p-2">Số tiền thực nhận</th>
-                    <th className="text-left p-2">Ghi chú</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {revPayments.map((r) => (
-                    <tr key={r.payment.id} className="border-t border-slate-100">
-                      <td className="p-2">{fmtDate(r.payment.paymentDate)}</td>
-                      <td className="p-2 text-right tabular-nums font-medium text-green-700">
-                        {fmtMoney(r.payment.amount)}
-                      </td>
-                      <td className="p-2 text-slate-500">{r.payment.note ?? "—"}</td>
-                    </tr>
-                  ))}
-                  <tr className="border-t-2 border-slate-300 bg-slate-50 font-semibold">
-                    <td className="p-2">Tổng đã thu (payment_in)</td>
-                    <td className="p-2 text-right tabular-nums text-green-700">
-                      {fmtMoney(totalPaidInCash)}
-                    </td>
-                    <td className="p-2"></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </SectionCard>
-
-      {/* === 5. CƠ CẤU PHÂN BỔ TIỀN === */}
-      <SectionCard title="5. Cơ cấu phân bổ tiền (dựa trên đối chiếu thực + config)" icon="📊">
+      {/* === 3. CƠ CẤU PHÂN BỔ TIỀN === */}
+      <SectionCard title="3. Cơ cấu phân bổ tiền (dựa trên đối chiếu thực + config)" icon="📊">
         {(() => {
           const salePrice = Number(p.sellPrice ?? 0) || Number(p.pmgBasePrice ?? 0);
           const pmgBase = Number(p.pmgBasePrice ?? 0);
@@ -587,8 +527,100 @@ export default async function ProductDetailPage({
         })()}
       </SectionCard>
 
+      {/* === 4. THU PHÍ TỪ CĐT === */}
+      <SectionCard title="4. Thu phí HH từ CĐT" icon="💰">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+          <Info label="Phí HH dự kiến" value={fmtMoney(expectedFee)} />
+          <Info label="Đã thu" value={fmtMoney(collectedFromCDT)} accent="green" />
+          <Info label="Còn phải thu" value={fmtMoney(remainingFromCDT)} accent="orange" />
+          <Info label="% thu" value={`${pctCollected.toFixed(1)}%`} />
+        </div>
+
+        <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
+          Các đợt đối chiếu với CĐT ({revRecs.length})
+        </div>
+        <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead className="bg-slate-50 text-slate-600">
+              <tr>
+                <th className="text-center p-2 whitespace-nowrap">Đợt</th>
+                <th className="text-left p-2 whitespace-nowrap">Ngày ĐC</th>
+                <th className="text-left p-2 whitespace-nowrap">Số HĐ</th>
+                <th className="text-left p-2 whitespace-nowrap">Ngày HĐ</th>
+                <th className="text-right p-2 whitespace-nowrap">%PMG</th>
+                <th className="text-right p-2 whitespace-nowrap">Số tiền đợt</th>
+                <th className="text-right p-2 whitespace-nowrap">Phải thu</th>
+              </tr>
+            </thead>
+            <tbody>
+              {revRecs.map(({ rec, invoice }) => (
+                <tr key={rec.id} className="border-t border-slate-100">
+                  <td className="p-2 text-center font-semibold">{rec.phaseNumber ?? "—"}</td>
+                  <td className="p-2">{fmtDate(rec.reconciliationDate)}</td>
+                  <td className="p-2 font-mono">{invoice?.invoiceNumber ?? "—"}</td>
+                  <td className="p-2">{fmtDate(invoice?.invoiceDate)}</td>
+                  <td className="p-2 text-right tabular-nums">
+                    {rec.pmgCumulativePct ? fmtPct(rec.pmgCumulativePct) : "—"}
+                  </td>
+                  <td className="p-2 text-right tabular-nums font-medium">
+                    {fmtMoney(rec.revenueThisTime)}
+                  </td>
+                  <td className="p-2 text-right tabular-nums font-semibold">
+                    {fmtMoney(rec.totalReceivableThisTime)}
+                  </td>
+                </tr>
+              ))}
+              {revRecs.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="p-4 text-center text-slate-500">
+                    Chưa có đợt đối chiếu nào.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {revPayments.length > 0 && (
+          <div className="mt-4">
+            <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
+              Đã nhận thanh toán ({revPayments.length})
+            </div>
+            <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+              <table className="w-full text-xs">
+                <thead className="bg-slate-50 text-slate-600">
+                  <tr>
+                    <th className="text-left p-2">Ngày nhận</th>
+                    <th className="text-right p-2">Số tiền thực nhận</th>
+                    <th className="text-left p-2">Ghi chú</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {revPayments.map((r) => (
+                    <tr key={r.payment.id} className="border-t border-slate-100">
+                      <td className="p-2">{fmtDate(r.payment.paymentDate)}</td>
+                      <td className="p-2 text-right tabular-nums font-medium text-green-700">
+                        {fmtMoney(r.payment.amount)}
+                      </td>
+                      <td className="p-2 text-slate-500">{r.payment.note ?? "—"}</td>
+                    </tr>
+                  ))}
+                  <tr className="border-t-2 border-slate-300 bg-slate-50 font-semibold">
+                    <td className="p-2">Tổng đã thu (payment_in)</td>
+                    <td className="p-2 text-right tabular-nums text-green-700">
+                      {fmtMoney(totalPaidInCash)}
+                    </td>
+                    <td className="p-2"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </SectionCard>
+
       {/* === 4. TRẢ PHÍ NỘI BỘ === */}
-      <SectionCard title="4. Trả phí nội bộ (HH sale, KPI, thưởng)" icon="🏦">
+      <SectionCard title="5. Trả phí nội bộ (HH sale, KPI, thưởng)" icon="🏦">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
           <Info label="Tổng phải trả (đã ĐC)" value={fmtMoney(totalCostPayable)} />
           <Info label="Đã trả" value={fmtMoney(totalPaidOut)} accent="green" />
