@@ -53,6 +53,7 @@ export default function CostForm({ recon, paymentInit, products, defaultProductI
     (recon?.costType as (typeof COST_TYPES)[number]) ?? "sale_commission",
   );
   const product = useMemo(() => products.find((p) => p.id === productId), [products, productId]);
+  const isEdit = !!recon;
 
   const showCommission = costType === "sale_commission";
   const showSupport = costType === "customer_support";
@@ -82,24 +83,46 @@ export default function CostForm({ recon, paymentInit, products, defaultProductI
       <Section title="Thông tin đối chiếu">
         <div className="grid grid-cols-2 gap-4">
           <Field label="Căn (sản phẩm)" required>
-            <select
-              name="productId"
-              value={productId}
-              onChange={(e) => setProductId(Number(e.target.value))}
-              className="input"
-              required
-            >
-              {products.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.productCode} · {p.projectName}
-                </option>
-              ))}
-            </select>
+            {isEdit ? (
+              <>
+                <select
+                  value={productId}
+                  disabled
+                  className="input bg-slate-100 text-slate-500 cursor-not-allowed"
+                >
+                  {products.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.productCode} · {p.projectName}
+                    </option>
+                  ))}
+                </select>
+                <input type="hidden" name="productId" value={productId} />
+              </>
+            ) : (
+              <select
+                name="productId"
+                value={productId}
+                onChange={(e) => setProductId(Number(e.target.value))}
+                className="input"
+                required
+              >
+                {products.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.productCode} · {p.projectName}
+                  </option>
+                ))}
+              </select>
+            )}
             {product && (
               <div className="text-xs text-slate-500 mt-1">
-                Giá tính PMG: {fmtMoney(product.pmgBasePrice)} · %HH sale snapshot:{" "}
+                Giá tính PMG: {fmtMoney(product.pmgBasePrice)} · %HH sale (chốt):{" "}
                 {Number((Number(product.saleCommissionRate ?? 0) * 100).toFixed(2))}% · NVKD mặc định:{" "}
                 {product.salesPerson ?? "—"}
+              </div>
+            )}
+            {isEdit && (
+              <div className="text-xs text-slate-500 mt-1">
+                Không đổi được căn khi sửa. Muốn chuyển dòng sang căn khác thì xóa dòng này rồi tạo lại.
               </div>
             )}
           </Field>
@@ -145,13 +168,19 @@ export default function CostForm({ recon, paymentInit, products, defaultProductI
         </div>
       </Section>
 
-      <Section title="Snapshot cơ sở tính (chuyển về value sau khi đối chiếu)">
+      <Section title="Cơ sở tính (chốt tại thời điểm tạo đợt)">
+        {isEdit && (
+          <div className="text-xs text-slate-500 -mt-2 mb-2">
+            Ô có nền xám là dữ liệu chốt lúc tạo — không sửa được.
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-4">
           <Field label="Giá tính PMG sale">
             <MoneyInput
               name="pmgBasePriceSale"
               defaultValue={recon?.pmgBasePriceSale ?? product?.pmgBasePrice ?? 0}
               className="input"
+              readOnly={isEdit}
             />
           </Field>
           <Field label="%PMG_LK_sale">
@@ -160,7 +189,8 @@ export default function CostForm({ recon, paymentInit, products, defaultProductI
               type="number"
               step="any"
               defaultValue={pctDisplay(recon?.pmgLkSaleRate ?? product?.pmgSaleRate)}
-              className="input"
+              className={`input ${isEdit ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}`}
+              readOnly={isEdit}
             />
           </Field>
           <Field label="Tiến độ %PMG đã thu đến nay (vd: 60)">
@@ -169,7 +199,8 @@ export default function CostForm({ recon, paymentInit, products, defaultProductI
               type="number"
               step="any"
               defaultValue={pctDisplay(recon?.pmgCumulativePctSale)}
-              className="input"
+              className={`input ${isEdit ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}`}
+              readOnly={isEdit}
             />
           </Field>
           <Field label="Tiến độ tiền PMG đã thu (VND)">
@@ -177,6 +208,7 @@ export default function CostForm({ recon, paymentInit, products, defaultProductI
               name="pmgProgressAmount"
               defaultValue={recon?.pmgProgressAmount ?? 0}
               className="input"
+              readOnly={isEdit}
             />
           </Field>
         </div>
@@ -287,7 +319,7 @@ export default function CostForm({ recon, paymentInit, products, defaultProductI
       </Section>
 
       {!recon && (
-        <Section title="Thanh toán (tùy chọn — nếu đã trả tiền cho đợt này)">
+        <Section title="Ghi nhận chi tiền (tùy chọn — nếu đã trả cho người này rồi)">
           <div className="grid grid-cols-2 gap-4">
             <Field label="Ngày thanh toán">
               <input
@@ -305,11 +337,14 @@ export default function CostForm({ recon, paymentInit, products, defaultProductI
               />
             </Field>
           </div>
+          <div className="text-xs text-slate-500">
+            Điền vào đây để tạo luôn 1 dòng chi tiền liên kết. Nếu chưa chi, cứ để trống.
+          </div>
         </Section>
       )}
 
       <Section title="Ghi chú">
-        <Field label="Note">
+        <Field label="Nội dung">
           <textarea name="note" defaultValue={recon?.note ?? ""} className="input" rows={2} />
         </Field>
       </Section>

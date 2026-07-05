@@ -53,6 +53,7 @@ export default function RevenueForm({
     recon?.productId ?? defaultProductId ?? products[0]?.id ?? 0,
   );
   const product = useMemo(() => products.find((p) => p.id === productId), [products, productId]);
+  const isEdit = !!recon;
 
   return (
     <form
@@ -71,23 +72,45 @@ export default function RevenueForm({
       <Section title="Thông tin đợt đối chiếu">
         <div className="grid grid-cols-2 gap-4">
           <Field label="Căn (sản phẩm)" required>
-            <select
-              name="productId"
-              value={productId}
-              onChange={(e) => setProductId(Number(e.target.value))}
-              className="input"
-              required
-            >
-              {products.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.productCode} · {p.projectName} · {p.partnerName}
-                </option>
-              ))}
-            </select>
+            {isEdit ? (
+              <>
+                <select
+                  value={productId}
+                  disabled
+                  className="input bg-slate-100 text-slate-500 cursor-not-allowed"
+                >
+                  {products.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.productCode} · {p.projectName} · {p.partnerName}
+                    </option>
+                  ))}
+                </select>
+                <input type="hidden" name="productId" value={productId} />
+              </>
+            ) : (
+              <select
+                name="productId"
+                value={productId}
+                onChange={(e) => setProductId(Number(e.target.value))}
+                className="input"
+                required
+              >
+                {products.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.productCode} · {p.projectName} · {p.partnerName}
+                  </option>
+                ))}
+              </select>
+            )}
             {product && (
               <div className="text-xs text-slate-500 mt-1">
                 Giá tính PMG: {fmtMoney(product.pmgBasePrice)} · %PMG_LK:{" "}
                 {Number((Number(product.pmgRate ?? 0) * 100).toFixed(2))}%
+              </div>
+            )}
+            {isEdit && (
+              <div className="text-xs text-slate-500 mt-1">
+                Không đổi được căn khi sửa. Muốn chuyển đợt sang căn khác thì xóa đợt này rồi tạo lại.
               </div>
             )}
           </Field>
@@ -192,12 +215,18 @@ export default function RevenueForm({
       </Section>
 
       <Section title="Số tiền (VND)">
+        {isEdit && (
+          <div className="text-xs text-slate-500 -mt-2 mb-2">
+            Ô có nền xám là dữ liệu chốt tại thời điểm tạo đợt — không sửa được.
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Giá tính PMG (snapshot)">
+          <Field label="Giá tính PMG (chốt lúc tạo)">
             <MoneyInput
               name="pmgBasePrice"
               defaultValue={recon?.pmgBasePrice ?? product?.pmgBasePrice ?? 0}
               className="input"
+              readOnly={isEdit}
             />
           </Field>
           <Field label="Phí admin (gồm VAT)">
@@ -252,32 +281,33 @@ export default function RevenueForm({
         </div>
       </Section>
 
-      <Section title="Thanh toán (tùy chọn — nếu đã thu tiền cho đợt này)">
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Ngày nhận tiền">
-            <input
-              type="date"
-              name="paymentDate"
-              defaultValue={paymentInit?.paymentDate ?? ""}
-              className="input"
-            />
-          </Field>
-          <Field label="Số tiền thực nhận">
-            <MoneyInput
-              name="paymentAmount"
-              defaultValue={paymentInit?.amount ?? 0}
-              className="input"
-            />
-          </Field>
-        </div>
-        <div className="text-xs text-slate-500">
-          Khi tạo mới, mục này tạo 1 dòng thanh toán liên kết. Khi sửa thì các thanh toán hiện có
-          không bị thay đổi.
-        </div>
-      </Section>
+      {!isEdit && (
+        <Section title="Ghi nhận thu tiền (tùy chọn — nếu CĐT đã trả cho đợt này rồi)">
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Ngày nhận tiền">
+              <input
+                type="date"
+                name="paymentDate"
+                defaultValue={paymentInit?.paymentDate ?? ""}
+                className="input"
+              />
+            </Field>
+            <Field label="Số tiền thực nhận">
+              <MoneyInput
+                name="paymentAmount"
+                defaultValue={paymentInit?.amount ?? 0}
+                className="input"
+              />
+            </Field>
+          </div>
+          <div className="text-xs text-slate-500">
+            Điền vào đây để tạo luôn 1 dòng thanh toán liên kết. Nếu chưa thu, cứ để trống.
+          </div>
+        </Section>
+      )}
 
       <Section title="Ghi chú">
-        <Field label="Note">
+        <Field label="Nội dung">
           <textarea name="note" defaultValue={recon?.note ?? ""} className="input" rows={2} />
         </Field>
       </Section>

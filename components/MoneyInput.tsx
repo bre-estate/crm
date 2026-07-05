@@ -15,6 +15,8 @@ type Props = {
   className?: string;
   placeholder?: string;
   required?: boolean;
+  disabled?: boolean;
+  readOnly?: boolean;
 };
 
 export default function MoneyInput({
@@ -23,8 +25,11 @@ export default function MoneyInput({
   className,
   placeholder,
   required,
+  disabled,
+  readOnly,
 }: Props) {
   const [val, setVal] = useState(fmt(defaultValue ?? ""));
+  const locked = disabled || readOnly;
   return (
     <input
       type="text"
@@ -33,9 +38,11 @@ export default function MoneyInput({
       value={val}
       onChange={(e) => setVal(fmt(e.target.value))}
       onFocus={(e) => e.currentTarget.select()}
-      className={className}
+      className={`${className ?? ""} ${locked ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}`}
       placeholder={placeholder ?? "0"}
       required={required}
+      disabled={disabled}
+      readOnly={readOnly}
     />
   );
 }

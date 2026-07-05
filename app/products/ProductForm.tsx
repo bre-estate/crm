@@ -246,7 +246,7 @@ export default function ProductForm({ product, projects, departments = [], onSav
       </Section>
 
       <Section title="Ghi chú">
-        <Field label="Note">
+        <Field label="Nội dung">
           <textarea name="note" defaultValue={product?.note ?? ""} className="input" rows={3} />
         </Field>
       </Section>
