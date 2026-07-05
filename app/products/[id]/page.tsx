@@ -548,8 +548,16 @@ export default async function ProductDetailPage({
           <Info label="% thu" value={`${pctCollected.toFixed(1)}%`} />
         </div>
 
-        <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
-          Các đợt đối chiếu với CĐT ({revRecs.length})
+        <div className="flex justify-between items-center mb-2">
+          <div className="text-xs text-slate-500 uppercase font-semibold">
+            Các đợt đối chiếu với CĐT ({revRecs.length})
+          </div>
+          <Link
+            href={`/revenues/new?productId=${id}`}
+            className="text-xs bg-blue-600 text-white px-2.5 py-1 rounded hover:bg-blue-700"
+          >
+            + Thêm đợt
+          </Link>
         </div>
         <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
           <table className="w-full text-xs">
@@ -562,6 +570,7 @@ export default async function ProductDetailPage({
                 <th className="text-right p-2 whitespace-nowrap">%PMG</th>
                 <th className="text-right p-2 whitespace-nowrap">Số tiền đợt</th>
                 <th className="text-right p-2 whitespace-nowrap">Phải thu</th>
+                <th className="text-right p-2 whitespace-nowrap"></th>
               </tr>
             </thead>
             <tbody>
@@ -580,11 +589,19 @@ export default async function ProductDetailPage({
                   <td className="p-2 text-right tabular-nums font-semibold">
                     {fmtMoney(rec.totalReceivableThisTime)}
                   </td>
+                  <td className="p-2 text-right">
+                    <Link
+                      href={`/revenues/${rec.id}/edit`}
+                      className="text-blue-600 hover:underline"
+                    >
+                      Sửa
+                    </Link>
+                  </td>
                 </tr>
               ))}
               {revRecs.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="p-4 text-center text-slate-500">
+                  <td colSpan={8} className="p-4 text-center text-slate-500">
                     Chưa có đợt đối chiếu nào.
                   </td>
                 </tr>
@@ -667,8 +684,16 @@ export default async function ProductDetailPage({
           );
         })()}
 
-        <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
-          Các dòng đối chiếu ({costRecs.length})
+        <div className="flex justify-between items-center mb-2">
+          <div className="text-xs text-slate-500 uppercase font-semibold">
+            Các dòng đối chiếu ({costRecs.length})
+          </div>
+          <Link
+            href={`/costs/new?productId=${id}`}
+            className="text-xs bg-blue-600 text-white px-2.5 py-1 rounded hover:bg-blue-700"
+          >
+            + Thêm dòng
+          </Link>
         </div>
         <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
           <table className="w-full text-xs">
@@ -681,6 +706,7 @@ export default async function ProductDetailPage({
                 <th className="text-right p-2 whitespace-nowrap">PMG đợt</th>
                 <th className="text-right p-2 whitespace-nowrap">KPI đợt</th>
                 <th className="text-right p-2 whitespace-nowrap">Phải trả</th>
+                <th className="text-right p-2 whitespace-nowrap"></th>
               </tr>
             </thead>
             <tbody>
@@ -709,6 +735,14 @@ export default async function ProductDetailPage({
                       title={payable < 0 ? "Số âm = điều chỉnh / hoàn trả" : ""}
                     >
                       {fmtMoney(payable)}
+                    </td>
+                    <td className="p-2 text-right">
+                      <Link
+                        href={`/costs/${r.id}/edit`}
+                        className="text-blue-600 hover:underline"
+                      >
+                        Sửa
+                      </Link>
                     </td>
                   </tr>
                 );

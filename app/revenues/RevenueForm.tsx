@@ -24,6 +24,7 @@ type Props = {
   invoiceInit?: InvoiceInfo;
   paymentInit?: { paymentDate: string | null; amount: number } | null;
   products: ProductOption[];
+  defaultProductId?: number;
   onSave: (fd: FormData) => Promise<void>;
   onDelete?: () => Promise<void>;
 };
@@ -42,12 +43,15 @@ export default function RevenueForm({
   invoiceInit,
   paymentInit,
   products,
+  defaultProductId,
   onSave,
   onDelete,
 }: Props) {
   const [pending, start] = useTransition();
   const router = useRouter();
-  const [productId, setProductId] = useState<number>(recon?.productId ?? products[0]?.id ?? 0);
+  const [productId, setProductId] = useState<number>(
+    recon?.productId ?? defaultProductId ?? products[0]?.id ?? 0,
+  );
   const product = useMemo(() => products.find((p) => p.id === productId), [products, productId]);
 
   return (

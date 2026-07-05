@@ -23,6 +23,7 @@ type Props = {
   recon?: CostReconciliation;
   paymentInit?: { paymentDate: string | null; amount: number } | null;
   products: ProductOption[];
+  defaultProductId?: number;
   onSave: (fd: FormData) => Promise<void>;
   onDelete?: () => Promise<void>;
 };
@@ -42,10 +43,12 @@ const COST_TYPES = [
 const pctDisplay = (v: number | null | undefined): string =>
   v == null || v === 0 ? "" : String(Number((Number(v) * 100).toFixed(4)));
 
-export default function CostForm({ recon, paymentInit, products, onSave, onDelete }: Props) {
+export default function CostForm({ recon, paymentInit, products, defaultProductId, onSave, onDelete }: Props) {
   const [pending, start] = useTransition();
   const router = useRouter();
-  const [productId, setProductId] = useState<number>(recon?.productId ?? products[0]?.id ?? 0);
+  const [productId, setProductId] = useState<number>(
+    recon?.productId ?? defaultProductId ?? products[0]?.id ?? 0,
+  );
   const [costType, setCostType] = useState<(typeof COST_TYPES)[number]>(
     (recon?.costType as (typeof COST_TYPES)[number]) ?? "sale_commission",
   );
