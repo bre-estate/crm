@@ -311,6 +311,11 @@ export default async function ProductDetailPage({
           const adminFeeSaleAmt = effAdminFeeSale;
           const otherCostAmt = Number(p.otherCost ?? 0);
 
+          // CĐT thưởng — transit: CĐT chuyển cho BRE, BRE trả thẳng cho NVKD/QL.
+          // Không ảnh hưởng lợi nhuận cty vì thu + chi = 0. Show tách biệt để rõ.
+          const cdtBonusSaleTransit = derivedFlatByType.get("cdt_bonus_sale") ?? 0;
+          const cdtBonusMgrTransit = derivedFlatByType.get("cdt_bonus_manager") ?? 0;
+
           const totalOut =
             hhSale.amount +
             kpiCeo.amount +
@@ -450,6 +455,28 @@ export default async function ProductDetailPage({
                   />
                 </div>
               </div>
+
+              {/* CĐT thưởng (transit — không ảnh hưởng lợi nhuận) */}
+              {(cdtBonusSaleTransit > 0 || cdtBonusMgrTransit > 0) && (
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 mb-3">
+                  <div className="text-xs uppercase text-slate-600 font-semibold mb-2">
+                    CĐT thưởng nóng (transit — CĐT trả BRE rồi BRE chuyển thẳng cho NV,
+                    không ảnh hưởng lợi nhuận)
+                  </div>
+                  {cdtBonusSaleTransit > 0 && (
+                    <Row
+                      label="CĐT thưởng NVKD (transit qua BRE)"
+                      value={fmtMoney(cdtBonusSaleTransit)}
+                    />
+                  )}
+                  {cdtBonusMgrTransit > 0 && (
+                    <Row
+                      label="CĐT thưởng QL sàn (transit qua BRE)"
+                      value={fmtMoney(cdtBonusMgrTransit)}
+                    />
+                  )}
+                </div>
+              )}
 
               {/* Còn lại */}
               <div

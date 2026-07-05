@@ -217,6 +217,8 @@ export const costReconciliations = pgTable("cost_reconciliations", {
       "customer_support",
       "bonus_sale",
       "bonus_manager",
+      "cdt_bonus_sale",
+      "cdt_bonus_manager",
       "kpi_ceo",
       "kpi_tpkd",
       "kpi_admin",

@@ -54,8 +54,10 @@ export const costTypeLabel = (t: string): string => {
   switch (t) {
     case "sale_commission": return "Hoa hồng sale";
     case "customer_support": return "Hỗ trợ khách";
-    case "bonus_sale": return "Thưởng NVKD";
-    case "bonus_manager": return "Thưởng quản lý";
+    case "bonus_sale": return "Thưởng NVKD (CTY)";
+    case "bonus_manager": return "Thưởng QL (CTY)";
+    case "cdt_bonus_sale": return "Thưởng nóng CĐT (NVKD)";
+    case "cdt_bonus_manager": return "Thưởng nóng CĐT (QL)";
     case "kpi_ceo": return "KPI CEO";
     case "kpi_tpkd": return "KPI TPKD";
     case "kpi_admin": return "KPI Admin";

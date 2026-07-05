@@ -94,82 +94,152 @@ async function main() {
       continue;
     }
 
-    // Determine cost type by which columns are filled
+    // Columns
+    const pmgPayable = toNum(row[21]); // V = PMG phải trả (HH sale phần chính)
     const csVal = toNum(row[23]); // X = customer support
+    const cdtBonusSaleVal = toNum(row[24]); // Y = CĐT thưởng sale (NVKD)
+    const cdtBonusMgrVal = toNum(row[25]); // Z = CĐT thưởng QL
     const bsVal = toNum(row[26]); // AA = CTY thưởng sale
     const bmVal = toNum(row[27]); // AB = CTY thưởng quản lý
     const kpiCeoRate = toNum(row[28]); // AC
     const kpiTpkdRate = toNum(row[32]); // AG
     const kpiAdminPct = toNum(row[36]); // AK
-
-    let costType:
-      | "sale_commission"
-      | "customer_support"
-      | "bonus_sale"
-      | "bonus_manager"
-      | "kpi_ceo"
-      | "kpi_tpkd"
-      | "kpi_admin" = "sale_commission";
-    if (csVal > 0) costType = "customer_support";
-    else if (kpiCeoRate > 0) costType = "kpi_ceo";
-    else if (kpiTpkdRate > 0) costType = "kpi_tpkd";
-    else if (kpiAdminPct > 0) costType = "kpi_admin";
-    else if (bsVal > 0) costType = "bonus_sale";
-    else if (bmVal > 0) costType = "bonus_manager";
-
-    const kpiAmount =
-      costType === "kpi_ceo"
-        ? toNum(row[31]) // AF
-        : costType === "kpi_tpkd"
-          ? toNum(row[35]) // AJ
-          : costType === "kpi_admin"
-            ? toNum(row[37]) // AL
-            : 0;
-    const kpiRate =
-      costType === "kpi_ceo"
-        ? kpiCeoRate
-        : costType === "kpi_tpkd"
-          ? kpiTpkdRate
-          : costType === "kpi_admin"
-            ? kpiAdminPct
-            : 0;
-
-    const [rec] = await db
-      .insert(schema.costReconciliations)
-      .values({
-        productId,
-        reconciliationDate: toDateStr(row[1]),
-        employeeName,
-        costType,
-        pmgBasePriceSale: toNum(row[11]), // L
-        pmgLkSaleRate: toNum(row[12]), // M
-        pmgProgressAmount: toNum(row[13]), // N
-        pmgCumulativePctSale: toNum(row[14]), // O
-        commissionRate: toNum(row[15]), // P
-        adminFeeSale: toNum(row[16]), // Q
-        customerSupport: csVal,
-        fiscalYear: toNum(row[18]) || null, // S
-        pmgReconciledCumulative: toNum(row[19]), // T
-        pmgThisTime: toNum(row[20]), // U
-        pmgPayable: toNum(row[21]), // V
-        pmgRemaining: toNum(row[22]), // W
-        kpiRate,
-        kpiAmount,
-        amountPayableThisTime: toNum(row[38]), // AM
-      })
-      .returning({ id: schema.costReconciliations.id });
-    costRecCount++;
-
-    // Payment out if cột AN (39) ngày TT hoặc AO (40) số tiền có data
+    const totalAmount = toNum(row[38]); // AM = Tổng phải trả
     const payDate = toDateStr(row[39]);
     const payAmount = toNum(row[40]);
-    if (payDate || payAmount > 0) {
-      await db.insert(schema.paymentsOut).values({
-        costReconciliationId: rec.id,
-        paymentDate: payDate,
-        amount: payAmount,
+
+    // Detect the primary cost_type for the row. Priority: specific → generic.
+    // 1 dòng có thể chứa 2 loại chi phí gộp (vd HH sale + CĐT thưởng sale = 63.6M).
+    // Split thành 2 dòng cost_recon riêng để phân biệt được.
+    const rowsToInsert: Array<{
+      costType:
+        | "sale_commission"
+        | "customer_support"
+        | "bonus_sale"
+        | "bonus_manager"
+        | "cdt_bonus_sale"
+        | "cdt_bonus_manager"
+        | "kpi_ceo"
+        | "kpi_tpkd"
+        | "kpi_admin";
+      amount: number;
+      kpiRate: number;
+      kpiAmount: number;
+    }> = [];
+
+    if (csVal > 0) {
+      rowsToInsert.push({ costType: "customer_support", amount: totalAmount, kpiRate: 0, kpiAmount: 0 });
+    } else if (kpiCeoRate > 0) {
+      rowsToInsert.push({
+        costType: "kpi_ceo",
+        amount: totalAmount,
+        kpiRate: kpiCeoRate,
+        kpiAmount: toNum(row[31]),
       });
-      paymentOutCount++;
+    } else if (kpiTpkdRate > 0) {
+      rowsToInsert.push({
+        costType: "kpi_tpkd",
+        amount: totalAmount,
+        kpiRate: kpiTpkdRate,
+        kpiAmount: toNum(row[35]),
+      });
+    } else if (kpiAdminPct > 0) {
+      rowsToInsert.push({
+        costType: "kpi_admin",
+        amount: totalAmount,
+        kpiRate: kpiAdminPct,
+        kpiAmount: toNum(row[37]),
+      });
+    } else {
+      // Bonus / HH sale group
+      // Split nếu có cả PMG phải trả (HH sale) + CĐT/CTY thưởng
+      if (pmgPayable > 0) {
+        rowsToInsert.push({
+          costType: "sale_commission",
+          amount: pmgPayable,
+          kpiRate: 0,
+          kpiAmount: 0,
+        });
+      }
+      if (cdtBonusSaleVal > 0) {
+        rowsToInsert.push({
+          costType: "cdt_bonus_sale",
+          amount: cdtBonusSaleVal,
+          kpiRate: 0,
+          kpiAmount: 0,
+        });
+      }
+      if (cdtBonusMgrVal > 0) {
+        rowsToInsert.push({
+          costType: "cdt_bonus_manager",
+          amount: cdtBonusMgrVal,
+          kpiRate: 0,
+          kpiAmount: 0,
+        });
+      }
+      if (bsVal > 0) {
+        rowsToInsert.push({
+          costType: "bonus_sale",
+          amount: bsVal,
+          kpiRate: 0,
+          kpiAmount: 0,
+        });
+      }
+      if (bmVal > 0) {
+        rowsToInsert.push({
+          costType: "bonus_manager",
+          amount: bmVal,
+          kpiRate: 0,
+          kpiAmount: 0,
+        });
+      }
+      // Fallback: nếu không detect được nhưng có tổng phải trả → gán sale_commission
+      if (rowsToInsert.length === 0 && totalAmount !== 0) {
+        rowsToInsert.push({
+          costType: "sale_commission",
+          amount: totalAmount,
+          kpiRate: 0,
+          kpiAmount: 0,
+        });
+      }
+    }
+
+    for (const [idx, ins] of rowsToInsert.entries()) {
+      const [rec] = await db
+        .insert(schema.costReconciliations)
+        .values({
+          productId,
+          reconciliationDate: toDateStr(row[1]),
+          employeeName,
+          costType: ins.costType,
+          pmgBasePriceSale: toNum(row[11]),
+          pmgLkSaleRate: toNum(row[12]),
+          pmgProgressAmount: toNum(row[13]),
+          pmgCumulativePctSale: toNum(row[14]),
+          commissionRate: toNum(row[15]),
+          adminFeeSale: toNum(row[16]),
+          customerSupport: ins.costType === "customer_support" ? csVal : 0,
+          fiscalYear: toNum(row[18]) || null,
+          pmgReconciledCumulative: toNum(row[19]),
+          pmgThisTime: toNum(row[20]),
+          pmgPayable: ins.costType === "sale_commission" ? pmgPayable : 0,
+          pmgRemaining: toNum(row[22]),
+          kpiRate: ins.kpiRate,
+          kpiAmount: ins.kpiAmount,
+          amountPayableThisTime: ins.amount,
+        })
+        .returning({ id: schema.costReconciliations.id });
+      costRecCount++;
+
+      // Payment out chỉ attach vào dòng đầu (Excel gốc 1 dòng = 1 payment)
+      if (idx === 0 && (payDate || payAmount > 0)) {
+        await db.insert(schema.paymentsOut).values({
+          costReconciliationId: rec.id,
+          paymentDate: payDate,
+          amount: payAmount,
+        });
+        paymentOutCount++;
+      }
     }
   }
 
