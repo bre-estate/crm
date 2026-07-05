@@ -11,10 +11,51 @@ import {
 } from "@/lib/schema";
 import { fmtMoney } from "@/lib/format";
 import { eq } from "drizzle-orm";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-export default async function ReportsPage() {
+type SearchParams = Promise<{ year?: string; range?: string }>;
+
+type RangeKey = "full" | "q1" | "q2" | "q3" | "q4" | "h1" | "h2";
+
+const RANGE_MONTHS: Record<RangeKey, [number, number]> = {
+  full: [1, 12],
+  q1: [1, 3],
+  q2: [4, 6],
+  q3: [7, 9],
+  q4: [10, 12],
+  h1: [1, 6],
+  h2: [7, 12],
+};
+
+const RANGE_LABEL: Record<RangeKey, string> = {
+  full: "Cả năm",
+  q1: "Q1 (T1–T3)",
+  q2: "Q2 (T4–T6)",
+  q3: "Q3 (T7–T9)",
+  q4: "Q4 (T10–T12)",
+  h1: "Nửa đầu năm (T1–T6)",
+  h2: "Nửa cuối năm (T7–T12)",
+};
+
+function inRange(recognitionMonth: string | null, year: number | null, range: RangeKey): boolean {
+  if (!year) return true;
+  if (!recognitionMonth) return false;
+  const m = recognitionMonth.match(/^(\d{4})-(\d{2})/);
+  if (!m) return false;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  if (y !== year) return false;
+  const [lo, hi] = RANGE_MONTHS[range];
+  return mo >= lo && mo <= hi;
+}
+
+export default async function ReportsPage({ searchParams }: { searchParams: SearchParams }) {
+  const sp = await searchParams;
+  const year = sp.year && sp.year !== "all" ? Number(sp.year) : null;
+  const range: RangeKey = (sp.range as RangeKey) in RANGE_MONTHS ? (sp.range as RangeKey) : "full";
+
   const allProjects = await db
     .select({
       id: projects.id,
@@ -24,8 +65,8 @@ export default async function ReportsPage() {
       breRole: projects.breRole,
     })
     .from(projects)
-    .leftJoin(partners, eq(projects.partnerId, partners.id))
-  const prodRows = await db
+    .leftJoin(partners, eq(projects.partnerId, partners.id));
+  const prodRowsAll = await db
     .select({
       id: products.id,
       projectId: products.projectId,
@@ -42,32 +83,48 @@ export default async function ReportsPage() {
     })
     .from(products)
     .leftJoin(departments, eq(products.departmentId, departments.id));
-  const revRows = await db
+
+  // Danh sách năm có trong data (dùng cho dropdown)
+  const yearSet = new Set<number>();
+  for (const p of prodRowsAll) {
+    const m = p.recognitionMonth?.match(/^(\d{4})/);
+    if (m) yearSet.add(Number(m[1]));
+  }
+  const yearOptions = Array.from(yearSet).sort((a, b) => b - a);
+
+  const prodRows = prodRowsAll.filter((p) => inRange(p.recognitionMonth, year, range));
+  const filteredProductIds = new Set(prodRows.map((p) => p.id));
+
+  const revRowsAll = await db
     .select({
       id: revenueReconciliations.id,
       productId: revenueReconciliations.productId,
       receivable: revenueReconciliations.totalReceivableThisTime,
     })
-    .from(revenueReconciliations)
-  const costRows = await db
+    .from(revenueReconciliations);
+  const revRows = revRowsAll.filter((r) => filteredProductIds.has(r.productId));
+
+  const costRowsAll = await db
     .select({
       id: costReconciliations.id,
       productId: costReconciliations.productId,
       payable: costReconciliations.amountPayableThisTime,
     })
-    .from(costReconciliations)
+    .from(costReconciliations);
+  const costRows = costRowsAll.filter((r) => filteredProductIds.has(r.productId));
+
   const paymentInRows = await db
     .select({
       recId: paymentsIn.reconciliationId,
       amount: paymentsIn.amount,
     })
-    .from(paymentsIn)
+    .from(paymentsIn);
   const paymentOutRows = await db
     .select({
       recId: paymentsOut.costReconciliationId,
       amount: paymentsOut.amount,
     })
-    .from(paymentsOut)
+    .from(paymentsOut);
   // Map payments by reconciliation
   const revRecPayMap = new Map<number, number>();
   for (const p of paymentInRows) {
@@ -165,14 +222,62 @@ export default async function ReportsPage() {
   const profitExpected = grandTotals.revenueExp / 1.1 - grandTotals.costExp;
   const profitRealized = grandTotals.revRec / 1.1 - grandTotals.costRec;
 
+  const filterLabel = year
+    ? `${RANGE_LABEL[range]} ${year}`
+    : "Tất cả thời gian";
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Báo cáo tổng hợp</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Tương ứng sheet 3_BC DOANH THU - GIA VON. Tổng hợp theo dự án.
+          Tương ứng sheet 3_BC DOANH THU - GIA VON. Lọc theo tháng ghi nhận DT.
         </p>
       </div>
+
+      {/* ============ Filter ============ */}
+      <form className="bg-white border border-slate-200 rounded-xl p-4 flex gap-3 items-end flex-wrap">
+        <div>
+          <label className="block text-xs text-slate-600 mb-1">Năm</label>
+          <select name="year" defaultValue={year ? String(year) : "all"} className="input min-w-32">
+            <option value="all">Tất cả</option>
+            {yearOptions.map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs text-slate-600 mb-1">Khoảng</label>
+          <select name="range" defaultValue={range} className="input min-w-48">
+            {(Object.keys(RANGE_LABEL) as RangeKey[]).map((k) => (
+              <option key={k} value={k}>
+                {RANGE_LABEL[k]}
+              </option>
+            ))}
+          </select>
+        </div>
+        <button
+          type="submit"
+          className="bg-blue-600 text-white rounded-lg px-4 py-2 text-sm hover:bg-blue-700"
+        >
+          Lọc
+        </button>
+        {(year || range !== "full") && (
+          <Link
+            href="/reports"
+            className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200"
+          >
+            Reset
+          </Link>
+        )}
+        <div className="ml-auto text-sm">
+          <span className="text-slate-500">Đang xem: </span>
+          <span className="font-semibold">{filterLabel}</span>
+          <span className="text-slate-500"> · {grandTotals.products} căn</span>
+        </div>
+      </form>
 
       <div className="grid grid-cols-4 gap-3">
         <Card label="Tổng doanh thu dự kiến (gồm VAT)" value={fmtMoney(grandTotals.revenueExp)} sub="từ Tab Giao dịch" />
@@ -226,7 +331,7 @@ export default async function ReportsPage() {
         const sorted = Array.from(byDept.values()).sort((a, b) => b.totalRevenue - a.totalRevenue);
         return (
           <div>
-            <h2 className="text-lg font-semibold mb-3">Theo phòng</h2>
+            <h2 className="text-lg font-semibold mb-3">Theo phòng — {filterLabel}</h2>
             <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 text-xs text-slate-600">
@@ -256,6 +361,13 @@ export default async function ReportsPage() {
                       </tr>
                     );
                   })}
+                  {sorted.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="p-4 text-center text-slate-500">
+                        Không có dữ liệu trong khoảng đã chọn.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -263,7 +375,7 @@ export default async function ReportsPage() {
         );
       })()}
 
-      {/* ============ Theo NVKD (top 10) ============ */}
+      {/* ============ Theo NVKD (top 15) ============ */}
       {(() => {
         const byNvkd = new Map<string, {
           name: string;
@@ -280,7 +392,7 @@ export default async function ReportsPage() {
         const sorted = Array.from(byNvkd.values()).sort((a, b) => b.totalRevenue - a.totalRevenue).slice(0, 15);
         return (
           <div>
-            <h2 className="text-lg font-semibold mb-3">Top NVKD theo doanh thu</h2>
+            <h2 className="text-lg font-semibold mb-3">Top NVKD theo doanh thu — {filterLabel}</h2>
             <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 text-xs text-slate-600">
@@ -300,6 +412,13 @@ export default async function ReportsPage() {
                       <td className="p-2 text-right tabular-nums">{fmtMoney(n.totalRevenue)}</td>
                     </tr>
                   ))}
+                  {sorted.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="p-4 text-center text-slate-500">
+                        Không có dữ liệu trong khoảng đã chọn.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -324,7 +443,7 @@ export default async function ReportsPage() {
         const sorted = Array.from(byMonth.values()).sort((a, b) => b.month.localeCompare(a.month));
         return (
           <div>
-            <h2 className="text-lg font-semibold mb-3">Ghi nhận DT theo tháng</h2>
+            <h2 className="text-lg font-semibold mb-3">Ghi nhận DT theo tháng — {filterLabel}</h2>
             <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 text-xs text-slate-600">
@@ -342,6 +461,13 @@ export default async function ReportsPage() {
                       <td className="p-2 text-right tabular-nums">{fmtMoney(m.totalRevenue)}</td>
                     </tr>
                   ))}
+                  {sorted.length === 0 && (
+                    <tr>
+                      <td colSpan={3} className="p-4 text-center text-slate-500">
+                        Không có dữ liệu trong khoảng đã chọn.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -350,7 +476,7 @@ export default async function ReportsPage() {
       })()}
 
       <div>
-        <h2 className="text-lg font-semibold mb-3">Chi tiết theo dự án</h2>
+        <h2 className="text-lg font-semibold mb-3">Chi tiết theo dự án — {filterLabel}</h2>
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs text-slate-600">
@@ -411,6 +537,13 @@ export default async function ReportsPage() {
                   </tr>
                 );
               })}
+              {aggregatedProjects.length === 0 && (
+                <tr>
+                  <td colSpan={10} className="p-4 text-center text-slate-500">
+                    Không có dự án nào có căn trong khoảng đã chọn.
+                  </td>
+                </tr>
+              )}
             </tbody>
             <tfoot className="bg-slate-50 border-t-2 border-slate-300">
               <tr className="font-bold">
