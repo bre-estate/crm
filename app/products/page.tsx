@@ -7,7 +7,7 @@ import {
   revenueReconciliations,
 } from "@/lib/schema";
 import { fmtMoney, fmtDate, fmtPctTight } from "@/lib/format";
-import { eq, asc, desc, and, gte, lte, inArray, type SQL } from "drizzle-orm";
+import { eq, asc, desc, and, gte, lte, ilike, inArray, type SQL } from "drizzle-orm";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -18,15 +18,17 @@ type SearchParams = Promise<{
   saleType?: string;
   from?: string;
   to?: string;
+  unitCode?: string;
 }>;
 
 export default async function ProductsPage({ searchParams }: { searchParams: SearchParams }) {
-  const { projectId, departmentId, saleType, from, to } = await searchParams;
+  const { projectId, departmentId, saleType, from, to, unitCode } = await searchParams;
   const filterProjectId = projectId ? Number(projectId) : null;
   const filterDeptId = departmentId ? Number(departmentId) : null;
   const filterSaleType = saleType === "primary" || saleType === "secondary" ? saleType : null;
   const dateFrom = from?.trim() || null;
   const dateTo = to?.trim() || null;
+  const filterUnitCode = unitCode?.trim() || null;
 
   const allProjects = await db
     .select({ id: projects.id, name: projects.name, fullCode: projects.fullCode })
@@ -64,6 +66,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
   if (filterSaleType) whereParts.push(eq(products.saleType, filterSaleType));
   if (dateFrom) whereParts.push(gte(products.depositDate, dateFrom));
   if (dateTo) whereParts.push(lte(products.depositDate, dateTo));
+  if (filterUnitCode) whereParts.push(ilike(products.unitCode, `%${filterUnitCode}%`));
 
   const baseQuery = db
     .select(selectCols)
@@ -209,6 +212,16 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
 
         <form className="flex gap-2 items-end flex-wrap">
           <div>
+            <label className="block text-xs text-slate-600 mb-1">Mã căn</label>
+            <input
+              type="text"
+              name="unitCode"
+              defaultValue={filterUnitCode ?? ""}
+              className="input min-w-32"
+              placeholder="vd: A.25.26"
+            />
+          </div>
+          <div>
             <label className="block text-xs text-slate-600 mb-1">Từ ngày cọc</label>
             <input
               type="date"
@@ -263,7 +276,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
           <button className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200">
             Lọc
           </button>
-          {(filterProjectId || filterDeptId || filterSaleType || dateFrom || dateTo) && (
+          {(filterProjectId || filterDeptId || filterSaleType || dateFrom || dateTo || filterUnitCode) && (
             <Link
               href="/products"
               className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200"

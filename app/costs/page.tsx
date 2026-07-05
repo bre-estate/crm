@@ -12,11 +12,12 @@ import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-type SearchParams = Promise<{ projectId?: string; costType?: string }>;
+type SearchParams = Promise<{ projectId?: string; costType?: string; unitCode?: string }>;
 
 export default async function CostsPage({ searchParams }: { searchParams: SearchParams }) {
-  const { projectId, costType } = await searchParams;
+  const { projectId, costType, unitCode } = await searchParams;
   const filterProjectId = projectId ? Number(projectId) : null;
+  const filterUnitCode = unitCode?.trim().toLowerCase() || null;
 
   const allProjects = await db
     .select({ id: projects.id, name: projects.name, fullCode: projects.fullCode })
@@ -52,6 +53,7 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
   const rows = allRows.filter((r) => {
     if (filterProjectName && r.projectName !== filterProjectName) return false;
     if (costType && r.costType !== costType) return false;
+    if (filterUnitCode && !(r.unitCode ?? "").toLowerCase().includes(filterUnitCode)) return false;
     return true;
   });
 
@@ -64,19 +66,8 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
     .groupBy(paymentsOut.costReconciliationId);
   const paidMap = new Map(paymentAgg.map((r) => [r.recId, Number(r.total ?? 0)]));
 
-  // Nếu recon KHÔNG có payments_out record nào → coi như đã trả đủ (implicit).
-  // Vì operator chỉ nhập dòng ĐC khi đã trả xong. Đây khớp với logic Section 5
-  // trên /products/[id].
-  const effectivePaid = (recId: number, payable: number): number => {
-    const explicit = paidMap.get(recId);
-    return explicit !== undefined ? explicit : payable;
-  };
-
   const totalPayable = rows.reduce((s, r) => s + Number(r.amountPayable ?? 0), 0);
-  const totalPaid = rows.reduce(
-    (s, r) => s + effectivePaid(r.id, Number(r.amountPayable ?? 0)),
-    0,
-  );
+  const totalPaid = rows.reduce((s, r) => s + (paidMap.get(r.id) ?? 0), 0);
 
   const costTypes = [
     { v: "sale_commission", l: "HH sale" },
@@ -107,7 +98,17 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl p-4 flex gap-4 items-end flex-wrap">
-        <form className="flex gap-2 items-end">
+        <form className="flex gap-2 items-end flex-wrap">
+          <div>
+            <label className="block text-xs text-slate-600 mb-1">Mã căn</label>
+            <input
+              type="text"
+              name="unitCode"
+              defaultValue={unitCode ?? ""}
+              className="input min-w-32"
+              placeholder="vd: A.25.26"
+            />
+          </div>
           <div>
             <label className="block text-xs text-slate-600 mb-1">Dự án</label>
             <select name="projectId" defaultValue={projectId ?? ""} className="input min-w-48">
@@ -133,7 +134,7 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
           <button className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200">
             Lọc
           </button>
-          {(filterProjectId || costType) && (
+          {(filterProjectId || costType || filterUnitCode) && (
             <Link
               href="/costs"
               className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200"
@@ -183,9 +184,7 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
           </thead>
           <tbody>
             {rows.map((r) => {
-              const payable = Number(r.amountPayable ?? 0);
-              const paid = effectivePaid(r.id, payable);
-              const hasExplicit = paidMap.has(r.id);
+              const paid = paidMap.get(r.id) ?? 0;
               return (
                 <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50">
                   <td className="p-2 text-xs">{fmtDate(r.date)}</td>
@@ -232,12 +231,8 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
                   >
                     {fmtMoney(r.amountPayable)}
                   </td>
-                  <td
-                    className="p-2 text-right tabular-nums text-green-700"
-                    title={hasExplicit ? "Có ghi nhận chi tiền chi tiết" : "Suy ra: đã trả đủ (không có payment_out record)"}
-                  >
-                    {paid !== 0 ? fmtMoney(paid) : "—"}
-                    {!hasExplicit && paid !== 0 && <span className="text-xs text-slate-400 ml-1">(suy ra)</span>}
+                  <td className="p-2 text-right tabular-nums text-green-700">
+                    {paid !== 0 ? fmtMoney(paid) : <span className="text-slate-400">Chưa trả</span>}
                   </td>
                   <td className="p-2 text-right">
                     <Link

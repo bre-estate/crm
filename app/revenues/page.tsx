@@ -8,16 +8,17 @@ import {
   paymentsIn,
 } from "@/lib/schema";
 import { fmtMoney, fmtDate, fmtPct } from "@/lib/format";
-import { eq, desc, sum } from "drizzle-orm";
+import { eq, desc, sum, and, ilike, type SQL } from "drizzle-orm";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-type SearchParams = Promise<{ projectId?: string }>;
+type SearchParams = Promise<{ projectId?: string; unitCode?: string }>;
 
 export default async function RevenuesPage({ searchParams }: { searchParams: SearchParams }) {
-  const { projectId } = await searchParams;
+  const { projectId, unitCode } = await searchParams;
   const filterProjectId = projectId ? Number(projectId) : null;
+  const filterUnitCode = unitCode?.trim() || null;
 
   const allProjects = await db
     .select({ id: projects.id, name: projects.name, fullCode: projects.fullCode })
@@ -41,24 +42,23 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
     projectId: projects.id,
   };
 
-  const rows = filterProjectId
-    ? await db
-        .select(selectCols)
-        .from(revenueReconciliations)
-        .leftJoin(products, eq(revenueReconciliations.productId, products.id))
-        .leftJoin(projects, eq(products.projectId, projects.id))
-        .leftJoin(partners, eq(projects.partnerId, partners.id))
-        .leftJoin(invoices, eq(revenueReconciliations.invoiceId, invoices.id))
-        .where(eq(products.projectId, filterProjectId))
+  const whereParts: SQL[] = [];
+  if (filterProjectId) whereParts.push(eq(products.projectId, filterProjectId));
+  if (filterUnitCode) whereParts.push(ilike(products.unitCode, `%${filterUnitCode}%`));
+
+  const baseQuery = db
+    .select(selectCols)
+    .from(revenueReconciliations)
+    .leftJoin(products, eq(revenueReconciliations.productId, products.id))
+    .leftJoin(projects, eq(products.projectId, projects.id))
+    .leftJoin(partners, eq(projects.partnerId, partners.id))
+    .leftJoin(invoices, eq(revenueReconciliations.invoiceId, invoices.id));
+
+  const rows = whereParts.length
+    ? await baseQuery
+        .where(whereParts.length === 1 ? whereParts[0] : and(...whereParts))
         .orderBy(desc(revenueReconciliations.reconciliationDate))
-    : await db
-        .select(selectCols)
-        .from(revenueReconciliations)
-        .leftJoin(products, eq(revenueReconciliations.productId, products.id))
-        .leftJoin(projects, eq(products.projectId, projects.id))
-        .leftJoin(partners, eq(projects.partnerId, partners.id))
-        .leftJoin(invoices, eq(revenueReconciliations.invoiceId, invoices.id))
-        .orderBy(desc(revenueReconciliations.reconciliationDate));
+    : await baseQuery.orderBy(desc(revenueReconciliations.reconciliationDate));
 
   const paymentAgg = await db
     .select({
@@ -69,19 +69,8 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
     .groupBy(paymentsIn.reconciliationId);
   const paidMap = new Map(paymentAgg.map((r) => [r.recId, Number(r.total ?? 0)]));
 
-  // Nếu recon KHÔNG có payments_in record nào → coi như đã thu đủ (implicit).
-  // Vì thực tế operator chỉ nhập đợt ĐC khi CĐT đã trả. Chỉ những đợt có
-  // payments_in một phần mới thực sự còn công nợ.
-  const effectivePaid = (recId: number, receivable: number): number => {
-    const explicit = paidMap.get(recId);
-    return explicit !== undefined ? explicit : receivable;
-  };
-
   const totalReceivable = rows.reduce((s, r) => s + Number(r.totalReceivable ?? 0), 0);
-  const totalPaid = rows.reduce(
-    (s, r) => s + effectivePaid(r.id, Number(r.totalReceivable ?? 0)),
-    0,
-  );
+  const totalPaid = rows.reduce((s, r) => s + (paidMap.get(r.id) ?? 0), 0);
 
   return (
     <div className="space-y-4">
@@ -101,7 +90,17 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl p-4 flex gap-4 items-end flex-wrap">
-        <form className="flex gap-2 items-end">
+        <form className="flex gap-2 items-end flex-wrap">
+          <div>
+            <label className="block text-xs text-slate-600 mb-1">Mã căn</label>
+            <input
+              type="text"
+              name="unitCode"
+              defaultValue={filterUnitCode ?? ""}
+              className="input min-w-32"
+              placeholder="vd: A.25.26"
+            />
+          </div>
           <div>
             <label className="block text-xs text-slate-600 mb-1">Lọc theo dự án</label>
             <select name="projectId" defaultValue={projectId ?? ""} className="input min-w-60">
@@ -116,7 +115,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
           <button className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200">
             Lọc
           </button>
-          {filterProjectId && (
+          {(filterProjectId || filterUnitCode) && (
             <Link
               href="/revenues"
               className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200"
@@ -167,8 +166,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
           <tbody>
             {rows.map((r) => {
               const receivable = Number(r.totalReceivable ?? 0);
-              const paid = effectivePaid(r.id, receivable);
-              const hasExplicit = paidMap.has(r.id);
+              const paid = paidMap.get(r.id) ?? 0;
               const remaining = receivable - paid;
               return (
                 <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50">
@@ -194,12 +192,8 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
                   <td className="p-2 text-right tabular-nums font-semibold">
                     {fmtMoney(r.totalReceivable)}
                   </td>
-                  <td
-                    className="p-2 text-right tabular-nums text-green-700"
-                    title={hasExplicit ? "Có ghi nhận thanh toán chi tiết" : "Suy ra: đã thu đủ (không có payment_in record)"}
-                  >
-                    {fmtMoney(paid)}
-                    {!hasExplicit && paid > 0 && <span className="text-xs text-slate-400 ml-1">(suy ra)</span>}
+                  <td className="p-2 text-right tabular-nums text-green-700">
+                    {paid > 0 ? fmtMoney(paid) : <span className="text-slate-400">Chưa thu</span>}
                   </td>
                   <td
                     className={`p-2 text-right tabular-nums ${
