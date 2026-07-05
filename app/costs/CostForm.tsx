@@ -243,7 +243,7 @@ export default function CostForm({ recon, paymentInit, products, onSave, onDelet
       )}
 
       {showBonus && (
-        <Section title={costType === "bonus_sale" ? "Thưởng NVKD" : "Thưởng quản lý"}>
+        <Section title={costType === "bonus_sale" ? "Thưởng NVKD" : "Thưởng TPKD (Trưởng phòng)"}>
           <div className="text-xs text-slate-500 mb-2">
             Khoản thưởng nhập theo số sau VAT (chia 1.1). Số tiền phải trả ghi ở "Tổng phải trả".
           </div>

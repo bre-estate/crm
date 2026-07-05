@@ -71,7 +71,7 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
     { v: "sale_commission", l: "HH sale" },
     { v: "customer_support", l: "Hỗ trợ khách" },
     { v: "bonus_sale", l: "Thưởng NVKD" },
-    { v: "bonus_manager", l: "Thưởng QL" },
+    { v: "bonus_manager", l: "Thưởng TPKD" },
     { v: "kpi_ceo", l: "KPI CEO" },
     { v: "kpi_tpkd", l: "KPI TPKD" },
     { v: "kpi_admin", l: "KPI Admin" },

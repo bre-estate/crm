@@ -55,11 +55,11 @@ export const costTypeLabel = (t: string): string => {
     case "sale_commission": return "Hoa hồng sale";
     case "customer_support": return "Hỗ trợ khách";
     case "bonus_sale": return "Thưởng NVKD (CTY)";
-    case "bonus_manager": return "Thưởng QL (CTY)";
+    case "bonus_manager": return "Thưởng TPKD (CTY)";
     case "cdt_bonus_sale": return "Thưởng nóng CĐT (NVKD)";
-    case "cdt_bonus_manager": return "Thưởng nóng CĐT (QL)";
+    case "cdt_bonus_manager": return "Thưởng nóng CĐT (TPKD)";
     case "kpi_ceo": return "KPI CEO";
-    case "kpi_tpkd": return "KPI TPKD";
+    case "kpi_tpkd": return "KPI TPKD (Trưởng phòng)";
     case "kpi_admin": return "KPI Admin";
     default: return t;
   }

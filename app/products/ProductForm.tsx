@@ -221,7 +221,7 @@ export default function ProductForm({ product, projects, departments = [], onSav
               className="input"
             />
           </Field>
-          <Field label="%KPI TPKD">
+          <Field label="%KPI TPKD (Trưởng phòng)">
             <input
               name="kpiTpkdRate"
               type="number"

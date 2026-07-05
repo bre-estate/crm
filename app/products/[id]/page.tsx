@@ -254,11 +254,11 @@ export default async function ProductDetailPage({
             />
             <Info label="Thưởng NVKD (CTY)" value={fmtMoney(effAmount(p.bonusSale, "bonus_sale"))} />
             <Info
-              label="Thưởng QL (CTY)"
+              label="Thưởng TPKD (CTY)"
               value={fmtMoney(effAmount(p.bonusManager, "bonus_manager"))}
             />
             <Info label="Thưởng sale (CĐT)" value={fmtMoney(p.cdtBonusSale)} />
-            <Info label="Thưởng QL (CĐT)" value={fmtMoney(p.cdtBonusManager)} />
+            <Info label="Thưởng TPKD (CĐT)" value={fmtMoney(p.cdtBonusManager)} />
             <Info label="Phí admin sale" value={fmtMoney(effAdminFeeSale)} />
             <Info label="CP giá vốn khác" value={fmtMoney(p.otherCost)} />
           </div>
@@ -342,7 +342,7 @@ export default async function ProductDetailPage({
                       <Row label="+ CĐT thưởng NVKD (transit)" value={fmtMoney(cdtBonusSale)} />
                     )}
                     {cdtBonusMgr > 0 && (
-                      <Row label="+ CĐT thưởng QL sàn (transit)" value={fmtMoney(cdtBonusMgr)} />
+                      <Row label="+ CĐT thưởng TPKD (transit)" value={fmtMoney(cdtBonusMgr)} />
                     )}
                     <Row
                       label={`− Phí admin CĐT giữ (BRE ko nhận, trả cho F1)`}
@@ -432,7 +432,7 @@ export default async function ProductDetailPage({
                 )}
                 {bonusMgrCtyAmt > 0 && (
                   <Row
-                    label="Thưởng QL (CTY tự chi)"
+                    label="Thưởng TPKD (CTY tự chi)"
                     value={`− ${fmtMoney(bonusMgrCtyAmt)}`}
                     color="red"
                   />
