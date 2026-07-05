@@ -7,7 +7,7 @@ import {
   invoices,
   paymentsIn,
 } from "@/lib/schema";
-import { fmtMoney, fmtDate, fmtPct } from "@/lib/format";
+import { fmtMoney, fmtDate, fmtPct, displayPartnerName } from "@/lib/format";
 import { eq, desc, sum, and, ilike, type SQL } from "drizzle-orm";
 import Link from "next/link";
 
@@ -173,7 +173,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
                   <td className="p-2 text-xs">{fmtDate(r.date)}</td>
                   <td className="p-2">
                     <div className="text-xs font-medium">{r.projectName}</div>
-                    <div className="text-xs text-slate-500">{r.partnerName}</div>
+                    <div className="text-xs text-slate-500">{displayPartnerName(r.partnerName)}</div>
                   </td>
                   <td className="p-2">
                     <Link

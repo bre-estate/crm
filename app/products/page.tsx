@@ -6,7 +6,7 @@ import {
   departments,
   revenueReconciliations,
 } from "@/lib/schema";
-import { fmtMoney, fmtDate, fmtPctTight } from "@/lib/format";
+import { fmtMoney, fmtDate, fmtPctTight, displayPartnerName } from "@/lib/format";
 import { eq, asc, desc, and, gte, lte, ilike, inArray, type SQL } from "drizzle-orm";
 import Link from "next/link";
 
@@ -327,7 +327,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
                   </td>
                   <td className="p-2">
                     <div className="font-medium text-xs">{r.projectName}</div>
-                    <div className="text-xs text-slate-500">{r.partnerName}</div>
+                    <div className="text-xs text-slate-500">{displayPartnerName(r.partnerName)}</div>
                   </td>
                   <td className="p-2">
                     <span

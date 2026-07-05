@@ -81,7 +81,8 @@ export default function RevenueForm({
                 >
                   {products.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.productCode} · {p.projectName} · {p.partnerName}
+                      {p.productCode} · {p.projectName}
+                  {p.partnerName && p.partnerName !== "Chợ thứ cấp" ? ` · ${p.partnerName}` : ""}
                     </option>
                   ))}
                 </select>
@@ -97,7 +98,8 @@ export default function RevenueForm({
               >
                 {products.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.productCode} · {p.projectName} · {p.partnerName}
+                    {p.productCode} · {p.projectName}
+                  {p.partnerName && p.partnerName !== "Chợ thứ cấp" ? ` · ${p.partnerName}` : ""}
                   </option>
                 ))}
               </select>

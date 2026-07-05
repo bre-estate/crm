@@ -9,7 +9,7 @@ import {
   paymentsIn,
   paymentsOut,
 } from "@/lib/schema";
-import { fmtMoney } from "@/lib/format";
+import { fmtMoney, displayPartnerName, isSecondaryPartner } from "@/lib/format";
 import { eq } from "drizzle-orm";
 import Link from "next/link";
 
@@ -502,10 +502,10 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
                     <td className="p-2 font-mono text-xs">{p.code}</td>
                     <td className="p-2">
                       <div className="text-xs font-medium">{p.name}</div>
-                      <div className="text-xs text-slate-500">{p.partnerName}</div>
+                      <div className="text-xs text-slate-500">{displayPartnerName(p.partnerName)}</div>
                     </td>
                     <td className="p-2 text-center">
-                      {p.partnerName === "Chợ thứ cấp" ? (
+                      {isSecondaryPartner(p.partnerName) ? (
                         <span className="text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700">
                           Thứ cấp
                         </span>

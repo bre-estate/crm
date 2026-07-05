@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { projects, partners } from "@/lib/schema";
-import { contractStatusLabel, fmtMoney, fmtPct } from "@/lib/format";
+import { contractStatusLabel, fmtMoney, fmtPct, displayPartnerName, isSecondaryPartner } from "@/lib/format";
 import Link from "next/link";
 import { eq, asc } from "drizzle-orm";
 
@@ -62,9 +62,11 @@ export default async function ProjectsPage() {
               <tr key={p.id} className="border-t border-slate-100 hover:bg-slate-50">
                 <td className="p-3 font-mono text-xs">{p.fullCode}</td>
                 <td className="p-3 font-medium">{p.name}</td>
-                <td className="p-3">{p.partnerName}</td>
+                <td className="p-3 text-slate-500">
+                  {displayPartnerName(p.partnerName) || <span className="text-slate-300">—</span>}
+                </td>
                 <td className="p-3">
-                  {p.partnerName === "Chợ thứ cấp" ? (
+                  {isSecondaryPartner(p.partnerName) ? (
                     <span className="text-xs px-2 py-1 rounded-md bg-orange-100 text-orange-700">
                       Thứ cấp
                     </span>
@@ -80,9 +82,15 @@ export default async function ProjectsPage() {
                     </span>
                   )}
                 </td>
-                <td className="p-3 text-right tabular-nums">{fmtPct(p.brokerageRate)}</td>
-                <td className="p-3 text-right tabular-nums">{fmtPct(p.brokerageRateSale)}</td>
-                <td className="p-3 text-right tabular-nums">{fmtMoney(p.adminFee)}</td>
+                <td className="p-3 text-right tabular-nums">
+                  {Number(p.brokerageRate ?? 0) > 0 ? fmtPct(p.brokerageRate) : <span className="text-slate-300">—</span>}
+                </td>
+                <td className="p-3 text-right tabular-nums">
+                  {Number(p.brokerageRateSale ?? 0) > 0 ? fmtPct(p.brokerageRateSale) : <span className="text-slate-300">—</span>}
+                </td>
+                <td className="p-3 text-right tabular-nums">
+                  {Number(p.adminFee ?? 0) > 0 ? fmtMoney(p.adminFee) : <span className="text-slate-300">—</span>}
+                </td>
                 <td className="p-3 text-center">{p.paymentPhases}</td>
                 <td className="p-3 text-xs">{contractStatusLabel(p.contractStatus ?? "")}</td>
                 <td className="p-3 text-right">
