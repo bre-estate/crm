@@ -64,8 +64,19 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
     .groupBy(paymentsOut.costReconciliationId);
   const paidMap = new Map(paymentAgg.map((r) => [r.recId, Number(r.total ?? 0)]));
 
+  // Nếu recon KHÔNG có payments_out record nào → coi như đã trả đủ (implicit).
+  // Vì operator chỉ nhập dòng ĐC khi đã trả xong. Đây khớp với logic Section 5
+  // trên /products/[id].
+  const effectivePaid = (recId: number, payable: number): number => {
+    const explicit = paidMap.get(recId);
+    return explicit !== undefined ? explicit : payable;
+  };
+
   const totalPayable = rows.reduce((s, r) => s + Number(r.amountPayable ?? 0), 0);
-  const totalPaid = rows.reduce((s, r) => s + (paidMap.get(r.id) ?? 0), 0);
+  const totalPaid = rows.reduce(
+    (s, r) => s + effectivePaid(r.id, Number(r.amountPayable ?? 0)),
+    0,
+  );
 
   const costTypes = [
     { v: "sale_commission", l: "HH sale" },
@@ -172,7 +183,9 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
           </thead>
           <tbody>
             {rows.map((r) => {
-              const paid = paidMap.get(r.id) ?? 0;
+              const payable = Number(r.amountPayable ?? 0);
+              const paid = effectivePaid(r.id, payable);
+              const hasExplicit = paidMap.has(r.id);
               return (
                 <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50">
                   <td className="p-2 text-xs">{fmtDate(r.date)}</td>
@@ -219,8 +232,12 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
                   >
                     {fmtMoney(r.amountPayable)}
                   </td>
-                  <td className="p-2 text-right tabular-nums text-green-700">
-                    {paid > 0 ? fmtMoney(paid) : "—"}
+                  <td
+                    className="p-2 text-right tabular-nums text-green-700"
+                    title={hasExplicit ? "Có ghi nhận chi tiền chi tiết" : "Suy ra: đã trả đủ (không có payment_out record)"}
+                  >
+                    {paid !== 0 ? fmtMoney(paid) : "—"}
+                    {!hasExplicit && paid !== 0 && <span className="text-xs text-slate-400 ml-1">(suy ra)</span>}
                   </td>
                   <td className="p-2 text-right">
                     <Link

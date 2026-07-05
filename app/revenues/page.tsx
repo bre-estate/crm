@@ -69,8 +69,19 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
     .groupBy(paymentsIn.reconciliationId);
   const paidMap = new Map(paymentAgg.map((r) => [r.recId, Number(r.total ?? 0)]));
 
+  // Nếu recon KHÔNG có payments_in record nào → coi như đã thu đủ (implicit).
+  // Vì thực tế operator chỉ nhập đợt ĐC khi CĐT đã trả. Chỉ những đợt có
+  // payments_in một phần mới thực sự còn công nợ.
+  const effectivePaid = (recId: number, receivable: number): number => {
+    const explicit = paidMap.get(recId);
+    return explicit !== undefined ? explicit : receivable;
+  };
+
   const totalReceivable = rows.reduce((s, r) => s + Number(r.totalReceivable ?? 0), 0);
-  const totalPaid = rows.reduce((s, r) => s + (paidMap.get(r.id) ?? 0), 0);
+  const totalPaid = rows.reduce(
+    (s, r) => s + effectivePaid(r.id, Number(r.totalReceivable ?? 0)),
+    0,
+  );
 
   return (
     <div className="space-y-4">
@@ -155,8 +166,10 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
           </thead>
           <tbody>
             {rows.map((r) => {
-              const paid = paidMap.get(r.id) ?? 0;
-              const remaining = Number(r.totalReceivable ?? 0) - paid;
+              const receivable = Number(r.totalReceivable ?? 0);
+              const paid = effectivePaid(r.id, receivable);
+              const hasExplicit = paidMap.has(r.id);
+              const remaining = receivable - paid;
               return (
                 <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50">
                   <td className="p-2 text-xs">{fmtDate(r.date)}</td>
@@ -181,7 +194,13 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
                   <td className="p-2 text-right tabular-nums font-semibold">
                     {fmtMoney(r.totalReceivable)}
                   </td>
-                  <td className="p-2 text-right tabular-nums text-green-700">{fmtMoney(paid)}</td>
+                  <td
+                    className="p-2 text-right tabular-nums text-green-700"
+                    title={hasExplicit ? "Có ghi nhận thanh toán chi tiết" : "Suy ra: đã thu đủ (không có payment_in record)"}
+                  >
+                    {fmtMoney(paid)}
+                    {!hasExplicit && paid > 0 && <span className="text-xs text-slate-400 ml-1">(suy ra)</span>}
+                  </td>
                   <td
                     className={`p-2 text-right tabular-nums ${
                       remaining > 0 ? "text-orange-700 font-semibold" : "text-slate-400"
