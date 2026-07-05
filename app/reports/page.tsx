@@ -505,15 +505,21 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
                       <div className="text-xs text-slate-500">{p.partnerName}</div>
                     </td>
                     <td className="p-2 text-center">
-                      <span
-                        className={`text-xs px-2 py-0.5 rounded ${
-                          p.breRole === "f1"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-blue-100 text-blue-700"
-                        }`}
-                      >
-                        {p.breRole === "f1" ? "F1" : "F2"}
-                      </span>
+                      {p.partnerName === "Chợ thứ cấp" ? (
+                        <span className="text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700">
+                          Thứ cấp
+                        </span>
+                      ) : (
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded ${
+                            p.breRole === "f1"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-blue-100 text-blue-700"
+                          }`}
+                        >
+                          {p.breRole === "f1" ? "F1" : "F2"}
+                        </span>
+                      )}
                     </td>
                     <td className="p-2 text-center">{p.numProducts}</td>
                     <td className="p-2 text-right tabular-nums">{fmtMoney(p.totalRevenueExpected)}</td>

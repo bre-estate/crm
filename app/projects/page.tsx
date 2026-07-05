@@ -64,15 +64,21 @@ export default async function ProjectsPage() {
                 <td className="p-3 font-medium">{p.name}</td>
                 <td className="p-3">{p.partnerName}</td>
                 <td className="p-3">
-                  <span
-                    className={`text-xs px-2 py-1 rounded-md ${
-                      p.breRole === "f1"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-blue-100 text-blue-700"
-                    }`}
-                  >
-                    {p.breRole === "f1" ? "BRE = F1" : "BRE = F2"}
-                  </span>
+                  {p.partnerName === "Chợ thứ cấp" ? (
+                    <span className="text-xs px-2 py-1 rounded-md bg-orange-100 text-orange-700">
+                      Thứ cấp
+                    </span>
+                  ) : (
+                    <span
+                      className={`text-xs px-2 py-1 rounded-md ${
+                        p.breRole === "f1"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-blue-100 text-blue-700"
+                      }`}
+                    >
+                      {p.breRole === "f1" ? "BRE = F1" : "BRE = F2"}
+                    </span>
+                  )}
                 </td>
                 <td className="p-3 text-right tabular-nums">{fmtPct(p.brokerageRate)}</td>
                 <td className="p-3 text-right tabular-nums">{fmtPct(p.brokerageRateSale)}</td>
