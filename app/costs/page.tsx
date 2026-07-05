@@ -6,7 +6,7 @@ import {
   partners,
   paymentsOut,
 } from "@/lib/schema";
-import { fmtMoney, fmtDate, costTypeLabel, fmtPct } from "@/lib/format";
+import { fmtMoney, fmtDate, costTypeLabel, fmtPct, toTitleCase } from "@/lib/format";
 import { eq, desc, sum } from "drizzle-orm";
 import Link from "next/link";
 
@@ -176,7 +176,7 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
               return (
                 <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50">
                   <td className="p-2 text-xs">{fmtDate(r.date)}</td>
-                  <td className="p-2 text-xs">{r.employee}</td>
+                  <td className="p-2 text-xs">{toTitleCase(r.employee)}</td>
                   <td className="p-2">
                     <span className="text-xs px-2 py-0.5 rounded bg-slate-100">
                       {costTypeLabel(r.costType)}

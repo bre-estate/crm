@@ -10,7 +10,7 @@ import {
   paymentsIn,
   paymentsOut,
 } from "@/lib/schema";
-import { fmtMoney, fmtDate, fmtPct, fmtPctTight, costTypeLabel } from "@/lib/format";
+import { fmtMoney, fmtDate, fmtPct, fmtPctTight, costTypeLabel, toTitleCase } from "@/lib/format";
 import { eq, asc } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -204,10 +204,26 @@ export default async function ProductDetailPage({
           <Info label="Đối tác (CĐT)" value={row.partner?.name ?? "—"} />
           <Info label="Loại giao dịch" value={isSecondary ? "Thứ cấp" : "Sơ cấp"} />
           <Info label="Mô tả căn" value={p.unitDescription ?? "—"} />
-          <Info label="Giá bán" value={fmtMoney(p.sellPrice)} />
-          <Info label="Giá tính PMG" value={fmtMoney(p.pmgBasePrice)} />
+          {(() => {
+            const sell = Number(p.sellPrice ?? 0);
+            const pmg = Number(p.pmgBasePrice ?? 0);
+            // Gộp thành 1 nếu bằng nhau (hoặc sellPrice = 0)
+            if (sell === 0 || sell === pmg) {
+              return <Info label="Giá tính PMG (giá tính hoa hồng)" value={fmtMoney(pmg)} />;
+            }
+            return (
+              <>
+                <Info label="Giá bán" value={fmtMoney(sell)} />
+                <Info label="Giá tính PMG (giá tính HH)" value={fmtMoney(pmg)} />
+              </>
+            );
+          })()}
           <Info label="Tổng DT (gồm VAT)" value={fmtMoney(p.totalRevenue)} />
-          <Info label="Phí admin" value={fmtMoney(p.adminFee)} />
+          <Info
+            label="Phí admin"
+            value={fmtMoney(p.adminFee)}
+            tooltip="Phí admin trả cho sàn F1 liên kết. BRE KHÔNG nhận khoản này (CĐT trừ trước khi chuyển BRE)."
+          />
           <Info label="Chiết khấu (CK)" value={fmtMoney(p.discountCk)} />
           <Info label="Tháng ghi nhận DT" value={p.recognitionMonth ?? "—"} mono />
         </div>
@@ -216,9 +232,16 @@ export default async function ProductDetailPage({
       {/* === 2. KHÁCH HÀNG & GIAO DỊCH === */}
       <SectionCard title="2. Khách hàng & tỷ lệ phí" icon="👤">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          <Info label="Tên khách" value={p.customerName ?? "—"} />
-          <Info label="NVKD" value={p.salesPerson ?? "—"} />
-          <Info label="Trưởng phòng" value={p.deptLeaderName ?? "—"} />
+          <Info label="Tên khách" value={toTitleCase(p.customerName) || "—"} />
+          <Info label="NVKD" value={toTitleCase(p.salesPerson) || "—"} />
+          <Info
+            label="Trưởng phòng (TPKD)"
+            value={
+              toTitleCase(p.deptLeaderName) ||
+              toTitleCase(row.department?.leaderName) ||
+              "—"
+            }
+          />
           <Info label="Phòng KD" value={row.department?.name ?? p.deptName ?? "—"} />
           <Info label="Ngày cọc" value={fmtDate(p.depositDate)} />
           <Info label="Ngày HT dự kiến" value={fmtDate(p.expectedCompleteDate)} />
@@ -230,8 +253,34 @@ export default async function ProductDetailPage({
             Tỷ lệ %
           </div>
           <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
-            <Info label="%PMG_LK (BRE nhận)" value={fmtPctTight(p.pmgRate)} />
-            <Info label="%PMG_LK_sale (trả F2)" value={fmtPctTight(p.pmgSaleRate)} />
+            {(() => {
+              const r1 = Number(p.pmgRate ?? 0);
+              const r2 = Number(p.pmgSaleRate ?? 0);
+              // Gộp thành 1 ô nếu bằng nhau
+              if (r1 === r2 || r2 === 0) {
+                return (
+                  <Info
+                    label="%PMG_LK (CĐT trả BRE)"
+                    value={fmtPctTight(r1)}
+                    tooltip="Tỷ lệ hoa hồng CĐT trả cho BRE trên giá tính PMG."
+                  />
+                );
+              }
+              return (
+                <>
+                  <Info
+                    label="%PMG_LK (CĐT trả BRE)"
+                    value={fmtPctTight(r1)}
+                    tooltip="Tỷ lệ CĐT chuyển cho BRE (bao gồm phần thưởng gộp)."
+                  />
+                  <Info
+                    label="%PMG_LK_sale (BRE giữ)"
+                    value={fmtPctTight(r2)}
+                    tooltip="Tỷ lệ BRE giữ thực tế. Chênh lệch = phần CĐT gộp thưởng vào HH."
+                  />
+                </>
+              );
+            })()}
             <Info
               label="%HH sale (NVKD)"
               value={fmtPctTight(effRate(p.saleCommissionRate, "sale_commission"))}
@@ -339,10 +388,10 @@ export default async function ProductDetailPage({
                       value={fmtMoney(grossFeeFromCDT)}
                     />
                     {cdtBonusSale > 0 && (
-                      <Row label="+ CĐT thưởng NVKD (transit)" value={fmtMoney(cdtBonusSale)} />
+                      <Row label="+ CĐT thưởng NVKD (chuyển tiếp)" value={fmtMoney(cdtBonusSale)} />
                     )}
                     {cdtBonusMgr > 0 && (
-                      <Row label="+ CĐT thưởng TPKD (transit)" value={fmtMoney(cdtBonusMgr)} />
+                      <Row label="+ CĐT thưởng TPKD (chuyển tiếp)" value={fmtMoney(cdtBonusMgr)} />
                     )}
                     <Row
                       label={`− Phí admin CĐT giữ (BRE ko nhận, trả cho F1)`}
@@ -365,14 +414,14 @@ export default async function ProductDetailPage({
                   Bước 2 · BRE giữ để chia (Q)
                 </div>
                 <div className="text-xs text-slate-500 mb-2">
-                  = HH thô CĐT − admin CĐT giữ. CĐT thưởng chỉ transit qua BRE (chuyển thẳng
+                  = HH thô CĐT − admin CĐT giữ. CĐT thưởng chỉ chuyển tiếp qua BRE (chuyển thẳng
                   cho NV, ko chia).
                 </div>
                 <Row
                   label={
                     isSecondary
                       ? "Doanh thu về cty"
-                      : `pmgBase × ${fmtPctTight(pmgRate)} − admin`
+                      : `Giá tính PMG × ${fmtPctTight(pmgRate)} − admin`
                   }
                   value={fmtMoney(Q)}
                   bold
@@ -415,7 +464,7 @@ export default async function ProductDetailPage({
                 )}
                 {adminFeeSaleAmt > 0 && (
                   <Row
-                    label="Phí admin sale (BRE tự chi)"
+                    label="Phí admin sale"
                     value={`− ${fmtMoney(adminFeeSaleAmt)}`}
                     color="red"
                   />
@@ -425,14 +474,14 @@ export default async function ProductDetailPage({
                 )}
                 {bonusSaleCtyAmt > 0 && (
                   <Row
-                    label="Thưởng NVKD (CTY tự chi)"
+                    label="Thưởng NVKD (CTY)"
                     value={`− ${fmtMoney(bonusSaleCtyAmt)}`}
                     color="red"
                   />
                 )}
                 {bonusMgrCtyAmt > 0 && (
                   <Row
-                    label="Thưởng TPKD (CTY tự chi)"
+                    label="Thưởng TPKD (CTY)"
                     value={`− ${fmtMoney(bonusMgrCtyAmt)}`}
                     color="red"
                   />
@@ -584,15 +633,39 @@ export default async function ProductDetailPage({
 
       {/* === 4. TRẢ PHÍ NỘI BỘ === */}
       <SectionCard title="5. Trả phí nội bộ (HH sale, KPI, thưởng)" icon="🏦">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
-          <Info label="Tổng phải trả (đã ĐC)" value={fmtMoney(totalCostPayable)} />
-          <Info label="Đã trả" value={fmtMoney(totalPaidOut)} accent="green" />
-          <Info
-            label="Còn phải trả"
-            value={fmtMoney(Math.max(0, totalCostPayable - totalPaidOut))}
-            accent="orange"
-          />
-        </div>
+        {(() => {
+          // Nếu chưa có payments_out riêng, coi dòng đối chiếu = đã trả
+          const hasExplicitPayments = totalPaidOut > 0;
+          return (
+            <div
+              className={`grid ${hasExplicitPayments ? "grid-cols-2 md:grid-cols-3" : "grid-cols-1 md:grid-cols-2"} gap-3 mb-4`}
+            >
+              <Info
+                label="Tổng đã đối chiếu"
+                value={fmtMoney(totalCostPayable)}
+                accent="green"
+                tooltip="Đối chiếu = đã thoả thuận số. Trong hệ thống hiện tại, đối chiếu = đã chi trả (nếu chưa có thanh toán riêng)."
+              />
+              {hasExplicitPayments && (
+                <>
+                  <Info label="Ghi nhận thanh toán riêng" value={fmtMoney(totalPaidOut)} />
+                  <Info
+                    label="Còn phải trả"
+                    value={fmtMoney(Math.max(0, totalCostPayable - totalPaidOut))}
+                    accent="orange"
+                  />
+                </>
+              )}
+              {!hasExplicitPayments && (
+                <Info
+                  label="Số dòng đối chiếu"
+                  value={String(costRecs.length)}
+                  tooltip="Mỗi dòng = 1 cá nhân × 1 lần đối chiếu."
+                />
+              )}
+            </div>
+          );
+        })()}
 
         <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
           Các dòng đối chiếu ({costRecs.length})
@@ -616,7 +689,7 @@ export default async function ProductDetailPage({
                 return (
                   <tr key={r.id} className="border-t border-slate-100">
                     <td className="p-2">{fmtDate(r.reconciliationDate)}</td>
-                    <td className="p-2">{r.employeeName}</td>
+                    <td className="p-2">{toTitleCase(r.employeeName)}</td>
                     <td className="p-2">
                       <span className="text-xs px-2 py-0.5 rounded bg-slate-100 whitespace-nowrap">
                         {costTypeLabel(r.costType)}
@@ -727,12 +800,14 @@ function Info({
   mono,
   small,
   accent,
+  tooltip,
 }: {
   label: string;
   value: string;
   mono?: boolean;
   small?: boolean;
   accent?: "green" | "orange";
+  tooltip?: string;
 }) {
   const valueCls = [
     "font-medium tabular-nums mt-1",
@@ -744,7 +819,17 @@ function Info({
     .join(" ");
   return (
     <div className="bg-slate-50 rounded-lg p-3">
-      <div className="text-xs text-slate-500">{label}</div>
+      <div className="text-xs text-slate-500 flex items-center gap-1">
+        <span>{label}</span>
+        {tooltip && (
+          <span
+            title={tooltip}
+            className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-slate-300 text-white text-[10px] cursor-help select-none"
+          >
+            ?
+          </span>
+        )}
+      </div>
       <div className={valueCls}>{value}</div>
     </div>
   );

@@ -28,6 +28,15 @@ export const parseNumInput = (v: string): number => {
   return isNaN(n) ? 0 : n;
 };
 
+// Chuyển tên "TRẦN BÌNH TRỌNG" -> "Trần Bình Trọng". Giữ dấu tiếng Việt.
+export const toTitleCase = (v: string | null | undefined): string => {
+  if (!v) return "";
+  return v
+    .trim()
+    .toLowerCase()
+    .replace(/(^|\s|-)([\p{L}])/gu, (_m, sep, ch) => sep + ch.toUpperCase());
+};
+
 export const fmtDate = (v: string | null | undefined): string => {
   if (!v) return "";
   const d = new Date(v);
