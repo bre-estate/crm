@@ -113,6 +113,7 @@ export const products = pgTable("products", {
 
   customerName: text("customer_name"),
   salesPerson: text("sales_person"),
+  deptLeaderName: text("dept_leader_name"),
   deptName: text("dept_name"),
   departmentId: integer("department_id").references(() => departments.id),
   depositDate: text("deposit_date"),
