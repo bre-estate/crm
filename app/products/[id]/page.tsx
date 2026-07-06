@@ -369,9 +369,8 @@ export default async function ProductDetailPage({
         {isSecondary ? (
           (() => {
             const dt = Number(p.totalRevenue ?? 0);
-            const hhSale = Number(
-              derivedFlatByType.get("sale_commission") ?? p.saleCommissionRate ?? 0,
-            );
+            // Lấy amount thật từ cost_recon (KHÔNG dùng rate từ product làm amount).
+            const hhSale = Number(derivedFlatByType.get("sale_commission") ?? 0);
             const kpiCeo = Number(derivedFlatByType.get("kpi_ceo") ?? 0);
             const kpiTpkd = Number(derivedFlatByType.get("kpi_tpkd") ?? 0);
             const kpiAdmin = Number(derivedFlatByType.get("kpi_admin") ?? 0);
@@ -382,19 +381,23 @@ export default async function ProductDetailPage({
             const configTotalCost = Number(p.totalCost ?? 0);
             const derivedCostSum =
               hhSale + kpiCeo + kpiTpkd + kpiAdmin + support + bonusSale + bonusMgr + otherCost;
-            const totalCost = derivedCostSum || configTotalCost;
+            // Ưu tiên breakdown thực từ cost_recon; nếu chưa có → dùng totalCost từ config
+            const hasBreakdown = derivedCostSum > 0;
+            const totalCost = hasBreakdown ? derivedCostSum : configTotalCost;
             const profit = dt - totalCost;
             const profitPct = dt > 0 ? (profit / dt) * 100 : 0;
-            const rows: Array<[string, number]> = [
-              ["HH NVKD", hhSale],
-              ["KPI CEO", kpiCeo],
-              ["KPI TPKD", kpiTpkd],
-              ["KPI Admin", kpiAdmin],
-              ["Hỗ trợ khách", support],
-              ["Thưởng NVKD (CTY)", bonusSale],
-              ["Thưởng TPKD (CTY)", bonusMgr],
-              ["Chi phí khác", otherCost],
-            ].filter(([, v]) => v !== 0) as Array<[string, number]>;
+            const rows: Array<[string, number]> = (
+              [
+                ["HH NVKD", hhSale],
+                ["KPI CEO", kpiCeo],
+                ["KPI TPKD", kpiTpkd],
+                ["KPI Admin", kpiAdmin],
+                ["Hỗ trợ khách", support],
+                ["Thưởng NVKD (CTY)", bonusSale],
+                ["Thưởng TPKD (CTY)", bonusMgr],
+                ["Chi phí khác", otherCost],
+              ] as Array<[string, number]>
+            ).filter(([, v]) => v > 0);
             return (
               <div className="text-sm">
                 <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3 mb-3">
@@ -407,18 +410,41 @@ export default async function ProductDetailPage({
                   <div className="text-xs uppercase text-orange-700 font-semibold mb-2">
                     Bước 2 · Chi phí
                   </div>
-                  {rows.length === 0 ? (
-                    <div className="text-xs text-slate-500 italic">
-                      Chưa có dòng chi nào (xem mục 4 nếu đã đối chiếu).
-                    </div>
+                  {hasBreakdown ? (
+                    <>
+                      {rows.map(([label, val]) => (
+                        <Row
+                          key={label}
+                          label={label}
+                          value={`− ${fmtMoney(val)}`}
+                          color="red"
+                        />
+                      ))}
+                      <div className="border-t border-orange-200 mt-1 pt-1">
+                        <Row
+                          label="Tổng chi"
+                          value={`− ${fmtMoney(totalCost)}`}
+                          bold
+                          color="red"
+                        />
+                      </div>
+                    </>
+                  ) : configTotalCost > 0 ? (
+                    <>
+                      <Row
+                        label="Tổng giá vốn (từ config, chưa có đối chiếu chi tiết)"
+                        value={`− ${fmtMoney(configTotalCost)}`}
+                        color="red"
+                      />
+                      <div className="text-xs text-slate-500 mt-1 italic">
+                        Chưa có dòng đối chiếu chi tiết ở mục 4. Số này lấy từ trường "Tổng giá vốn" khi nhập.
+                      </div>
+                    </>
                   ) : (
-                    rows.map(([label, val]) => (
-                      <Row key={label} label={label} value={`− ${fmtMoney(val)}`} color="red" />
-                    ))
+                    <div className="text-xs text-slate-500 italic">
+                      Chưa có chi phí nào (chưa nhập Tổng giá vốn và chưa có dòng đối chiếu ở mục 4).
+                    </div>
                   )}
-                  <div className="border-t border-orange-200 mt-1 pt-1">
-                    <Row label="Tổng chi" value={`− ${fmtMoney(totalCost)}`} bold color="red" />
-                  </div>
                 </div>
                 <div
                   className={`rounded-lg border-2 p-4 ${
