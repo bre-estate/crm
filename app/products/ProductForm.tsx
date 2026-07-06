@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Product, Project, Partner, Department } from "@/lib/schema";
 import MoneyInput from "@/components/MoneyInput";
@@ -22,6 +22,10 @@ const pctDisplay = (v: number | null | undefined): string =>
 export default function ProductForm({ product, projects, departments = [], onSave, onDelete }: Props) {
   const [pending, start] = useTransition();
   const router = useRouter();
+  const [saleType, setSaleType] = useState<"primary" | "secondary">(
+    (product?.saleType as "primary" | "secondary") ?? "primary",
+  );
+  const isSecondary = saleType === "secondary";
 
   return (
     <form
@@ -91,7 +95,12 @@ export default function ProductForm({ product, projects, departments = [], onSav
             <input type="hidden" name="deptName" defaultValue={product?.deptName ?? ""} />
           </Field>
           <Field label="Loại giao dịch">
-            <select name="saleType" defaultValue={product?.saleType ?? "primary"} className="input">
+            <select
+              name="saleType"
+              value={saleType}
+              onChange={(e) => setSaleType(e.target.value as "primary" | "secondary")}
+              className="input"
+            >
               <option value="primary">Sơ cấp (HĐ với CĐT)</option>
               <option value="secondary">Thứ cấp (mua bán lại)</option>
             </select>
@@ -130,66 +139,84 @@ export default function ProductForm({ product, projects, departments = [], onSav
         </div>
       </Section>
 
-      <Section title="Doanh thu (CĐT/F1 trả BRE)">
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Giá bán (VND)">
-            <MoneyInput name="sellPrice" defaultValue={product?.sellPrice ?? 0} className="input" />
-          </Field>
-          <Field label="Tổng doanh thu (VND, gồm VAT)">
-            <MoneyInput name="totalRevenue" defaultValue={product?.totalRevenue ?? 0} className="input" />
-          </Field>
-          <Field label="Giá tính PMG (VND)">
-            <MoneyInput name="pmgBasePrice" defaultValue={product?.pmgBasePrice ?? 0} className="input" />
-          </Field>
-          <Field label="%PMG_LK (vd: 5.5)">
-            <input
-              name="pmgRate"
-              type="number"
-              step="any"
-              defaultValue={pctDisplay(product?.pmgRate)}
-              className="input"
-            />
-          </Field>
-          <Field label="%phí khác">
-            <input
-              name="otherFeePct"
-              type="number"
-              step="any"
-              defaultValue={pctDisplay(product?.otherFeePct)}
-              className="input"
-            />
-          </Field>
-          <Field label="Doanh thu khác (VND)">
-            <MoneyInput name="otherRevenue" defaultValue={product?.otherRevenue ?? 0} className="input" />
-          </Field>
-          <Field label="Khoản giảm doanh thu (VND)">
-            <MoneyInput name="revenueReduction" defaultValue={product?.revenueReduction ?? 0} className="input" />
-          </Field>
-          <Field label="Phí admin (VND, gồm VAT)">
-            <MoneyInput name="adminFee" defaultValue={product?.adminFee ?? 0} className="input" />
-          </Field>
-          <Field label="CĐT thưởng sale (VND)">
-            <MoneyInput name="cdtBonusSale" defaultValue={product?.cdtBonusSale ?? 0} className="input" />
-          </Field>
-          <Field label="CĐT thưởng QL (VND)">
-            <MoneyInput name="cdtBonusManager" defaultValue={product?.cdtBonusManager ?? 0} className="input" />
-          </Field>
-        </div>
+      <Section title={isSecondary ? "Doanh thu" : "Doanh thu (CĐT/F1 trả BRE)"}>
+        {isSecondary ? (
+          <>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Doanh thu về cty (VND)">
+                <MoneyInput
+                  name="totalRevenue"
+                  defaultValue={product?.totalRevenue ?? 0}
+                  className="input"
+                />
+              </Field>
+            </div>
+            <div className="text-xs text-slate-500 mt-2">
+              Giao dịch thứ cấp = mua bán lại, không có %PMG_LK từ CĐT. Nhập số cty thực nhận.
+            </div>
+            {/* Hidden fields để BE luôn nhận đủ shape — set 0 khi thứ cấp */}
+            <input type="hidden" name="sellPrice" value={0} />
+            <input type="hidden" name="pmgBasePrice" value={0} />
+            <input type="hidden" name="pmgRate" value="" />
+            <input type="hidden" name="otherFeePct" value="" />
+            <input type="hidden" name="otherRevenue" value={0} />
+            <input type="hidden" name="revenueReduction" value={0} />
+            <input type="hidden" name="adminFee" value={0} />
+            <input type="hidden" name="cdtBonusSale" value={0} />
+            <input type="hidden" name="cdtBonusManager" value={0} />
+          </>
+        ) : (
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Giá bán (VND)">
+              <MoneyInput name="sellPrice" defaultValue={product?.sellPrice ?? 0} className="input" />
+            </Field>
+            <Field label="Tổng doanh thu (VND, gồm VAT)">
+              <MoneyInput name="totalRevenue" defaultValue={product?.totalRevenue ?? 0} className="input" />
+            </Field>
+            <Field label="Giá tính PMG (VND)">
+              <MoneyInput name="pmgBasePrice" defaultValue={product?.pmgBasePrice ?? 0} className="input" />
+            </Field>
+            <Field label="%PMG_LK (vd: 5.5)">
+              <input
+                name="pmgRate"
+                type="number"
+                step="any"
+                defaultValue={pctDisplay(product?.pmgRate)}
+                className="input"
+              />
+            </Field>
+            <Field label="%phí khác">
+              <input
+                name="otherFeePct"
+                type="number"
+                step="any"
+                defaultValue={pctDisplay(product?.otherFeePct)}
+                className="input"
+              />
+            </Field>
+            <Field label="Doanh thu khác (VND)">
+              <MoneyInput name="otherRevenue" defaultValue={product?.otherRevenue ?? 0} className="input" />
+            </Field>
+            <Field label="Khoản giảm doanh thu (VND)">
+              <MoneyInput name="revenueReduction" defaultValue={product?.revenueReduction ?? 0} className="input" />
+            </Field>
+            <Field label="Phí admin (VND, gồm VAT)">
+              <MoneyInput name="adminFee" defaultValue={product?.adminFee ?? 0} className="input" />
+            </Field>
+            <Field label="CĐT thưởng sale (VND)">
+              <MoneyInput name="cdtBonusSale" defaultValue={product?.cdtBonusSale ?? 0} className="input" />
+            </Field>
+            <Field label="CĐT thưởng QL (VND)">
+              <MoneyInput name="cdtBonusManager" defaultValue={product?.cdtBonusManager ?? 0} className="input" />
+            </Field>
+          </div>
+        )}
       </Section>
 
-      <Section title="Giá vốn (BRE trả nội bộ + F2 dưới)">
+      <Section title={isSecondary ? "Giá vốn (BRE trả NVKD)" : "Giá vốn (BRE trả nội bộ + F2 dưới)"}>
         <div className="grid grid-cols-2 gap-4">
           <Field label="Tổng giá vốn (VND)">
             <MoneyInput name="totalCost" defaultValue={product?.totalCost ?? 0} className="input" />
-          </Field>
-          <Field label="%PMG_LK_sale (trả F2 dưới)">
-            <input
-              name="pmgSaleRate"
-              type="number"
-              step="any"
-              defaultValue={pctDisplay(product?.pmgSaleRate)}
-              className="input"
-            />
           </Field>
           <Field label="%HH sale (NVKD)">
             <input
@@ -200,9 +227,6 @@ export default function ProductForm({ product, projects, departments = [], onSav
               className="input"
             />
           </Field>
-          <Field label="Phí admin sale (VND)">
-            <MoneyInput name="adminFeeSale" defaultValue={product?.adminFeeSale ?? 0} className="input" />
-          </Field>
           <Field label="Hỗ trợ khách (VND)">
             <MoneyInput name="customerSupport" defaultValue={product?.customerSupport ?? 0} className="input" />
           </Field>
@@ -212,37 +236,62 @@ export default function ProductForm({ product, projects, departments = [], onSav
           <Field label="CTY thưởng QL (VND)">
             <MoneyInput name="bonusManager" defaultValue={product?.bonusManager ?? 0} className="input" />
           </Field>
-          <Field label="%KPI CEO">
-            <input
-              name="kpiCeoRate"
-              type="number"
-              step="any"
-              defaultValue={pctDisplay(product?.kpiCeoRate)}
-              className="input"
-            />
-          </Field>
-          <Field label="%KPI TPKD (Trưởng phòng)">
-            <input
-              name="kpiTpkdRate"
-              type="number"
-              step="any"
-              defaultValue={pctDisplay(product?.kpiTpkdRate)}
-              className="input"
-            />
-          </Field>
-          <Field label="%KPI Admin">
-            <input
-              name="kpiAdminRate"
-              type="number"
-              step="any"
-              defaultValue={pctDisplay(product?.kpiAdminRate)}
-              className="input"
-            />
-          </Field>
           <Field label="CP giá vốn khác (VND)">
             <MoneyInput name="otherCost" defaultValue={product?.otherCost ?? 0} className="input" />
           </Field>
+          {!isSecondary && (
+            <>
+              <Field label="%PMG_LK_sale (trả F2 dưới)">
+                <input
+                  name="pmgSaleRate"
+                  type="number"
+                  step="any"
+                  defaultValue={pctDisplay(product?.pmgSaleRate)}
+                  className="input"
+                />
+              </Field>
+              <Field label="Phí admin sale (VND)">
+                <MoneyInput name="adminFeeSale" defaultValue={product?.adminFeeSale ?? 0} className="input" />
+              </Field>
+              <Field label="%KPI CEO">
+                <input
+                  name="kpiCeoRate"
+                  type="number"
+                  step="any"
+                  defaultValue={pctDisplay(product?.kpiCeoRate)}
+                  className="input"
+                />
+              </Field>
+              <Field label="%KPI TPKD (Trưởng phòng)">
+                <input
+                  name="kpiTpkdRate"
+                  type="number"
+                  step="any"
+                  defaultValue={pctDisplay(product?.kpiTpkdRate)}
+                  className="input"
+                />
+              </Field>
+              <Field label="%KPI Admin">
+                <input
+                  name="kpiAdminRate"
+                  type="number"
+                  step="any"
+                  defaultValue={pctDisplay(product?.kpiAdminRate)}
+                  className="input"
+                />
+              </Field>
+            </>
+          )}
         </div>
+        {isSecondary && (
+          <>
+            <input type="hidden" name="pmgSaleRate" value="" />
+            <input type="hidden" name="adminFeeSale" value={0} />
+            <input type="hidden" name="kpiCeoRate" value="" />
+            <input type="hidden" name="kpiTpkdRate" value="" />
+            <input type="hidden" name="kpiAdminRate" value="" />
+          </>
+        )}
       </Section>
 
       <Section title="Ghi chú">
