@@ -56,7 +56,7 @@ export const projects = pgTable("projects", {
   code: text("code").notNull(),
   fullCode: text("full_code").notNull().unique(),
   name: text("name").notNull(),
-  partnerId: integer("partner_id").notNull().references(() => partners.id),
+  partnerId: integer("partner_id").references(() => partners.id),
   breRole: text("bre_role", { enum: ["f1", "f2"] }).notNull().default("f1"),
   linkedF1PartnerId: integer("linked_f1_partner_id").references(() => partners.id),
 

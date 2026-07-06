@@ -44,14 +44,15 @@ export const fmtDate = (v: string | null | undefined): string => {
   return d.toLocaleDateString("vi-VN");
 };
 
-// "Chợ thứ cấp" là partner ảo cho các dự án thứ cấp — không hiển thị tên
+// Dự án thứ cấp không có partner (partnerId null). Backward-compat check
+// tên "Chợ thứ cấp" phòng khi có partner ảo cũ còn sót.
 export const displayPartnerName = (name: string | null | undefined): string => {
   if (!name || name === "Chợ thứ cấp") return "";
   return name;
 };
 
 export const isSecondaryPartner = (name: string | null | undefined): boolean =>
-  name === "Chợ thứ cấp";
+  !name || name === "Chợ thứ cấp";
 
 export const partnerTypeLabel = (t: string): string => {
   if (t === "cdt") return "Chủ đầu tư";
