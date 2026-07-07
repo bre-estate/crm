@@ -44,7 +44,19 @@ Trên mỗi dự án có badge:
 - 🔵 **BRE = F2**: BRE ký HĐ với **sàn F1** (DXMD, DKRS, Dataloca, TA, ...) → bán qua họ
 - 🟠 **Thứ cấp**: không có đối tác — dự án mua bán lại
 
+**BRE KHÔNG có sàn F2 dưới**. Cộng tác viên/Freelance đi qua HH sale 65% (đi dưới dạng NVKD nội bộ, ghi vào cost_recons).
+
 Sai vai trò → sai công thức lãi. Kiểm tra kỹ khi tạo dự án.
+
+### 1.2.b. %PMG_LK vs %PMG_LK_sale
+
+Đây là 2 field trên **căn**, quan hệ `%PMG_LK ≥ %PMG_LK_sale`:
+
+- **%PMG_LK**: CĐT/F1 thực trả BRE (vd 6.5%)
+- **%PMG_LK_sale**: base BRE dùng để **tính HH sale + KPI** (vd 5.25%)
+- **Chênh** (1.25%): BRE giữ = cty giữ + thưởng manager (thưởng nóng)
+
+Khi CĐT/F1 offer mức HH tốt, BRE không chia hết cho sale mà giữ lại chênh. Bằng nhau khi CĐT không offer mức đặc biệt.
 
 ### 1.3. Snapshot vs cấu hình
 
@@ -125,7 +137,7 @@ Vào `/projects` → **+ Thêm dự án**.
 | **Đối tác** | Chọn từ danh sách partner | Bcons Homes |
 | **Vai trò BRE** | F1 (BRE ký thẳng CĐT) hoặc F2 (BRE qua sàn F1) | Xem #1.2 |
 | **%PMG_LK** | Tỷ lệ HH CĐT trả BRE trên giá tính PMG | `5.5` (nghĩa là 5.5%) |
-| **%PMG_LK_sale** | Tỷ lệ BRE phải trả cho F2 dưới (nếu có) | Bỏ trống nếu không có F2 |
+| **%PMG_LK_sale** | Base BRE dùng để tính HH sale + KPI. Bằng %PMG_LK (thường) hoặc thấp hơn (khi CĐT/F1 offer mức tốt → BRE giữ chênh) | `5.25` |
 | **Phí admin** | Phí CĐT trừ trước khi chuyển BRE (BRE ko nhận) | `3.000.000` |
 | **Đợt TT** | Số đợt thanh toán trong hợp đồng | `3`, `5` |
 | **Tình trạng HĐ** | chưa ký / đang đàm phán / đã ký / ngừng | |
@@ -167,14 +179,16 @@ Vào `/products` → **+ Thêm giao dịch**. Đảm bảo chọn **Loại = Sơ
 
 **Lưu ý**: Phí admin & CĐT thưởng KHÔNG phải phần BRE hưởng — hệ thống trừ ra khỏi lãi.
 
-### 5.3. Section "Giá vốn (BRE trả nội bộ + F2 dưới)"
+### 5.3. Section "Giá vốn (BRE trả NVKD + nội bộ)"
+
+> **Note**: BRE không có F2 dưới. Cộng tác viên/Freelance đi qua HH sale 65% như NVKD nội bộ.
 
 Đây là chi phí BRE phải trả ra khỏi phần HH nhận từ CĐT:
 
 | Trường | Ý nghĩa | Ví dụ |
 |---|---|---|
 | Tổng giá vốn | Tổng chi (nếu biết trước) | |
-| %PMG_LK_sale | Trả F2 dưới (nếu có) | `3` |
+| %PMG_LK_sale | Base tính HH sale + KPI (thường = %PMG_LK, thấp hơn khi CĐT/F1 offer tốt) | `5.25` |
 | %HH sale (NVKD) | HH cho NVKD | `65` (= 65% Q) |
 | Phí admin sale | BRE tự chi cho sàn F1 liên kết | |
 | Hỗ trợ khách | Chiết khấu cho khách | |
@@ -185,9 +199,12 @@ Vào `/products` → **+ Thêm giao dịch**. Đảm bảo chọn **Loại = Sơ
 
 Sau khi lưu, xem `/products/{id}` mục **3. Cơ cấu phân bổ tiền**:
 - Bước 1: CĐT trả BRE tổng
-- Bước 2: BRE giữ Q = PMG × %PMG_LK − admin
-- Bước 3: BRE chi ra (HH sale, KPI, thưởng…)
-- Bước 4: Lợi nhuận công ty = Q − tổng chi
+- Bước 2: Chia 2 pool:
+  - **Pool A · Q_sale** = PMG × %PMG_LK_sale (base tính HH sale + KPI)
+  - **Pool B · Chênh** = PMG × (%PMG_LK − %PMG_LK_sale) — BRE giữ (cty + thưởng manager)
+- Bước 3: Chi từ Pool A → HH sale, KPI CEO/TPKD/Admin, phí admin sale, hỗ trợ, thưởng NVKD (CTY), chi phí khác
+- Bước 4: Chi từ Pool B → thưởng TPKD/Manager (CTY)
+- Bước 5: **Lợi nhuận** = (Còn từ Pool A) + (Còn từ Pool B)
 
 ---
 
@@ -359,7 +376,7 @@ Dựa vào **`products.recognitionMonth`** (tháng ghi nhận DT). Vd căn ghi n
 | **F2** | Sàn phụ, nhận từ F1 |
 | **PMG** | Phí môi giới — hoa hồng CĐT trả sàn theo % giá tính PMG |
 | **%PMG_LK** | Tỷ lệ HH liên kết CĐT trả cho sàn F1 (5.5%, 6%, 7%…) |
-| **%PMG_LK_sale** | Tỷ lệ F1 trả tiếp cho F2 dưới |
+| **%PMG_LK_sale** | Base BRE dùng để tính HH sale + KPI. Chênh so với %PMG_LK = BRE giữ (thưởng manager + cty giữ) |
 | **HH** | Hoa hồng |
 | **NVKD** | Nhân viên kinh doanh (sale) |
 | **TPKD** | Trưởng phòng kinh doanh = Trưởng phòng = Quản lý sàn |

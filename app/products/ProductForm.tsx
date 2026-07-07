@@ -241,7 +241,7 @@ export default function ProductForm({ product, projects, departments = [], onSav
           </Field>
           {!isSecondary && (
             <>
-              <Field label="%PMG_LK_sale (trả F2 dưới)">
+              <Field label="%PMG_LK_sale (base tính HH sale)">
                 <input
                   name="pmgSaleRate"
                   type="number"
