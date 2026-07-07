@@ -37,6 +37,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
     invoiceNumber: invoices.invoiceNumber,
     invoiceDate: invoices.invoiceDate,
     unitCode: products.unitCode,
+    productPmgRate: products.pmgRate,
     projectName: projects.name,
     partnerName: partners.name,
     projectId: projects.id,
@@ -153,6 +154,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
               <th className="text-left p-2">Ngày ĐC</th>
               <th className="text-left p-2">Dự án / Đối tác</th>
               <th className="text-left p-2">Mã căn</th>
+              <th className="text-right p-2" title="%PMG_LK toàn hợp đồng của căn">Tổng %PMG</th>
               <th className="text-center p-2">Đợt</th>
               <th className="text-left p-2">Số HĐ</th>
               <th className="text-left p-2">Ngày HĐ</th>
@@ -182,6 +184,13 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
                     >
                       {r.unitCode}
                     </Link>
+                  </td>
+                  <td className="p-2 text-right tabular-nums text-xs">
+                    {Number(r.productPmgRate ?? 0) > 0 ? (
+                      fmtPct(r.productPmgRate)
+                    ) : (
+                      <span className="text-slate-400">—</span>
+                    )}
                   </td>
                   <td className="p-2 text-center text-xs">{r.phase ?? "—"}</td>
                   <td className="p-2 font-mono text-xs">{r.invoiceNumber ?? "—"}</td>
@@ -215,7 +224,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={11} className="p-6 text-center text-slate-500">
+                <td colSpan={12} className="p-6 text-center text-slate-500">
                   Chưa có đợt đối chiếu nào.
                 </td>
               </tr>
