@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Product, Project, Partner, Department } from "@/lib/schema";
 import MoneyInput from "@/components/MoneyInput";
+import SearchableSelect from "@/components/SearchableSelect";
 
 type ProjectWithPartner = Project & { partnerName?: string | null };
 
@@ -44,18 +45,17 @@ export default function ProductForm({ product, projects, departments = [], onSav
       <Section title="Thông tin căn">
         <div className="grid grid-cols-2 gap-4">
           <Field label="Dự án" required>
-            <select
+            <SearchableSelect
               name="projectId"
               defaultValue={product?.projectId ?? projects[0]?.id ?? ""}
-              className="input"
+              placeholder="Gõ tên dự án..."
               required
-            >
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.fullCode} · {p.name}
-                </option>
-              ))}
-            </select>
+              options={projects.map((p) => ({
+                value: p.id,
+                label: p.name,
+                sublabel: p.fullCode,
+              }))}
+            />
           </Field>
           <Field label="Mã căn" required>
             <input
@@ -79,19 +79,17 @@ export default function ProductForm({ product, projects, departments = [], onSav
             <input name="salesPerson" defaultValue={product?.salesPerson ?? ""} className="input" />
           </Field>
           <Field label="Phòng kinh doanh">
-            <select
+            <SearchableSelect
               name="departmentId"
               defaultValue={product?.departmentId ?? ""}
-              className="input"
-            >
-              <option value="">— Chưa phân phòng —</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                  {d.leaderName ? ` (Leader: ${d.leaderName})` : ""}
-                </option>
-              ))}
-            </select>
+              emptyOption="— Chưa phân phòng —"
+              placeholder="Gõ tên phòng..."
+              options={departments.map((d) => ({
+                value: d.id,
+                label: d.name,
+                sublabel: d.leaderName ? `Leader: ${d.leaderName}` : undefined,
+              }))}
+            />
             <input type="hidden" name="deptName" defaultValue={product?.deptName ?? ""} />
           </Field>
           <Field label="Loại giao dịch">

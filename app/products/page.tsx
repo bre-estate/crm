@@ -9,6 +9,7 @@ import {
 import { fmtMoney, fmtDate, fmtPctTight, displayPartnerName } from "@/lib/format";
 import { eq, asc, desc, and, gte, lte, ilike, inArray, type SQL } from "drizzle-orm";
 import Link from "next/link";
+import SearchableSelect from "@/components/SearchableSelect";
 
 export const dynamic = "force-dynamic";
 
@@ -241,29 +242,29 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
           </div>
           <div>
             <label className="block text-xs text-slate-600 mb-1">Dự án</label>
-            <select name="projectId" defaultValue={projectId ?? ""} className="input min-w-60">
-              <option value="">— Tất cả —</option>
-              {allProjects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.fullCode} · {p.name}
-                </option>
-              ))}
-            </select>
+            <SearchableSelect
+              name="projectId"
+              defaultValue={projectId ?? ""}
+              emptyOption="— Tất cả —"
+              placeholder="Gõ tên dự án..."
+              className="min-w-72"
+              options={allProjects.map((p) => ({
+                value: p.id,
+                label: p.name,
+                sublabel: p.fullCode,
+              }))}
+            />
           </div>
           <div>
             <label className="block text-xs text-slate-600 mb-1">Phòng</label>
-            <select
+            <SearchableSelect
               name="departmentId"
               defaultValue={departmentId ?? ""}
-              className="input min-w-40"
-            >
-              <option value="">— Tất cả —</option>
-              {allDepts.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
+              emptyOption="— Tất cả —"
+              placeholder="Gõ tên phòng..."
+              className="min-w-48"
+              options={allDepts.map((d) => ({ value: d.id, label: d.name }))}
+            />
           </div>
           <div>
             <label className="block text-xs text-slate-600 mb-1">Loại</label>

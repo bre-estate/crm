@@ -9,6 +9,7 @@ import {
 import { fmtMoney, fmtDate, costTypeLabel, fmtPct, toTitleCase } from "@/lib/format";
 import { eq, desc, sum } from "drizzle-orm";
 import Link from "next/link";
+import SearchableSelect from "@/components/SearchableSelect";
 
 export const dynamic = "force-dynamic";
 
@@ -111,14 +112,18 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
           </div>
           <div>
             <label className="block text-xs text-slate-600 mb-1">Dự án</label>
-            <select name="projectId" defaultValue={projectId ?? ""} className="input min-w-48">
-              <option value="">— Tất cả —</option>
-              {allProjects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.fullCode} · {p.name}
-                </option>
-              ))}
-            </select>
+            <SearchableSelect
+              name="projectId"
+              defaultValue={projectId ?? ""}
+              emptyOption="— Tất cả —"
+              placeholder="Gõ tên dự án..."
+              className="min-w-72"
+              options={allProjects.map((p) => ({
+                value: p.id,
+                label: p.name,
+                sublabel: p.fullCode,
+              }))}
+            />
           </div>
           <div>
             <label className="block text-xs text-slate-600 mb-1">Loại chi phí</label>

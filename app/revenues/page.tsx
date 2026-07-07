@@ -10,6 +10,7 @@ import {
 import { fmtMoney, fmtDate, fmtPct, displayPartnerName } from "@/lib/format";
 import { eq, desc, sum, and, ilike, type SQL } from "drizzle-orm";
 import Link from "next/link";
+import SearchableSelect from "@/components/SearchableSelect";
 
 export const dynamic = "force-dynamic";
 
@@ -104,14 +105,18 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
           </div>
           <div>
             <label className="block text-xs text-slate-600 mb-1">Lọc theo dự án</label>
-            <select name="projectId" defaultValue={projectId ?? ""} className="input min-w-60">
-              <option value="">— Tất cả —</option>
-              {allProjects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.fullCode} · {p.name}
-                </option>
-              ))}
-            </select>
+            <SearchableSelect
+              name="projectId"
+              defaultValue={projectId ?? ""}
+              emptyOption="— Tất cả —"
+              placeholder="Gõ tên dự án..."
+              className="min-w-72"
+              options={allProjects.map((p) => ({
+                value: p.id,
+                label: p.name,
+                sublabel: p.fullCode,
+              }))}
+            />
           </div>
           <button className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200">
             Lọc

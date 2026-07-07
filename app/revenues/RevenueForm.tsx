@@ -4,6 +4,7 @@ import { useTransition, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import type { RevenueReconciliation } from "@/lib/schema";
 import MoneyInput from "@/components/MoneyInput";
+import SearchableSelect from "@/components/SearchableSelect";
 import { fmtMoney } from "@/lib/format";
 
 type ProductOption = {
@@ -74,35 +75,30 @@ export default function RevenueForm({
           <Field label="Căn (sản phẩm)" required>
             {isEdit ? (
               <>
-                <select
+                <SearchableSelect
                   value={productId}
                   disabled
-                  className="input bg-slate-100 text-slate-500 cursor-not-allowed"
-                >
-                  {products.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.productCode} · {p.projectName}
-                  {p.partnerName && p.partnerName !== "Chợ thứ cấp" ? ` · ${p.partnerName}` : ""}
-                    </option>
-                  ))}
-                </select>
+                  options={products.map((p) => ({
+                    value: p.id,
+                    label: p.productCode,
+                    sublabel: `${p.projectName ?? ""}${p.partnerName && p.partnerName !== "Chợ thứ cấp" ? ` · ${p.partnerName}` : ""}`,
+                  }))}
+                />
                 <input type="hidden" name="productId" value={productId} />
               </>
             ) : (
-              <select
+              <SearchableSelect
                 name="productId"
                 value={productId}
-                onChange={(e) => setProductId(Number(e.target.value))}
-                className="input"
+                onChange={(v) => setProductId(Number(v))}
+                placeholder="Gõ mã căn / tên dự án..."
                 required
-              >
-                {products.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.productCode} · {p.projectName}
-                  {p.partnerName && p.partnerName !== "Chợ thứ cấp" ? ` · ${p.partnerName}` : ""}
-                  </option>
-                ))}
-              </select>
+                options={products.map((p) => ({
+                  value: p.id,
+                  label: p.productCode,
+                  sublabel: `${p.projectName ?? ""}${p.partnerName && p.partnerName !== "Chợ thứ cấp" ? ` · ${p.partnerName}` : ""}`,
+                }))}
+              />
             )}
             {product && (
               <div className="text-xs text-slate-500 mt-1">
