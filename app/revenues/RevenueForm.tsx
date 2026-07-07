@@ -229,7 +229,7 @@ export default function RevenueForm({
 
       {/* Tham chiếu từ căn — grayed out */}
       {product && (
-        <Section title="📌 Tham chiếu từ căn (không sửa được)">
+        <Section title="📌 Tham chiếu từ căn">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
             <RefInfo label="Giá tính PMG" value={fmtMoney(product.pmgBasePrice)} />
             <RefInfo

@@ -16,17 +16,17 @@ export const dynamic = "force-dynamic";
 type SearchParams = Promise<{
   projectId?: string;
   departmentId?: string;
-  saleType?: string;
+  tab?: string;
   from?: string;
   to?: string;
   unitCode?: string;
 }>;
 
 export default async function ProductsPage({ searchParams }: { searchParams: SearchParams }) {
-  const { projectId, departmentId, saleType, from, to, unitCode } = await searchParams;
+  const { projectId, departmentId, tab, from, to, unitCode } = await searchParams;
   const filterProjectId = projectId ? Number(projectId) : null;
   const filterDeptId = departmentId ? Number(departmentId) : null;
-  const filterSaleType = saleType === "primary" || saleType === "secondary" ? saleType : null;
+  const activeTab: "primary" | "secondary" = tab === "secondary" ? "secondary" : "primary";
   const dateFrom = from?.trim() || null;
   const dateTo = to?.trim() || null;
   const filterUnitCode = unitCode?.trim() || null;
@@ -61,10 +61,9 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
     projectId: products.projectId,
   };
 
-  const whereParts: SQL[] = [];
+  const whereParts: SQL[] = [eq(products.saleType, activeTab)];
   if (filterProjectId) whereParts.push(eq(products.projectId, filterProjectId));
   if (filterDeptId) whereParts.push(eq(products.departmentId, filterDeptId));
-  if (filterSaleType) whereParts.push(eq(products.saleType, filterSaleType));
   if (dateFrom) whereParts.push(gte(products.depositDate, dateFrom));
   if (dateTo) whereParts.push(lte(products.depositDate, dateTo));
   if (filterUnitCode) whereParts.push(ilike(products.unitCode, `%${filterUnitCode}%`));
@@ -76,11 +75,20 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
     .leftJoin(partners, eq(projects.partnerId, partners.id))
     .leftJoin(departments, eq(products.departmentId, departments.id));
 
-  const rows = whereParts.length
-    ? await baseQuery
-        .where(whereParts.length === 1 ? whereParts[0] : and(...whereParts))
-        .orderBy(desc(products.depositDate), desc(products.id))
-    : await baseQuery.orderBy(desc(products.depositDate), desc(products.id));
+  const rows = await baseQuery
+    .where(whereParts.length === 1 ? whereParts[0] : and(...whereParts))
+    .orderBy(desc(products.depositDate), desc(products.id));
+
+  // Đếm cho tab badge
+  const allTypeRaw = await db
+    .select({ saleType: products.saleType })
+    .from(products);
+  let primaryCount = 0;
+  let secondaryCount = 0;
+  for (const p of allTypeRaw) {
+    if (p.saleType === "secondary") secondaryCount++;
+    else primaryCount++;
+  }
 
   // For each căn: tính phí dự kiến BRE nhận
   //   primary:   (totalRevenue gồm VAT − adminFee) / 1.1 − discountCk
@@ -181,6 +189,38 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
         </Link>
       </div>
 
+      <div className="border-b border-slate-200 flex gap-1">
+        {[
+          { key: "primary", label: "Sơ cấp", count: primaryCount },
+          { key: "secondary", label: "Thứ cấp", count: secondaryCount },
+        ].map((t) => {
+          const isActive = activeTab === t.key;
+          const params = new URLSearchParams();
+          params.set("tab", t.key);
+          if (filterProjectId) params.set("projectId", String(filterProjectId));
+          if (filterDeptId) params.set("departmentId", String(filterDeptId));
+          if (filterUnitCode) params.set("unitCode", filterUnitCode);
+          if (dateFrom) params.set("from", dateFrom);
+          if (dateTo) params.set("to", dateTo);
+          return (
+            <Link
+              key={t.key}
+              href={`/products?${params.toString()}`}
+              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition ${
+                isActive
+                  ? "border-blue-600 text-blue-700"
+                  : "border-transparent text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              {t.label}{" "}
+              <span className={`text-xs ml-1 ${isActive ? "text-blue-500" : "text-slate-400"}`}>
+                ({t.count})
+              </span>
+            </Link>
+          );
+        })}
+      </div>
+
       <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
         <div className="flex gap-6 text-sm flex-wrap">
           <div>
@@ -266,20 +306,13 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
               options={allDepts.map((d) => ({ value: d.id, label: d.name }))}
             />
           </div>
-          <div>
-            <label className="block text-xs text-slate-600 mb-1">Loại</label>
-            <select name="saleType" defaultValue={saleType ?? ""} className="input min-w-32">
-              <option value="">— Tất cả —</option>
-              <option value="primary">Sơ cấp</option>
-              <option value="secondary">Thứ cấp</option>
-            </select>
-          </div>
+          <input type="hidden" name="tab" value={activeTab} />
           <button className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200">
             Lọc
           </button>
-          {(filterProjectId || filterDeptId || filterSaleType || dateFrom || dateTo || filterUnitCode) && (
+          {(filterProjectId || filterDeptId || dateFrom || dateTo || filterUnitCode) && (
             <Link
-              href="/products"
+              href={`/products?tab=${activeTab}`}
               className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200"
             >
               Reset
@@ -294,7 +327,6 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
             <tr>
               <th className="text-left p-2 whitespace-nowrap">Mã căn</th>
               <th className="text-left p-2">Dự án / Đối tác</th>
-              <th className="text-left p-2 whitespace-nowrap">Loại</th>
               <th className="text-left p-2 whitespace-nowrap">Phòng</th>
               <th className="text-left p-2 whitespace-nowrap">NVKD</th>
               <th className="text-left p-2 whitespace-nowrap">Cọc</th>
@@ -329,17 +361,6 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
                   <td className="p-2">
                     <div className="font-medium text-xs">{r.projectName}</div>
                     <div className="text-xs text-slate-500">{displayPartnerName(r.partnerName)}</div>
-                  </td>
-                  <td className="p-2">
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded whitespace-nowrap ${
-                        r.saleType === "secondary"
-                          ? "bg-orange-100 text-orange-700"
-                          : "bg-sky-100 text-sky-700"
-                      }`}
-                    >
-                      {r.saleType === "secondary" ? "Thứ cấp" : "Sơ cấp"}
-                    </span>
                   </td>
                   <td className="p-2">
                     {r.departmentName ? (
@@ -406,7 +427,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={14} className="p-6 text-center text-slate-500 text-sm">
+                <td colSpan={13} className="p-6 text-center text-slate-500 text-sm">
                   Không có giao dịch nào theo bộ lọc.
                 </td>
               </tr>

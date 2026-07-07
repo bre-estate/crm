@@ -56,14 +56,16 @@ const toDateStr = (v: unknown): string | null => {
   return s || null;
 };
 
+const normalizeUnit = (s: string): string => s.trim().replace(/[.\-\s]/g, "");
+
 async function main() {
-  // Build unit_code -> product_id map
+  // Build unit_code -> product_id map (normalized)
   const products = await db
     .select({ id: schema.products.id, unitCode: schema.products.unitCode })
     .from(schema.products);
   const productByUnitCode = new Map<string, number>();
   for (const p of products) {
-    productByUnitCode.set(p.unitCode.trim(), p.id);
+    productByUnitCode.set(normalizeUnit(p.unitCode), p.id);
   }
   console.log(`Loaded ${productByUnitCode.size} products`);
 
@@ -88,7 +90,7 @@ async function main() {
       skipped++;
       continue;
     }
-    const productId = productByUnitCode.get(unitCode);
+    const productId = productByUnitCode.get(normalizeUnit(unitCode));
     if (!productId) {
       skipped++;
       continue;
