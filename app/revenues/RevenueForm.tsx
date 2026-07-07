@@ -186,15 +186,12 @@ export default function RevenueForm({
               className="input"
             />
           </Field>
-          <Field label="%thu PMG đợt này (vd: 60)">
-            <input
-              name="phasePctThisTime"
-              type="number"
-              step="any"
-              defaultValue={pctDisplay(recon?.phasePctThisTime)}
-              className="input"
-            />
-          </Field>
+          {/* phasePctThisTime: giữ ngầm — Excel không có cột này, script import không fill */}
+          <input
+            type="hidden"
+            name="phasePctThisTime"
+            defaultValue={pctDisplay(recon?.phasePctThisTime)}
+          />
           <Field label="%PMG hỗ trợ (hồi tố nếu có)">
             <input
               name="pmgSupportPct"
