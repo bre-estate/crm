@@ -233,12 +233,16 @@ async function main() {
         .returning({ id: schema.costReconciliations.id });
       costRecCount++;
 
-      // Payment out chỉ attach vào dòng đầu (Excel gốc 1 dòng = 1 payment)
-      if (idx === 0 && (payDate || payAmount > 0)) {
+      // Excel sheet 2.3 KHÔNG có cột "Ngày thanh toán" + "Số tiền thanh toán"
+      // filled (0/329 rows). Ngữ nghĩa: đã ĐC = đã trả. Nên tự tạo payment_out
+      // cho mỗi cost_recon với amount = ins.amount, date = ngày ĐC (fallback nếu
+      // Excel có payment column thì dùng số đó cho idx=0).
+      if (ins.amount > 0) {
+        const useExplicit = idx === 0 && payAmount > 0;
         await db.insert(schema.paymentsOut).values({
           costReconciliationId: rec.id,
-          paymentDate: payDate,
-          amount: payAmount,
+          paymentDate: useExplicit ? payDate : toDateStr(row[1]),
+          amount: useExplicit ? payAmount : ins.amount,
         });
         paymentOutCount++;
       }
