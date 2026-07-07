@@ -14,12 +14,13 @@ import SearchableSelect from "@/components/SearchableSelect";
 
 export const dynamic = "force-dynamic";
 
-type SearchParams = Promise<{ projectId?: string; unitCode?: string }>;
+type SearchParams = Promise<{ projectId?: string; unitCode?: string; tab?: string }>;
 
 export default async function RevenuesPage({ searchParams }: { searchParams: SearchParams }) {
-  const { projectId, unitCode } = await searchParams;
+  const { projectId, unitCode, tab } = await searchParams;
   const filterProjectId = projectId ? Number(projectId) : null;
   const filterUnitCode = unitCode?.trim() || null;
+  const activeTab: "primary" | "secondary" = tab === "secondary" ? "secondary" : "primary";
 
   const allProjects = await db
     .select({ id: projects.id, name: projects.name, fullCode: projects.fullCode })
@@ -39,12 +40,13 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
     invoiceDate: invoices.invoiceDate,
     unitCode: products.unitCode,
     productPmgRate: products.pmgRate,
+    productSaleType: products.saleType,
     projectName: projects.name,
     partnerName: partners.name,
     projectId: projects.id,
   };
 
-  const whereParts: SQL[] = [];
+  const whereParts: SQL[] = [eq(products.saleType, activeTab)];
   if (filterProjectId) whereParts.push(eq(products.projectId, filterProjectId));
   if (filterUnitCode) whereParts.push(ilike(products.unitCode, `%${filterUnitCode}%`));
 
@@ -56,11 +58,21 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
     .leftJoin(partners, eq(projects.partnerId, partners.id))
     .leftJoin(invoices, eq(revenueReconciliations.invoiceId, invoices.id));
 
-  const rows = whereParts.length
-    ? await baseQuery
-        .where(whereParts.length === 1 ? whereParts[0] : and(...whereParts))
-        .orderBy(desc(revenueReconciliations.reconciliationDate))
-    : await baseQuery.orderBy(desc(revenueReconciliations.reconciliationDate));
+  const rows = await baseQuery
+    .where(whereParts.length === 1 ? whereParts[0] : and(...whereParts))
+    .orderBy(desc(revenueReconciliations.reconciliationDate));
+
+  // Count both tabs for badge
+  const countByTypeRaw = await db
+    .select({ saleType: products.saleType })
+    .from(revenueReconciliations)
+    .leftJoin(products, eq(revenueReconciliations.productId, products.id));
+  let primaryCount = 0;
+  let secondaryCount = 0;
+  for (const r of countByTypeRaw) {
+    if (r.saleType === "secondary") secondaryCount++;
+    else primaryCount++;
+  }
 
   const paymentAgg = await db
     .select({
@@ -91,8 +103,40 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
         </Link>
       </div>
 
+      <div className="border-b border-slate-200 flex gap-1">
+        {[
+          { key: "primary", label: "Sơ cấp", count: primaryCount },
+          { key: "secondary", label: "Thứ cấp", count: secondaryCount },
+        ].map((t) => {
+          const isActive = activeTab === t.key;
+          const params = new URLSearchParams();
+          params.set("tab", t.key);
+          if (filterProjectId) params.set("projectId", String(filterProjectId));
+          if (filterUnitCode) params.set("unitCode", filterUnitCode);
+          return (
+            <Link
+              key={t.key}
+              href={`/revenues?${params.toString()}`}
+              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition ${
+                isActive
+                  ? "border-blue-600 text-blue-700"
+                  : "border-transparent text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              {t.label}{" "}
+              <span
+                className={`text-xs ml-1 ${isActive ? "text-blue-500" : "text-slate-400"}`}
+              >
+                ({t.count})
+              </span>
+            </Link>
+          );
+        })}
+      </div>
+
       <div className="bg-white border border-slate-200 rounded-xl p-4 flex gap-4 items-end flex-wrap">
         <form className="flex gap-2 items-end flex-wrap">
+          <input type="hidden" name="tab" value={activeTab} />
           <div>
             <label className="block text-xs text-slate-600 mb-1">Mã căn</label>
             <input
@@ -123,7 +167,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
           </button>
           {(filterProjectId || filterUnitCode) && (
             <Link
-              href="/revenues"
+              href={`/revenues?tab=${activeTab}`}
               className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200"
             >
               Reset
