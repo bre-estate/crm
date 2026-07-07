@@ -351,11 +351,13 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
                 phaseCount: 0,
                 invoiceIds: new Set<number>(),
               };
-              // % thu = gross collected / gross target (cùng scale), cap 100%
-              const pctPaidRaw =
+              // % thu = gross collected / gross target (cùng scale)
+              // KHÔNG cap để phản ánh trung thực: > 100% = thu quá (cần review),
+              // < 100% = còn thiếu.
+              const pctPaid =
                 stats.grossTarget > 0 ? (stats.collected / stats.grossTarget) * 100 : 0;
-              const pctPaid = Math.min(100, pctPaidRaw);
-              const fullyPaid = pctPaid >= 99.5;
+              const fullyPaid = pctPaid >= 99.5 && pctPaid <= 100.5;
+              const overPaid = pctPaid > 100.5;
               const noData = stats.expectedFee === 0 && stats.phaseCount === 0;
               return (
                 <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50">
@@ -393,12 +395,23 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
                     ) : (
                       <span
                         className={`text-xs font-semibold ${
-                          fullyPaid
-                            ? "text-green-700"
-                            : pctPaid > 0
-                              ? "text-amber-700"
-                              : "text-red-600"
+                          overPaid
+                            ? "text-purple-700"
+                            : fullyPaid
+                              ? "text-green-700"
+                              : pctPaid > 0
+                                ? "text-amber-700"
+                                : "text-red-600"
                         }`}
+                        title={
+                          overPaid
+                            ? `Thu quá target (${pctPaid.toFixed(1)}%) — kiểm tra lại data`
+                            : fullyPaid
+                              ? "Đã thu đủ"
+                              : pctPaid > 0
+                                ? `Còn thiếu ${(100 - pctPaid).toFixed(1)}%`
+                                : "Chưa thu"
+                        }
                       >
                         {pctPaid.toFixed(0)}%
                       </span>
