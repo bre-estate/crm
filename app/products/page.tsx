@@ -109,8 +109,9 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
           .where(inArray(revenueReconciliations.productId, productIds));
 
   type Stats = {
-    expectedFee: number;
-    collected: number;
+    expectedFee: number; // HH BRE net dự kiến (post-VAT, post-admin) — dùng hiển thị
+    grossTarget: number; // Tổng CĐT phải trả (gross) — dùng tính % thu
+    collected: number; // Tổng revenueThisTime đã thu (gross)
     phaseCount: number;
     invoiceIds: Set<number>;
   };
@@ -118,16 +119,17 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
   for (const r of rows) {
     // Primary: HH BRE nhận = (DT gồm VAT − admin) / 1.1 − chiết khấu (CK)
     // Secondary: totalRevenue đã là phí về cty
+    const grossTarget = Number(r.totalRevenue ?? 0);
     const expected =
       r.saleType === "secondary"
-        ? Number(r.totalRevenue ?? 0)
+        ? grossTarget
         : Math.max(
             0,
-            (Number(r.totalRevenue ?? 0) - Number(r.adminFee ?? 0)) / 1.1 -
-              Number(r.discountCk ?? 0),
+            (grossTarget - Number(r.adminFee ?? 0)) / 1.1 - Number(r.discountCk ?? 0),
           );
     statsByProduct.set(r.id, {
       expectedFee: expected,
+      grossTarget,
       collected: 0,
       phaseCount: 0,
       invoiceIds: new Set<number>(),
@@ -344,11 +346,15 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
             {rows.map((r) => {
               const stats = statsByProduct.get(r.id) ?? {
                 expectedFee: 0,
+                grossTarget: 0,
                 collected: 0,
                 phaseCount: 0,
                 invoiceIds: new Set<number>(),
               };
-              const pctPaid = stats.expectedFee > 0 ? (stats.collected / stats.expectedFee) * 100 : 0;
+              // % thu = gross collected / gross target (cùng scale), cap 100%
+              const pctPaidRaw =
+                stats.grossTarget > 0 ? (stats.collected / stats.grossTarget) * 100 : 0;
+              const pctPaid = Math.min(100, pctPaidRaw);
               const fullyPaid = pctPaid >= 99.5;
               const noData = stats.expectedFee === 0 && stats.phaseCount === 0;
               return (
