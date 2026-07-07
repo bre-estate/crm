@@ -208,45 +208,14 @@ export default function RevenueForm({
       />
 
       <Section title="Số tiền (VND)">
-        {isEdit && (
-          <div className="text-xs text-slate-500 -mt-2 mb-2">
-            Ô có nền xám là dữ liệu chốt tại thời điểm tạo đợt — không sửa được.
-          </div>
-        )}
+        <div className="text-xs text-slate-500 -mt-2 mb-2">
+          Giá tính PMG, %PMG_LK, Phí admin đã có ở giao dịch của căn — không nhập lại ở đây.
+        </div>
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Giá tính PMG (chốt lúc tạo)">
-            <MoneyInput
-              name="pmgBasePrice"
-              defaultValue={recon?.pmgBasePrice ?? product?.pmgBasePrice ?? 0}
-              className="input"
-              readOnly={isEdit}
-            />
-          </Field>
-          <Field label="Phí admin (gồm VAT)">
-            <MoneyInput
-              name="adminFeeVat"
-              defaultValue={recon?.adminFeeVat ?? 0}
-              className="input"
-            />
-          </Field>
           <Field label="DT theo tiến độ đợt này">
             <MoneyInput
               name="revenueThisTime"
               defaultValue={recon?.revenueThisTime ?? 0}
-              className="input"
-            />
-          </Field>
-          <Field label="DT không theo tiến độ">
-            <MoneyInput
-              name="revenueOffProgress"
-              defaultValue={recon?.revenueOffProgress ?? 0}
-              className="input"
-            />
-          </Field>
-          <Field label="Khoản giảm doanh thu">
-            <MoneyInput
-              name="revenueReduction"
-              defaultValue={recon?.revenueReduction ?? 0}
               className="input"
             />
           </Field>
@@ -272,6 +241,27 @@ export default function RevenueForm({
             />
           </Field>
         </div>
+        {/* Fields lấy từ product / ít dùng — giữ hidden để BE nhận shape */}
+        <input
+          type="hidden"
+          name="pmgBasePrice"
+          defaultValue={String(recon?.pmgBasePrice ?? product?.pmgBasePrice ?? 0)}
+        />
+        <input
+          type="hidden"
+          name="adminFeeVat"
+          defaultValue={String(recon?.adminFeeVat ?? 0)}
+        />
+        <input
+          type="hidden"
+          name="revenueOffProgress"
+          defaultValue={String(recon?.revenueOffProgress ?? 0)}
+        />
+        <input
+          type="hidden"
+          name="revenueReduction"
+          defaultValue={String(recon?.revenueReduction ?? 0)}
+        />
       </Section>
 
       {!isEdit && (

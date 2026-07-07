@@ -35,6 +35,8 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
     pmgCumPct: revenueReconciliations.pmgCumulativePct,
     phasePct: revenueReconciliations.phasePctThisTime,
     revThis: revenueReconciliations.revenueThisTime,
+    cdtBonusSale: revenueReconciliations.cdtBonusSale,
+    cdtBonusManager: revenueReconciliations.cdtBonusManager,
     totalReceivable: revenueReconciliations.totalReceivableThisTime,
     invoiceNumber: invoices.invoiceNumber,
     invoiceDate: invoices.invoiceDate,
@@ -223,8 +225,17 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
               const receivable = Number(r.totalReceivable ?? 0);
               const paid = paidMap.get(r.id) ?? 0;
               const remaining = receivable - paid;
+              const revThis = Number(r.revThis ?? 0);
+              const cdtBonusSale = Number(r.cdtBonusSale ?? 0);
+              const cdtBonusMgr = Number(r.cdtBonusManager ?? 0);
+              const isBonus = revThis === 0 && (cdtBonusSale > 0 || cdtBonusMgr > 0);
               return (
-                <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50">
+                <tr
+                  key={r.id}
+                  className={`border-t border-slate-100 hover:bg-slate-50 ${
+                    isBonus ? "bg-amber-50/40" : ""
+                  }`}
+                >
                   <td className="p-2 text-xs">{fmtDate(r.date)}</td>
                   <td className="p-2">
                     <div className="text-xs font-medium">{r.projectName}</div>
@@ -237,6 +248,18 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
                     >
                       {r.unitCode}
                     </Link>
+                    {isBonus && (
+                      <span
+                        className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 whitespace-nowrap"
+                        title={
+                          cdtBonusMgr > 0
+                            ? "Thưởng nóng CĐT cho QL sàn"
+                            : "Thưởng nóng CĐT cho sale"
+                        }
+                      >
+                        Thưởng nóng
+                      </span>
+                    )}
                   </td>
                   <td className="p-2 font-mono text-xs">{r.invoiceNumber ?? "—"}</td>
                   <td className="p-2 text-xs">{fmtDate(r.invoiceDate)}</td>
