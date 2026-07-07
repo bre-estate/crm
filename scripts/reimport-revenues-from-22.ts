@@ -75,9 +75,11 @@ async function main() {
     })
     .from(schema.products)
     .leftJoin(schema.projects, eq(schema.products.projectId, schema.projects.id));
+  const normalizeUnit = (s: string): string => s.trim().replace(/[.\-\s]/g, "");
   const productByKey = new Map<string, number>();
   for (const p of dbProducts) {
-    productByKey.set(`${(p.projectName ?? "").trim()}|${p.unitCode.trim()}`, p.id);
+    const key = `${(p.projectName ?? "").trim()}|${normalizeUnit(p.unitCode)}`;
+    productByKey.set(key, p.id);
   }
   console.log(`Loaded ${productByKey.size} products in DB`);
 
@@ -111,11 +113,11 @@ async function main() {
     const unitCode = toStr(r[7]);
     const projectName = toStr(r[8]);
     if (!unitCode || !projectName) continue;
-    const key = `${projectName}|${unitCode}`;
+    const key = `${projectName}|${normalizeUnit(unitCode)}`;
     const productId = productByKey.get(key);
     if (!productId) {
       notFound++;
-      notFoundKeys.add(key);
+      notFoundKeys.add(`${projectName}|${unitCode}`);
       continue;
     }
     parsed.push({
@@ -203,7 +205,6 @@ async function main() {
               invoiceNumber: r.invoiceNumber,
               invoiceDate: r.invoiceDate,
               totalAmountVat: r.invoiceTotalVat,
-              productId: r.productId,
             })
             .returning({ id: schema.invoices.id });
           invoiceId = inserted.id;
