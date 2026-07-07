@@ -16,6 +16,7 @@ type ProductOption = {
   adminFee: number | null;
   projectName: string | null;
   partnerName: string | null;
+  saleType?: string | null;
 };
 
 type InvoiceInfo = { number: string; date: string | null; totalAmountVat: number };
@@ -55,6 +56,7 @@ export default function RevenueForm({
   );
   const product = useMemo(() => products.find((p) => p.id === productId), [products, productId]);
   const isEdit = !!recon;
+  const isSecondary = product?.saleType === "secondary";
 
   return (
     <form
@@ -112,16 +114,20 @@ export default function RevenueForm({
               </div>
             )}
           </Field>
-          <Field label="Đợt số (1-5)">
-            <input
-              name="phaseNumber"
-              type="number"
-              min={1}
-              max={5}
-              defaultValue={recon?.phaseNumber ?? 1}
-              className="input"
-            />
-          </Field>
+          {isSecondary ? (
+            <input type="hidden" name="phaseNumber" value={recon?.phaseNumber ?? 1} />
+          ) : (
+            <Field label="Đợt số (1-5)">
+              <input
+                name="phaseNumber"
+                type="number"
+                min={1}
+                max={5}
+                defaultValue={recon?.phaseNumber ?? 1}
+                className="input"
+              />
+            </Field>
+          )}
           <Field label="Ngày đối chiếu">
             <input
               type="date"
@@ -137,15 +143,19 @@ export default function RevenueForm({
               className="input"
             />
           </Field>
-          <Field label="%PMG_LK lũy kế đến đợt này (vd: 5.5)">
-            <input
-              name="pmgCumulativePct"
-              type="number"
-              step="any"
-              defaultValue={pctDisplay(recon?.pmgCumulativePct)}
-              className="input"
-            />
-          </Field>
+          {isSecondary ? (
+            <input type="hidden" name="pmgCumulativePct" defaultValue={pctDisplay(recon?.pmgCumulativePct)} />
+          ) : (
+            <Field label="%PMG_LK lũy kế đến đợt này (vd: 5.5)">
+              <input
+                name="pmgCumulativePct"
+                type="number"
+                step="any"
+                defaultValue={pctDisplay(recon?.pmgCumulativePct)}
+                className="input"
+              />
+            </Field>
+          )}
         </div>
       </Section>
 

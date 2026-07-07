@@ -41,7 +41,10 @@ export const fmtDate = (v: string | null | undefined): string => {
   if (!v) return "";
   const d = new Date(v);
   if (isNaN(d.getTime())) return v;
-  return d.toLocaleDateString("vi-VN");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
 };
 
 // Dự án thứ cấp không có partner (partnerId null). Backward-compat check

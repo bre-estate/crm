@@ -21,6 +21,7 @@ export default async function NewRevenuePage({ searchParams }: { searchParams: S
       adminFee: products.adminFee,
       projectName: projects.name,
       partnerName: partners.name,
+      saleType: products.saleType,
     })
     .from(products)
     .leftJoin(projects, eq(products.projectId, projects.id))
