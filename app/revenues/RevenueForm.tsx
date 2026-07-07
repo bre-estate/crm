@@ -159,7 +159,12 @@ export default function RevenueForm({
         </div>
       </Section>
 
-      <Section title="Hóa đơn">
+      <Section
+        title={`📄 Hóa đơn ${invoiceInit?.number ? "· ✅ Đã lập" : "· ⚠ Chưa lập"}`}
+      >
+        <div className="text-xs text-slate-500 -mt-2 mb-2">
+          Trạng thái xuất hóa đơn cho đợt đối chiếu này. Nếu chưa lập, cứ để trống.
+        </div>
         <div className="grid grid-cols-3 gap-4">
           <Field label="Số hóa đơn">
             <input
@@ -207,9 +212,35 @@ export default function RevenueForm({
         defaultValue={pctDisplay(recon?.otherRevenuePct)}
       />
 
-      <Section title="Số tiền (VND)">
+      {/* Tham chiếu từ căn — grayed out */}
+      {product && (
+        <Section title="📌 Tham chiếu từ căn (không sửa được)">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+            <RefInfo label="Giá tính PMG" value={fmtMoney(product.pmgBasePrice)} />
+            <RefInfo
+              label="%PMG_LK"
+              value={`${Number((Number(product.pmgRate ?? 0) * 100).toFixed(2))}%`}
+            />
+            <RefInfo label="Phí admin" value={fmtMoney(product.adminFee)} />
+            <RefInfo
+              label="HH BRE dự kiến"
+              value={fmtMoney(
+                Math.max(
+                  0,
+                  Number(product.pmgBasePrice ?? 0) * Number(product.pmgRate ?? 0) -
+                    Number(product.adminFee ?? 0),
+                ),
+              )}
+              highlight
+            />
+          </div>
+        </Section>
+      )}
+
+      {/* Số tiền đợt này */}
+      <Section title="💵 Số tiền đợt này (VND)">
         <div className="text-xs text-slate-500 -mt-2 mb-2">
-          Giá tính PMG, %PMG_LK, Phí admin đã có ở giao dịch của căn — không nhập lại ở đây.
+          Số tiền CĐT phải trả cho đợt đối chiếu này. Nhập từ biên bản ĐC.
         </div>
         <div className="grid grid-cols-2 gap-4">
           <Field label="DT theo tiến độ đợt này">
@@ -219,14 +250,14 @@ export default function RevenueForm({
               className="input"
             />
           </Field>
-          <Field label="CĐT thưởng sale (đợt này)">
+          <Field label="CĐT thưởng sale (nếu có)">
             <MoneyInput
               name="cdtBonusSale"
               defaultValue={recon?.cdtBonusSale ?? 0}
               className="input"
             />
           </Field>
-          <Field label="CĐT thưởng QL sàn (đợt này)">
+          <Field label="CĐT thưởng QL sàn (nếu có)">
             <MoneyInput
               name="cdtBonusManager"
               defaultValue={recon?.cdtBonusManager ?? 0}
@@ -265,7 +296,7 @@ export default function RevenueForm({
       </Section>
 
       {!isEdit && (
-        <Section title="Ghi nhận thu tiền (tùy chọn — nếu CĐT đã trả cho đợt này rồi)">
+        <Section title="🏦 Đã nhận tiền vào TK cty chưa? (tùy chọn — điền nếu CĐT đã trả rồi)">
           <div className="grid grid-cols-2 gap-4">
             <Field label="Ngày nhận tiền">
               <input
@@ -365,6 +396,25 @@ function Field({
         {label} {required && <span className="text-red-500">*</span>}
       </label>
       {children}
+    </div>
+  );
+}
+
+function RefInfo({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+}) {
+  return (
+    <div className={`rounded-lg p-3 ${highlight ? "bg-green-50 border border-green-200" : "bg-slate-100 border border-slate-200"}`}>
+      <div className="text-xs text-slate-500">{label}</div>
+      <div className={`text-sm font-semibold tabular-nums mt-0.5 ${highlight ? "text-green-700" : "text-slate-500"}`}>
+        {value}
+      </div>
     </div>
   );
 }
