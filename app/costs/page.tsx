@@ -58,6 +58,25 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
     return true;
   });
 
+  // Sort: group theo loại (đúng thứ tự nghiệp vụ) + date DESC trong nhóm
+  const costTypeOrder: Record<string, number> = {
+    sale_commission: 1,
+    customer_support: 2,
+    bonus_sale: 3,
+    bonus_manager: 4,
+    cdt_bonus_sale: 5,
+    cdt_bonus_manager: 6,
+    kpi_ceo: 7,
+    kpi_tpkd: 8,
+    kpi_admin: 9,
+  };
+  rows.sort((a, b) => {
+    const oA = costTypeOrder[a.costType] ?? 99;
+    const oB = costTypeOrder[b.costType] ?? 99;
+    if (oA !== oB) return oA - oB;
+    return (b.date ?? "").localeCompare(a.date ?? "");
+  });
+
   const paymentAgg = await db
     .select({
       recId: paymentsOut.costReconciliationId,
@@ -66,6 +85,16 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
     .from(paymentsOut)
     .groupBy(paymentsOut.costReconciliationId);
   const paidMap = new Map(paymentAgg.map((r) => [r.recId, Number(r.total ?? 0)]));
+
+  // Tính subtotal per loại
+  const subtotalByType = new Map<string, { count: number; payable: number; paid: number }>();
+  for (const r of rows) {
+    const s = subtotalByType.get(r.costType) ?? { count: 0, payable: 0, paid: 0 };
+    s.count++;
+    s.payable += Number(r.amountPayable ?? 0);
+    s.paid += paidMap.get(r.id) ?? 0;
+    subtotalByType.set(r.costType, s);
+  }
 
   const totalPayable = rows.reduce((s, r) => s + Number(r.amountPayable ?? 0), 0);
   const totalPaid = rows.reduce((s, r) => s + (paidMap.get(r.id) ?? 0), 0);
@@ -188,10 +217,42 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => {
+            {rows.map((r, idx) => {
               const paid = paidMap.get(r.id) ?? 0;
-              return (
-                <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50">
+              const prevType = idx > 0 ? rows[idx - 1].costType : null;
+              const isFirstOfGroup = r.costType !== prevType;
+              const subtotal = subtotalByType.get(r.costType);
+              return [
+                isFirstOfGroup && subtotal ? (
+                    <tr
+                      key={`hdr-${r.costType}`}
+                      className="bg-slate-50 border-t-2 border-slate-300"
+                    >
+                      <td colSpan={11} className="p-2 text-xs">
+                        <div className="flex items-center gap-3">
+                          <span className="font-semibold text-slate-700">
+                            {costTypeLabel(r.costType)}
+                          </span>
+                          <span className="text-slate-500">
+                            · {subtotal.count} dòng · Tổng phải trả:{" "}
+                            <span className="font-semibold tabular-nums text-slate-800">
+                              {fmtMoney(subtotal.payable)}
+                            </span>
+                            {subtotal.paid > 0 && (
+                              <>
+                                {" "}
+                                · Đã trả:{" "}
+                                <span className="font-semibold tabular-nums text-green-700">
+                                  {fmtMoney(subtotal.paid)}
+                                </span>
+                              </>
+                            )}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                ) : null,
+                  <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50">
                   <td className="p-2 text-xs">{fmtDate(r.date)}</td>
                   <td className="p-2 text-xs">{toTitleCase(r.employee)}</td>
                   <td className="p-2">
@@ -247,8 +308,8 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
                       Sửa
                     </Link>
                   </td>
-                </tr>
-              );
+                </tr>,
+              ];
             })}
             {rows.length === 0 && (
               <tr>
