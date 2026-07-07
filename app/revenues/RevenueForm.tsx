@@ -58,6 +58,37 @@ export default function RevenueForm({
   const isEdit = !!recon;
   const isSecondary = product?.saleType === "secondary";
 
+  // Loại đợt: đợt tiến độ N (phase:N) hoặc bonus_sale / bonus_manager
+  const initialReconType = ((): string => {
+    if (recon) {
+      if (Number(recon.cdtBonusSale ?? 0) > 0) return "bonus_sale";
+      if (Number(recon.cdtBonusManager ?? 0) > 0) return "bonus_manager";
+      if (recon.phaseNumber) return `phase:${recon.phaseNumber}`;
+    }
+    return "phase:1";
+  })();
+  const [reconType, setReconType] = useState(initialReconType);
+
+  const initialAmount = ((): number => {
+    if (recon) {
+      return (
+        Number(recon.revenueThisTime ?? 0) ||
+        Number(recon.cdtBonusSale ?? 0) ||
+        Number(recon.cdtBonusManager ?? 0) ||
+        Number(recon.totalReceivableThisTime ?? 0)
+      );
+    }
+    return 0;
+  })();
+  const [amount, setAmount] = useState<number>(initialAmount);
+  const amountDisplay = amount ? amount.toLocaleString("vi-VN") : "";
+
+  const isPhaseType = reconType.startsWith("phase:");
+  const phaseN = isPhaseType ? Number(reconType.split(":")[1]) : 0;
+  const revenueThisTimeVal = isPhaseType ? amount : 0;
+  const cdtBonusSaleVal = reconType === "bonus_sale" ? amount : 0;
+  const cdtBonusManagerVal = reconType === "bonus_manager" ? amount : 0;
+
   return (
     <form
       action={(fd) =>
@@ -114,20 +145,6 @@ export default function RevenueForm({
               </div>
             )}
           </Field>
-          {isSecondary ? (
-            <input type="hidden" name="phaseNumber" value={recon?.phaseNumber ?? 1} />
-          ) : (
-            <Field label="Đợt số (1-5)">
-              <input
-                name="phaseNumber"
-                type="number"
-                min={1}
-                max={5}
-                defaultValue={recon?.phaseNumber ?? 1}
-                className="input"
-              />
-            </Field>
-          )}
           <Field label="Ngày đối chiếu">
             <input
               type="date"
@@ -159,9 +176,7 @@ export default function RevenueForm({
         </div>
       </Section>
 
-      <Section
-        title={`📄 Hóa đơn ${invoiceInit?.number ? "· ✅ Đã lập" : "· ⚠ Chưa lập"}`}
-      >
+      <Section title={`📄 Hóa đơn${invoiceInit?.number ? " · ✅ Đã lập" : ""}`}>
         <div className="text-xs text-slate-500 -mt-2 mb-2">
           Trạng thái xuất hóa đơn cho đợt đối chiếu này. Nếu chưa lập, cứ để trống.
         </div>
@@ -239,40 +254,57 @@ export default function RevenueForm({
 
       {/* Số tiền đợt này */}
       <Section title="💵 Số tiền đợt này (VND)">
-        <div className="text-xs text-slate-500 -mt-2 mb-2">
-          Số tiền CĐT phải trả cho đợt đối chiếu này. Nhập từ biên bản ĐC.
-        </div>
         <div className="grid grid-cols-2 gap-4">
-          <Field label="DT theo tiến độ đợt này">
-            <MoneyInput
-              name="revenueThisTime"
-              defaultValue={recon?.revenueThisTime ?? 0}
+          <Field label="Loại đợt" required>
+            <select
+              value={reconType}
+              onChange={(e) => setReconType(e.target.value)}
               className="input"
+            >
+              {!isSecondary && (
+                <>
+                  <option value="phase:1">Đợt 1 (theo tiến độ)</option>
+                  <option value="phase:2">Đợt 2 (theo tiến độ)</option>
+                  <option value="phase:3">Đợt 3 (theo tiến độ)</option>
+                  <option value="phase:4">Đợt 4 (theo tiến độ)</option>
+                  <option value="phase:5">Đợt 5 (theo tiến độ)</option>
+                </>
+              )}
+              {isSecondary && <option value="phase:1">Đợt duy nhất</option>}
+              <option value="bonus_sale">Thưởng nóng cho sale</option>
+              <option value="bonus_manager">Thưởng nóng cho quản lý sàn</option>
+            </select>
+          </Field>
+          <Field label="Số tiền (VND)" required>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={amountDisplay}
+              onChange={(e) => {
+                const digits = e.target.value.replace(/\D/g, "");
+                setAmount(digits ? Number(digits) : 0);
+              }}
+              onFocus={(e) => e.currentTarget.select()}
+              className="input"
+              placeholder="0"
             />
           </Field>
-          <Field label="CĐT thưởng sale (nếu có)">
-            <MoneyInput
-              name="cdtBonusSale"
-              defaultValue={recon?.cdtBonusSale ?? 0}
+          <Field label="Mô tả / Ghi chú" full>
+            <input
+              name="note"
+              defaultValue={recon?.note ?? ""}
               className="input"
-            />
-          </Field>
-          <Field label="CĐT thưởng QL sàn (nếu có)">
-            <MoneyInput
-              name="cdtBonusManager"
-              defaultValue={recon?.cdtBonusManager ?? 0}
-              className="input"
-            />
-          </Field>
-          <Field label="Tổng phải thu đợt này">
-            <MoneyInput
-              name="totalReceivableThisTime"
-              defaultValue={recon?.totalReceivableThisTime ?? 0}
-              className="input"
+              placeholder="vd: Đợt cọc, đợt HĐMB, thưởng nóng, ..."
             />
           </Field>
         </div>
-        {/* Fields lấy từ product / ít dùng — giữ hidden để BE nhận shape */}
+
+        {/* Hidden inputs — route số tiền vào field đúng theo loại */}
+        <input type="hidden" name="phaseNumber" value={phaseN} />
+        <input type="hidden" name="revenueThisTime" value={revenueThisTimeVal} />
+        <input type="hidden" name="cdtBonusSale" value={cdtBonusSaleVal} />
+        <input type="hidden" name="cdtBonusManager" value={cdtBonusManagerVal} />
+        <input type="hidden" name="totalReceivableThisTime" value={amount} />
         <input
           type="hidden"
           name="pmgBasePrice"
@@ -319,12 +351,6 @@ export default function RevenueForm({
           </div>
         </Section>
       )}
-
-      <Section title="Ghi chú">
-        <Field label="Nội dung">
-          <textarea name="note" defaultValue={recon?.note ?? ""} className="input" rows={2} />
-        </Field>
-      </Section>
 
       <div className="flex justify-end gap-3 pt-2">
         {onDelete && (
