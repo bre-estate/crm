@@ -41,6 +41,18 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
       unitCode: products.unitCode,
       projectName: projects.name,
       partnerName: partners.name,
+      productPmgBase: products.pmgBasePrice,
+      productPmgSaleRate: products.pmgSaleRate,
+      productPmgRate: products.pmgRate,
+      productSaleCommRate: products.saleCommissionRate,
+      productKpiCeoRate: products.kpiCeoRate,
+      productKpiTpkdRate: products.kpiTpkdRate,
+      productKpiAdminRate: products.kpiAdminRate,
+      productCustSupport: products.customerSupport,
+      productBonusSale: products.bonusSale,
+      productBonusMgr: products.bonusManager,
+      productCdtBonusSale: products.cdtBonusSale,
+      productCdtBonusMgr: products.cdtBonusManager,
     })
     .from(costReconciliations)
     .leftJoin(products, eq(costReconciliations.productId, products.id))
@@ -86,10 +98,33 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
     .groupBy(paymentsOut.costReconciliationId);
   const paidMap = new Map(paymentAgg.map((r) => [r.recId, Number(r.total ?? 0)]));
 
-  // Tính subtotal per loại
-  const subtotalByType = new Map<string, { count: number; payable: number; paid: number }>();
+  // Tính subtotal per loại + target (target chỉ có nghĩa khi filter về 1 căn)
+  const uniqueProdIds = new Set(rows.map((r) => r.productId));
+  const singleProduct = uniqueProdIds.size === 1 ? rows[0] : null;
+  const targetByType = new Map<string, number>();
+  if (singleProduct) {
+    const pmgBase = Number(singleProduct.productPmgBase ?? 0);
+    const pmgSaleRate =
+      Number(singleProduct.productPmgSaleRate ?? 0) || Number(singleProduct.productPmgRate ?? 0);
+    const Q_sale = pmgBase * pmgSaleRate;
+    targetByType.set("sale_commission", Q_sale * Number(singleProduct.productSaleCommRate ?? 0));
+    targetByType.set("kpi_ceo", Q_sale * Number(singleProduct.productKpiCeoRate ?? 0));
+    targetByType.set("kpi_tpkd", Q_sale * Number(singleProduct.productKpiTpkdRate ?? 0));
+    targetByType.set("kpi_admin", Q_sale * Number(singleProduct.productKpiAdminRate ?? 0));
+    targetByType.set("customer_support", Number(singleProduct.productCustSupport ?? 0));
+    targetByType.set("bonus_sale", Number(singleProduct.productBonusSale ?? 0));
+    targetByType.set("bonus_manager", Number(singleProduct.productBonusMgr ?? 0));
+    targetByType.set("cdt_bonus_sale", Number(singleProduct.productCdtBonusSale ?? 0));
+    targetByType.set("cdt_bonus_manager", Number(singleProduct.productCdtBonusMgr ?? 0));
+  }
+  const subtotalByType = new Map<
+    string,
+    { count: number; payable: number; paid: number; target: number }
+  >();
   for (const r of rows) {
-    const s = subtotalByType.get(r.costType) ?? { count: 0, payable: 0, paid: 0 };
+    const s =
+      subtotalByType.get(r.costType) ??
+      { count: 0, payable: 0, paid: 0, target: targetByType.get(r.costType) ?? 0 };
     s.count++;
     s.payable += Number(r.amountPayable ?? 0);
     s.paid += paidMap.get(r.id) ?? 0;
@@ -224,33 +259,63 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
               const subtotal = subtotalByType.get(r.costType);
               return [
                 isFirstOfGroup && subtotal ? (
-                    <tr
-                      key={`hdr-${r.costType}`}
-                      className="bg-slate-50 border-t-2 border-slate-300"
-                    >
-                      <td colSpan={11} className="p-2 text-xs">
-                        <div className="flex items-center gap-3">
-                          <span className="font-semibold text-slate-700">
-                            {costTypeLabel(r.costType)}
-                          </span>
-                          <span className="text-slate-500">
-                            · {subtotal.count} dòng · Tổng phải trả:{" "}
-                            <span className="font-semibold tabular-nums text-slate-800">
-                              {fmtMoney(subtotal.payable)}
-                            </span>
-                            {subtotal.paid > 0 && (
-                              <>
-                                {" "}
-                                · Đã trả:{" "}
-                                <span className="font-semibold tabular-nums text-green-700">
-                                  {fmtMoney(subtotal.paid)}
+                    (() => {
+                      const target = subtotal.target;
+                      const pct = target > 0 ? (subtotal.payable / target) * 100 : 0;
+                      const done = target > 0 && Math.abs(subtotal.payable - target) < 1000;
+                      const over = target > 0 && subtotal.payable - target > 1000;
+                      const under = target > 0 && target - subtotal.payable > 1000;
+                      return (
+                        <tr
+                          key={`hdr-${r.costType}`}
+                          className="bg-slate-50 border-t-2 border-slate-300"
+                        >
+                          <td colSpan={11} className="p-2 text-xs">
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <span className="font-semibold text-slate-700">
+                                {costTypeLabel(r.costType)}
+                              </span>
+                              <span className="text-slate-500">
+                                · {subtotal.count} dòng · Tổng đã chi:{" "}
+                                <span className="font-semibold tabular-nums text-slate-800">
+                                  {fmtMoney(subtotal.payable)}
                                 </span>
-                              </>
-                            )}
-                          </span>
-                        </div>
-                      </td>
-                    </tr>
+                                {target > 0 && (
+                                  <>
+                                    {" "}
+                                    · Target:{" "}
+                                    <span className="font-semibold tabular-nums text-slate-800">
+                                      {fmtMoney(target)}
+                                    </span>{" "}
+                                    ·{" "}
+                                    <span
+                                      className={`font-bold tabular-nums ${
+                                        done
+                                          ? "text-green-700"
+                                          : over
+                                            ? "text-purple-700"
+                                            : under
+                                              ? "text-amber-700"
+                                              : "text-slate-500"
+                                      }`}
+                                      title={
+                                        done
+                                          ? "Đã chi đủ target"
+                                          : over
+                                            ? `Chi quá ${fmtMoney(subtotal.payable - target)}`
+                                            : `Còn thiếu ${fmtMoney(target - subtotal.payable)}`
+                                      }
+                                    >
+                                      {pct.toFixed(0)}%
+                                    </span>
+                                  </>
+                                )}
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })()
                 ) : null,
                   <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50">
                   <td className="p-2 text-xs">{fmtDate(r.date)}</td>

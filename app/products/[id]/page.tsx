@@ -869,6 +869,102 @@ export default async function ProductDetailPage({
           );
         })()}
 
+        {/* Completeness check per loại chi phí */}
+        {(() => {
+          const pmgBase = Number(p.pmgBasePrice ?? 0);
+          const pmgSaleRate = Number(p.pmgSaleRate ?? 0) || Number(p.pmgRate ?? 0);
+          const Q_sale = pmgBase * pmgSaleRate;
+
+          type Row = { key: string; label: string; target: number; actual: number };
+          const rows: Row[] = [];
+          const addRow = (key: string, label: string, target: number) => {
+            const actual = costRecs
+              .filter((r) => r.costType === key)
+              .reduce((s, r) => s + Number(r.amountPayableThisTime ?? 0), 0);
+            if (target > 0 || actual !== 0) {
+              rows.push({ key, label, target, actual });
+            }
+          };
+
+          addRow("sale_commission", "HH sale (NVKD)", Q_sale * Number(p.saleCommissionRate ?? 0));
+          addRow("kpi_ceo", "KPI CEO", Q_sale * Number(p.kpiCeoRate ?? 0));
+          addRow("kpi_tpkd", "KPI TPKD", Q_sale * Number(p.kpiTpkdRate ?? 0));
+          addRow("kpi_admin", "KPI Admin", Q_sale * Number(p.kpiAdminRate ?? 0));
+          addRow("customer_support", "Hỗ trợ khách", Number(p.customerSupport ?? 0));
+          addRow("bonus_sale", "Thưởng NVKD (CTY)", Number(p.bonusSale ?? 0));
+          addRow("bonus_manager", "Thưởng TPKD (CTY)", Number(p.bonusManager ?? 0));
+          addRow("cdt_bonus_sale", "Thưởng nóng CĐT (NVKD)", Number(p.cdtBonusSale ?? 0));
+          addRow("cdt_bonus_manager", "Thưởng nóng CĐT (TPKD)", Number(p.cdtBonusManager ?? 0));
+
+          if (rows.length === 0) return null;
+          return (
+            <div className="mb-4">
+              <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
+                Kiểm tra hoàn thành (Target vs Đã chi)
+              </div>
+              <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead className="bg-slate-50 text-slate-600">
+                    <tr>
+                      <th className="text-left p-2">Loại</th>
+                      <th className="text-right p-2">Target</th>
+                      <th className="text-right p-2">Đã chi</th>
+                      <th className="text-right p-2">Còn / Vượt</th>
+                      <th className="text-right p-2">%</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((row) => {
+                      const diff = row.actual - row.target;
+                      const pct = row.target > 0 ? (row.actual / row.target) * 100 : 0;
+                      const isDone = row.target > 0 && Math.abs(diff) < 1000;
+                      const isOver = row.target > 0 && diff > 1000;
+                      const isUnder = row.target > 0 && diff < -1000;
+                      return (
+                        <tr key={row.key} className="border-t border-slate-100">
+                          <td className="p-2">{row.label}</td>
+                          <td className="p-2 text-right tabular-nums">
+                            {row.target > 0 ? fmtMoney(row.target) : "—"}
+                          </td>
+                          <td className="p-2 text-right tabular-nums">{fmtMoney(row.actual)}</td>
+                          <td
+                            className={`p-2 text-right tabular-nums font-medium ${
+                              isDone
+                                ? "text-slate-400"
+                                : isOver
+                                  ? "text-purple-700"
+                                  : "text-orange-700"
+                            }`}
+                          >
+                            {row.target === 0 ? "—" : isDone ? "✓" : fmtMoney(diff)}
+                          </td>
+                          <td
+                            className={`p-2 text-right tabular-nums font-semibold ${
+                              isDone
+                                ? "text-green-700"
+                                : isOver
+                                  ? "text-purple-700"
+                                  : isUnder
+                                    ? "text-amber-700"
+                                    : "text-slate-400"
+                            }`}
+                          >
+                            {row.target > 0 ? `${pct.toFixed(0)}%` : "—"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="text-xs text-slate-500 mt-1">
+                Target dựa theo cấu hình căn (Q_sale × rate cho HH/KPI, số flat cho thưởng/hỗ trợ).
+                Cột "Còn / Vượt": xanh xám ✓ = khớp, cam = còn thiếu, tím = chi quá.
+              </div>
+            </div>
+          );
+        })()}
+
         <div className="flex justify-between items-center mb-2">
           <div className="text-xs text-slate-500 uppercase font-semibold">
             Các dòng đối chiếu ({costRecs.length})
