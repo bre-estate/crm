@@ -141,6 +141,15 @@ export default function RevenueForm({
               className="input"
             />
           </Field>
+          <Field label="%PMG_LK lũy kế đến đợt này (vd: 5.5)">
+            <input
+              name="pmgCumulativePct"
+              type="number"
+              step="any"
+              defaultValue={pctDisplay(recon?.pmgCumulativePct)}
+              className="input"
+            />
+          </Field>
         </div>
       </Section>
 
@@ -175,43 +184,22 @@ export default function RevenueForm({
         </div>
       </Section>
 
-      <Section title="Tỷ lệ %">
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="%PMG_LK lũy kế đến đợt này (vd: 5.5)">
-            <input
-              name="pmgCumulativePct"
-              type="number"
-              step="any"
-              defaultValue={pctDisplay(recon?.pmgCumulativePct)}
-              className="input"
-            />
-          </Field>
-          {/* phasePctThisTime: giữ ngầm — Excel không có cột này, script import không fill */}
-          <input
-            type="hidden"
-            name="phasePctThisTime"
-            defaultValue={pctDisplay(recon?.phasePctThisTime)}
-          />
-          <Field label="%PMG hỗ trợ (hồi tố nếu có)">
-            <input
-              name="pmgSupportPct"
-              type="number"
-              step="any"
-              defaultValue={pctDisplay(recon?.pmgSupportPct)}
-              className="input"
-            />
-          </Field>
-          <Field label="%doanh thu khác">
-            <input
-              name="otherRevenuePct"
-              type="number"
-              step="any"
-              defaultValue={pctDisplay(recon?.otherRevenuePct)}
-              className="input"
-            />
-          </Field>
-        </div>
-      </Section>
+      {/* Các % Excel không có, giữ hidden để không break shape / data cũ */}
+      <input
+        type="hidden"
+        name="phasePctThisTime"
+        defaultValue={pctDisplay(recon?.phasePctThisTime)}
+      />
+      <input
+        type="hidden"
+        name="pmgSupportPct"
+        defaultValue={pctDisplay(recon?.pmgSupportPct)}
+      />
+      <input
+        type="hidden"
+        name="otherRevenuePct"
+        defaultValue={pctDisplay(recon?.otherRevenuePct)}
+      />
 
       <Section title="Số tiền (VND)">
         {isEdit && (
