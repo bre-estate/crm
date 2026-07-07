@@ -149,3 +149,15 @@ export async function deletePaymentIn(id: number) {
   await db.delete(paymentsIn).where(eq(paymentsIn.id, id));
   revalidatePath("/revenues");
 }
+
+export async function updatePaymentIn(id: number, fd: FormData) {
+  await db
+    .update(paymentsIn)
+    .set({
+      paymentDate: toStrOrNull(fd.get("paymentDate")),
+      amount: toNum(fd.get("amount")),
+      note: toStrOrNull(fd.get("note")),
+    })
+    .where(eq(paymentsIn.id, id));
+  revalidatePath("/revenues");
+}

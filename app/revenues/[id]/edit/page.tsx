@@ -11,7 +11,14 @@ import { asc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import RevenueForm from "../../RevenueForm";
-import { updateRevenue, deleteRevenue } from "@/lib/actions/revenues";
+import PaymentsEditor from "./PaymentsEditor";
+import {
+  updateRevenue,
+  deleteRevenue,
+  addPaymentIn,
+  updatePaymentIn,
+  deletePaymentIn,
+} from "@/lib/actions/revenues";
 
 export default async function EditRevenuePage({
   params,
@@ -72,19 +79,21 @@ export default async function EditRevenuePage({
       </div>
       <h1 className="text-2xl font-bold">Sửa đợt đối chiếu doanh thu</h1>
 
-      {payments.length > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm">
-          <div className="font-semibold mb-1">Đã có {payments.length} lần thanh toán cho đợt này:</div>
-          <ul className="list-disc list-inside text-xs text-slate-700">
-            {payments.map((p) => (
-              <li key={p.id}>
-                {p.paymentDate ?? "(chưa có ngày)"} —{" "}
-                {new Intl.NumberFormat("vi-VN").format(Number(p.amount ?? 0))} VND
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <PaymentsEditor
+        payments={payments}
+        onUpdate={async (paymentId, fd) => {
+          "use server";
+          await updatePaymentIn(paymentId, fd);
+        }}
+        onDelete={async (paymentId) => {
+          "use server";
+          await deletePaymentIn(paymentId);
+        }}
+        onAdd={async (fd) => {
+          "use server";
+          await addPaymentIn(id, fd);
+        }}
+      />
 
       <RevenueForm
         recon={recon}
