@@ -154,10 +154,10 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
               <th className="text-left p-2">Ngày ĐC</th>
               <th className="text-left p-2">Dự án / Đối tác</th>
               <th className="text-left p-2">Mã căn</th>
-              <th className="text-right p-2" title="%PMG_LK toàn hợp đồng của căn">Tổng %PMG</th>
-              <th className="text-center p-2">Đợt</th>
               <th className="text-left p-2">Số HĐ</th>
               <th className="text-left p-2">Ngày HĐ</th>
+              <th className="text-right p-2" title="%PMG_LK toàn hợp đồng của căn">Tổng %PMG</th>
+              <th className="text-center p-2">Đợt</th>
               <th className="text-right p-2">%PMG lũy kế</th>
               <th className="text-right p-2">Phải thu</th>
               <th className="text-right p-2">Đã thu</th>
@@ -185,6 +185,8 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
                       {r.unitCode}
                     </Link>
                   </td>
+                  <td className="p-2 font-mono text-xs">{r.invoiceNumber ?? "—"}</td>
+                  <td className="p-2 text-xs">{fmtDate(r.invoiceDate)}</td>
                   <td className="p-2 text-right tabular-nums text-xs">
                     {Number(r.productPmgRate ?? 0) > 0 ? (
                       fmtPct(r.productPmgRate)
@@ -193,8 +195,6 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
                     )}
                   </td>
                   <td className="p-2 text-center text-xs">{r.phase ?? "—"}</td>
-                  <td className="p-2 font-mono text-xs">{r.invoiceNumber ?? "—"}</td>
-                  <td className="p-2 text-xs">{fmtDate(r.invoiceDate)}</td>
                   <td className="p-2 text-right tabular-nums text-xs">
                     {r.pmgCumPct ? fmtPct(r.pmgCumPct) : "—"}
                   </td>
