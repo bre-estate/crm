@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { costReconciliations, paymentsOut, products, projects, partners } from "@/lib/schema";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, ne } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import CostForm from "../../CostForm";
@@ -40,6 +40,8 @@ export default async function EditCostPage({
       bonusSale: products.bonusSale,
       bonusManager: products.bonusManager,
       customerSupport: products.customerSupport,
+      cdtBonusSale: products.cdtBonusSale,
+      cdtBonusManager: products.cdtBonusManager,
     })
     .from(products)
     .leftJoin(projects, eq(products.projectId, projects.id))
@@ -51,6 +53,27 @@ export default async function EditCostPage({
     .from(paymentsOut)
     .where(eq(paymentsOut.costReconciliationId, id))
     .orderBy(asc(paymentsOut.paymentDate));
+
+  // Previous recons cùng (product × cost_type × employee) để hiển thị progress
+  const previousRecons = await db
+    .select({
+      id: costReconciliations.id,
+      date: costReconciliations.reconciliationDate,
+      amount: costReconciliations.amountPayableThisTime,
+      note: costReconciliations.note,
+    })
+    .from(costReconciliations)
+    .where(
+      and(
+        eq(costReconciliations.productId, recon.productId),
+        eq(costReconciliations.costType, recon.costType),
+        recon.employeeName
+          ? eq(costReconciliations.employeeName, recon.employeeName)
+          : eq(costReconciliations.employeeName, ""),
+        ne(costReconciliations.id, id),
+      ),
+    )
+    .orderBy(asc(costReconciliations.reconciliationDate));
 
   return (
     <div className="space-y-4 max-w-4xl">
@@ -80,6 +103,7 @@ export default async function EditCostPage({
       <CostForm
         recon={recon}
         products={productOptions}
+        previousRecons={previousRecons}
         onSave={async (fd) => {
           "use server";
           await updateCost(id, fd);

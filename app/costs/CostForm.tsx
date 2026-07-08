@@ -25,6 +25,15 @@ type ProductOption = {
   bonusSale?: number | null;
   bonusManager?: number | null;
   customerSupport?: number | null;
+  cdtBonusSale?: number | null;
+  cdtBonusManager?: number | null;
+};
+
+type PreviousRecon = {
+  id: number;
+  date: string | null;
+  amount: number | string | null;
+  note: string | null;
 };
 
 type Props = {
@@ -32,6 +41,7 @@ type Props = {
   paymentInit?: { paymentDate: string | null; amount: number } | null;
   products: ProductOption[];
   defaultProductId?: number;
+  previousRecons?: PreviousRecon[];
   onSave: (fd: FormData) => Promise<void>;
   onDelete?: () => Promise<void>;
 };
@@ -51,7 +61,15 @@ const COST_TYPES = [
 const pctDisplay = (v: number | null | undefined): string =>
   v == null || v === 0 ? "" : String(Number((Number(v) * 100).toFixed(4)));
 
-export default function CostForm({ recon, paymentInit, products, defaultProductId, onSave, onDelete }: Props) {
+export default function CostForm({
+  recon,
+  paymentInit,
+  products,
+  defaultProductId,
+  previousRecons = [],
+  onSave,
+  onDelete,
+}: Props) {
   const [pending, start] = useTransition();
   const router = useRouter();
   const [productId, setProductId] = useState<number>(
@@ -90,6 +108,46 @@ export default function CostForm({ recon, paymentInit, products, defaultProductI
   const [totalAmt, setTotalAmt] = useState<number>(
     Number(recon?.amountPayableThisTime ?? 0),
   );
+
+  // Target base cho loại chi phí hiện tại
+  const Q_sale_full = useMemo(() => {
+    const base = Number(product?.pmgBasePrice ?? 0);
+    const rate = Number(product?.pmgSaleRate ?? 0) || Number(product?.pmgRate ?? 0);
+    return base * rate;
+  }, [product]);
+  const targetForType = useMemo(() => {
+    if (!product) return 0;
+    if (costType === "sale_commission")
+      return Q_sale_full * Number(product.saleCommissionRate ?? 0);
+    if (costType === "kpi_ceo") return Q_sale_full * Number(product.kpiCeoRate ?? 0);
+    if (costType === "kpi_tpkd") return Q_sale_full * Number(product.kpiTpkdRate ?? 0);
+    if (costType === "kpi_admin") return Q_sale_full * Number(product.kpiAdminRate ?? 0);
+    if (costType === "customer_support") return Number(product.customerSupport ?? 0);
+    if (costType === "bonus_sale") return Number(product.bonusSale ?? 0);
+    if (costType === "bonus_manager") return Number(product.bonusManager ?? 0);
+    if (costType === "cdt_bonus_sale") return Number(product.cdtBonusSale ?? 0);
+    if (costType === "cdt_bonus_manager") return Number(product.cdtBonusManager ?? 0);
+    return 0;
+  }, [costType, product, Q_sale_full]);
+
+  // Tổng đã ĐC các đợt trước (cùng cost_type, cùng employee, cùng căn)
+  const paidBefore = useMemo(
+    () => previousRecons.reduce((s, r) => s + Number(r.amount ?? 0), 0),
+    [previousRecons],
+  );
+  const paidBeforePct = targetForType > 0 ? (paidBefore / targetForType) * 100 : 0;
+
+  // Payment progress cho đợt này: nhập % → tự tính số tiền
+  const [thisPct, setThisPct] = useState<string>(
+    targetForType > 0 && recon?.amountPayableThisTime
+      ? ((Number(recon.amountPayableThisTime) / targetForType) * 100).toFixed(2)
+      : "",
+  );
+  const thisPctNum = thisPct ? Number(thisPct.replace(/,/g, ".")) / 100 : 0;
+  const thisAmountFromPct = targetForType * thisPctNum;
+
+  const remainingBefore = Math.max(0, targetForType - paidBefore);
+  const remainingAfter = remainingBefore - thisAmountFromPct;
 
   // Q_sale = pmgBase × pmgSaleRate (fallback pmgRate)
   const Q_sale = useMemo(() => {
@@ -233,199 +291,192 @@ export default function CostForm({ recon, paymentInit, products, defaultProductI
         </div>
       </Section>
 
-      <Section title="Cơ sở tính (chốt tại thời điểm tạo đợt)">
-        {isEdit && (
-          <div className="text-xs text-slate-500 -mt-2 mb-2">
-            Ô có nền xám là dữ liệu chốt lúc tạo — không sửa được.
+      {/* Progress + Payment cho đợt này */}
+      <Section title="📊 Tiến độ chi trả">
+        <div className="text-xs text-slate-500 -mt-2 mb-3">
+          Loại chi phí: <b>{costTypeLabel(costType)}</b>
+          {product?.salesPerson && costType === "sale_commission" && (
+            <span> · Cho: {product.salesPerson}</span>
+          )}
+        </div>
+
+        {/* Progress cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+          <div className="rounded-lg bg-slate-50 border border-slate-200 p-3">
+            <div className="text-xs text-slate-500">Target</div>
+            <div className="text-sm font-semibold tabular-nums mt-1">
+              {fmtMoney(targetForType)}
+            </div>
+            <div className="text-[10px] text-slate-400 mt-0.5">
+              {costType === "sale_commission" || costType.startsWith("kpi_")
+                ? "Q_sale × %"
+                : "Số flat"}
+            </div>
+          </div>
+          <div className="rounded-lg bg-slate-50 border border-slate-200 p-3">
+            <div className="text-xs text-slate-500">Đã ĐC trước ({previousRecons.length} đợt)</div>
+            <div className="text-sm font-semibold tabular-nums mt-1 text-green-700">
+              {fmtMoney(paidBefore)}
+            </div>
+            <div className="text-[10px] text-slate-400 mt-0.5">
+              {paidBeforePct.toFixed(1)}% target
+            </div>
+          </div>
+          <div className="rounded-lg bg-blue-50 border border-blue-200 p-3">
+            <div className="text-xs text-blue-700">Đợt này (dự tính)</div>
+            <div className="text-sm font-semibold tabular-nums mt-1 text-blue-900">
+              {fmtMoney(thisAmountFromPct)}
+            </div>
+            <div className="text-[10px] text-blue-500 mt-0.5">
+              {thisPct ? `${thisPctNum * 100}%` : "chưa nhập %"} target
+            </div>
+          </div>
+          <div className="rounded-lg bg-slate-50 border border-slate-200 p-3">
+            <div className="text-xs text-slate-500">Còn lại sau đợt này</div>
+            <div
+              className={`text-sm font-semibold tabular-nums mt-1 ${remainingAfter < 1000 ? "text-slate-400" : "text-red-600"}`}
+            >
+              {fmtMoney(Math.max(0, remainingAfter))}
+            </div>
+            <div className="text-[10px] text-slate-400 mt-0.5">
+              {targetForType > 0 ? `${(100 - paidBeforePct - thisPctNum * 100).toFixed(1)}%` : "—"}
+            </div>
+          </div>
+        </div>
+
+        {/* Lịch sử đợt trước */}
+        {previousRecons.length > 0 && (
+          <div className="mb-4">
+            <div className="text-xs text-slate-500 mb-1">Các đợt đã ĐC trước:</div>
+            <ul className="text-xs text-slate-600 space-y-0.5">
+              {previousRecons.map((pr) => (
+                <li key={pr.id}>
+                  · {pr.date ?? "(chưa có ngày)"} — {fmtMoney(Number(pr.amount ?? 0))}
+                  {pr.note && <span className="text-slate-400"> · {pr.note}</span>}
+                </li>
+              ))}
+            </ul>
           </div>
         )}
+
+        {/* 2 input đơn giản: nội dung + % */}
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Giá tính PMG sale">
-            <MoneyInput
-              name="pmgBasePriceSale"
-              defaultValue={recon?.pmgBasePriceSale ?? product?.pmgBasePrice ?? 0}
+          <Field label="Nội dung thanh toán">
+            <input
+              name="note"
+              defaultValue={recon?.note ?? ""}
               className="input"
-              readOnly={isEdit}
+              placeholder="vd: Đợt 1, Đợt 2, thưởng nóng, ..."
             />
           </Field>
-          <Field label="%PMG_LK_sale">
+          <Field label="% số tiền thanh toán">
             <input
-              name="pmgLkSaleRate"
               type="number"
               step="any"
-              defaultValue={pctDisplay(recon?.pmgLkSaleRate ?? product?.pmgSaleRate)}
-              className={`input ${isEdit ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}`}
-              readOnly={isEdit}
-            />
-          </Field>
-          <Field label="Tiến độ %PMG đã thu đến nay (vd: 60)">
-            <input
-              name="pmgCumulativePctSale"
-              type="number"
-              step="any"
-              defaultValue={pctDisplay(recon?.pmgCumulativePctSale)}
-              className={`input ${isEdit ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}`}
-              readOnly={isEdit}
-            />
-          </Field>
-          <Field label="Tiến độ tiền PMG đã thu">
-            <MoneyInput
-              name="pmgProgressAmount"
-              defaultValue={recon?.pmgProgressAmount ?? 0}
+              value={thisPct}
+              onChange={(e) => {
+                setThisPct(e.target.value);
+                const n = Number(e.target.value.replace(/,/g, ".")) / 100;
+                if (targetForType > 0 && !isNaN(n)) {
+                  setTotalAmt(Math.round(targetForType * n));
+                }
+              }}
+              onBlur={(e) => {
+                const n = Number(e.target.value.replace(/,/g, ".")) / 100;
+                if (targetForType > 0 && !isNaN(n)) {
+                  setTotalAmt(Math.round(targetForType * n));
+                }
+              }}
+              placeholder="vd: 30 = 30% target"
               className="input"
-              readOnly={isEdit}
             />
           </Field>
         </div>
+
+        {/* Hidden inputs cho các field snapshot cũ để BE không break */}
+        <input
+          type="hidden"
+          name="pmgBasePriceSale"
+          value={String(recon?.pmgBasePriceSale ?? product?.pmgBasePrice ?? 0)}
+        />
+        <input
+          type="hidden"
+          name="pmgLkSaleRate"
+          value={pctDisplay(recon?.pmgLkSaleRate ?? product?.pmgSaleRate)}
+        />
+        <input
+          type="hidden"
+          name="pmgCumulativePctSale"
+          value={pctDisplay(recon?.pmgCumulativePctSale)}
+        />
+        <input
+          type="hidden"
+          name="pmgProgressAmount"
+          value={String(recon?.pmgProgressAmount ?? 0)}
+        />
+        <input
+          type="hidden"
+          name="commissionRate"
+          value={commissionPct}
+        />
+        <input
+          type="hidden"
+          name="adminFeeSale"
+          value={String(recon?.adminFeeSale ?? product?.adminFeeSale ?? 0)}
+        />
+        <input
+          type="hidden"
+          name="pmgReconciledCumulative"
+          value={String(recon?.pmgReconciledCumulative ?? 0)}
+        />
+        <input type="hidden" name="pmgThisTime" value={String(pmgThis)} />
+        <input
+          type="hidden"
+          name="pmgPayable"
+          value={String(recon?.pmgPayable ?? 0)}
+        />
+        <input
+          type="hidden"
+          name="pmgRemaining"
+          value={String(recon?.pmgRemaining ?? 0)}
+        />
+        {costType === "customer_support" && (
+          <input
+            type="hidden"
+            name="customerSupport"
+            value={String(totalAmt)}
+          />
+        )}
+        {costType.startsWith("kpi_") && (
+          <>
+            <input type="hidden" name="kpiRate" value={kpiPct} />
+            <input type="hidden" name="kpiAmount" value={String(totalAmt)} />
+          </>
+        )}
       </Section>
 
-      {showCommission && (
-        <Section title="Hoa hồng sale (HH)">
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="%HH sale (vd: 55 = 55%)">
-              <input
-                name="commissionRate"
-                type="number"
-                step="any"
-                value={commissionPct}
-                onChange={(e) => setCommissionPct(e.target.value)}
-                className="input"
-              />
-            </Field>
-            <Field label="Phí admin sale">
-              <MoneyInput
-                name="adminFeeSale"
-                defaultValue={recon?.adminFeeSale ?? product?.adminFeeSale ?? 0}
-                className="input"
-              />
-            </Field>
-            <Field label="PMG đã ĐC lũy kế">
-              <MoneyInput
-                name="pmgReconciledCumulative"
-                defaultValue={recon?.pmgReconciledCumulative ?? 0}
-                className="input"
-              />
-            </Field>
-            <Field label="PMG đợt này">
-              <input
-                name="pmgThisTime"
-                type="text"
-                inputMode="numeric"
-                value={pmgThis ? pmgThis.toLocaleString("vi-VN") : ""}
-                onChange={(e) => {
-                  const digits = e.target.value.replace(/\D/g, "");
-                  setPmgThis(digits ? Number(digits) : 0);
-                }}
-                onFocus={(e) => e.currentTarget.select()}
-                className="input"
-                placeholder="0"
-              />
-            </Field>
-            <Field label="PMG phải trả đợt này">
-              <MoneyInput
-                name="pmgPayable"
-                defaultValue={recon?.pmgPayable ?? 0}
-                className="input"
-              />
-            </Field>
-            <Field label="PMG còn phải trả đợt sau">
-              <MoneyInput
-                name="pmgRemaining"
-                defaultValue={recon?.pmgRemaining ?? 0}
-                className="input"
-              />
-            </Field>
-          </div>
-        </Section>
-      )}
-
-      {showSupport && (
-        <Section title="Hỗ trợ khách">
-          <Field label="Số tiền hỗ trợ khách (VND, chưa trừ thuế TNCN)">
-            <MoneyInput
-              name="customerSupport"
-              defaultValue={recon?.customerSupport ?? 0}
-              className="input"
-            />
-          </Field>
-        </Section>
-      )}
-
-      {showBonus && (
-        <Section title={costType === "bonus_sale" ? "Thưởng NVKD" : "Thưởng TPKD (Trưởng phòng)"}>
-          <div className="text-xs text-slate-500 mb-2">
-            Khoản thưởng nhập theo số sau VAT (chia 1.1). Số tiền phải trả ghi ở "Tổng phải trả".
-          </div>
-        </Section>
-      )}
-
-      {showKpi && (
-        <Section title={`KPI ${costType === "kpi_ceo" ? "CEO" : costType === "kpi_tpkd" ? "TPKD" : "Admin"}`}>
-          <div className="text-xs text-slate-500 mb-2">
-            Q_sale (base tính KPI) = <b>{fmtMoney(Q_sale)}</b>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <Field label={`%KPI ${costType === "kpi_ceo" ? "CEO" : costType === "kpi_tpkd" ? "TPKD" : "Admin"}`}>
-              <input
-                name="kpiRate"
-                type="number"
-                step="any"
-                value={kpiPct}
-                onChange={(e) => setKpiPct(e.target.value)}
-                placeholder={
-                  kpiRateDefault > 0 ? `Mặc định từ căn: ${(kpiRateDefault * 100).toFixed(2)}` : ""
-                }
-                className="input"
-              />
-            </Field>
-            <Field label="Tiền KPI đợt này">
-              <MoneyInput
-                name="kpiAmount"
-                defaultValue={recon?.kpiAmount ?? 0}
-                className="input"
-              />
-            </Field>
-          </div>
-        </Section>
-      )}
-
-      <Section title="Tổng kết">
-        <Field label="Tổng phải trả đợt này" required>
-          <input
-            name="amountPayableThisTime"
-            type="text"
-            inputMode="numeric"
-            value={totalAmt ? totalAmt.toLocaleString("vi-VN") : ""}
-            onChange={(e) => {
-              const digits = e.target.value.replace(/\D/g, "");
-              setTotalAmt(digits ? Number(digits) : 0);
-            }}
-            onFocus={(e) => e.currentTarget.select()}
-            className="input"
-            placeholder="0"
-          />
-          {suggested > 0 && Math.abs(suggested - totalAmt) > 100 && (
-            <div className="text-xs mt-1.5 flex items-center gap-2 bg-blue-50 border border-blue-200 rounded px-2 py-1">
-              <span className="text-blue-700">
-                💡 Gợi ý:{" "}
-                <b className="tabular-nums">{fmtMoney(suggested)}</b>
-                {showCommission && (
-                  <span className="text-slate-500 ml-1">
-                    ({pmgThis > 0 ? "PMG đợt" : "Q_sale"} × %HH)
-                  </span>
-                )}
-                {showKpi && <span className="text-slate-500 ml-1">(Q_sale × %KPI)</span>}
-              </span>
-              <button
-                type="button"
-                onClick={() => applyValue(suggested)}
-                className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded hover:bg-blue-700"
-              >
-                Áp dụng
-              </button>
+      <Section title="💰 Tổng phải trả đợt này">
+        <div className="rounded-lg border-2 border-orange-200 bg-orange-50/60 p-4">
+          <div className="flex justify-between items-center gap-3">
+            <div className="text-xs text-orange-700">
+              Tự tính = Target × % nhập ở trên. Có thể ghi đè thủ công.
             </div>
-          )}
-        </Field>
+            <input
+              name="amountPayableThisTime"
+              type="text"
+              inputMode="numeric"
+              value={totalAmt ? totalAmt.toLocaleString("vi-VN") : ""}
+              onChange={(e) => {
+                const digits = e.target.value.replace(/\D/g, "");
+                setTotalAmt(digits ? Number(digits) : 0);
+              }}
+              onFocus={(e) => e.currentTarget.select()}
+              className="input text-right text-xl font-bold tabular-nums text-orange-900 min-w-40"
+              placeholder="0"
+              required
+            />
+          </div>
+        </div>
       </Section>
 
       {!recon && (
@@ -453,11 +504,7 @@ export default function CostForm({ recon, paymentInit, products, defaultProductI
         </Section>
       )}
 
-      <Section title="Ghi chú">
-        <Field label="Nội dung">
-          <textarea name="note" defaultValue={recon?.note ?? ""} className="input" rows={2} />
-        </Field>
-      </Section>
+      {/* Nội dung thanh toán đã nhập ở Section Tiến độ */}
 
       <div className="flex justify-end gap-3 pt-2">
         {onDelete && (

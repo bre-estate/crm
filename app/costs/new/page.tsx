@@ -30,6 +30,8 @@ export default async function NewCostPage({ searchParams }: { searchParams: Sear
       bonusSale: products.bonusSale,
       bonusManager: products.bonusManager,
       customerSupport: products.customerSupport,
+      cdtBonusSale: products.cdtBonusSale,
+      cdtBonusManager: products.cdtBonusManager,
     })
     .from(products)
     .leftJoin(projects, eq(products.projectId, projects.id))
