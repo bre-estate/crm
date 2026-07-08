@@ -81,6 +81,35 @@ export default function CostForm({
   const product = useMemo(() => products.find((p) => p.id === productId), [products, productId]);
   const isEdit = !!recon;
 
+  // Lọc COST_TYPES: chỉ hiện loại có config > 0 trên căn (giữ costType hiện tại
+  // của recon nếu đang edit, tránh trường hợp config vừa đổi làm mất option).
+  const availableCostTypes = useMemo(() => {
+    if (!product) return [...COST_TYPES];
+    const hasValue = (t: (typeof COST_TYPES)[number]): boolean => {
+      switch (t) {
+        case "sale_commission":
+          return Number(product.saleCommissionRate ?? 0) > 0;
+        case "customer_support":
+          return Number(product.customerSupport ?? 0) > 0;
+        case "bonus_sale":
+          return Number(product.bonusSale ?? 0) > 0;
+        case "bonus_manager":
+          return Number(product.bonusManager ?? 0) > 0;
+        case "cdt_bonus_sale":
+          return Number(product.cdtBonusSale ?? 0) > 0;
+        case "cdt_bonus_manager":
+          return Number(product.cdtBonusManager ?? 0) > 0;
+        case "kpi_ceo":
+          return Number(product.kpiCeoRate ?? 0) > 0;
+        case "kpi_tpkd":
+          return Number(product.kpiTpkdRate ?? 0) > 0;
+        case "kpi_admin":
+          return Number(product.kpiAdminRate ?? 0) > 0;
+      }
+    };
+    return COST_TYPES.filter((t) => hasValue(t) || t === costType);
+  }, [product, costType]);
+
   const showCommission = costType === "sale_commission";
   const showSupport = costType === "customer_support";
   const showKpi = costType === "kpi_ceo" || costType === "kpi_tpkd" || costType === "kpi_admin";
@@ -246,11 +275,6 @@ export default function CostForm({
                 }))}
               />
             )}
-            {isEdit && (
-              <div className="text-xs text-slate-400 mt-1 italic">
-                Không đổi được căn khi sửa. Muốn chuyển dòng sang căn khác thì xóa dòng này rồi tạo lại.
-              </div>
-            )}
           </Field>
           <Field label="Loại chi phí" required>
             <select
@@ -260,7 +284,7 @@ export default function CostForm({
               className="input"
               required
             >
-              {COST_TYPES.map((t) => (
+              {availableCostTypes.map((t) => (
                 <option key={t} value={t}>
                   {costTypeLabel(t)}
                 </option>
@@ -283,45 +307,76 @@ export default function CostForm({
               className="input"
             />
           </Field>
-          <Field label="Năm ghi nhận DT">
-            <input
-              name="fiscalYear"
-              type="number"
-              defaultValue={recon?.fiscalYear ?? new Date().getFullYear()}
-              className="input"
-            />
-          </Field>
+          {/* fiscalYear ẩn — bỏ khỏi UI theo yêu cầu */}
+          <input
+            type="hidden"
+            name="fiscalYear"
+            value={recon?.fiscalYear ?? new Date().getFullYear()}
+          />
         </div>
 
         {/* Info căn dạng disabled inputs */}
-        {product && (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4 pt-3 border-t border-slate-100">
-            <Field label="Giá tính PMG (từ căn)">
-              <input
-                type="text"
-                value={fmtMoney(product.pmgBasePrice)}
-                readOnly
-                className="input bg-slate-100 text-slate-500 cursor-not-allowed tabular-nums"
-              />
-            </Field>
-            <Field label="%HH sale (chốt)">
-              <input
-                type="text"
-                value={`${Number((Number(product.saleCommissionRate ?? 0) * 100).toFixed(2))}%`}
-                readOnly
-                className="input bg-slate-100 text-slate-500 cursor-not-allowed"
-              />
-            </Field>
-            <Field label="NVKD mặc định">
-              <input
-                type="text"
-                value={product.salesPerson ?? "—"}
-                readOnly
-                className="input bg-slate-100 text-slate-500 cursor-not-allowed"
-              />
-            </Field>
-          </div>
-        )}
+        {product && (() => {
+          const rateForType: { label: string; value: string } | null = (() => {
+            const pct = (r: number | null | undefined) =>
+              `${Number((Number(r ?? 0) * 100).toFixed(2))}%`;
+            switch (costType) {
+              case "sale_commission":
+                return { label: "%HH sale (chốt)", value: pct(product.saleCommissionRate) };
+              case "kpi_ceo":
+                return { label: "%KPI CEO", value: pct(product.kpiCeoRate) };
+              case "kpi_tpkd":
+                return { label: "%KPI TPKD", value: pct(product.kpiTpkdRate) };
+              case "kpi_admin":
+                return { label: "%KPI Admin", value: pct(product.kpiAdminRate) };
+              case "customer_support":
+                return {
+                  label: "Hỗ trợ khách (chốt)",
+                  value: fmtMoney(product.customerSupport),
+                };
+              case "bonus_manager":
+                return { label: "CTY thưởng QL", value: fmtMoney(product.bonusManager) };
+              case "bonus_sale":
+                return { label: "CTY thưởng NVKD", value: fmtMoney(product.bonusSale) };
+              case "cdt_bonus_sale":
+                return { label: "CĐT thưởng sale", value: fmtMoney(product.cdtBonusSale) };
+              case "cdt_bonus_manager":
+                return { label: "CĐT thưởng QL", value: fmtMoney(product.cdtBonusManager) };
+              default:
+                return null;
+            }
+          })();
+          return (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4 pt-3 border-t border-slate-100">
+              <Field label="Giá tính PMG (từ căn)">
+                <input
+                  type="text"
+                  value={fmtMoney(product.pmgBasePrice)}
+                  readOnly
+                  className="input bg-slate-100 text-slate-500 cursor-not-allowed tabular-nums"
+                />
+              </Field>
+              {rateForType && (
+                <Field label={rateForType.label}>
+                  <input
+                    type="text"
+                    value={rateForType.value}
+                    readOnly
+                    className="input bg-slate-100 text-slate-500 cursor-not-allowed tabular-nums"
+                  />
+                </Field>
+              )}
+              <Field label="NVKD">
+                <input
+                  type="text"
+                  value={product.salesPerson ?? "—"}
+                  readOnly
+                  className="input bg-slate-100 text-slate-500 cursor-not-allowed"
+                />
+              </Field>
+            </div>
+          );
+        })()}
       </Section>
 
       {/* Progress + Payment cho đợt này */}
