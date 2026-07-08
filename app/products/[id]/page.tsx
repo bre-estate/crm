@@ -594,7 +594,7 @@ export default async function ProductDetailPage({
           const cdtBonusSale = Number(p.cdtBonusSale ?? 0);
           const cdtBonusMgr = Number(p.cdtBonusManager ?? 0);
           const totalRevenue = Number(p.totalRevenue ?? 0);
-          const totalCost = Number(p.totalCost ?? 0);
+          const totalCostStored = Number(p.totalCost ?? 0);
 
           // Business logic (2026-07-07 confirmed):
           // - CĐT/F1 trả BRE: pmgBase × pmgRate + cdtBonus - adminFee
@@ -648,200 +648,132 @@ export default async function ProductDetailPage({
           const totalReceived = grossFeeFromCDT - adminFee;
           const breProfitPct = totalReceived > 0 ? (breProfit / totalReceived) * 100 : 0;
 
-          const acctProfit = totalRevenue > 0 && totalCost > 0 ? totalRevenue / 1.1 - totalCost : null;
+          const acctProfit = totalRevenue > 0 && totalCostStored > 0 ? totalRevenue / 1.1 - totalCostStored : null;
+
+          const dtThuanNoibo = grossFeeFromCDT - adminFee; // = pmg × %PMG_LK − admin
+          const totalCost =
+            hhSaleAmt +
+            kpiCeoAmt +
+            kpiTpkdAmt +
+            kpiAdminAmt +
+            adminFeeSaleAmt +
+            supportAmt +
+            bonusSaleCtyAmt +
+            bonusMgrCtyAmt +
+            adminFeeSubsidy +
+            otherCostAmt;
+          const loiNhuan = dtThuanNoibo - totalCost;
+          const bienLN = dtThuanNoibo > 0 ? (loiNhuan / dtThuanNoibo) * 100 : 0;
+
+          const costRows: Array<[string, number, string?]> = [];
+          if (hhSaleAmt > 0)
+            costRows.push([`HH sale (NVKD) — ${fmtPctTight(hhSaleRate)} × Q_sale`, hhSaleAmt]);
+          if (kpiCeoAmt > 0)
+            costRows.push([`KPI CEO — ${fmtPctTight(kpiCeoRate)} × Q_sale`, kpiCeoAmt]);
+          if (kpiTpkdAmt > 0)
+            costRows.push([`KPI TPKD — ${fmtPctTight(kpiTpkdRate)} × Q_sale`, kpiTpkdAmt]);
+          if (kpiAdminAmt > 0)
+            costRows.push([`KPI Admin — ${fmtPctTight(kpiAdminRate)} × Q_sale`, kpiAdminAmt]);
+          if (adminFeeSaleAmt > 0)
+            costRows.push(["Phí admin sale (BRE trả F1)", adminFeeSaleAmt]);
+          if (adminFeeSubsidy > 0)
+            costRows.push([
+              "Bù admin cho sale",
+              adminFeeSubsidy,
+              `Admin thực ${fmtMoney(adminFeeReal)} − ghi ${fmtMoney(adminFeeSaleAmt)}`,
+            ]);
+          if (supportAmt > 0) costRows.push(["Hỗ trợ khách", supportAmt]);
+          if (bonusSaleCtyAmt > 0) costRows.push(["Thưởng NVKD (CTY)", bonusSaleCtyAmt]);
+          if (bonusMgrCtyAmt > 0) costRows.push(["Thưởng TPKD (CTY)", bonusMgrCtyAmt]);
+          if (otherCostAmt !== 0) costRows.push(["Chi phí khác", otherCostAmt]);
 
           return (
-            <div className="text-sm">
-              {/* Bước 1: CĐT trả BRE tổng cộng */}
-              <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3 mb-3">
-                <div className="text-xs uppercase text-blue-700 font-semibold mb-2">
-                  Bước 1 · CĐT / F1 trả BRE
-                </div>
-                <Row label="Giá tính PMG" value={fmtMoney(pmgBase)} />
-                <Row
-                  label={`× %PMG_LK (${fmtPctTight(pmgRate)}) — HH thô`}
-                  value={fmtMoney(grossFeeFromCDT)}
-                />
-                {cdtBonusSale > 0 && (
-                  <Row label="+ CĐT thưởng NVKD (chuyển tiếp)" value={fmtMoney(cdtBonusSale)} />
-                )}
-                {cdtBonusMgr > 0 && (
-                  <Row label="+ CĐT thưởng TPKD (chuyển tiếp)" value={fmtMoney(cdtBonusMgr)} />
-                )}
-                {adminFee > 0 && (
-                  <Row
-                    label="− Phí admin CĐT giữ (BRE ko nhận)"
-                    value={`− ${fmtMoney(adminFee)}`}
-                    color="red"
-                  />
-                )}
-                <Row
-                  label="= Tổng doanh thu (P)"
-                  value={fmtMoney(totalRevenue || grossFeeFromCDT + cdtBonusSale + cdtBonusMgr - adminFee)}
-                  bold
-                  color="green"
-                />
-              </div>
-
-              {/* Bước 2: Chia pool */}
-              <div className="rounded-lg border border-green-200 bg-green-50/50 p-3 mb-3">
+            <div className="text-sm space-y-3">
+              {/* Doanh thu nội bộ */}
+              <div className="rounded-lg border border-green-200 bg-green-50/50 p-3">
                 <div className="text-xs uppercase text-green-700 font-semibold mb-2">
-                  Bước 2 · Chia thành 2 pool
+                  A. Doanh thu công ty
                 </div>
                 <div className="text-xs text-slate-500 mb-2">
-                  Base chia HH sale + KPI dùng %PMG_LK_sale, không dùng %PMG_LK (nếu CĐT/F1 offer
-                  mức tốt hơn thì BRE giữ lại chênh lệch).
+                  Số CĐT/F1 chuyển vào TK BRE (không kể thưởng nóng — chuyển thẳng cho NV).
                 </div>
                 <Row
-                  label={`Pool A · Q_sale (base HH sale + KPI) = Giá PMG × ${fmtPctTight(pmgSaleRate)}`}
-                  value={fmtMoney(Q_sale)}
+                  label={`Giá PMG × %PMG_LK (${fmtPctTight(pmgRate)}) − Phí admin`}
+                  value={fmtMoney(dtThuanNoibo)}
                   bold
                   color="green"
                 />
-                {chenh > 0 && (
-                  <Row
-                    label={`Pool B · BRE giữ chênh = Giá PMG × ${fmtPctTight(pmgRate - pmgSaleRate)}`}
-                    value={fmtMoney(chenh)}
-                    bold
-                    color="green"
-                    sub="cty giữ + thưởng manager"
-                  />
-                )}
               </div>
 
-              {/* Bước 3a: Chi từ Q_sale */}
-              <div className="rounded-lg border border-orange-200 bg-orange-50/50 p-3 mb-3">
+              {/* Chi phí */}
+              <div className="rounded-lg border border-orange-200 bg-orange-50/50 p-3">
                 <div className="text-xs uppercase text-orange-700 font-semibold mb-2">
-                  Bước 3 · Chi từ Q_sale
+                  B. Chi phí phân bổ
                 </div>
-                {hhSaleRate > 0 && (
+                <div className="text-xs text-slate-500 mb-2">
+                  Base tính HH sale + KPI = <b>Q_sale</b> = Giá PMG ×{" "}
+                  {fmtPctTight(pmgSaleRate)} = {fmtMoney(Q_sale)}
+                </div>
+                {costRows.map(([label, amt, sub]) => (
                   <Row
-                    label={`HH NVKD (${fmtPctTight(hhSaleRate)} × Q_sale)`}
-                    value={`− ${fmtMoney(hhSaleAmt)}`}
+                    key={label}
+                    label={label}
+                    value={`− ${fmtMoney(amt)}`}
                     color="red"
+                    sub={sub}
                   />
-                )}
-                {kpiCeoRate > 0 && (
-                  <Row
-                    label={`KPI CEO (${fmtPctTight(kpiCeoRate)} × Q_sale)`}
-                    value={`− ${fmtMoney(kpiCeoAmt)}`}
-                    color="red"
-                  />
-                )}
-                {kpiTpkdRate > 0 && (
-                  <Row
-                    label={`KPI TPKD (${fmtPctTight(kpiTpkdRate)} × Q_sale)`}
-                    value={`− ${fmtMoney(kpiTpkdAmt)}`}
-                    color="red"
-                  />
-                )}
-                {kpiAdminRate > 0 && (
-                  <Row
-                    label={`KPI Admin (${fmtPctTight(kpiAdminRate)} × Q_sale)`}
-                    value={`− ${fmtMoney(kpiAdminAmt)}`}
-                    color="red"
-                  />
-                )}
-                {adminFeeSaleAmt > 0 && (
-                  <Row
-                    label="Phí admin sale"
-                    value={`− ${fmtMoney(adminFeeSaleAmt)}`}
-                    color="red"
-                  />
-                )}
-                {supportAmt > 0 && (
-                  <Row label="Hỗ trợ khách" value={`− ${fmtMoney(supportAmt)}`} color="red" />
-                )}
-                {bonusSaleCtyAmt > 0 && (
-                  <Row
-                    label="Thưởng NVKD (CTY)"
-                    value={`− ${fmtMoney(bonusSaleCtyAmt)}`}
-                    color="red"
-                  />
-                )}
-                {otherCostAmt !== 0 && (
-                  <Row
-                    label="Chi phí khác"
-                    value={`− ${fmtMoney(otherCostAmt)}`}
-                    color="red"
-                  />
-                )}
+                ))}
                 <div className="border-t border-orange-200 mt-1 pt-1">
                   <Row
-                    label="Còn lại từ Q_sale"
-                    value={fmtMoney(conLaiQSale)}
+                    label="Tổng chi phí"
+                    value={`− ${fmtMoney(totalCost)}`}
                     bold
-                    color={conLaiQSale >= 0 ? "green" : "red"}
+                    color="red"
                   />
                 </div>
               </div>
 
-              {/* Bước 3b: Chi từ Pool B (chênh) */}
-              {chenh > 0 && (
-                <div className="rounded-lg border border-purple-200 bg-purple-50/50 p-3 mb-3">
-                  <div className="text-xs uppercase text-purple-700 font-semibold mb-2">
-                    Bước 4 · Chi từ Pool B (chênh)
-                  </div>
-                  {bonusMgrCtyAmt > 0 && (
-                    <Row
-                      label="Thưởng TPKD/Manager (CTY)"
-                      value={`− ${fmtMoney(bonusMgrCtyAmt)}`}
-                      color="red"
-                    />
-                  )}
-                  {adminFeeSubsidy > 0 && (
-                    <Row
-                      label={`Bù admin cho sale (thực ${fmtMoney(adminFeeReal)} − ghi ${fmtMoney(adminFeeSaleAmt)})`}
-                      value={`− ${fmtMoney(adminFeeSubsidy)}`}
-                      color="red"
-                    />
-                  )}
-                  <div className="border-t border-purple-200 mt-1 pt-1">
-                    <Row
-                      label="Còn lại từ Pool B = Cty giữ"
-                      value={fmtMoney(chenhSauChi)}
-                      bold
-                      color={chenhSauChi >= 0 ? "green" : "red"}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Bước 5: Lợi nhuận */}
+              {/* Lợi nhuận */}
               <div
                 className={`rounded-lg border-2 p-4 ${
-                  breProfit >= 0 ? "border-green-400 bg-green-50" : "border-red-400 bg-red-50"
+                  loiNhuan >= 0 ? "border-green-400 bg-green-50" : "border-red-400 bg-red-50"
                 }`}
               >
                 <div className="flex justify-between items-center">
                   <div>
-                    <div className="text-xs uppercase font-semibold text-slate-600">
-                      {chenh > 0 ? "Bước 5" : "Bước 4"} · Lợi nhuận công ty (dự kiến)
+                    <div className="text-sm uppercase font-semibold text-slate-700">
+                      C. Lợi nhuận công ty (dự kiến)
                     </div>
                     <div className="text-xs text-slate-500 mt-0.5">
-                      Còn Q_sale + Còn Pool B = {breProfitPct.toFixed(1)}% biên (trên DT thuần)
+                      = A − B · Biên {bienLN.toFixed(1)}%
                     </div>
                   </div>
                   <div
                     className={`text-2xl font-bold tabular-nums ${
-                      breProfit >= 0 ? "text-green-700" : "text-red-700"
+                      loiNhuan >= 0 ? "text-green-700" : "text-red-700"
                     }`}
                   >
-                    {fmtMoney(breProfit)}
+                    {fmtMoney(loiNhuan)}
                   </div>
                 </div>
-                {acctProfit !== null && Math.abs(acctProfit - breProfit) > 10000 && (
+                {acctProfit !== null && Math.abs(acctProfit - loiNhuan) > 10000 && (
                   <div className="mt-2 pt-2 border-t border-slate-200 text-xs text-slate-500">
                     Kế toán tính (P÷1,1 − R từ Excel):{" "}
-                    <b>{fmtMoney(acctProfit)}</b> (chênh do CĐT thưởng transit + VAT logic)
+                    <b>{fmtMoney(acctProfit)}</b> (chênh do VAT logic)
                   </div>
                 )}
               </div>
 
-              <div className="text-xs text-slate-500 mt-3 italic">
-                Đây là <b>cơ cấu dự kiến</b> khi thu đủ 100% phí. Số thực đã trả (có thể khác
-                do đàm phán) xem ở mục 5 — <b>{costRecs.length}</b> dòng đối chiếu, tổng đã
-                trả <b>{fmtMoney(totalCostPayable)}</b>.
+              {/* Ghi chú thưởng nóng transit */}
+              {(cdtBonusSale > 0 || cdtBonusMgr > 0) && (
+                <div className="text-xs text-slate-500 italic">
+                  💡 Thưởng nóng CĐT ({fmtMoney(cdtBonusSale + cdtBonusMgr)}) chuyển thẳng qua BRE
+                  tới NVKD/QL, không tính vào lợi nhuận công ty.
+                </div>
+              )}
+
+              <div className="text-xs text-slate-500 italic">
+                Số dự kiến khi thu đủ 100% phí. Số thực đã trả có thể khác — xem ở mục 6.
               </div>
             </div>
           );

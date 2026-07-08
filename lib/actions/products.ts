@@ -2,6 +2,7 @@
 
 import { db } from "@/lib/db";
 import { products, projects, partners, revenueReconciliations, costReconciliations } from "@/lib/schema";
+import { toTitleCase } from "@/lib/format";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -47,9 +48,13 @@ function buildProductData(fd: FormData) {
   return {
     unitCode: toStr(fd.get("unitCode")),
     projectId: toNum(fd.get("projectId")),
-    customerName: toStrOrNull(fd.get("customerName")),
+    customerName: toStrOrNull(fd.get("customerName"))
+      ? toTitleCase(toStr(fd.get("customerName")))
+      : null,
     unitDescription: toStrOrNull(fd.get("unitDescription")),
-    salesPerson: toStrOrNull(fd.get("salesPerson")),
+    salesPerson: toStrOrNull(fd.get("salesPerson"))
+      ? toTitleCase(toStr(fd.get("salesPerson")))
+      : null,
     deptName: toStrOrNull(fd.get("deptName")),
     departmentId: toNum(fd.get("departmentId")) || null,
     depositDate: toStrOrNull(fd.get("depositDate")),

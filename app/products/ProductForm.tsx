@@ -6,7 +6,7 @@ import type { Product, Project, Partner, Department } from "@/lib/schema";
 import MoneyInput from "@/components/MoneyInput";
 import SearchableSelect from "@/components/SearchableSelect";
 import PmgRateHistoryEditor from "./PmgRateHistoryEditor";
-import { fmtMoney } from "@/lib/format";
+import { fmtMoney, toTitleCase } from "@/lib/format";
 
 type ProjectWithPartner = Project & { partnerName?: string | null };
 
@@ -126,7 +126,14 @@ export default function ProductForm({ product, projects, departments = [], onSav
             />
           </Field>
           <Field label="Tên khách">
-            <input name="customerName" defaultValue={product?.customerName ?? ""} className="input" />
+            <input
+              name="customerName"
+              defaultValue={toTitleCase(product?.customerName) || ""}
+              className="input"
+              onBlur={(e) => {
+                e.currentTarget.value = toTitleCase(e.currentTarget.value);
+              }}
+            />
           </Field>
           <Field label="Mô tả căn (loại, dt...)">
             <input
@@ -159,8 +166,8 @@ export default function ProductForm({ product, projects, departments = [], onSav
               onChange={(e) => setSaleType(e.target.value as "primary" | "secondary")}
               className="input"
             >
-              <option value="primary">Sơ cấp (HĐ với CĐT)</option>
-              <option value="secondary">Thứ cấp (mua bán lại)</option>
+              <option value="primary">Sơ cấp</option>
+              <option value="secondary">Thứ cấp</option>
             </select>
           </Field>
           <Field label="Tháng ghi nhận DT (YYYY-MM)">
