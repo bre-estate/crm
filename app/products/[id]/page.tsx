@@ -279,51 +279,15 @@ export default async function ProductDetailPage({
       )}
 
       {/* === 1. THÔNG TIN CĂN === */}
+      {/* === 1. THÔNG TIN CĂN === */}
       <SectionCard title="1. Thông tin căn" icon="🏠">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <Info label="Mã căn" value={p.unitCode} mono />
           <Info label="Mã SP" value={p.productCode} mono small />
-          <Info label="Dự án" value={row.project?.name ?? "—"} />
-          {!isSecondary && <Info label="Đối tác (CĐT)" value={row.partner?.name ?? "—"} />}
           <Info label="Loại giao dịch" value={isSecondary ? "Thứ cấp" : "Sơ cấp"} />
+          <Info label="Dự án" value={row.project?.name ?? "—"} />
+          {!isSecondary && <Info label="Đối tác (CĐT/F1)" value={row.partner?.name ?? "—"} />}
           <Info label="Mô tả căn" value={p.unitDescription ?? "—"} />
-          {isSecondary ? (
-            <Info label="Doanh thu về cty" value={fmtMoney(p.totalRevenue)} />
-          ) : (
-            <>
-              {(() => {
-                const sell = Number(p.sellPrice ?? 0);
-                const pmg = Number(p.pmgBasePrice ?? 0);
-                if (sell === 0 || sell === pmg) {
-                  return <Info label="Giá tính PMG (giá tính hoa hồng)" value={fmtMoney(pmg)} />;
-                }
-                return (
-                  <>
-                    <Info label="Giá bán" value={fmtMoney(sell)} />
-                    <Info label="Giá tính PMG (giá tính HH)" value={fmtMoney(pmg)} />
-                  </>
-                );
-              })()}
-              <Info
-                label="Tổng DT (CĐT chuyển BRE)"
-                value={fmtMoney(p.totalRevenue)}
-                tooltip={`= Giá tính PMG × %PMG_LK − Phí admin. Với căn này: ${fmtMoney(Number(p.pmgBasePrice ?? 0))} × ${(Number(p.pmgRate ?? 0) * 100).toFixed(2)}% − ${fmtMoney(p.adminFee)} = ${fmtMoney(p.totalRevenue)}. Số thực CĐT chuyển vào TK BRE (sau khi CĐT trừ admin). KHÔNG bao gồm thưởng nóng CĐT.`}
-              />
-              <Info
-                label="Phí admin thực (CĐT giữ)"
-                value={fmtMoney(p.adminFee)}
-                tooltip={`Số CĐT trực tiếp giữ để trả sàn F1 liên kết (BRE KHÔNG nhận). Có thể khác với "Phí admin ghi cho sale" (${fmtMoney(p.adminFeeSale)}): chênh CTY tự bù từ Pool B để sale thấy phí thấp hơn thực tế.`}
-              />
-              <Info label="Chiết khấu (CK)" value={fmtMoney(p.discountCk)} />
-            </>
-          )}
-          <Info label="Tháng ghi nhận DT" value={p.recognitionMonth ?? "—"} mono />
-        </div>
-      </SectionCard>
-
-      {/* === 2. KHÁCH HÀNG & GIAO DỊCH === */}
-      <SectionCard title="2. Khách hàng & tỷ lệ phí" icon="👤">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <Info label="Tên khách" value={toTitleCase(p.customerName) || "—"} />
           <Info label="NVKD" value={toTitleCase(p.salesPerson) || "—"} />
           <Info
@@ -336,90 +300,171 @@ export default async function ProductDetailPage({
           />
           <Info label="Phòng KD" value={row.department?.name ?? p.deptName ?? "—"} />
           <Info label="Ngày cọc" value={fmtDate(p.depositDate)} />
-          <Info label="Ngày HT dự kiến" value={fmtDate(p.expectedCompleteDate)} />
-          <Info label="PTTT" value={p.paymentMethod ?? "—"} />
+          <Info label="Tháng ghi nhận DT" value={p.recognitionMonth ?? "—"} mono />
         </div>
+      </SectionCard>
 
-        {!isSecondary && (
-          <div className="border-t border-slate-200 mt-3 pt-3">
-            <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
-              Tỷ lệ %
+      {/* === 2. DOANH THU === (chỉ áp dụng sơ cấp) */}
+      {!isSecondary && (
+        <SectionCard title="2. Doanh thu (CĐT/F1 trả BRE)" icon="💰">
+          {/* Row 1: Giá tính PMG + Lịch sử %PMG_LK */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+            <Info
+              label="Giá tính PMG (= giá bán)"
+              value={fmtMoney(p.pmgBasePrice)}
+            />
+            <div className="bg-slate-50 rounded-lg p-3">
+              <div className="text-xs text-slate-500 mb-1">Lịch sử %PMG_LK</div>
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {pmgHistory.length === 0 ? (
+                  <span className="text-sm font-medium tabular-nums">
+                    {fmtPctTight(p.pmgRate)}
+                  </span>
+                ) : (
+                  pmgHistory.map((h, i) => (
+                    <span
+                      key={h.rate}
+                      className={`text-xs px-2 py-0.5 rounded ${i === pmgHistory.length - 1 ? "bg-amber-200 text-amber-900 font-semibold" : "bg-slate-200 text-slate-600"}`}
+                    >
+                      {(h.rate * 100).toFixed(2)}%
+                      {h.date && <span className="ml-1 text-[10px] opacity-70">({fmtDate(h.date)})</span>}
+                    </span>
+                  ))
+                )}
+              </div>
             </div>
-            <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
-              {(() => {
-                const r1 = Number(p.pmgRate ?? 0);
-                const r2 = Number(p.pmgSaleRate ?? 0);
-                if (r1 === r2 || r2 === 0) {
-                  return (
-                    <Info
-                      label="%PMG_LK (CĐT trả BRE)"
-                      value={fmtPctTight(r1)}
-                      tooltip="Tỷ lệ hoa hồng CĐT trả cho BRE trên giá tính PMG."
-                    />
-                  );
-                }
-                return (
-                  <>
-                    <Info
-                      label="%PMG_LK (CĐT trả BRE)"
-                      value={fmtPctTight(r1)}
-                      tooltip="Tỷ lệ CĐT chuyển cho BRE (bao gồm phần thưởng gộp)."
-                    />
-                    <Info
-                      label="%PMG_LK_sale (base HH sale + KPI)"
-                      value={fmtPctTight(r2)}
-                      tooltip="Base BRE dùng để tính HH sale + KPI. Chênh so với %PMG_LK = phần BRE giữ (thưởng manager + cty giữ)."
-                    />
-                  </>
-                );
-              })()}
-              <Info
-                label="%HH sale (NVKD)"
-                value={fmtPctTight(effRate(p.saleCommissionRate, "sale_commission"))}
-              />
+          </div>
+
+          {/* Row 2: 2 loại phí admin */}
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <Info
+              label="Phí admin thực (CĐT giữ)"
+              value={fmtMoney(p.adminFee)}
+              tooltip={`Số CĐT trực tiếp giữ để trả sàn F1. Có thể khác "Phí admin ghi cho sale" (${fmtMoney(p.adminFeeSale)}): chênh CTY tự bù từ Pool B.`}
+            />
+            <Info
+              label="Phí admin sale (ghi cho sale)"
+              value={fmtMoney(p.adminFeeSale)}
+              tooltip="Số ghi trong bảng lương sale — thường thấp hơn admin thực để sale ko thấy chán."
+            />
+          </div>
+
+          {/* Row 3: CĐT thưởng nóng */}
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <Info label="CĐT thưởng nóng cho sale" value={fmtMoney(p.cdtBonusSale)} />
+            <Info label="CĐT thưởng nóng cho QL" value={fmtMoney(p.cdtBonusManager)} />
+          </div>
+
+          {/* 3 cards Tổng doanh thu */}
+          {(() => {
+            const pmgBase = Number(p.pmgBasePrice ?? 0);
+            const rate = latestPmgRate;
+            const admin = Number(p.adminFee ?? 0);
+            const cdtBonusTotal =
+              Number(p.cdtBonusSale ?? 0) + Number(p.cdtBonusManager ?? 0);
+            const pmgSaleRate = Number(p.pmgSaleRate ?? 0) || rate;
+            const gross = pmgBase * rate + cdtBonusTotal;
+            const netIn = pmgBase * rate - admin;
+            const thangDu = pmgBase * Math.max(0, rate - pmgSaleRate);
+            return (
+              <div className="border-t border-slate-200 pt-3">
+                <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
+                  Tổng doanh thu (theo %PMG_LK mới nhất {(rate * 100).toFixed(2)}%)
+                </div>
+                <div className={`grid grid-cols-1 md:grid-cols-${thangDu > 0 ? 3 : 2} gap-3`}>
+                  <div className="rounded-lg border border-blue-200 bg-blue-50/60 p-3">
+                    <div className="text-xs text-blue-700 font-semibold">A. Tổng ghi nhận</div>
+                    <div className="text-lg font-bold tabular-nums mt-1">{fmtMoney(gross)}</div>
+                    <div className="text-[10px] text-slate-500 mt-1">
+                      PMG × %PMG_LK + thưởng CĐT
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-green-200 bg-green-50/60 p-3">
+                    <div className="text-xs text-green-700 font-semibold">B. DT thuần nội bộ</div>
+                    <div className="text-lg font-bold tabular-nums mt-1">{fmtMoney(netIn)}</div>
+                    <div className="text-[10px] text-slate-500 mt-1">
+                      PMG × %PMG_LK − admin (đã bỏ transit)
+                    </div>
+                  </div>
+                  {thangDu > 0 && (
+                    <div className="rounded-lg border border-purple-200 bg-purple-50/60 p-3">
+                      <div className="text-xs text-purple-700 font-semibold">C. DT thặng dư</div>
+                      <div className="text-lg font-bold tabular-nums mt-1">{fmtMoney(thangDu)}</div>
+                      <div className="text-[10px] text-slate-500 mt-1">
+                        PMG × (%PMG_LK − %PMG_LK_sale) — CTY giữ + bù admin
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+        </SectionCard>
+      )}
+
+      {/* === 3. GIÁ VỐN === */}
+      <SectionCard title={isSecondary ? "2. Giá vốn (BRE trả NVKD)" : "3. Giá vốn (BRE trả nội bộ)"} icon="🏦">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
+          {!isSecondary && (
+            <Info
+              label="%PMG_LK_sale (base HH sale + KPI)"
+              value={fmtPctTight(p.pmgSaleRate)}
+              tooltip="Base BRE dùng để tính HH sale + KPI. Chênh so với %PMG_LK = phần BRE giữ (thưởng manager + bù admin)."
+            />
+          )}
+          <Info
+            label="%HH sale (NVKD)"
+            value={fmtPctTight(effRate(p.saleCommissionRate, "sale_commission"))}
+          />
+          {!isSecondary && (
+            <>
               <Info label="%KPI CEO" value={fmtPctTight(effRate(p.kpiCeoRate, "kpi_ceo"))} />
               <Info label="%KPI TPKD" value={fmtPctTight(effRate(p.kpiTpkdRate, "kpi_tpkd"))} />
               <Info label="%KPI Admin" value={fmtPctTight(effRate(p.kpiAdminRate, "kpi_admin"))} />
-              <Info label="%phí khác" value={fmtPctTight(p.otherFeePct)} />
-            </div>
-          </div>
-        )}
+            </>
+          )}
+          <Info
+            label="Hỗ trợ khách"
+            value={fmtMoney(effAmount(p.customerSupport, "customer_support"))}
+          />
+          <Info
+            label="CTY thưởng QL"
+            value={fmtMoney(effAmount(p.bonusManager, "bonus_manager"))}
+          />
+        </div>
 
+        {/* Tổng giá vốn */}
         {(() => {
-          const support = effAmount(p.customerSupport, "customer_support");
-          const bonusSale = effAmount(p.bonusSale, "bonus_sale");
-          const bonusMgr = effAmount(p.bonusManager, "bonus_manager");
-          const cdtBonusSale = Number(p.cdtBonusSale ?? 0);
-          const cdtBonusMgr = Number(p.cdtBonusManager ?? 0);
-          const adminFeeSale = effAdminFeeSale;
-          const otherCost = Number(p.otherCost ?? 0);
-          const items: Array<[string, number]> = isSecondary
-            ? [
-                ["Hỗ trợ khách", support],
-                ["Thưởng NVKD (CTY)", bonusSale],
-                ["Thưởng TPKD (CTY)", bonusMgr],
-                ["CP giá vốn khác", otherCost],
-              ]
-            : [
-                ["Hỗ trợ khách", support],
-                ["Thưởng NVKD (CTY)", bonusSale],
-                ["Thưởng TPKD (CTY)", bonusMgr],
-                ["Thưởng sale (CĐT)", cdtBonusSale],
-                ["Thưởng TPKD (CĐT)", cdtBonusMgr],
-                ["Phí admin sale", adminFeeSale],
-                ["CP giá vốn khác", otherCost],
-              ];
-          const visible = items.filter(([, v]) => v !== 0);
-          if (visible.length === 0) return null;
+          const pmgBase = Number(p.pmgBasePrice ?? 0);
+          const pmgSaleRate = Number(p.pmgSaleRate ?? 0) || Number(p.pmgRate ?? 0);
+          const Q_sale = pmgBase * pmgSaleRate;
+          const hhSale = Q_sale * Number(p.saleCommissionRate ?? 0);
+          const kpiCeo = Q_sale * Number(p.kpiCeoRate ?? 0);
+          const kpiTpkd = Q_sale * Number(p.kpiTpkdRate ?? 0);
+          const kpiAdmin = Q_sale * Number(p.kpiAdminRate ?? 0);
+          const support = Number(p.customerSupport ?? 0);
+          const bonusMgr = Number(p.bonusManager ?? 0);
+          const adminSale = Number(p.adminFeeSale ?? 0);
+          const adminSubsidy = Math.max(0, Number(p.adminFee ?? 0) - adminSale);
+          const total = hhSale + kpiCeo + kpiTpkd + kpiAdmin + support + bonusMgr + adminSale + adminSubsidy;
+          const tooltipText = `= HH sale (${fmtMoney(hhSale)}) + KPI CEO (${fmtMoney(kpiCeo)}) + KPI TPKD (${fmtMoney(kpiTpkd)}) + KPI Admin (${fmtMoney(kpiAdmin)}) + Hỗ trợ khách (${fmtMoney(support)}) + CTY thưởng QL (${fmtMoney(bonusMgr)}) + Phí admin sale (${fmtMoney(adminSale)})${adminSubsidy > 0 ? ` + Bù admin (${fmtMoney(adminSubsidy)})` : ""}. Q_sale = ${fmtMoney(pmgBase)} × ${(pmgSaleRate * 100).toFixed(2)}%`;
           return (
-            <div className="border-t border-slate-200 mt-3 pt-3">
-              <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
-                Khoản thưởng / hỗ trợ
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {visible.map(([label, val]) => (
-                  <Info key={label} label={label} value={fmtMoney(val)} />
-                ))}
+            <div className="border-t border-slate-200 pt-3">
+              <div className="rounded-lg border-2 border-orange-200 bg-orange-50/60 p-3">
+                <div className="flex justify-between items-center">
+                  <div className="text-sm font-semibold text-orange-900 flex items-center gap-1.5">
+                    Tổng giá vốn
+                    <span
+                      className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-orange-300 text-white text-[10px] cursor-help select-none"
+                      title={tooltipText}
+                    >
+                      ?
+                    </span>
+                  </div>
+                  <div className="text-xl font-bold tabular-nums text-orange-900">
+                    {fmtMoney(total)}
+                  </div>
+                </div>
               </div>
             </div>
           );
@@ -431,7 +476,7 @@ export default async function ProductDetailPage({
         title={
           isSecondary
             ? "3. Cơ cấu doanh thu / giá vốn"
-            : "3. Cơ cấu phân bổ tiền (dự kiến khi thu đủ 100%)"
+            : "4. Cơ cấu phân bổ tiền (dự kiến khi thu đủ 100%)"
         }
         icon="📊"
       >
@@ -805,27 +850,7 @@ export default async function ProductDetailPage({
 
       {/* === 4. THU PHÍ TỪ CĐT === (chỉ áp dụng cho sơ cấp) */}
       {!isSecondary && (
-      <SectionCard title="4. Thu phí HH từ CĐT" icon="💰">
-        {/* Lịch sử %HH nếu có nhiều mốc */}
-        {pmgHistory.length > 1 && (
-          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50/60 p-3 text-xs">
-            <div className="font-semibold text-amber-900 mb-1">
-              📈 Lịch sử thay đổi %PMG_LK (hồi tố)
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {pmgHistory.map((h, i) => (
-                <span
-                  key={h.rate}
-                  className={`px-2 py-1 rounded ${i === pmgHistory.length - 1 ? "bg-amber-200 text-amber-900 font-semibold" : "bg-white text-amber-700"}`}
-                >
-                  {(h.rate * 100).toFixed(2)}%{" "}
-                  <span className="text-amber-600">({fmtDate(h.date)})</span>
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
+      <SectionCard title="5. Thu phí HH từ CĐT" icon="💵">
         {/* HH sale */}
         <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
           HH sale (theo %PMG_LK mới nhất: {(latestPmgRate * 100).toFixed(2)}%)
@@ -1000,7 +1025,7 @@ export default async function ProductDetailPage({
       )}
 
       {/* === 5. TRẢ PHÍ NỘI BỘ === */}
-      <SectionCard title={isSecondary ? "4. Trả phí NVKD" : "5. Trả phí nội bộ (HH sale, KPI, thưởng)"} icon="🏦">
+      <SectionCard title={isSecondary ? "4. Trả phí NVKD" : "6. Trả phí nội bộ (HH sale, KPI, thưởng)"} icon="🏦">
         {(() => {
           // Nếu chưa có payments_out riêng, coi dòng đối chiếu = đã trả
           const hasExplicitPayments = totalPaidOut > 0;
