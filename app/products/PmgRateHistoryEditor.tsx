@@ -68,13 +68,18 @@ export default function PmgRateHistoryEditor({
     return JSON.stringify(valid);
   })();
 
-  // Latest rate (max by date, fallback max by rate)
+  // Latest rate: mốc có date mới nhất. Entry chưa nhập date coi là "cũ nhất"
+  // (fallback initial), không được ưu tiên. Nếu tất cả đều không có date,
+  // dùng entry cuối (thứ tự nhập).
   const latestRate = ((): string => {
-    if (entries.length === 0) return "";
-    const sorted = [...entries]
-      .filter((e) => e.rate)
-      .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
-    return sorted[0]?.rate ?? entries[0].rate;
+    const filtered = entries.filter((e) => e.rate);
+    if (filtered.length === 0) return "";
+    const withDate = filtered.filter((e) => e.date);
+    if (withDate.length > 0) {
+      const sorted = [...withDate].sort((a, b) => b.date.localeCompare(a.date));
+      return sorted[0].rate;
+    }
+    return filtered[filtered.length - 1].rate;
   })();
 
   // Emit latest rate lên parent để live compute

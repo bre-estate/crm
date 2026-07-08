@@ -415,14 +415,16 @@ export default function ProductForm({ product, projects, departments = [], onSav
 
         {/* Tổng giá vốn — read-only, live compute */}
         <div className="mt-4 border-t border-slate-200 pt-4">
-          <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
-            Tổng giá vốn — tự động tính từ %HH sale, %KPI, thưởng, phí admin sale
-          </div>
           <div className="rounded-lg border-2 border-orange-200 bg-orange-50/60 p-4">
             <div className="flex justify-between items-center">
-              <div className="text-xs text-orange-700">
-                = HH sale + KPI (CEO+TPKD+Admin) + Hỗ trợ khách + Thưởng QL + Phí admin sale
-                {adminSubsidyLive > 0 && ` + Bù admin (${fmtMoney(adminSubsidyLive)})`}
+              <div className="text-sm font-semibold text-orange-900 flex items-center gap-1.5">
+                Tổng giá vốn
+                <span
+                  className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-orange-300 text-white text-[10px] cursor-help select-none"
+                  title={`Tự động tính từ:\n= HH sale (Q_sale × %HH)\n+ KPI CEO/TPKD/Admin (Q_sale × %KPI)\n+ Hỗ trợ khách\n+ CTY thưởng QL\n+ Phí admin sale${adminSubsidyLive > 0 ? `\n+ Bù admin ${fmtMoney(adminSubsidyLive)} (admin thực > admin sale)` : ""}\n\nQ_sale = Giá tính PMG × %PMG_LK_sale`}
+                >
+                  ?
+                </span>
               </div>
               <div className="text-2xl font-bold tabular-nums text-orange-900">
                 {fmtMoney(totalCostLive)}
