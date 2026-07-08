@@ -76,29 +76,49 @@ export default async function ProductDetailPage({
     .where(eq(costReconciliations.productId, id));
 
   // === Compute derived values ===
-  // Phí HH dự kiến BRE nhận từ CĐT (trước VAT, đã trừ admin, đã trừ CK)
-  const expectedFee = isSecondary
-    ? Number(p.totalRevenue ?? 0)
-    : Math.max(
-        0,
-        (Number(p.totalRevenue ?? 0) - Number(p.adminFee ?? 0)) / 1.1 - Number(p.discountCk ?? 0),
-      );
-  const collectedFromCDT = revRecs.reduce(
-    (s, r) => s + Number(r.rec.revenueThisTime ?? 0),
-    0,
+  // Phí HH sale dự kiến = pmg_base × pmg_rate (gross, số CĐT phải trả BRE trên HH sale)
+  // Dùng %PMG mới nhất từ recon nếu có (để hồi tố khi %HH tăng)
+  const latestPmgRate = Math.max(
+    Number(p.pmgRate ?? 0),
+    ...revRecs.map((r) => Number(r.rec.pmgCumulativePct ?? 0)),
   );
-  // Threshold: chênh lệch dưới 1.000 VND coi như thu đủ (Excel hay làm tròn số lẻ)
-  const rawRemaining = expectedFee - collectedFromCDT;
+  const expectedHHSale = isSecondary
+    ? Number(p.totalRevenue ?? 0)
+    : Number(p.pmgBasePrice ?? 0) * latestPmgRate;
+  const expectedBonus =
+    Number(p.cdtBonusSale ?? 0) + Number(p.cdtBonusManager ?? 0);
+
+  // Đã thu tách theo loại: HH sale vs Thưởng nóng
+  // Phân loại recon: nếu có cdtBonus > 0 và revThis = 0 → là recon thưởng nóng
+  const isBonusRecon = (rec: (typeof revRecs)[number]["rec"]) => {
+    const cdt =
+      Number(rec.cdtBonusSale ?? 0) + Number(rec.cdtBonusManager ?? 0);
+    const rev = Number(rec.revenueThisTime ?? 0);
+    return cdt > 0 && rev === 0;
+  };
+  const hhReconIds = new Set(
+    revRecs.filter((r) => !isBonusRecon(r.rec)).map((r) => r.rec.id),
+  );
+  const bonusReconIds = new Set(
+    revRecs.filter((r) => isBonusRecon(r.rec)).map((r) => r.rec.id),
+  );
+
+  const paidHHSale = revPayments
+    .filter((p) => p.payment.reconciliationId && hhReconIds.has(p.payment.reconciliationId))
+    .reduce((s, r) => s + Number(r.payment.amount ?? 0), 0);
+  const paidBonus = revPayments
+    .filter((p) => p.payment.reconciliationId && bonusReconIds.has(p.payment.reconciliationId))
+    .reduce((s, r) => s + Number(r.payment.amount ?? 0), 0);
+  const totalPaidInCash = paidHHSale + paidBonus;
+
+  // Backward compat: một số biến còn dùng
+  const expectedFee = expectedHHSale;
+  const collectedFromCDT = paidHHSale;
+  const rawRemaining = expectedHHSale - paidHHSale;
   const remainingFromCDT = Math.abs(rawRemaining) < 1000 ? 0 : Math.max(0, rawRemaining);
   const pctCollected =
-    expectedFee > 0
-      ? remainingFromCDT === 0
-        ? 100
-        : (collectedFromCDT / expectedFee) * 100
-      : 0;
+    expectedHHSale > 0 ? (paidHHSale / expectedHHSale) * 100 : 0;
   const invoiceCount = new Set(revRecs.map((r) => r.invoice?.id).filter(Boolean)).size;
-
-  const totalPaidInCash = revPayments.reduce((s, r) => s + Number(r.payment.amount ?? 0), 0);
   const totalCostPayable = costRecs.reduce(
     (s, r) => s + Number(r.amountPayableThisTime ?? 0),
     0,
@@ -725,11 +745,53 @@ export default async function ProductDetailPage({
       {/* === 4. THU PHÍ TỪ CĐT === (chỉ áp dụng cho sơ cấp) */}
       {!isSecondary && (
       <SectionCard title="4. Thu phí HH từ CĐT" icon="💰">
+        {/* HH sale */}
+        <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
+          HH sale (theo %PMG_LK mới nhất: {(latestPmgRate * 100).toFixed(2)}%)
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-          <Info label="Phí HH dự kiến" value={fmtMoney(expectedFee)} />
-          <Info label="Đã thu" value={fmtMoney(collectedFromCDT)} accent="green" />
+          <Info
+            label="Dự kiến"
+            value={fmtMoney(expectedHHSale)}
+            tooltip="pmg_base × %PMG_LK (dùng % mới nhất, nếu có hồi tố)"
+          />
+          <Info label="Đã thu" value={fmtMoney(paidHHSale)} accent="green" />
           <Info label="Còn phải thu" value={fmtMoney(remainingFromCDT)} accent="orange" />
           <Info label="% thu" value={`${pctCollected.toFixed(1)}%`} />
+        </div>
+
+        {/* Thưởng nóng (nếu có) */}
+        {(expectedBonus > 0 || paidBonus > 0) && (
+          <>
+            <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
+              Thưởng nóng CĐT (transit)
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+              <Info label="Dự kiến" value={fmtMoney(expectedBonus)} />
+              <Info label="Đã thu" value={fmtMoney(paidBonus)} accent="green" />
+              <Info
+                label="Còn phải thu"
+                value={fmtMoney(Math.max(0, expectedBonus - paidBonus))}
+                accent="orange"
+              />
+              <Info
+                label="% thu"
+                value={expectedBonus > 0 ? `${((paidBonus / expectedBonus) * 100).toFixed(1)}%` : "—"}
+              />
+            </div>
+          </>
+        )}
+
+        {/* Tổng */}
+        <div className="rounded-lg border-2 border-blue-200 bg-blue-50/60 p-3 mb-4">
+          <div className="flex justify-between items-center">
+            <div className="text-sm font-semibold text-blue-900">
+              💰 Tổng đã thu vào TK cty
+            </div>
+            <div className="text-2xl font-bold tabular-nums text-blue-900">
+              {fmtMoney(totalPaidInCash)}
+            </div>
+          </div>
         </div>
 
         <div className="flex justify-between items-center mb-2">
