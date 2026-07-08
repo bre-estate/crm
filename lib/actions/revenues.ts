@@ -80,7 +80,13 @@ function buildRevenueData(fd: FormData) {
 
 // Cập nhật product config từ các field "cfg*" trên form (nếu có).
 // Revenue form là single source of truth cho HH/KPI/thưởng config.
-async function applyConfigToProduct(fd: FormData, productId: number) {
+// Ngoài ra: nếu pmgCumulativePct trên recon > product.pmgRate hiện tại
+// → auto-cập nhật product.pmgRate (case hồi tố %HH tăng).
+async function applyConfigToProduct(
+  fd: FormData,
+  productId: number,
+  reconPmgCumulativePct?: number,
+) {
   const cfg: Partial<typeof products.$inferInsert> = {};
   const hasField = (name: string) => fd.get(name) !== null;
   if (hasField("cfgPmgSaleRate")) cfg.pmgSaleRate = toPct(fd.get("cfgPmgSaleRate"));
@@ -94,6 +100,18 @@ async function applyConfigToProduct(fd: FormData, productId: number) {
   if (hasField("cfgBonusSale")) cfg.bonusSale = toNum(fd.get("cfgBonusSale"));
   if (hasField("cfgBonusManager")) cfg.bonusManager = toNum(fd.get("cfgBonusManager"));
   if (hasField("cfgCustomerSupport")) cfg.customerSupport = toNum(fd.get("cfgCustomerSupport"));
+
+  // Auto-update pmgRate nếu recon mới có %PMG cao hơn (hồi tố)
+  if (reconPmgCumulativePct && reconPmgCumulativePct > 0) {
+    const [current] = await db
+      .select({ pmgRate: products.pmgRate })
+      .from(products)
+      .where(eq(products.id, productId));
+    if (current && reconPmgCumulativePct > Number(current.pmgRate ?? 0)) {
+      cfg.pmgRate = reconPmgCumulativePct;
+    }
+  }
+
   if (Object.keys(cfg).length === 0) return;
   await db.update(products).set(cfg).where(eq(products.id, productId));
 }
@@ -112,7 +130,7 @@ export async function createRevenue(fd: FormData) {
     .values({ ...data, invoiceId })
     .returning({ id: revenueReconciliations.id });
 
-  await applyConfigToProduct(fd, data.productId);
+  await applyConfigToProduct(fd, data.productId, data.pmgCumulativePct);
 
   const paymentDate = toStrOrNull(fd.get("paymentDate"));
   const paymentAmount = toNum(fd.get("paymentAmount"));
@@ -142,7 +160,7 @@ export async function updateRevenue(id: number, fd: FormData) {
     .set({ ...data, invoiceId })
     .where(eq(revenueReconciliations.id, id));
 
-  await applyConfigToProduct(fd, data.productId);
+  await applyConfigToProduct(fd, data.productId, data.pmgCumulativePct);
 
   revalidatePath("/revenues");
   revalidatePath(`/revenues/${id}/edit`);
