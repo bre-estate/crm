@@ -182,7 +182,7 @@ export default function ProductForm({ product, projects, departments = [], onSav
                 defaultCurrentRate={product?.pmgRate ?? null}
               />
             </Field>
-            <Field label="Phí admin (gồm VAT)">
+            <Field label="Phí admin thực (CĐT giữ, gồm VAT)">
               <MoneyInput name="adminFee" defaultValue={product?.adminFee ?? 0} className="input" />
             </Field>
             <Field label="CĐT thưởng sale">
@@ -223,10 +223,15 @@ export default function ProductForm({ product, projects, departments = [], onSav
           {/* bonusSale + otherCost toàn 0 → hidden */}
           <input type="hidden" name="bonusSale" value={0} />
           <input type="hidden" name="otherCost" value={0} />
-          {/* Phí admin sale tự động = adminFee (CĐT chuyển transit qua BRE) */}
-          <input type="hidden" name="adminFeeSale" value={String(product?.adminFee ?? 0)} />
           {!isSecondary && (
             <>
+              <Field label="Phí admin sale (ghi cho sale, thường thấp hơn admin thực)">
+                <MoneyInput
+                  name="adminFeeSale"
+                  defaultValue={product?.adminFeeSale ?? 0}
+                  className="input"
+                />
+              </Field>
               <Field label="%PMG_LK_sale (base tính HH sale)">
                 <input
                   name="pmgSaleRate"
@@ -269,6 +274,7 @@ export default function ProductForm({ product, projects, departments = [], onSav
         {isSecondary && (
           <>
             <input type="hidden" name="pmgSaleRate" value="" />
+            <input type="hidden" name="adminFeeSale" value={0} />
             <input type="hidden" name="kpiCeoRate" value="" />
             <input type="hidden" name="kpiTpkdRate" value="" />
             <input type="hidden" name="kpiAdminRate" value="" />

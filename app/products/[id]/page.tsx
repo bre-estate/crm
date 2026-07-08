@@ -310,9 +310,9 @@ export default async function ProductDetailPage({
                 tooltip={`= Giá tính PMG × %PMG_LK − Phí admin. Với căn này: ${fmtMoney(Number(p.pmgBasePrice ?? 0))} × ${(Number(p.pmgRate ?? 0) * 100).toFixed(2)}% − ${fmtMoney(p.adminFee)} = ${fmtMoney(p.totalRevenue)}. Số thực CĐT chuyển vào TK BRE (sau khi CĐT trừ admin). KHÔNG bao gồm thưởng nóng CĐT.`}
               />
               <Info
-                label="Phí admin"
+                label="Phí admin thực (CĐT giữ)"
                 value={fmtMoney(p.adminFee)}
-                tooltip="Phí admin trả cho sàn F1 liên kết. BRE KHÔNG nhận khoản này (CĐT trừ trước khi chuyển BRE)."
+                tooltip={`Số CĐT trực tiếp giữ để trả sàn F1 liên kết (BRE KHÔNG nhận). Có thể khác với "Phí admin ghi cho sale" (${fmtMoney(p.adminFeeSale)}): chênh CTY tự bù từ Pool B để sale thấy phí thấp hơn thực tế.`}
               />
               <Info label="Chiết khấu (CK)" value={fmtMoney(p.discountCk)} />
             </>
@@ -575,6 +575,10 @@ export default async function ProductDetailPage({
           const kpiTpkdAmt = Q_sale * kpiTpkdRate;
           const kpiAdminAmt = Q_sale * kpiAdminRate;
           const adminFeeSaleAmt = Number(p.adminFeeSale ?? 0);
+          // Chênh admin: CTY bù cho sale khi admin thực > admin ghi cho sale
+          // (vd admin thực CĐT giữ 8.8tr, ghi cho sale 3.85tr → cty bù 4.95tr từ Pool B)
+          const adminFeeReal = Number(p.adminFee ?? 0);
+          const adminFeeSubsidy = Math.max(0, adminFeeReal - adminFeeSaleAmt);
           const supportAmt =
             derivedFlatByType.get("customer_support") || Number(p.customerSupport ?? 0);
           const bonusSaleCtyAmt =
@@ -593,8 +597,9 @@ export default async function ProductDetailPage({
             bonusSaleCtyAmt +
             otherCostAmt;
           const conLaiQSale = Q_sale - chiTuQSale; // Q_sale còn dư sau khi trả HH + KPI + chi khác
-          const chenhSauThuongMgr = chenh - bonusMgrCtyAmt; // Chênh còn lại sau thưởng manager
-          const breProfit = conLaiQSale + chenhSauThuongMgr;
+          // Pool B chi ra: thưởng manager + bù admin cho sale
+          const chenhSauChi = chenh - bonusMgrCtyAmt - adminFeeSubsidy;
+          const breProfit = conLaiQSale + chenhSauChi;
           const totalReceived = grossFeeFromCDT - adminFee;
           const breProfitPct = totalReceived > 0 ? (breProfit / totalReceived) * 100 : 0;
 
@@ -739,12 +744,19 @@ export default async function ProductDetailPage({
                       color="red"
                     />
                   )}
+                  {adminFeeSubsidy > 0 && (
+                    <Row
+                      label={`Bù admin cho sale (thực ${fmtMoney(adminFeeReal)} − ghi ${fmtMoney(adminFeeSaleAmt)})`}
+                      value={`− ${fmtMoney(adminFeeSubsidy)}`}
+                      color="red"
+                    />
+                  )}
                   <div className="border-t border-purple-200 mt-1 pt-1">
                     <Row
                       label="Còn lại từ Pool B = Cty giữ"
-                      value={fmtMoney(chenhSauThuongMgr)}
+                      value={fmtMoney(chenhSauChi)}
                       bold
-                      color={chenhSauThuongMgr >= 0 ? "green" : "red"}
+                      color={chenhSauChi >= 0 ? "green" : "red"}
                     />
                   </div>
                 </div>
