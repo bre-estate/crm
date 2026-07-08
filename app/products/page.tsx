@@ -103,6 +103,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
             id: revenueReconciliations.id,
             productId: revenueReconciliations.productId,
             revenueThisTime: revenueReconciliations.revenueThisTime,
+            totalReceivable: revenueReconciliations.totalReceivableThisTime,
             cdtBonusSale: revenueReconciliations.cdtBonusSale,
             cdtBonusManager: revenueReconciliations.cdtBonusManager,
             pmgCumulativePct: revenueReconciliations.pmgCumulativePct,
@@ -132,8 +133,10 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
   type Stats = {
     expectedHH: number; // HH sale dự kiến = pmgBase × latestPmgRate
     expectedBonus: number; // Thưởng nóng dự kiến
-    paidHH: number; // Đã thu HH sale từ payments_in
-    paidBonus: number; // Đã thu thưởng nóng từ payments_in
+    receivedHH: number; // Đã ĐC = sum totalReceivable (biên bản/HĐ)
+    receivedBonus: number; // Đã ĐC thưởng nóng
+    paidHH: number; // Đã vào bank = sum payments_in (thông tin phụ)
+    paidBonus: number;
     phaseCount: number;
     invoiceIds: Set<number>;
   };
@@ -164,6 +167,8 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
     statsByProduct.set(r.id, {
       expectedHH,
       expectedBonus,
+      receivedHH: 0,
+      receivedBonus: 0,
       paidHH: 0,
       paidBonus: 0,
       phaseCount: 0,
@@ -174,9 +179,12 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
     const s = statsByProduct.get(rec.productId);
     if (!s) continue;
     const paid = paidByRecon.get(rec.id) ?? 0;
+    const receivable = Number(rec.totalReceivable ?? 0);
     if (isBonusRecon(rec)) {
+      s.receivedBonus += receivable;
       s.paidBonus += paid;
     } else {
+      s.receivedHH += receivable;
       s.paidHH += paid;
       if (Number(rec.revenueThisTime ?? 0) > 0) s.phaseCount += 1;
     }
@@ -184,14 +192,14 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
   }
 
   const totalRev = rows.reduce((s, r) => s + Number(r.totalRevenue ?? 0), 0);
-  // Snap to 0 chênh lệch < 1k VND per product
+  // Snap to 0 chênh lệch < 1k VND per product (dùng receivedHH — theo ĐC)
   for (const s of statsByProduct.values()) {
-    if (Math.abs(s.expectedHH - s.paidHH) < 1000) {
-      s.expectedHH = s.paidHH;
+    if (Math.abs(s.expectedHH - s.receivedHH) < 1000) {
+      s.expectedHH = s.receivedHH;
     }
   }
   const totalCollected = Array.from(statsByProduct.values()).reduce(
-    (s, x) => s + x.paidHH + x.paidBonus,
+    (s, x) => s + x.receivedHH + x.receivedBonus,
     0,
   );
   const totalExpected = Array.from(statsByProduct.values()).reduce(
@@ -390,15 +398,17 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
               const stats = statsByProduct.get(r.id) ?? {
                 expectedHH: 0,
                 expectedBonus: 0,
+                receivedHH: 0,
+                receivedBonus: 0,
                 paidHH: 0,
                 paidBonus: 0,
                 phaseCount: 0,
                 invoiceIds: new Set<number>(),
               };
-              // % thu HH = paidHH / expectedHH (không cộng thưởng nóng vào tổng target
-              // vì thưởng là stream riêng)
+              // % thu HH = receivedHH / expectedHH (đồng nhất với Section 4 detail —
+              // ưu tiên biên bản ĐC = "đã ghi nhận có thu"). Bank actual là detail phụ.
               const pctPaid =
-                stats.expectedHH > 0 ? (stats.paidHH / stats.expectedHH) * 100 : 0;
+                stats.expectedHH > 0 ? (stats.receivedHH / stats.expectedHH) * 100 : 0;
               const fullyPaid = pctPaid >= 99.5 && pctPaid <= 100.5;
               const overPaid = pctPaid > 100.5;
               const noData = stats.expectedHH === 0 && stats.phaseCount === 0;
