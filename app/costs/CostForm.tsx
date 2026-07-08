@@ -13,11 +13,18 @@ type ProductOption = {
   unitCode: string;
   pmgBasePrice: number | null;
   pmgSaleRate: number | null;
+  pmgRate: number | null;
   saleCommissionRate: number | null;
   adminFeeSale: number | null;
   salesPerson: string | null;
   projectName: string | null;
   partnerName: string | null;
+  kpiCeoRate?: number | null;
+  kpiTpkdRate?: number | null;
+  kpiAdminRate?: number | null;
+  bonusSale?: number | null;
+  bonusManager?: number | null;
+  customerSupport?: number | null;
 };
 
 type Props = {
@@ -60,6 +67,66 @@ export default function CostForm({ recon, paymentInit, products, defaultProductI
   const showSupport = costType === "customer_support";
   const showKpi = costType === "kpi_ceo" || costType === "kpi_tpkd" || costType === "kpi_admin";
   const showBonus = costType === "bonus_sale" || costType === "bonus_manager";
+
+  // === Auto-calc state ===
+  const parsePct = (s: string): number => {
+    const clean = s.replace(/,/g, ".").replace(/\s/g, "");
+    if (!clean) return 0;
+    const n = Number(clean);
+    return isNaN(n) ? 0 : n / 100;
+  };
+  const parseMoney = (s: string | number | null | undefined): number => {
+    if (s === null || s === undefined) return 0;
+    if (typeof s === "number") return s;
+    const clean = s.replace(/[.,\s]/g, "");
+    return Number(clean) || 0;
+  };
+
+  const [commissionPct, setCommissionPct] = useState<string>(
+    pctDisplay(recon?.commissionRate ?? product?.saleCommissionRate),
+  );
+  const [pmgThis, setPmgThis] = useState<number>(Number(recon?.pmgThisTime ?? 0));
+  const [kpiPct, setKpiPct] = useState<string>(pctDisplay(recon?.kpiRate));
+  const [totalAmt, setTotalAmt] = useState<number>(
+    Number(recon?.amountPayableThisTime ?? 0),
+  );
+
+  // Q_sale = pmgBase × pmgSaleRate (fallback pmgRate)
+  const Q_sale = useMemo(() => {
+    const base = Number(product?.pmgBasePrice ?? 0);
+    const rate = Number(product?.pmgSaleRate ?? 0) || Number(product?.pmgRate ?? 0);
+    return base * rate;
+  }, [product]);
+
+  // Auto default rate for KPI based on cost_type + product config
+  const kpiRateDefault = useMemo(() => {
+    if (costType === "kpi_ceo") return Number(product?.kpiCeoRate ?? 0);
+    if (costType === "kpi_tpkd") return Number(product?.kpiTpkdRate ?? 0);
+    if (costType === "kpi_admin") return Number(product?.kpiAdminRate ?? 0);
+    return 0;
+  }, [costType, product]);
+
+  const kpiRateNum = kpiPct ? parsePct(kpiPct) : kpiRateDefault;
+  const commissionRateNum = parsePct(commissionPct);
+
+  // Suggested amount
+  const suggested = useMemo(() => {
+    if (showCommission) {
+      // HH sale: pmgThisTime × commissionRate (nếu có), fallback Q_sale × commissionRate
+      const base = pmgThis > 0 ? pmgThis : Q_sale;
+      return base * commissionRateNum;
+    }
+    if (showKpi) {
+      // KPI: Q_sale × kpiRate
+      return Q_sale * kpiRateNum;
+    }
+    if (costType === "bonus_sale") return Number(product?.bonusSale ?? 0);
+    if (costType === "bonus_manager") return Number(product?.bonusManager ?? 0);
+    if (costType === "customer_support") return Number(product?.customerSupport ?? 0);
+    return 0;
+  }, [showCommission, showKpi, costType, pmgThis, Q_sale, commissionRateNum, kpiRateNum, product]);
+
+  const applyValue = (v: number) => setTotalAmt(Math.round(v));
 
   return (
     <form
@@ -220,7 +287,8 @@ export default function CostForm({ recon, paymentInit, products, defaultProductI
                 name="commissionRate"
                 type="number"
                 step="any"
-                defaultValue={pctDisplay(recon?.commissionRate ?? product?.saleCommissionRate)}
+                value={commissionPct}
+                onChange={(e) => setCommissionPct(e.target.value)}
                 className="input"
               />
             </Field>
@@ -239,10 +307,18 @@ export default function CostForm({ recon, paymentInit, products, defaultProductI
               />
             </Field>
             <Field label="PMG đợt này (VND)">
-              <MoneyInput
+              <input
                 name="pmgThisTime"
-                defaultValue={recon?.pmgThisTime ?? 0}
+                type="text"
+                inputMode="numeric"
+                value={pmgThis ? pmgThis.toLocaleString("vi-VN") : ""}
+                onChange={(e) => {
+                  const digits = e.target.value.replace(/\D/g, "");
+                  setPmgThis(digits ? Number(digits) : 0);
+                }}
+                onFocus={(e) => e.currentTarget.select()}
                 className="input"
+                placeholder="0"
               />
             </Field>
             <Field label="PMG phải trả đợt này (VND)">
@@ -285,13 +361,20 @@ export default function CostForm({ recon, paymentInit, products, defaultProductI
 
       {showKpi && (
         <Section title={`KPI ${costType === "kpi_ceo" ? "CEO" : costType === "kpi_tpkd" ? "TPKD" : "Admin"}`}>
+          <div className="text-xs text-slate-500 mb-2">
+            Q_sale (base tính KPI) = <b>{fmtMoney(Q_sale)}</b>
+          </div>
           <div className="grid grid-cols-2 gap-4">
-            <Field label="%KPI">
+            <Field label={`%KPI ${costType === "kpi_ceo" ? "CEO" : costType === "kpi_tpkd" ? "TPKD" : "Admin"}`}>
               <input
                 name="kpiRate"
                 type="number"
                 step="any"
-                defaultValue={pctDisplay(recon?.kpiRate)}
+                value={kpiPct}
+                onChange={(e) => setKpiPct(e.target.value)}
+                placeholder={
+                  kpiRateDefault > 0 ? `Mặc định từ căn: ${(kpiRateDefault * 100).toFixed(2)}` : ""
+                }
                 className="input"
               />
             </Field>
@@ -308,11 +391,40 @@ export default function CostForm({ recon, paymentInit, products, defaultProductI
 
       <Section title="Tổng kết">
         <Field label="Tổng phải trả đợt này (VND)" required>
-          <MoneyInput
+          <input
             name="amountPayableThisTime"
-            defaultValue={recon?.amountPayableThisTime ?? 0}
+            type="text"
+            inputMode="numeric"
+            value={totalAmt ? totalAmt.toLocaleString("vi-VN") : ""}
+            onChange={(e) => {
+              const digits = e.target.value.replace(/\D/g, "");
+              setTotalAmt(digits ? Number(digits) : 0);
+            }}
+            onFocus={(e) => e.currentTarget.select()}
             className="input"
+            placeholder="0"
           />
+          {suggested > 0 && Math.abs(suggested - totalAmt) > 100 && (
+            <div className="text-xs mt-1.5 flex items-center gap-2 bg-blue-50 border border-blue-200 rounded px-2 py-1">
+              <span className="text-blue-700">
+                💡 Gợi ý:{" "}
+                <b className="tabular-nums">{fmtMoney(suggested)}</b>
+                {showCommission && (
+                  <span className="text-slate-500 ml-1">
+                    ({pmgThis > 0 ? "PMG đợt" : "Q_sale"} × %HH)
+                  </span>
+                )}
+                {showKpi && <span className="text-slate-500 ml-1">(Q_sale × %KPI)</span>}
+              </span>
+              <button
+                type="button"
+                onClick={() => applyValue(suggested)}
+                className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded hover:bg-blue-700"
+              >
+                Áp dụng
+              </button>
+            </div>
+          )}
         </Field>
       </Section>
 

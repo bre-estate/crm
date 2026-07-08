@@ -18,11 +18,18 @@ export default async function NewCostPage({ searchParams }: { searchParams: Sear
       unitCode: products.unitCode,
       pmgBasePrice: products.pmgBasePrice,
       pmgSaleRate: products.pmgSaleRate,
+      pmgRate: products.pmgRate,
       saleCommissionRate: products.saleCommissionRate,
       adminFeeSale: products.adminFeeSale,
       salesPerson: products.salesPerson,
       projectName: projects.name,
       partnerName: partners.name,
+      kpiCeoRate: products.kpiCeoRate,
+      kpiTpkdRate: products.kpiTpkdRate,
+      kpiAdminRate: products.kpiAdminRate,
+      bonusSale: products.bonusSale,
+      bonusManager: products.bonusManager,
+      customerSupport: products.customerSupport,
     })
     .from(products)
     .leftJoin(projects, eq(products.projectId, projects.id))
