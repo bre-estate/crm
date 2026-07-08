@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { revenueReconciliations, invoices, paymentsIn } from "@/lib/schema";
+import { revenueReconciliations, invoices, paymentsIn, products } from "@/lib/schema";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -78,6 +78,26 @@ function buildRevenueData(fd: FormData) {
   };
 }
 
+// Cập nhật product config từ các field "cfg*" trên form (nếu có).
+// Revenue form là single source of truth cho HH/KPI/thưởng config.
+async function applyConfigToProduct(fd: FormData, productId: number) {
+  const cfg: Partial<typeof products.$inferInsert> = {};
+  const hasField = (name: string) => fd.get(name) !== null;
+  if (hasField("cfgPmgSaleRate")) cfg.pmgSaleRate = toPct(fd.get("cfgPmgSaleRate"));
+  if (hasField("cfgSaleCommRate")) cfg.saleCommissionRate = toPct(fd.get("cfgSaleCommRate"));
+  if (hasField("cfgKpiCeoRate")) cfg.kpiCeoRate = toPct(fd.get("cfgKpiCeoRate"));
+  if (hasField("cfgKpiTpkdRate")) cfg.kpiTpkdRate = toPct(fd.get("cfgKpiTpkdRate"));
+  if (hasField("cfgKpiAdminRate")) cfg.kpiAdminRate = toPct(fd.get("cfgKpiAdminRate"));
+  if (hasField("cfgCdtBonusSale")) cfg.cdtBonusSale = toNum(fd.get("cfgCdtBonusSale"));
+  if (hasField("cfgCdtBonusManager"))
+    cfg.cdtBonusManager = toNum(fd.get("cfgCdtBonusManager"));
+  if (hasField("cfgBonusSale")) cfg.bonusSale = toNum(fd.get("cfgBonusSale"));
+  if (hasField("cfgBonusManager")) cfg.bonusManager = toNum(fd.get("cfgBonusManager"));
+  if (hasField("cfgCustomerSupport")) cfg.customerSupport = toNum(fd.get("cfgCustomerSupport"));
+  if (Object.keys(cfg).length === 0) return;
+  await db.update(products).set(cfg).where(eq(products.id, productId));
+}
+
 export async function createRevenue(fd: FormData) {
   const data = buildRevenueData(fd);
   if (!data.productId) throw new Error("Chọn căn (sản phẩm)");
@@ -91,6 +111,8 @@ export async function createRevenue(fd: FormData) {
     .insert(revenueReconciliations)
     .values({ ...data, invoiceId })
     .returning({ id: revenueReconciliations.id });
+
+  await applyConfigToProduct(fd, data.productId);
 
   const paymentDate = toStrOrNull(fd.get("paymentDate"));
   const paymentAmount = toNum(fd.get("paymentAmount"));
@@ -119,6 +141,8 @@ export async function updateRevenue(id: number, fd: FormData) {
     .update(revenueReconciliations)
     .set({ ...data, invoiceId })
     .where(eq(revenueReconciliations.id, id));
+
+  await applyConfigToProduct(fd, data.productId);
 
   revalidatePath("/revenues");
   revalidatePath(`/revenues/${id}/edit`);

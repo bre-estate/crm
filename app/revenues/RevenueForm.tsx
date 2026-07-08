@@ -13,6 +13,7 @@ type ProductOption = {
   unitCode: string;
   pmgBasePrice: number | null;
   pmgRate: number | null;
+  pmgSaleRate?: number | null;
   adminFee: number | null;
   projectName: string | null;
   partnerName: string | null;
@@ -20,6 +21,13 @@ type ProductOption = {
   cdtBonusSale?: number | null;
   cdtBonusManager?: number | null;
   totalRevenue?: number | null;
+  saleCommissionRate?: number | null;
+  kpiCeoRate?: number | null;
+  kpiTpkdRate?: number | null;
+  kpiAdminRate?: number | null;
+  bonusSale?: number | null;
+  bonusManager?: number | null;
+  customerSupport?: number | null;
 };
 
 type InvoiceInfo = { number: string; date: string | null; totalAmountVat: number };
@@ -353,6 +361,110 @@ export default function RevenueForm({
           defaultValue={String(recon?.revenueReduction ?? 0)}
         />
       </Section>
+
+      {/* Cấu hình phân bổ HH & KPI — nhập tại đây, các trang khác đọc lại */}
+      {!isSecondary && (
+        <Section title="⚙️ Cấu hình phân bổ HH & KPI (áp lên căn khi lưu)">
+          <div className="text-xs text-slate-500 -mt-2 mb-3">
+            Nhập các tỷ lệ & thưởng ở đây. Khi lưu, hệ thống tự cập nhật lên căn để tất cả các
+            trang khác (giá vốn, báo cáo) dùng chung.
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <Field label="%PMG_LK_sale (base HH+KPI)">
+              <input
+                name="cfgPmgSaleRate"
+                type="number"
+                step="any"
+                defaultValue={pctDisplay(product?.pmgSaleRate)}
+                className="input"
+                placeholder="vd: 5.25"
+              />
+            </Field>
+            <Field label="%HH sale (NVKD)">
+              <input
+                name="cfgSaleCommRate"
+                type="number"
+                step="any"
+                defaultValue={pctDisplay(product?.saleCommissionRate)}
+                className="input"
+                placeholder="vd: 55"
+              />
+            </Field>
+            <Field label="%KPI CEO">
+              <input
+                name="cfgKpiCeoRate"
+                type="number"
+                step="any"
+                defaultValue={pctDisplay(product?.kpiCeoRate)}
+                className="input"
+                placeholder="vd: 3.5"
+              />
+            </Field>
+            <Field label="%KPI TPKD">
+              <input
+                name="cfgKpiTpkdRate"
+                type="number"
+                step="any"
+                defaultValue={pctDisplay(product?.kpiTpkdRate)}
+                className="input"
+                placeholder="vd: 2"
+              />
+            </Field>
+            <Field label="%KPI Admin">
+              <input
+                name="cfgKpiAdminRate"
+                type="number"
+                step="any"
+                defaultValue={pctDisplay(product?.kpiAdminRate)}
+                className="input"
+                placeholder="vd: 0.25"
+              />
+            </Field>
+          </div>
+          <div className="border-t border-slate-200 mt-3 pt-3">
+            <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
+              Thưởng nóng CĐT & CTY (số flat)
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <Field label="Thưởng nóng CĐT (sale)">
+                <MoneyInput
+                  name="cfgCdtBonusSale"
+                  defaultValue={product?.cdtBonusSale ?? 0}
+                  className="input"
+                />
+              </Field>
+              <Field label="Thưởng nóng CĐT (QL)">
+                <MoneyInput
+                  name="cfgCdtBonusManager"
+                  defaultValue={product?.cdtBonusManager ?? 0}
+                  className="input"
+                />
+              </Field>
+              <Field label="Thưởng NVKD (CTY)">
+                <MoneyInput
+                  name="cfgBonusSale"
+                  defaultValue={product?.bonusSale ?? 0}
+                  className="input"
+                />
+              </Field>
+              <Field label="Thưởng TPKD (CTY)">
+                <MoneyInput
+                  name="cfgBonusManager"
+                  defaultValue={product?.bonusManager ?? 0}
+                  className="input"
+                />
+              </Field>
+              <Field label="Hỗ trợ khách">
+                <MoneyInput
+                  name="cfgCustomerSupport"
+                  defaultValue={product?.customerSupport ?? 0}
+                  className="input"
+                />
+              </Field>
+            </div>
+          </div>
+        </Section>
+      )}
 
       {!isEdit && (
         <Section title="🏦 Đã nhận tiền vào TK cty chưa? (tùy chọn — điền nếu CĐT đã trả rồi)">

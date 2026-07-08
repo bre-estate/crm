@@ -25,6 +25,14 @@ export default async function NewRevenuePage({ searchParams }: { searchParams: S
       cdtBonusSale: products.cdtBonusSale,
       cdtBonusManager: products.cdtBonusManager,
       totalRevenue: products.totalRevenue,
+      pmgSaleRate: products.pmgSaleRate,
+      saleCommissionRate: products.saleCommissionRate,
+      kpiCeoRate: products.kpiCeoRate,
+      kpiTpkdRate: products.kpiTpkdRate,
+      kpiAdminRate: products.kpiAdminRate,
+      bonusSale: products.bonusSale,
+      bonusManager: products.bonusManager,
+      customerSupport: products.customerSupport,
     })
     .from(products)
     .leftJoin(projects, eq(products.projectId, projects.id))
