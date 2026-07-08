@@ -799,18 +799,26 @@ export default async function ProductDetailPage({
             tooltip="Tổng các đợt ĐC đã lập (cộng cả hồi tố). Vd căn A1-12A-07: 125.629.179 (đợt 1) + 4.795.525 (đợt 3 hồi tố) = 130.424.704"
             accent="green"
           />
-          <Info
-            label="Còn phải nhận"
-            value={fmtMoney(Math.max(0, expectedHHSale - receivedHH))}
-            tooltip="Dự kiến − Đã nhận"
-            accent="orange"
-          />
-          <Info
-            label="% đã nhận"
-            value={
-              expectedHHSale > 0 ? `${((receivedHH / expectedHHSale) * 100).toFixed(1)}%` : "—"
-            }
-          />
+          {(() => {
+            const remaining = Math.max(0, expectedHHSale - receivedHH);
+            const pct = expectedHHSale > 0 ? (receivedHH / expectedHHSale) * 100 : 0;
+            const isDone = remaining < 1000; // threshold rounding
+            return (
+              <>
+                <Info
+                  label="Còn phải nhận"
+                  value={fmtMoney(remaining)}
+                  tooltip="Dự kiến − Đã nhận"
+                  accent={isDone ? "slate" : "red"}
+                />
+                <Info
+                  label="% đã nhận"
+                  value={expectedHHSale > 0 ? `${pct.toFixed(1)}%` : "—"}
+                  accent={isDone ? "green" : "red"}
+                />
+              </>
+            );
+          })()}
         </div>
 
         {/* Thưởng nóng (nếu có) */}
@@ -822,17 +830,25 @@ export default async function ProductDetailPage({
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
               <Info label="Dự kiến" value={fmtMoney(expectedBonus)} />
               <Info label="Đã nhận" value={fmtMoney(receivedBonus)} accent="green" />
-              <Info
-                label="Còn phải nhận"
-                value={fmtMoney(Math.max(0, expectedBonus - receivedBonus))}
-                accent="orange"
-              />
-              <Info
-                label="% đã nhận"
-                value={
-                  expectedBonus > 0 ? `${((receivedBonus / expectedBonus) * 100).toFixed(1)}%` : "—"
-                }
-              />
+              {(() => {
+                const remaining = Math.max(0, expectedBonus - receivedBonus);
+                const pct = expectedBonus > 0 ? (receivedBonus / expectedBonus) * 100 : 0;
+                const isDone = remaining < 1000;
+                return (
+                  <>
+                    <Info
+                      label="Còn phải nhận"
+                      value={fmtMoney(remaining)}
+                      accent={isDone ? "slate" : "red"}
+                    />
+                    <Info
+                      label="% đã nhận"
+                      value={expectedBonus > 0 ? `${pct.toFixed(1)}%` : "—"}
+                      accent={isDone ? "green" : "red"}
+                    />
+                  </>
+                );
+              })()}
             </div>
           </>
         )}
@@ -976,16 +992,21 @@ export default async function ProductDetailPage({
                 accent="green"
                 tooltip="Đối chiếu = đã thoả thuận số. Trong hệ thống hiện tại, đối chiếu = đã chi trả (nếu chưa có thanh toán riêng)."
               />
-              {hasExplicitPayments && (
-                <>
-                  <Info label="Ghi nhận thanh toán riêng" value={fmtMoney(totalPaidOut)} />
-                  <Info
-                    label="Còn phải trả"
-                    value={fmtMoney(Math.max(0, totalCostPayable - totalPaidOut))}
-                    accent="orange"
-                  />
-                </>
-              )}
+              {hasExplicitPayments &&
+                (() => {
+                  const remaining = Math.max(0, totalCostPayable - totalPaidOut);
+                  const isDone = remaining < 1000;
+                  return (
+                    <>
+                      <Info label="Ghi nhận thanh toán riêng" value={fmtMoney(totalPaidOut)} />
+                      <Info
+                        label="Còn phải trả"
+                        value={fmtMoney(remaining)}
+                        accent={isDone ? "slate" : "red"}
+                      />
+                    </>
+                  );
+                })()}
               {!hasExplicitPayments && (
                 <Info
                   label="Số dòng đối chiếu"
@@ -1249,14 +1270,22 @@ function Info({
   value: string;
   mono?: boolean;
   small?: boolean;
-  accent?: "green" | "orange";
+  accent?: "green" | "orange" | "red" | "slate";
   tooltip?: string;
 }) {
   const valueCls = [
     "font-medium tabular-nums mt-1",
     small ? "text-xs" : "text-sm",
     mono ? "font-mono" : "",
-    accent === "green" ? "text-green-700" : accent === "orange" ? "text-orange-700" : "",
+    accent === "green"
+      ? "text-green-700"
+      : accent === "orange"
+        ? "text-orange-700"
+        : accent === "red"
+          ? "text-red-600"
+          : accent === "slate"
+            ? "text-slate-500"
+            : "",
   ]
     .filter(Boolean)
     .join(" ");

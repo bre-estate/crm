@@ -199,7 +199,11 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
           </div>
           <div>
             <div className="text-xs text-slate-500">Còn phải thu</div>
-            <div className="font-bold tabular-nums text-orange-700">
+            <div
+              className={`font-bold tabular-nums ${
+                totalReceivable - totalPaid < 1000 ? "text-slate-400" : "text-red-600"
+              }`}
+            >
               {fmtMoney(totalReceivable - totalPaid)}
             </div>
           </div>
@@ -294,7 +298,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
                   </td>
                   <td
                     className={`p-2 text-right tabular-nums ${
-                      remaining > 0 ? "text-orange-700 font-semibold" : "text-slate-400"
+                      remaining < 1000 ? "text-slate-400" : "text-red-600 font-semibold"
                     }`}
                   >
                     {remaining > 0 ? fmtMoney(remaining) : "—"}

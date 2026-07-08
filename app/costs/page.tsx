@@ -227,7 +227,11 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
           </div>
           <div>
             <div className="text-xs text-slate-500">Còn phải trả</div>
-            <div className="font-bold tabular-nums text-orange-700">
+            <div
+              className={`font-bold tabular-nums ${
+                totalPayable - totalPaid < 1000 ? "text-slate-400" : "text-red-600"
+              }`}
+            >
               {fmtMoney(totalPayable - totalPaid)}
             </div>
           </div>
