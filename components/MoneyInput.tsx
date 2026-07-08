@@ -17,6 +17,7 @@ type Props = {
   required?: boolean;
   disabled?: boolean;
   readOnly?: boolean;
+  onValueChange?: (v: number) => void;
 };
 
 export default function MoneyInput({
@@ -27,6 +28,7 @@ export default function MoneyInput({
   required,
   disabled,
   readOnly,
+  onValueChange,
 }: Props) {
   const [val, setVal] = useState(fmt(defaultValue ?? ""));
   const locked = disabled || readOnly;
@@ -36,7 +38,14 @@ export default function MoneyInput({
       inputMode="numeric"
       name={name}
       value={val}
-      onChange={(e) => setVal(fmt(e.target.value))}
+      onChange={(e) => {
+        const next = fmt(e.target.value);
+        setVal(next);
+        if (onValueChange) {
+          const digits = next.replace(/[^\d]/g, "");
+          onValueChange(digits ? Number(digits) : 0);
+        }
+      }}
       onFocus={(e) => e.currentTarget.select()}
       className={`${className ?? ""} ${locked ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}`}
       placeholder={placeholder ?? "0"}

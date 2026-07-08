@@ -30,6 +30,25 @@ export default function ProductForm({ product, projects, departments = [], onSav
   );
   const isSecondary = saleType === "secondary";
 
+  // === Live compute state (Section Doanh thu) ===
+  const [pmgBase, setPmgBase] = useState<number>(Number(product?.pmgBasePrice ?? 0));
+  const [pmgRateLive, setPmgRateLive] = useState<number>(Number(product?.pmgRate ?? 0));
+  const [adminFeeLive, setAdminFeeLive] = useState<number>(Number(product?.adminFee ?? 0));
+  const [cdtBonusSaleLive, setCdtBonusSaleLive] = useState<number>(
+    Number(product?.cdtBonusSale ?? 0),
+  );
+  const [cdtBonusMgrLive, setCdtBonusMgrLive] = useState<number>(
+    Number(product?.cdtBonusManager ?? 0),
+  );
+  const [pmgSaleRateLive, setPmgSaleRateLive] = useState<number>(
+    Number(product?.pmgSaleRate ?? 0),
+  );
+
+  const cdtBonusTotal = cdtBonusSaleLive + cdtBonusMgrLive;
+  const grossTotal = pmgBase * pmgRateLive + cdtBonusTotal;
+  const netInternal = pmgBase * pmgRateLive - adminFeeLive;
+  const dtThangDu = pmgBase * Math.max(0, pmgRateLive - pmgSaleRateLive);
+
   return (
     <form
       action={(fd) =>
@@ -169,12 +188,14 @@ export default function ProductForm({ product, projects, departments = [], onSav
                 name="pmgBasePrice"
                 defaultValue={product?.pmgBasePrice ?? 0}
                 className="input"
+                onValueChange={setPmgBase}
               />
             </Field>
             <Field label="Lịch sử %PMG_LK (từ CĐT)">
               <PmgRateHistoryEditor
                 defaultHistory={product?.pmgRateHistory ?? null}
                 defaultCurrentRate={product?.pmgRate ?? null}
+                onLatestChange={setPmgRateLive}
               />
             </Field>
           </div>
@@ -186,6 +207,7 @@ export default function ProductForm({ product, projects, departments = [], onSav
                 name="adminFee"
                 defaultValue={product?.adminFee ?? 0}
                 className="input"
+                onValueChange={setAdminFeeLive}
               />
             </Field>
             <Field label="Phí admin sale (ghi cho sale, có thể thấp hơn)">
@@ -204,6 +226,7 @@ export default function ProductForm({ product, projects, departments = [], onSav
                 name="cdtBonusSale"
                 defaultValue={product?.cdtBonusSale ?? 0}
                 className="input"
+                onValueChange={setCdtBonusSaleLive}
               />
             </Field>
             <Field label="CĐT thưởng nóng cho QL">
@@ -211,78 +234,50 @@ export default function ProductForm({ product, projects, departments = [], onSav
                 name="cdtBonusManager"
                 defaultValue={product?.cdtBonusManager ?? 0}
                 className="input"
+                onValueChange={setCdtBonusMgrLive}
               />
             </Field>
           </div>
 
-          {/* 3 loại tổng doanh thu (computed từ dữ liệu ĐANG LƯU, cập nhật sau Save) */}
+          {/* 3 loại tổng doanh thu (live compute) */}
           <div className="mt-6 border-t border-slate-200 pt-4">
             <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
-              Tổng doanh thu — tính từ %PMG_LK mới nhất, phí admin & thưởng CĐT
+              Tổng doanh thu — tự động cập nhật khi anh chỉnh %PMG hoặc phí admin
             </div>
-            <div className="text-xs text-slate-400 mb-2 italic">
-              (giá trị dưới đây tính từ dữ liệu đã lưu, cập nhật sau khi bấm Lưu)
-            </div>
-            {(() => {
-              const pmgBase = Number(product?.pmgBasePrice ?? 0);
-              const pmgRate = Number(product?.pmgRate ?? 0);
-              const pmgSaleRate = Number(product?.pmgSaleRate ?? 0) || pmgRate;
-              const adminFee = Number(product?.adminFee ?? 0);
-              const cdtBonusTotal =
-                Number(product?.cdtBonusSale ?? 0) + Number(product?.cdtBonusManager ?? 0);
-              const grossTotal = pmgBase * pmgRate + cdtBonusTotal;
-              const netInternal = pmgBase * pmgRate - adminFee;
-              const poolBRevenue = pmgBase * (pmgRate - pmgSaleRate);
-              return (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="rounded-lg border border-blue-200 bg-blue-50/60 p-3">
-                    <div className="text-xs text-blue-700 font-semibold">
-                      A. Tổng ghi nhận
-                    </div>
-                    <div className="text-lg font-bold tabular-nums mt-1">
-                      {fmtMoney(grossTotal)}
-                    </div>
-                    <div className="text-[10px] text-slate-500 mt-1">
-                      = PMG × %PMG_LK + thưởng CĐT (chưa trừ admin)
-                    </div>
+            <div className={`grid grid-cols-1 md:grid-cols-${dtThangDu > 0 ? 3 : 2} gap-3`}>
+              <div className="rounded-lg border border-blue-200 bg-blue-50/60 p-3">
+                <div className="text-xs text-blue-700 font-semibold">A. Tổng ghi nhận</div>
+                <div className="text-lg font-bold tabular-nums mt-1">{fmtMoney(grossTotal)}</div>
+                <div className="text-[10px] text-slate-500 mt-1">
+                  = PMG × %PMG_LK + thưởng CĐT (chưa trừ admin)
+                </div>
+              </div>
+              <div className="rounded-lg border border-green-200 bg-green-50/60 p-3">
+                <div className="text-xs text-green-700 font-semibold">
+                  B. DT thuần nội bộ
+                </div>
+                <div className="text-lg font-bold tabular-nums mt-1">{fmtMoney(netInternal)}</div>
+                <div className="text-[10px] text-slate-500 mt-1">
+                  = PMG × %PMG_LK − phí admin (đã bỏ transit)
+                </div>
+              </div>
+              {dtThangDu > 0 && (
+                <div className="rounded-lg border border-purple-200 bg-purple-50/60 p-3">
+                  <div className="text-xs text-purple-700 font-semibold">
+                    C. DT thặng dư
                   </div>
-                  <div className="rounded-lg border border-green-200 bg-green-50/60 p-3">
-                    <div className="text-xs text-green-700 font-semibold">
-                      B. DT thuần nội bộ
-                    </div>
-                    <div className="text-lg font-bold tabular-nums mt-1">
-                      {fmtMoney(netInternal)}
-                    </div>
-                    <div className="text-[10px] text-slate-500 mt-1">
-                      = PMG × %PMG_LK − phí admin (đã bỏ transit)
-                    </div>
-                  </div>
-                  <div className="rounded-lg border border-purple-200 bg-purple-50/60 p-3">
-                    <div className="text-xs text-purple-700 font-semibold">
-                      C. DT chênh (Pool B)
-                    </div>
-                    <div className="text-lg font-bold tabular-nums mt-1">
-                      {fmtMoney(poolBRevenue)}
-                    </div>
-                    <div className="text-[10px] text-slate-500 mt-1">
-                      = PMG × (%PMG_LK − %PMG_LK_sale) — CTY giữ + bù admin
-                    </div>
+                  <div className="text-lg font-bold tabular-nums mt-1">{fmtMoney(dtThangDu)}</div>
+                  <div className="text-[10px] text-slate-500 mt-1">
+                    = PMG × (%PMG_LK − %PMG_LK_sale) — CTY giữ + bù admin
                   </div>
                 </div>
-              );
-            })()}
+              )}
+            </div>
           </div>
 
-          {/* Hidden: totalRevenue tự tính = netInternal + giữ sellPrice = pmgBasePrice */}
-          <input
-            type="hidden"
-            name="totalRevenue"
-            value={String(
-              Number(product?.pmgBasePrice ?? 0) * Number(product?.pmgRate ?? 0) -
-                Number(product?.adminFee ?? 0),
-            )}
-          />
-          <input type="hidden" name="sellPrice" value={String(product?.pmgBasePrice ?? 0)} />
+          {/* Hidden: totalRevenue tự tính = netInternal, sellPrice = pmgBasePrice */}
+          <input type="hidden" name="totalRevenue" value={String(netInternal)} />
+          <input type="hidden" name="sellPrice" value={String(pmgBase)} />
           <input type="hidden" name="otherFeePct" value="" />
           <input type="hidden" name="otherRevenue" value={0} />
           <input type="hidden" name="revenueReduction" value={0} />
@@ -322,6 +317,10 @@ export default function ProductForm({ product, projects, departments = [], onSav
                   step="any"
                   defaultValue={pctDisplay(product?.pmgSaleRate)}
                   className="input"
+                  onChange={(e) => {
+                    const n = Number(e.target.value.replace(/,/g, "."));
+                    setPmgSaleRateLive(isNaN(n) ? 0 : n / 100);
+                  }}
                 />
               </Field>
               <Field label="%KPI CEO">

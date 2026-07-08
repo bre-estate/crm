@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type Entry = { rate: string; date: string; note: string };
 
@@ -9,9 +9,11 @@ const emptyEntry = (): Entry => ({ rate: "", date: "", note: "" });
 export default function PmgRateHistoryEditor({
   defaultHistory,
   defaultCurrentRate,
+  onLatestChange,
 }: {
   defaultHistory: string | null;
   defaultCurrentRate: number | null;
+  onLatestChange?: (rate: number) => void;
 }) {
   // Parse initial history JSON
   const initial = ((): Entry[] => {
@@ -74,6 +76,13 @@ export default function PmgRateHistoryEditor({
       .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
     return sorted[0]?.rate ?? entries[0].rate;
   })();
+
+  // Emit latest rate lên parent để live compute
+  useEffect(() => {
+    if (onLatestChange) {
+      onLatestChange(latestRate ? Number(latestRate) / 100 : 0);
+    }
+  }, [latestRate, onLatestChange]);
 
   return (
     <div className="space-y-2">
