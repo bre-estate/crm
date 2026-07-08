@@ -326,7 +326,7 @@ export default async function ProductDetailPage({
                       key={h.rate}
                       className={`text-xs px-2 py-0.5 rounded ${i === pmgHistory.length - 1 ? "bg-amber-200 text-amber-900 font-semibold" : "bg-slate-200 text-slate-600"}`}
                     >
-                      {(h.rate * 100).toFixed(2)}%
+                      {(h.rate * 100).toFixed(2).replace(".", ",")}%
                       {h.date && <span className="ml-1 text-[10px] opacity-70">({fmtDate(h.date)})</span>}
                     </span>
                   ))
@@ -369,7 +369,7 @@ export default async function ProductDetailPage({
             return (
               <div className="border-t border-slate-200 pt-3">
                 <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
-                  Tổng doanh thu (theo %PMG_LK mới nhất {(rate * 100).toFixed(2)}%)
+                  Tổng doanh thu (theo %PMG_LK mới nhất {(rate * 100).toFixed(2).replace(".", ",")}%)
                 </div>
                 <div className={`grid grid-cols-1 md:grid-cols-${thangDu > 0 ? 3 : 2} gap-3`}>
                   <div className="rounded-lg border border-blue-200 bg-blue-50/60 p-3">
@@ -447,7 +447,7 @@ export default async function ProductDetailPage({
           const adminSale = Number(p.adminFeeSale ?? 0);
           const adminSubsidy = Math.max(0, Number(p.adminFee ?? 0) - adminSale);
           const total = hhSale + kpiCeo + kpiTpkd + kpiAdmin + support + bonusMgr + adminSale + adminSubsidy;
-          const tooltipText = `= HH sale (${fmtMoney(hhSale)}) + KPI CEO (${fmtMoney(kpiCeo)}) + KPI TPKD (${fmtMoney(kpiTpkd)}) + KPI Admin (${fmtMoney(kpiAdmin)}) + Hỗ trợ khách (${fmtMoney(support)}) + CTY thưởng QL (${fmtMoney(bonusMgr)}) + Phí admin sale (${fmtMoney(adminSale)})${adminSubsidy > 0 ? ` + Bù admin (${fmtMoney(adminSubsidy)})` : ""}. Q_sale = ${fmtMoney(pmgBase)} × ${(pmgSaleRate * 100).toFixed(2)}%`;
+          const tooltipText = `= HH sale (${fmtMoney(hhSale)}) + KPI CEO (${fmtMoney(kpiCeo)}) + KPI TPKD (${fmtMoney(kpiTpkd)}) + KPI Admin (${fmtMoney(kpiAdmin)}) + Hỗ trợ khách (${fmtMoney(support)}) + CTY thưởng QL (${fmtMoney(bonusMgr)}) + Phí admin sale (${fmtMoney(adminSale)})${adminSubsidy > 0 ? ` + Bù admin (${fmtMoney(adminSubsidy)})` : ""}. Q_sale = ${fmtMoney(pmgBase)} × ${(pmgSaleRate * 100).toFixed(2).replace(".", ",")}%`;
           return (
             <div className="border-t border-slate-200 pt-3">
               <div className="rounded-lg border-2 border-orange-200 bg-orange-50/60 p-3">
@@ -571,7 +571,7 @@ export default async function ProductDetailPage({
                         Bước 3 · Lợi nhuận công ty
                       </div>
                       <div className="text-xs text-slate-500 mt-0.5">
-                        DT − Tổng chi = {profitPct.toFixed(1)}% biên
+                        DT − Tổng chi = {profitPct.toFixed(1).replace(".", ",")}% biên
                       </div>
                     </div>
                     <div
@@ -745,7 +745,7 @@ export default async function ProductDetailPage({
                       C. Lợi nhuận công ty (dự kiến)
                     </div>
                     <div className="text-xs text-slate-500 mt-0.5">
-                      = A − B · Biên {bienLN.toFixed(1)}%
+                      = A − B · Biên {bienLN.toFixed(1).replace(".", ",")}%
                     </div>
                   </div>
                   <div
@@ -785,13 +785,13 @@ export default async function ProductDetailPage({
       <SectionCard title="5. Thu phí HH từ CĐT" icon="💵">
         {/* HH sale */}
         <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
-          HH sale (theo %PMG_LK mới nhất: {(latestPmgRate * 100).toFixed(2)}%)
+          HH sale (theo %PMG_LK mới nhất: {(latestPmgRate * 100).toFixed(2).replace(".", ",")}%)
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
           <Info
             label="Dự kiến"
             value={fmtMoney(expectedHHSale)}
-            tooltip={`= pmg_base × %PMG_LK − admin. Với %PMG_LK ${(latestPmgRate * 100).toFixed(2)}% hiện tại: ${fmtMoney(expectedHHSaleGross)} − ${fmtMoney(p.adminFee)} = ${fmtMoney(expectedHHSale)}`}
+            tooltip={`= pmg_base × %PMG_LK − admin. Với %PMG_LK ${(latestPmgRate * 100).toFixed(2).replace(".", ",")}% hiện tại: ${fmtMoney(expectedHHSaleGross)} − ${fmtMoney(p.adminFee)} = ${fmtMoney(expectedHHSale)}`}
           />
           <Info
             label="Đã nhận"
@@ -813,7 +813,7 @@ export default async function ProductDetailPage({
                 />
                 <Info
                   label="% đã nhận"
-                  value={expectedHHSale > 0 ? `${pct.toFixed(1)}%` : "—"}
+                  value={expectedHHSale > 0 ? `${pct.toFixed(1).replace(".", ",")}%` : "—"}
                   accent={isDone ? "green" : "red"}
                 />
               </>
@@ -843,7 +843,7 @@ export default async function ProductDetailPage({
                     />
                     <Info
                       label="% đã nhận"
-                      value={expectedBonus > 0 ? `${pct.toFixed(1)}%` : "—"}
+                      value={expectedBonus > 0 ? `${pct.toFixed(1).replace(".", ",")}%` : "—"}
                       accent={isDone ? "green" : "red"}
                     />
                   </>

@@ -90,7 +90,7 @@ export default async function Home() {
           >
             {fmtMoney(profit)}
           </div>
-          <div className="text-xs text-slate-500 mt-1">Biên LN: {margin.toFixed(1)}%</div>
+          <div className="text-xs text-slate-500 mt-1">Biên LN: {margin.toFixed(1).replace(".", ",")}%</div>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-4">
           <div className="text-xs text-slate-500">Tiền đã nhận từ CĐT/F1</div>

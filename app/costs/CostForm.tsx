@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { CostReconciliation } from "@/lib/schema";
 import MoneyInput from "@/components/MoneyInput";
 import SearchableSelect from "@/components/SearchableSelect";
-import { costTypeLabel, fmtMoney } from "@/lib/format";
+import { costTypeLabel, fmtMoney, fmtPctTight } from "@/lib/format";
 
 type ProductOption = {
   id: number;
@@ -169,7 +169,7 @@ export default function CostForm({
   // Payment progress cho đợt này: nhập % → tự tính số tiền
   const [thisPct, setThisPct] = useState<string>(
     targetForType > 0 && recon?.amountPayableThisTime
-      ? ((Number(recon.amountPayableThisTime) / targetForType) * 100).toFixed(2)
+      ? ((Number(recon.amountPayableThisTime) / targetForType) * 100).toFixed(2).replace(".", ",")
       : "",
   );
   const thisPctNum = thisPct ? Number(thisPct.replace(/,/g, ".")) / 100 : 0;
@@ -318,8 +318,7 @@ export default function CostForm({
         {/* Info căn dạng disabled inputs */}
         {product && (() => {
           const rateForType: { label: string; value: string } | null = (() => {
-            const pct = (r: number | null | undefined) =>
-              `${Number((Number(r ?? 0) * 100).toFixed(2))}%`;
+            const pct = (r: number | null | undefined) => fmtPctTight(r);
             switch (costType) {
               case "sale_commission":
                 return { label: "%HH sale (chốt)", value: pct(product.saleCommissionRate) };
@@ -421,7 +420,7 @@ export default function CostForm({
                     className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-300 text-white text-[9px] cursor-help select-none"
                     title={
                       rateBased
-                        ? `Q_sale = Giá tính PMG × %PMG_LK_sale = ${fmtMoney(Number(product?.pmgBasePrice ?? 0))} × ${(Number(product?.pmgSaleRate ?? 0) * 100).toFixed(2)}% = ${fmtMoney(Q_sale_full)}`
+                        ? `Q_sale = Giá tính PMG × %PMG_LK_sale = ${fmtMoney(Number(product?.pmgBasePrice ?? 0))} × ${(Number(product?.pmgSaleRate ?? 0) * 100).toFixed(2).replace(".", ",")}% = ${fmtMoney(Q_sale_full)}`
                         : "Số flat lấy trực tiếp từ config căn"
                     }
                   >
@@ -433,7 +432,7 @@ export default function CostForm({
                 </div>
                 <div className="text-[10px] text-slate-400 mt-0.5 tabular-nums">
                   {rateBased
-                    ? `Q_sale × ${rateName} = ${fmtMoney(Q_sale_full)} × ${(rate * 100).toFixed(2)}%`
+                    ? `Q_sale × ${rateName} = ${fmtMoney(Q_sale_full)} × ${(rate * 100).toFixed(2).replace(".", ",")}%`
                     : "Số flat từ căn"}
                 </div>
               </div>
@@ -445,7 +444,7 @@ export default function CostForm({
               {fmtMoney(paidBefore)}
             </div>
             <div className="text-[10px] text-slate-400 mt-0.5">
-              {paidBeforePct.toFixed(1)}% mức tối đa
+              {paidBeforePct.toFixed(1).replace(".", ",")}% mức tối đa
             </div>
           </div>
           <div className="rounded-lg bg-blue-50 border border-blue-200 p-3">
@@ -465,7 +464,7 @@ export default function CostForm({
               {fmtMoney(Math.max(0, remainingAfter))}
             </div>
             <div className="text-[10px] text-slate-400 mt-0.5">
-              {targetForType > 0 ? `${(100 - paidBeforePct - thisPctNum * 100).toFixed(1)}%` : "—"}
+              {targetForType > 0 ? `${(100 - paidBeforePct - thisPctNum * 100).toFixed(1).replace(".", ",")}%` : "—"}
             </div>
           </div>
         </div>
@@ -611,7 +610,7 @@ export default function CostForm({
                       // Sync % lên trên (2-way binding)
                       if (targetForType > 0) {
                         const pct = (newTotal / targetForType) * 100;
-                        setThisPct(pct === 0 ? "" : pct.toFixed(2));
+                        setThisPct(pct === 0 ? "" : pct.toFixed(2).replace(".", ","));
                       }
                     }}
                     onFocus={(e) => e.currentTarget.select()}

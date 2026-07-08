@@ -291,7 +291,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
           label="Biên lợi nhuận"
           value={
             grandTotals.revenueExp > 0
-              ? `${((profitExpected / (grandTotals.revenueExp / 1.1)) * 100).toFixed(1)}%`
+              ? `${((profitExpected / (grandTotals.revenueExp / 1.1)) * 100).toFixed(1).replace(".", ",")}%`
               : "0%"
           }
         />
@@ -357,7 +357,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
                         <td className={`p-2 text-right tabular-nums font-semibold ${profit >= 0 ? "text-green-700" : "text-red-700"}`}>
                           {fmtMoney(profit)}
                         </td>
-                        <td className="p-2 text-right tabular-nums">{pct.toFixed(1)}%</td>
+                        <td className="p-2 text-right tabular-nums">{pct.toFixed(1).replace(".", ",")}%</td>
                       </tr>
                     );
                   })}

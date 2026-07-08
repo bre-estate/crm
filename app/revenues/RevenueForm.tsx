@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { RevenueReconciliation } from "@/lib/schema";
 import MoneyInput from "@/components/MoneyInput";
 import SearchableSelect from "@/components/SearchableSelect";
-import { fmtMoney } from "@/lib/format";
+import { fmtMoney, fmtPctTight } from "@/lib/format";
 
 type ProductOption = {
   id: number;
@@ -156,7 +156,7 @@ export default function RevenueForm({
             {product && (
               <div className="text-xs text-slate-500 mt-1">
                 Giá tính PMG: {fmtMoney(product.pmgBasePrice)} · %PMG_LK:{" "}
-                {Number((Number(product.pmgRate ?? 0) * 100).toFixed(2))}%
+                {fmtPctTight(product.pmgRate)}
               </div>
             )}
             {isEdit && (
@@ -254,7 +254,7 @@ export default function RevenueForm({
             <RefInfo label="Giá tính PMG" value={fmtMoney(product.pmgBasePrice)} />
             <RefInfo
               label="%PMG_LK"
-              value={`${Number((Number(product.pmgRate ?? 0) * 100).toFixed(2))}%`}
+              value={fmtPctTight(product.pmgRate)}
             />
             <RefInfo label="Phí admin" value={fmtMoney(product.adminFee)} />
             <RefInfo

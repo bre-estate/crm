@@ -458,11 +458,11 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
                         }`}
                         title={
                           overPaid
-                            ? `Thu quá target (${pctPaid.toFixed(1)}%) — kiểm tra lại data`
+                            ? `Thu quá target (${pctPaid.toFixed(1).replace(".", ",")}%) — kiểm tra lại data`
                             : fullyPaid
                               ? "Đã thu đủ"
                               : pctPaid > 0
-                                ? `Còn thiếu ${(100 - pctPaid).toFixed(1)}%`
+                                ? `Còn thiếu ${(100 - pctPaid).toFixed(1).replace(".", ",")}%`
                                 : "Chưa thu"
                         }
                       >
