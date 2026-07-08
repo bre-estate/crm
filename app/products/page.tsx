@@ -5,6 +5,7 @@ import {
   partners,
   departments,
   revenueReconciliations,
+  paymentsIn,
 } from "@/lib/schema";
 import { fmtMoney, fmtDate, fmtPctTight, displayPartnerName } from "@/lib/format";
 import { eq, asc, desc, and, gte, lte, ilike, inArray, type SQL } from "drizzle-orm";
@@ -52,6 +53,8 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
     saleType: products.saleType,
     pmgBasePrice: products.pmgBasePrice,
     pmgRate: products.pmgRate,
+    cdtBonusSale: products.cdtBonusSale,
+    cdtBonusManager: products.cdtBonusManager,
     totalRevenue: products.totalRevenue,
     adminFee: products.adminFee,
     discountCk: products.discountCk,
@@ -90,10 +93,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
     else primaryCount++;
   }
 
-  // For each căn: tính phí dự kiến BRE nhận
-  //   primary:   (totalRevenue gồm VAT − adminFee) / 1.1 − discountCk
-  //   secondary: totalRevenue
-  // Đã thu = sum(revenue_recons.revenueThisTime)
+  // For each căn: tính phí HH dự kiến (theo %PMG_LK mới nhất, hồi tố) vs đã thu (từ payments_in).
   const productIds = rows.map((r) => r.id);
   const recRows =
     productIds.length === 0
@@ -103,34 +103,69 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
             id: revenueReconciliations.id,
             productId: revenueReconciliations.productId,
             revenueThisTime: revenueReconciliations.revenueThisTime,
+            cdtBonusSale: revenueReconciliations.cdtBonusSale,
+            cdtBonusManager: revenueReconciliations.cdtBonusManager,
+            pmgCumulativePct: revenueReconciliations.pmgCumulativePct,
             invoiceId: revenueReconciliations.invoiceId,
           })
           .from(revenueReconciliations)
           .where(inArray(revenueReconciliations.productId, productIds));
+  const reconIds = recRows.map((r) => r.id);
+  const paidByRecon = new Map<number, number>();
+  if (reconIds.length > 0) {
+    const paidRows = await db
+      .select({
+        reconciliationId: paymentsIn.reconciliationId,
+        amount: paymentsIn.amount,
+      })
+      .from(paymentsIn)
+      .where(inArray(paymentsIn.reconciliationId, reconIds));
+    for (const pr of paidRows) {
+      if (pr.reconciliationId == null) continue;
+      paidByRecon.set(
+        pr.reconciliationId,
+        (paidByRecon.get(pr.reconciliationId) ?? 0) + Number(pr.amount ?? 0),
+      );
+    }
+  }
 
   type Stats = {
-    expectedFee: number; // HH BRE net dự kiến (post-VAT, post-admin) — dùng hiển thị
-    grossTarget: number; // Tổng CĐT phải trả (gross) — dùng tính % thu
-    collected: number; // Tổng revenueThisTime đã thu (gross)
+    expectedHH: number; // HH sale dự kiến = pmgBase × latestPmgRate
+    expectedBonus: number; // Thưởng nóng dự kiến
+    paidHH: number; // Đã thu HH sale từ payments_in
+    paidBonus: number; // Đã thu thưởng nóng từ payments_in
     phaseCount: number;
     invoiceIds: Set<number>;
   };
+  // Classify recon: cdtBonus > 0 && revThis == 0 → bonus recon; else HH recon
+  const isBonusRecon = (rec: (typeof recRows)[number]) =>
+    Number(rec.cdtBonusSale ?? 0) + Number(rec.cdtBonusManager ?? 0) > 0 &&
+    Number(rec.revenueThisTime ?? 0) === 0;
+
+  // Compute latestPmgRate per product
+  const latestPmgByProduct = new Map<number, number>();
+  for (const r of rows) latestPmgByProduct.set(r.id, Number(r.pmgRate ?? 0));
+  for (const rec of recRows) {
+    const cur = latestPmgByProduct.get(rec.productId) ?? 0;
+    const p = Number(rec.pmgCumulativePct ?? 0);
+    if (p > cur) latestPmgByProduct.set(rec.productId, p);
+  }
+
   const statsByProduct = new Map<number, Stats>();
   for (const r of rows) {
-    // Primary: HH BRE nhận = (DT gồm VAT − admin) / 1.1 − chiết khấu (CK)
-    // Secondary: totalRevenue đã là phí về cty
     const grossTarget = Number(r.totalRevenue ?? 0);
-    const expected =
+    const latestPmg = latestPmgByProduct.get(r.id) ?? Number(r.pmgRate ?? 0);
+    const expectedHH =
       r.saleType === "secondary"
         ? grossTarget
-        : Math.max(
-            0,
-            (grossTarget - Number(r.adminFee ?? 0)) / 1.1 - Number(r.discountCk ?? 0),
-          );
+        : Number(r.pmgBasePrice ?? 0) * latestPmg;
+    const expectedBonus =
+      Number(r.cdtBonusSale ?? 0) + Number(r.cdtBonusManager ?? 0);
     statsByProduct.set(r.id, {
-      expectedFee: expected,
-      grossTarget,
-      collected: 0,
+      expectedHH,
+      expectedBonus,
+      paidHH: 0,
+      paidBonus: 0,
       phaseCount: 0,
       invoiceIds: new Set<number>(),
     });
@@ -138,23 +173,31 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
   for (const rec of recRows) {
     const s = statsByProduct.get(rec.productId);
     if (!s) continue;
-    const amt = Number(rec.revenueThisTime ?? 0);
-    if (amt > 0) {
-      s.collected += amt;
-      s.phaseCount += 1;
+    const paid = paidByRecon.get(rec.id) ?? 0;
+    if (isBonusRecon(rec)) {
+      s.paidBonus += paid;
+    } else {
+      s.paidHH += paid;
+      if (Number(rec.revenueThisTime ?? 0) > 0) s.phaseCount += 1;
     }
     if (rec.invoiceId !== null) s.invoiceIds.add(rec.invoiceId);
   }
 
   const totalRev = rows.reduce((s, r) => s + Number(r.totalRevenue ?? 0), 0);
-  // Snap to 0 chênh lệch < 1k VND per product (float precision + Excel rounding)
+  // Snap to 0 chênh lệch < 1k VND per product
   for (const s of statsByProduct.values()) {
-    if (Math.abs(s.expectedFee - s.collected) < 1000) {
-      s.expectedFee = s.collected;
+    if (Math.abs(s.expectedHH - s.paidHH) < 1000) {
+      s.expectedHH = s.paidHH;
     }
   }
-  const totalCollected = Array.from(statsByProduct.values()).reduce((s, x) => s + x.collected, 0);
-  const totalExpected = Array.from(statsByProduct.values()).reduce((s, x) => s + x.expectedFee, 0);
+  const totalCollected = Array.from(statsByProduct.values()).reduce(
+    (s, x) => s + x.paidHH + x.paidBonus,
+    0,
+  );
+  const totalExpected = Array.from(statsByProduct.values()).reduce(
+    (s, x) => s + x.expectedHH + x.expectedBonus,
+    0,
+  );
 
   const deptColor = (code: string | null | undefined): string => {
     switch ((code ?? "").toLowerCase()) {
@@ -345,20 +388,20 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
           <tbody>
             {rows.map((r) => {
               const stats = statsByProduct.get(r.id) ?? {
-                expectedFee: 0,
-                grossTarget: 0,
-                collected: 0,
+                expectedHH: 0,
+                expectedBonus: 0,
+                paidHH: 0,
+                paidBonus: 0,
                 phaseCount: 0,
                 invoiceIds: new Set<number>(),
               };
-              // % thu = gross collected / gross target (cùng scale)
-              // KHÔNG cap để phản ánh trung thực: > 100% = thu quá (cần review),
-              // < 100% = còn thiếu.
+              // % thu HH = paidHH / expectedHH (không cộng thưởng nóng vào tổng target
+              // vì thưởng là stream riêng)
               const pctPaid =
-                stats.grossTarget > 0 ? (stats.collected / stats.grossTarget) * 100 : 0;
+                stats.expectedHH > 0 ? (stats.paidHH / stats.expectedHH) * 100 : 0;
               const fullyPaid = pctPaid >= 99.5 && pctPaid <= 100.5;
               const overPaid = pctPaid > 100.5;
-              const noData = stats.expectedFee === 0 && stats.phaseCount === 0;
+              const noData = stats.expectedHH === 0 && stats.phaseCount === 0;
               return (
                 <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50">
                   <td className="p-2 font-mono text-xs">
