@@ -302,17 +302,55 @@ export default function CostForm({
 
         {/* Progress cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-          <div className="rounded-lg bg-slate-50 border border-slate-200 p-3">
-            <div className="text-xs text-slate-500">Target</div>
-            <div className="text-sm font-semibold tabular-nums mt-1">
-              {fmtMoney(targetForType)}
-            </div>
-            <div className="text-[10px] text-slate-400 mt-0.5">
-              {costType === "sale_commission" || costType.startsWith("kpi_")
-                ? "Q_sale × %"
-                : "Số flat"}
-            </div>
-          </div>
+          {(() => {
+            const rate =
+              costType === "sale_commission"
+                ? Number(product?.saleCommissionRate ?? 0)
+                : costType === "kpi_ceo"
+                  ? Number(product?.kpiCeoRate ?? 0)
+                  : costType === "kpi_tpkd"
+                    ? Number(product?.kpiTpkdRate ?? 0)
+                    : costType === "kpi_admin"
+                      ? Number(product?.kpiAdminRate ?? 0)
+                      : 0;
+            const rateBased =
+              costType === "sale_commission" || costType.startsWith("kpi_");
+            const rateName =
+              costType === "sale_commission"
+                ? "%HH sale"
+                : costType === "kpi_ceo"
+                  ? "%KPI CEO"
+                  : costType === "kpi_tpkd"
+                    ? "%KPI TPKD"
+                    : costType === "kpi_admin"
+                      ? "%KPI Admin"
+                      : "";
+            return (
+              <div className="rounded-lg bg-slate-50 border border-slate-200 p-3">
+                <div className="text-xs text-slate-500 flex items-center gap-1">
+                  Target
+                  <span
+                    className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-300 text-white text-[9px] cursor-help select-none"
+                    title={
+                      rateBased
+                        ? `Q_sale = Giá tính PMG × %PMG_LK_sale = ${fmtMoney(Number(product?.pmgBasePrice ?? 0))} × ${(Number(product?.pmgSaleRate ?? 0) * 100).toFixed(2)}% = ${fmtMoney(Q_sale_full)}`
+                        : "Số flat lấy trực tiếp từ config căn"
+                    }
+                  >
+                    ?
+                  </span>
+                </div>
+                <div className="text-sm font-semibold tabular-nums mt-1">
+                  {fmtMoney(targetForType)}
+                </div>
+                <div className="text-[10px] text-slate-400 mt-0.5 tabular-nums">
+                  {rateBased
+                    ? `Q_sale × ${rateName} = ${fmtMoney(Q_sale_full)} × ${(rate * 100).toFixed(2)}%`
+                    : "Số flat từ căn"}
+                </div>
+              </div>
+            );
+          })()}
           <div className="rounded-lg bg-slate-50 border border-slate-200 p-3">
             <div className="text-xs text-slate-500">Đã ĐC trước ({previousRecons.length} đợt)</div>
             <div className="text-sm font-semibold tabular-nums mt-1 text-green-700">
