@@ -459,7 +459,7 @@ export default function CostForm({
         <div className="rounded-lg border-2 border-orange-200 bg-orange-50/60 p-4">
           <div className="flex justify-between items-center gap-3">
             <div className="text-xs text-orange-700">
-              Tự tính = Target × % nhập ở trên. Có thể ghi đè thủ công.
+              Tự tính = Target × % nhập ở trên. Nếu ghi đè thủ công, % ở trên tự cập nhật theo.
             </div>
             <input
               name="amountPayableThisTime"
@@ -468,7 +468,13 @@ export default function CostForm({
               value={totalAmt ? totalAmt.toLocaleString("vi-VN") : ""}
               onChange={(e) => {
                 const digits = e.target.value.replace(/\D/g, "");
-                setTotalAmt(digits ? Number(digits) : 0);
+                const newTotal = digits ? Number(digits) : 0;
+                setTotalAmt(newTotal);
+                // Sync % lên trên (2-way binding)
+                if (targetForType > 0) {
+                  const pct = (newTotal / targetForType) * 100;
+                  setThisPct(pct === 0 ? "" : pct.toFixed(2));
+                }
               }}
               onFocus={(e) => e.currentTarget.select()}
               className="input text-right text-xl font-bold tabular-nums text-orange-900 min-w-40"
