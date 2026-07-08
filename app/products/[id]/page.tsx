@@ -259,7 +259,11 @@ export default async function ProductDetailPage({
                   </>
                 );
               })()}
-              <Info label="Tổng DT (gồm VAT)" value={fmtMoney(p.totalRevenue)} />
+              <Info
+                label="Tổng DT (CĐT chuyển BRE)"
+                value={fmtMoney(p.totalRevenue)}
+                tooltip={`= Giá tính PMG × %PMG_LK − Phí admin. Với căn này: ${fmtMoney(Number(p.pmgBasePrice ?? 0))} × ${(Number(p.pmgRate ?? 0) * 100).toFixed(2)}% − ${fmtMoney(p.adminFee)} = ${fmtMoney(p.totalRevenue)}. Số thực CĐT chuyển vào TK BRE (sau khi CĐT trừ admin). KHÔNG bao gồm thưởng nóng CĐT.`}
+              />
               <Info
                 label="Phí admin"
                 value={fmtMoney(p.adminFee)}
