@@ -268,7 +268,7 @@ export default function CostForm({ recon, paymentInit, products, defaultProductI
               readOnly={isEdit}
             />
           </Field>
-          <Field label="Tiến độ tiền PMG đã thu (VND)">
+          <Field label="Tiến độ tiền PMG đã thu">
             <MoneyInput
               name="pmgProgressAmount"
               defaultValue={recon?.pmgProgressAmount ?? 0}
@@ -299,14 +299,14 @@ export default function CostForm({ recon, paymentInit, products, defaultProductI
                 className="input"
               />
             </Field>
-            <Field label="PMG đã ĐC lũy kế (VND)">
+            <Field label="PMG đã ĐC lũy kế">
               <MoneyInput
                 name="pmgReconciledCumulative"
                 defaultValue={recon?.pmgReconciledCumulative ?? 0}
                 className="input"
               />
             </Field>
-            <Field label="PMG đợt này (VND)">
+            <Field label="PMG đợt này">
               <input
                 name="pmgThisTime"
                 type="text"
@@ -321,14 +321,14 @@ export default function CostForm({ recon, paymentInit, products, defaultProductI
                 placeholder="0"
               />
             </Field>
-            <Field label="PMG phải trả đợt này (VND)">
+            <Field label="PMG phải trả đợt này">
               <MoneyInput
                 name="pmgPayable"
                 defaultValue={recon?.pmgPayable ?? 0}
                 className="input"
               />
             </Field>
-            <Field label="PMG còn phải trả đợt sau (VND)">
+            <Field label="PMG còn phải trả đợt sau">
               <MoneyInput
                 name="pmgRemaining"
                 defaultValue={recon?.pmgRemaining ?? 0}
@@ -378,7 +378,7 @@ export default function CostForm({ recon, paymentInit, products, defaultProductI
                 className="input"
               />
             </Field>
-            <Field label="Tiền KPI đợt này (VND)">
+            <Field label="Tiền KPI đợt này">
               <MoneyInput
                 name="kpiAmount"
                 defaultValue={recon?.kpiAmount ?? 0}
@@ -390,7 +390,7 @@ export default function CostForm({ recon, paymentInit, products, defaultProductI
       )}
 
       <Section title="Tổng kết">
-        <Field label="Tổng phải trả đợt này (VND)" required>
+        <Field label="Tổng phải trả đợt này" required>
           <input
             name="amountPayableThisTime"
             type="text"

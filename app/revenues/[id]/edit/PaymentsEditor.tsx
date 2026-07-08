@@ -76,7 +76,7 @@ export default function PaymentsEditor({ payments, onUpdate, onDelete, onAdd }: 
             />
           </div>
           <div className="col-span-3">
-            <label className="block text-xs text-slate-600 mb-1">Số tiền (VND)</label>
+            <label className="block text-xs text-slate-600 mb-1">Số tiền</label>
             <MoneyInput
               name="amount"
               defaultValue={Number(p.amount ?? 0)}
@@ -129,7 +129,7 @@ export default function PaymentsEditor({ payments, onUpdate, onDelete, onAdd }: 
             <input type="date" name="paymentDate" className="input" />
           </div>
           <div className="col-span-3">
-            <label className="block text-xs text-slate-600 mb-1">Số tiền (VND)</label>
+            <label className="block text-xs text-slate-600 mb-1">Số tiền</label>
             <MoneyInput name="amount" defaultValue={0} className="input" />
           </div>
           <div className="col-span-4">

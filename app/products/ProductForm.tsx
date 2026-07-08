@@ -141,7 +141,7 @@ export default function ProductForm({ product, projects, departments = [], onSav
         {isSecondary ? (
           <>
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Doanh thu về cty (VND)">
+              <Field label="Doanh thu về cty">
                 <MoneyInput
                   name="totalRevenue"
                   defaultValue={product?.totalRevenue ?? 0}
@@ -164,14 +164,15 @@ export default function ProductForm({ product, projects, departments = [], onSav
             <input type="hidden" name="cdtBonusManager" value={0} />
           </>
         ) : (
+          <>
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Giá bán (VND)">
+            <Field label="Giá bán">
               <MoneyInput name="sellPrice" defaultValue={product?.sellPrice ?? 0} className="input" />
             </Field>
-            <Field label="Tổng doanh thu (VND, gồm VAT)">
+            <Field label="Tổng doanh thu (gồm VAT)">
               <MoneyInput name="totalRevenue" defaultValue={product?.totalRevenue ?? 0} className="input" />
             </Field>
-            <Field label="Giá tính PMG (VND)">
+            <Field label="Giá tính PMG">
               <MoneyInput name="pmgBasePrice" defaultValue={product?.pmgBasePrice ?? 0} className="input" />
             </Field>
             <Field label="%PMG_LK (vd: 5.5)">
@@ -183,37 +184,27 @@ export default function ProductForm({ product, projects, departments = [], onSav
                 className="input"
               />
             </Field>
-            <Field label="%phí khác">
-              <input
-                name="otherFeePct"
-                type="number"
-                step="any"
-                defaultValue={pctDisplay(product?.otherFeePct)}
-                className="input"
-              />
-            </Field>
-            <Field label="Doanh thu khác (VND)">
-              <MoneyInput name="otherRevenue" defaultValue={product?.otherRevenue ?? 0} className="input" />
-            </Field>
-            <Field label="Khoản giảm doanh thu (VND)">
-              <MoneyInput name="revenueReduction" defaultValue={product?.revenueReduction ?? 0} className="input" />
-            </Field>
-            <Field label="Phí admin (VND, gồm VAT)">
+            <Field label="Phí admin (gồm VAT)">
               <MoneyInput name="adminFee" defaultValue={product?.adminFee ?? 0} className="input" />
             </Field>
-            <Field label="CĐT thưởng sale (VND)">
+            <Field label="CĐT thưởng sale">
               <MoneyInput name="cdtBonusSale" defaultValue={product?.cdtBonusSale ?? 0} className="input" />
             </Field>
-            <Field label="CĐT thưởng QL (VND)">
+            <Field label="CĐT thưởng QL">
               <MoneyInput name="cdtBonusManager" defaultValue={product?.cdtBonusManager ?? 0} className="input" />
             </Field>
           </div>
+          {/* Fields toàn 0 trên DB — hidden để BE nhận đủ shape */}
+          <input type="hidden" name="otherFeePct" value="" />
+          <input type="hidden" name="otherRevenue" value={0} />
+          <input type="hidden" name="revenueReduction" value={0} />
+          </>
         )}
       </Section>
 
-      <Section title={isSecondary ? "Giá vốn (BRE trả NVKD)" : "Giá vốn (BRE trả nội bộ + F2 dưới)"}>
+      <Section title={isSecondary ? "Giá vốn (BRE trả NVKD)" : "Giá vốn (BRE trả nội bộ)"}>
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Tổng giá vốn (VND)">
+          <Field label="Tổng giá vốn">
             <MoneyInput name="totalCost" defaultValue={product?.totalCost ?? 0} className="input" />
           </Field>
           <Field label="%HH sale (NVKD)">
@@ -225,18 +216,17 @@ export default function ProductForm({ product, projects, departments = [], onSav
               className="input"
             />
           </Field>
-          <Field label="Hỗ trợ khách (VND)">
+          <Field label="Hỗ trợ khách">
             <MoneyInput name="customerSupport" defaultValue={product?.customerSupport ?? 0} className="input" />
           </Field>
-          <Field label="CTY thưởng NVKD (VND)">
-            <MoneyInput name="bonusSale" defaultValue={product?.bonusSale ?? 0} className="input" />
-          </Field>
-          <Field label="CTY thưởng QL (VND)">
+          <Field label="CTY thưởng QL">
             <MoneyInput name="bonusManager" defaultValue={product?.bonusManager ?? 0} className="input" />
           </Field>
-          <Field label="CP giá vốn khác (VND)">
-            <MoneyInput name="otherCost" defaultValue={product?.otherCost ?? 0} className="input" />
-          </Field>
+          {/* bonusSale + otherCost toàn 0 → hidden */}
+          <input type="hidden" name="bonusSale" value={0} />
+          <input type="hidden" name="otherCost" value={0} />
+          {/* Phí admin sale tự động = adminFee (CĐT chuyển transit qua BRE) */}
+          <input type="hidden" name="adminFeeSale" value={String(product?.adminFee ?? 0)} />
           {!isSecondary && (
             <>
               <Field label="%PMG_LK_sale (base tính HH sale)">
@@ -247,9 +237,6 @@ export default function ProductForm({ product, projects, departments = [], onSav
                   defaultValue={pctDisplay(product?.pmgSaleRate)}
                   className="input"
                 />
-              </Field>
-              <Field label="Phí admin sale (VND)">
-                <MoneyInput name="adminFeeSale" defaultValue={product?.adminFeeSale ?? 0} className="input" />
               </Field>
               <Field label="%KPI CEO">
                 <input
@@ -284,7 +271,6 @@ export default function ProductForm({ product, projects, departments = [], onSav
         {isSecondary && (
           <>
             <input type="hidden" name="pmgSaleRate" value="" />
-            <input type="hidden" name="adminFeeSale" value={0} />
             <input type="hidden" name="kpiCeoRate" value="" />
             <input type="hidden" name="kpiTpkdRate" value="" />
             <input type="hidden" name="kpiAdminRate" value="" />

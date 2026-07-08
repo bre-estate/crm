@@ -273,7 +273,7 @@ export default function RevenueForm({
       )}
 
       {/* Số tiền đợt này */}
-      <Section title="💵 Số tiền đợt này (VND)">
+      <Section title="💵 Số tiền đợt này">
         <div className="grid grid-cols-2 gap-4">
           <Field label="Loại đợt" required>
             <select
@@ -295,7 +295,7 @@ export default function RevenueForm({
               <option value="bonus_manager">Thưởng nóng cho quản lý sàn</option>
             </select>
           </Field>
-          <Field label="Số tiền (VND)" required>
+          <Field label="Số tiền" required>
             <input
               type="text"
               inputMode="numeric"

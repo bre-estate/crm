@@ -112,7 +112,7 @@ export default function BulkForm({
               <th className="text-left p-2 min-w-56">Căn</th>
               <th className="text-left p-2">Ngày ĐC</th>
               <th className="text-left p-2 min-w-40">Loại đợt</th>
-              <th className="text-right p-2 min-w-32">Số tiền (VND)</th>
+              <th className="text-right p-2 min-w-32">Số tiền</th>
               <th className="text-right p-2">%PMG lũy kế</th>
               <th className="text-left p-2">Số HĐ</th>
               <th className="text-left p-2">Ngày HĐ</th>
