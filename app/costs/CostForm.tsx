@@ -186,10 +186,20 @@ export default function CostForm({
 
   const applyValue = (v: number) => setTotalAmt(Math.round(v));
 
+  // Chặn save khi tổng ĐC vượt mức tối đa
+  const isOverLimit =
+    targetForType > 0 && paidBefore + totalAmt > targetForType + 1000;
+
   return (
     <form
       action={(fd) =>
         start(async () => {
+          if (isOverLimit) {
+            alert(
+              `Không cho lưu — tổng đã ĐC (${(paidBefore + totalAmt).toLocaleString("vi-VN")}) vượt mức tối đa (${targetForType.toLocaleString("vi-VN")}).\n\nVui lòng giảm số tiền hoặc sửa mức tối đa ở /products/{id}/edit.`,
+            );
+            return;
+          }
           try {
             await onSave(fd);
           } catch (e) {
@@ -236,15 +246,8 @@ export default function CostForm({
                 }))}
               />
             )}
-            {product && (
-              <div className="text-xs text-slate-500 mt-1">
-                Giá tính PMG: {fmtMoney(product.pmgBasePrice)} · %HH sale (chốt):{" "}
-                {Number((Number(product.saleCommissionRate ?? 0) * 100).toFixed(2))}% · NVKD mặc định:{" "}
-                {product.salesPerson ?? "—"}
-              </div>
-            )}
             {isEdit && (
-              <div className="text-xs text-slate-500 mt-1">
+              <div className="text-xs text-slate-400 mt-1 italic">
                 Không đổi được căn khi sửa. Muốn chuyển dòng sang căn khác thì xóa dòng này rồi tạo lại.
               </div>
             )}
@@ -289,6 +292,36 @@ export default function CostForm({
             />
           </Field>
         </div>
+
+        {/* Info căn dạng disabled inputs */}
+        {product && (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4 pt-3 border-t border-slate-100">
+            <Field label="Giá tính PMG (từ căn)">
+              <input
+                type="text"
+                value={fmtMoney(product.pmgBasePrice)}
+                readOnly
+                className="input bg-slate-100 text-slate-500 cursor-not-allowed tabular-nums"
+              />
+            </Field>
+            <Field label="%HH sale (chốt)">
+              <input
+                type="text"
+                value={`${Number((Number(product.saleCommissionRate ?? 0) * 100).toFixed(2))}%`}
+                readOnly
+                className="input bg-slate-100 text-slate-500 cursor-not-allowed"
+              />
+            </Field>
+            <Field label="NVKD mặc định">
+              <input
+                type="text"
+                value={product.salesPerson ?? "—"}
+                readOnly
+                className="input bg-slate-100 text-slate-500 cursor-not-allowed"
+              />
+            </Field>
+          </div>
+        )}
       </Section>
 
       {/* Progress + Payment cho đợt này */}
@@ -328,7 +361,7 @@ export default function CostForm({
             return (
               <div className="rounded-lg bg-slate-50 border border-slate-200 p-3">
                 <div className="text-xs text-slate-500 flex items-center gap-1">
-                  Target
+                  Mức chi tối đa
                   <span
                     className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-300 text-white text-[9px] cursor-help select-none"
                     title={
@@ -357,7 +390,7 @@ export default function CostForm({
               {fmtMoney(paidBefore)}
             </div>
             <div className="text-[10px] text-slate-400 mt-0.5">
-              {paidBeforePct.toFixed(1)}% target
+              {paidBeforePct.toFixed(1)}% mức tối đa
             </div>
           </div>
           <div className="rounded-lg bg-blue-50 border border-blue-200 p-3">
@@ -366,7 +399,7 @@ export default function CostForm({
               {fmtMoney(thisAmountFromPct)}
             </div>
             <div className="text-[10px] text-blue-500 mt-0.5">
-              {thisPct ? `${thisPctNum * 100}%` : "chưa nhập %"} target
+              {thisPct ? `${thisPctNum * 100}%` : "chưa nhập %"} mức tối đa
             </div>
           </div>
           <div className="rounded-lg bg-slate-50 border border-slate-200 p-3">
@@ -425,7 +458,7 @@ export default function CostForm({
                   setTotalAmt(Math.round(targetForType * n));
                 }
               }}
-              placeholder="vd: 30 = 30% target"
+              placeholder="vd: 30 = 30% mức tối đa"
               className="input"
             />
           </Field>
@@ -494,33 +527,63 @@ export default function CostForm({
       </Section>
 
       <Section title="💰 Tổng phải trả đợt này">
-        <div className="rounded-lg border-2 border-orange-200 bg-orange-50/60 p-4">
-          <div className="flex justify-between items-center gap-3">
-            <div className="text-xs text-orange-700">
-              Tự tính = Target × % nhập ở trên. Nếu ghi đè thủ công, % ở trên tự cập nhật theo.
-            </div>
-            <input
-              name="amountPayableThisTime"
-              type="text"
-              inputMode="numeric"
-              value={totalAmt ? totalAmt.toLocaleString("vi-VN") : ""}
-              onChange={(e) => {
-                const digits = e.target.value.replace(/\D/g, "");
-                const newTotal = digits ? Number(digits) : 0;
-                setTotalAmt(newTotal);
-                // Sync % lên trên (2-way binding)
-                if (targetForType > 0) {
-                  const pct = (newTotal / targetForType) * 100;
-                  setThisPct(pct === 0 ? "" : pct.toFixed(2));
-                }
-              }}
-              onFocus={(e) => e.currentTarget.select()}
-              className="input text-right text-xl font-bold tabular-nums text-orange-900 min-w-40"
-              placeholder="0"
-              required
-            />
-          </div>
-        </div>
+        {(() => {
+          const overLimit =
+            targetForType > 0 && paidBefore + totalAmt > targetForType + 1000; // threshold rounding
+          const overBy = paidBefore + totalAmt - targetForType;
+          return (
+            <>
+              <div
+                className={`rounded-lg border-2 p-4 ${
+                  overLimit
+                    ? "border-red-300 bg-red-50/60"
+                    : "border-orange-200 bg-orange-50/60"
+                }`}
+              >
+                <div className="flex justify-between items-center gap-3">
+                  <div className={`text-xs ${overLimit ? "text-red-700" : "text-orange-700"}`}>
+                    Tự tính = Mức chi tối đa × % nhập ở trên. Nếu ghi đè thủ công, % tự cập nhật theo.
+                  </div>
+                  <input
+                    name="amountPayableThisTime"
+                    type="text"
+                    inputMode="numeric"
+                    value={totalAmt ? totalAmt.toLocaleString("vi-VN") : ""}
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/\D/g, "");
+                      const newTotal = digits ? Number(digits) : 0;
+                      setTotalAmt(newTotal);
+                      // Sync % lên trên (2-way binding)
+                      if (targetForType > 0) {
+                        const pct = (newTotal / targetForType) * 100;
+                        setThisPct(pct === 0 ? "" : pct.toFixed(2));
+                      }
+                    }}
+                    onFocus={(e) => e.currentTarget.select()}
+                    className={`input text-right text-xl font-bold tabular-nums min-w-40 ${overLimit ? "text-red-700 border-red-400" : "text-orange-900"}`}
+                    placeholder="0"
+                    required
+                  />
+                </div>
+              </div>
+              {overLimit && (
+                <div className="mt-2 rounded-lg border border-red-300 bg-red-100 p-3 text-sm text-red-800">
+                  ⚠️ <b>Vượt mức chi tối đa!</b>
+                  <br />
+                  Đã ĐC trước ({fmtMoney(paidBefore)}) + đợt này ({fmtMoney(totalAmt)}) ={" "}
+                  {fmtMoney(paidBefore + totalAmt)} đồng
+                  <br />
+                  Vượt <b>{fmtMoney(overBy)}</b> so với mức tối đa {fmtMoney(targetForType)}.
+                  <br />
+                  <span className="text-xs">
+                    Không cho lưu để tránh chi vượt. Nếu là điều chỉnh hồi tố hợp lệ, sửa mức
+                    tối đa ở /products/{"{"}id{"}"}/edit.
+                  </span>
+                </div>
+              )}
+            </>
+          );
+        })()}
       </Section>
 
       {!recon && (
