@@ -131,3 +131,54 @@ export async function deletePaymentOut(id: number) {
   await db.delete(paymentsOut).where(eq(paymentsOut.id, id));
   revalidatePath("/costs");
 }
+
+export type BulkCostRow = {
+  productId: number;
+  costType: string;
+  employeeName: string;
+  reconciliationDate: string | null;
+  amountPayableThisTime: number;
+  paymentDate: string | null;
+  paymentAmount: number;
+  note?: string;
+};
+
+export async function createCostBulk(rows: BulkCostRow[]) {
+  const errors: { index: number; message: string }[] = [];
+  let ok = 0;
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    try {
+      if (!r.productId) throw new Error("Thiếu căn");
+      if (!VALID_COST_TYPES.includes(r.costType as CostType))
+        throw new Error(`Loại chi phí không hợp lệ: ${r.costType}`);
+      if (!r.employeeName) throw new Error("Thiếu tên NVKD/TPKD");
+      if (r.amountPayableThisTime <= 0) throw new Error("Số tiền phải > 0");
+
+      const [rec] = await db
+        .insert(costReconciliations)
+        .values({
+          productId: r.productId,
+          costType: r.costType as CostType,
+          employeeName: r.employeeName,
+          reconciliationDate: r.reconciliationDate,
+          amountPayableThisTime: r.amountPayableThisTime,
+          note: r.note ?? null,
+        })
+        .returning({ id: costReconciliations.id });
+
+      if (r.paymentDate || r.paymentAmount > 0) {
+        await db.insert(paymentsOut).values({
+          costReconciliationId: rec.id,
+          paymentDate: r.paymentDate,
+          amount: r.paymentAmount || r.amountPayableThisTime,
+        });
+      }
+      ok++;
+    } catch (e) {
+      errors.push({ index: i, message: e instanceof Error ? e.message : "Lỗi" });
+    }
+  }
+  revalidatePath("/costs");
+  return { ok, errors };
+}

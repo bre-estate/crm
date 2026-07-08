@@ -105,8 +105,8 @@ export default function BulkForm({
         rỗng sẽ tự bỏ qua khi lưu.
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
-        <table className="w-full text-xs">
+      <div className="bg-white">
+        <table className="w-full text-xs border-collapse">
           <thead className="bg-slate-50 text-slate-600 text-[11px]">
             <tr>
               <th className="text-left p-2 min-w-56">Căn</th>

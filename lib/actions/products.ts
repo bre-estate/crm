@@ -113,6 +113,89 @@ export async function updateProduct(id: number, fd: FormData) {
   redirect(`/products/${id}`);
 }
 
+export type BulkProductRow = {
+  projectId: number;
+  unitCode: string;
+  saleType: "primary" | "secondary";
+  customerName: string | null;
+  salesPerson: string | null;
+  depositDate: string | null;
+  pmgBasePrice: number;
+  pmgRate: number; // decimal 0.055 for 5.5%
+  adminFee: number;
+  cdtBonusSale: number;
+  cdtBonusManager: number;
+  note?: string;
+};
+
+export async function createProductBulk(rows: BulkProductRow[]) {
+  const errors: { index: number; message: string }[] = [];
+  let ok = 0;
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    try {
+      if (!r.projectId) throw new Error("Thiếu dự án");
+      if (!r.unitCode) throw new Error("Thiếu mã căn");
+      const productCode = await buildProductCode(r.projectId, r.unitCode);
+      await db.insert(products).values({
+        productCode,
+        projectId: r.projectId,
+        unitCode: r.unitCode,
+        saleType: r.saleType,
+        customerName: r.customerName ? toTitleCase(r.customerName) : null,
+        salesPerson: r.salesPerson ? toTitleCase(r.salesPerson) : null,
+        depositDate: r.depositDate,
+        pmgBasePrice: r.pmgBasePrice,
+        pmgRate: r.pmgRate,
+        adminFee: r.adminFee,
+        cdtBonusSale: r.cdtBonusSale,
+        cdtBonusManager: r.cdtBonusManager,
+        note: r.note ?? null,
+      });
+      ok++;
+    } catch (e) {
+      errors.push({ index: i, message: e instanceof Error ? e.message : "Lỗi" });
+    }
+  }
+  revalidatePath("/products");
+  return { ok, errors };
+}
+
+export type BulkProductEditRow = {
+  id: number;
+  pmgRate?: number;
+  adminFee?: number;
+  cdtBonusSale?: number;
+  cdtBonusManager?: number;
+  salesPerson?: string;
+  customerName?: string;
+};
+
+export async function updateProductBulk(rows: BulkProductEditRow[]) {
+  const errors: { index: number; message: string }[] = [];
+  let ok = 0;
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    try {
+      if (!r.id) throw new Error("Thiếu id căn");
+      const patch: Record<string, unknown> = {};
+      if (r.pmgRate !== undefined) patch.pmgRate = r.pmgRate;
+      if (r.adminFee !== undefined) patch.adminFee = r.adminFee;
+      if (r.cdtBonusSale !== undefined) patch.cdtBonusSale = r.cdtBonusSale;
+      if (r.cdtBonusManager !== undefined) patch.cdtBonusManager = r.cdtBonusManager;
+      if (r.salesPerson !== undefined && r.salesPerson) patch.salesPerson = toTitleCase(r.salesPerson);
+      if (r.customerName !== undefined && r.customerName) patch.customerName = toTitleCase(r.customerName);
+      if (Object.keys(patch).length === 0) throw new Error("Không có field nào để update");
+      await db.update(products).set(patch).where(eq(products.id, r.id));
+      ok++;
+    } catch (e) {
+      errors.push({ index: i, message: e instanceof Error ? e.message : "Lỗi" });
+    }
+  }
+  revalidatePath("/products");
+  return { ok, errors };
+}
+
 export async function deleteProduct(id: number) {
   const usedRev = await db
     .select({ id: revenueReconciliations.id })

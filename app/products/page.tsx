@@ -234,12 +234,20 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
             Mỗi dòng = 1 căn đã chốt cọc = 1 sản phẩm. Sơ cấp = HĐ CĐT, Thứ cấp = mua bán lại.
           </p>
         </div>
-        <Link
-          href="/products/new"
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"
-        >
-          + Thêm giao dịch
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            href="/products/bulk"
+            className="bg-slate-100 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-slate-200"
+          >
+            📊 Nhập hàng loạt
+          </Link>
+          <Link
+            href="/products/new"
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"
+          >
+            + Thêm giao dịch
+          </Link>
+        </div>
       </div>
 
       <div className="border-b border-slate-200 flex gap-1">

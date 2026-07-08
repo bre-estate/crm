@@ -154,12 +154,20 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
             <span className="text-red-600">Số âm = điều chỉnh / hoàn trả</span> (vd thưởng đã trả thừa).
           </p>
         </div>
-        <Link
-          href="/costs/new"
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"
-        >
-          + Thêm dòng đối chiếu
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            href="/costs/bulk"
+            className="bg-slate-100 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-slate-200"
+          >
+            📊 Nhập hàng loạt
+          </Link>
+          <Link
+            href="/costs/new"
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"
+          >
+            + Thêm dòng đối chiếu
+          </Link>
+        </div>
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl p-4 flex gap-4 items-end flex-wrap">
