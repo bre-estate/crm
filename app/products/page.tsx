@@ -198,10 +198,17 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
       s.expectedHH = s.receivedHH;
     }
   }
-  const totalCollected = Array.from(statsByProduct.values()).reduce(
+  // Đã ĐC (biên bản đã ký) = tổng totalReceivable từ recon
+  const totalRecognized = Array.from(statsByProduct.values()).reduce(
     (s, x) => s + x.receivedHH + x.receivedBonus,
     0,
   );
+  // Đã thu (tiền vào TK bank) = sum payments_in
+  const totalPaid = Array.from(statsByProduct.values()).reduce(
+    (s, x) => s + x.paidHH + x.paidBonus,
+    0,
+  );
+  // Target theo config (Giá tính PMG × %PMG_LK + thưởng CĐT) — dùng để tính gap "thiếu biên bản ĐC"
   const totalExpected = Array.from(statsByProduct.values()).reduce(
     (s, x) => s + x.expectedHH + x.expectedBonus,
     0,
@@ -293,21 +300,31 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
             <div className="font-bold tabular-nums">{fmtMoney(totalRev)}</div>
           </div>
           <div>
-            <div className="text-xs text-slate-500">Đã thu / Phải thu (HH BRE)</div>
-            <div className="font-bold tabular-nums">
-              <span className="text-green-700">{fmtMoney(totalCollected)}</span>
-              <span className="text-slate-400"> / </span>
-              <span>{fmtMoney(totalExpected)}</span>
+            <div className="text-xs text-slate-500">Đã ĐC (biên bản)</div>
+            <div className="font-bold tabular-nums text-blue-700">{fmtMoney(totalRecognized)}</div>
+          </div>
+          <div>
+            <div className="text-xs text-slate-500">Đã thu (vào TK)</div>
+            <div className="font-bold tabular-nums text-green-700">{fmtMoney(totalPaid)}</div>
+          </div>
+          <div>
+            <div className="text-xs text-slate-500" title="= Đã ĐC − Đã thu (giống Excel col AD)">Còn phải thu</div>
+            <div
+              className={`font-bold tabular-nums ${
+                totalRecognized - totalPaid > 1000 ? "text-orange-700" : "text-slate-400"
+              }`}
+            >
+              {fmtMoney(Math.max(0, totalRecognized - totalPaid))}
             </div>
           </div>
           <div>
-            <div className="text-xs text-slate-500">Còn phải thu</div>
+            <div className="text-xs text-slate-500" title="= Target theo config (Giá tính PMG × %PMG_LK + thưởng CĐT) − Đã ĐC">Thiếu ĐC (hồi tố)</div>
             <div
               className={`font-bold tabular-nums ${
-                totalExpected - totalCollected > 0 ? "text-orange-700" : "text-slate-400"
+                totalExpected - totalRecognized > 1000 ? "text-red-600" : "text-slate-400"
               }`}
             >
-              {fmtMoney(Math.max(0, totalExpected - totalCollected))}
+              {fmtMoney(Math.max(0, totalExpected - totalRecognized))}
             </div>
           </div>
         </div>
