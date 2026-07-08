@@ -2,6 +2,7 @@
 
 import { db } from "@/lib/db";
 import { costReconciliations, paymentsOut } from "@/lib/schema";
+import { toTitleCase } from "@/lib/format";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -50,7 +51,7 @@ function buildCostData(fd: FormData) {
   return {
     productId: toNum(fd.get("productId")),
     reconciliationDate: toStrOrNull(fd.get("reconciliationDate")),
-    employeeName: toStr(fd.get("employeeName")),
+    employeeName: toTitleCase(toStr(fd.get("employeeName"))),
     costType,
     pmgBasePriceSale: toNum(fd.get("pmgBasePriceSale")),
     pmgLkSaleRate: toPct(fd.get("pmgLkSaleRate")),
@@ -160,7 +161,7 @@ export async function createCostBulk(rows: BulkCostRow[]) {
         .values({
           productId: r.productId,
           costType: r.costType as CostType,
-          employeeName: r.employeeName,
+          employeeName: toTitleCase(r.employeeName),
           reconciliationDate: r.reconciliationDate,
           amountPayableThisTime: r.amountPayableThisTime,
           note: r.note ?? null,

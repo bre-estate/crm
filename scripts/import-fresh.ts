@@ -38,6 +38,8 @@ const toNum = (v: unknown): number => {
 
 const toStr = (v: unknown): string => (v == null ? "" : String(v).trim());
 const norm = (s: string): string => s.replace(/\s+/g, " ").trim();
+const toTitleCase = (v: string): string =>
+  v.trim().toLowerCase().replace(/(^|\s|-)([\p{L}])/gu, (_m, sep, ch) => sep + ch.toUpperCase());
 const normUnit = (s: string): string => s.replace(/[.\-\s]/g, "").toLowerCase();
 
 const parsePhase = (v: unknown): number | null => {
@@ -144,6 +146,8 @@ async function main() {
     const maSP = toStr(r[1]);
     const maCan = toStr(r[2]);
     if (!maCan || !maSP) continue;
+    // Skip fake "căn thưởng" (thưởng booking chung, không phải căn thật)
+    if (/thưởng|thuong/i.test(maCan)) continue;
 
     const duAn = toStr(r[3]);
     const doiTac = toStr(r[4]);
@@ -171,8 +175,8 @@ async function main() {
           projectId,
           customerName: toStr(r[5]) || null,
           unitDescription: toStr(r[6]) || null,
-          salesPerson: toStr(r[7]) || null,
-          deptLeaderName: toStr(r[9]) || null,
+          salesPerson: toStr(r[7]) ? toTitleCase(toStr(r[7])) : null,
+          deptLeaderName: toStr(r[9]) ? toTitleCase(toStr(r[9])) : null,
           deptName: deptName || null,
           departmentId: deptId,
           depositDate: excelDate(r[10]),
@@ -326,7 +330,7 @@ async function main() {
     }
 
     const reconDate = excelDate(r[1]);
-    const employeeName = norm(toStr(r[2]));
+    const employeeName = toTitleCase(norm(toStr(r[2])));
     if (!employeeName) {
       costSkip++;
       continue;
