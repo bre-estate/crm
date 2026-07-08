@@ -158,10 +158,12 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
   for (const r of rows) {
     const grossTarget = Number(r.totalRevenue ?? 0);
     const latestPmg = latestPmgByProduct.get(r.id) ?? Number(r.pmgRate ?? 0);
+    // Match /products/[id] detail: expected = pmgBase × latestPmg − adminFee (net).
+    // Vì totalReceivable (Excel col AA) đã trừ phí admin.
     const expectedHH =
       r.saleType === "secondary"
         ? grossTarget
-        : Number(r.pmgBasePrice ?? 0) * latestPmg;
+        : Math.max(0, Number(r.pmgBasePrice ?? 0) * latestPmg - Number(r.adminFee ?? 0));
     const expectedBonus =
       Number(r.cdtBonusSale ?? 0) + Number(r.cdtBonusManager ?? 0);
     statsByProduct.set(r.id, {
