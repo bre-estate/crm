@@ -17,6 +17,9 @@ type ProductOption = {
   projectName: string | null;
   partnerName: string | null;
   saleType?: string | null;
+  cdtBonusSale?: number | null;
+  cdtBonusManager?: number | null;
+  totalRevenue?: number | null;
 };
 
 type InvoiceInfo = { number: string; date: string | null; totalAmountVat: number };
@@ -88,6 +91,15 @@ export default function RevenueForm({
   const revenueThisTimeVal = isPhaseType ? amount : 0;
   const cdtBonusSaleVal = reconType === "bonus_sale" ? amount : 0;
   const cdtBonusManagerVal = reconType === "bonus_manager" ? amount : 0;
+
+  // Suggest amount dựa loại đợt + product config
+  const suggested = useMemo(() => {
+    if (!product) return 0;
+    if (reconType === "bonus_sale") return Number(product.cdtBonusSale ?? 0);
+    if (reconType === "bonus_manager") return Number(product.cdtBonusManager ?? 0);
+    // Phase types: chưa có formula chính xác (cần biết đợt trước) → không gợi ý
+    return 0;
+  }, [reconType, product]);
 
   return (
     <form
@@ -288,6 +300,21 @@ export default function RevenueForm({
               className="input"
               placeholder="0"
             />
+            {suggested > 0 && Math.abs(suggested - amount) > 100 && (
+              <div className="text-xs mt-1.5 flex items-center gap-2 bg-blue-50 border border-blue-200 rounded px-2 py-1">
+                <span className="text-blue-700">
+                  💡 Gợi ý từ căn:{" "}
+                  <b className="tabular-nums">{fmtMoney(suggested)}</b>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setAmount(Math.round(suggested))}
+                  className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded hover:bg-blue-700"
+                >
+                  Áp dụng
+                </button>
+              </div>
+            )}
           </Field>
           <Field label="Mô tả / Ghi chú" full>
             <input

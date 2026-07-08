@@ -150,6 +150,56 @@ export async function deletePaymentIn(id: number) {
   revalidatePath("/revenues");
 }
 
+export type BulkRevenueRow = {
+  productId: number;
+  reconciliationDate?: string | null;
+  reconType: string; // "phase:N" or "bonus_sale" or "bonus_manager"
+  amount: number;
+  pmgCumulativePct?: number; // display value 0-100
+  invoiceNumber?: string;
+  invoiceDate?: string | null;
+  note?: string;
+};
+
+export async function createRevenueBulk(rows: BulkRevenueRow[]) {
+  let ok = 0;
+  const errors: Array<{ index: number; message: string }> = [];
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    try {
+      if (!r.productId) throw new Error("Thiếu căn");
+      if (!r.reconType) throw new Error("Thiếu loại đợt");
+      const isPhase = r.reconType.startsWith("phase:");
+      const phaseN = isPhase ? Number(r.reconType.split(":")[1]) : null;
+      const revenueThisTime = isPhase ? r.amount : 0;
+      const cdtBonusSale = r.reconType === "bonus_sale" ? r.amount : 0;
+      const cdtBonusManager = r.reconType === "bonus_manager" ? r.amount : 0;
+
+      let invoiceId: number | null = null;
+      if (r.invoiceNumber) {
+        invoiceId = await findOrCreateInvoice(r.invoiceNumber, r.invoiceDate ?? null, 0);
+      }
+      await db.insert(revenueReconciliations).values({
+        productId: r.productId,
+        reconciliationDate: r.reconciliationDate ?? null,
+        phaseNumber: phaseN,
+        pmgCumulativePct: r.pmgCumulativePct ? r.pmgCumulativePct / 100 : 0,
+        revenueThisTime,
+        cdtBonusSale,
+        cdtBonusManager,
+        totalReceivableThisTime: r.amount,
+        note: r.note ?? null,
+        invoiceId,
+      });
+      ok++;
+    } catch (e) {
+      errors.push({ index: i, message: e instanceof Error ? e.message : "Lỗi" });
+    }
+  }
+  revalidatePath("/revenues");
+  return { ok, errors };
+}
+
 export async function updatePaymentIn(id: number, fd: FormData) {
   await db
     .update(paymentsIn)

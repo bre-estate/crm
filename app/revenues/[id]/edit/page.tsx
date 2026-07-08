@@ -57,6 +57,9 @@ export default async function EditRevenuePage({
       projectName: projects.name,
       partnerName: partners.name,
       saleType: products.saleType,
+      cdtBonusSale: products.cdtBonusSale,
+      cdtBonusManager: products.cdtBonusManager,
+      totalRevenue: products.totalRevenue,
     })
     .from(products)
     .leftJoin(projects, eq(products.projectId, projects.id))
