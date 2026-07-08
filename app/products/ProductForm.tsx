@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { Product, Project, Partner, Department } from "@/lib/schema";
 import MoneyInput from "@/components/MoneyInput";
 import SearchableSelect from "@/components/SearchableSelect";
+import PmgRateHistoryEditor from "./PmgRateHistoryEditor";
 
 type ProjectWithPartner = Project & { partnerName?: string | null };
 
@@ -175,13 +176,10 @@ export default function ProductForm({ product, projects, departments = [], onSav
             <Field label="Giá tính PMG">
               <MoneyInput name="pmgBasePrice" defaultValue={product?.pmgBasePrice ?? 0} className="input" />
             </Field>
-            <Field label="%PMG_LK (vd: 5.5)">
-              <input
-                name="pmgRate"
-                type="number"
-                step="any"
-                defaultValue={pctDisplay(product?.pmgRate)}
-                className="input"
+            <Field label="Lịch sử %PMG_LK (từ CĐT)" full>
+              <PmgRateHistoryEditor
+                defaultHistory={product?.pmgRateHistory ?? null}
+                defaultCurrentRate={product?.pmgRate ?? null}
               />
             </Field>
             <Field label="Phí admin (gồm VAT)">

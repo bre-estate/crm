@@ -128,6 +128,9 @@ export const products = pgTable("products", {
   totalCost: doublePrecision("total_cost").default(0),
 
   pmgRate: doublePrecision("pmg_rate").default(0),
+  // Lịch sử thay đổi %PMG_LK (khi CĐT/F1 offer nâng bậc HH theo KPI).
+  // JSON string: Array<{ rate: number (decimal), date: string YYYY-MM-DD, note?: string }>
+  pmgRateHistory: text("pmg_rate_history"),
   otherFeePct: doublePrecision("other_fee_pct").default(0),
   otherRevenue: doublePrecision("other_revenue").default(0),
   revenueReduction: doublePrecision("revenue_reduction").default(0),

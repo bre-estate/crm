@@ -89,8 +89,26 @@ export default async function ProductDetailPage({
   const expectedBonus =
     Number(p.cdtBonusSale ?? 0) + Number(p.cdtBonusManager ?? 0);
 
-  // Lịch sử %HH: distinct pmgCumulativePct từ các recon, sort tăng dần theo ngày
-  const pmgHistory = ((): Array<{ date: string; rate: number }> => {
+  // Lịch sử %HH: ưu tiên product.pmgRateHistory (nhập explicit),
+  // fallback distinct pmgCumulativePct từ các recon.
+  const pmgHistory = ((): Array<{ date: string; rate: number; note?: string }> => {
+    try {
+      if (p.pmgRateHistory) {
+        const arr = JSON.parse(p.pmgRateHistory) as Array<{
+          rate: number;
+          date: string;
+          note?: string;
+        }>;
+        if (Array.isArray(arr) && arr.length > 0) {
+          return arr
+            .filter((e) => e.rate > 0)
+            .sort((a, b) => a.rate - b.rate);
+        }
+      }
+    } catch {
+      // ignore
+    }
+    // Fallback: recon-derived
     const seen = new Map<number, string>();
     const sorted = [...revRecs].sort((a, b) =>
       (a.rec.reconciliationDate ?? "").localeCompare(b.rec.reconciliationDate ?? ""),

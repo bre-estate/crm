@@ -64,6 +64,7 @@ function buildProductData(fd: FormData) {
     totalCost: toNum(fd.get("totalCost")),
 
     pmgRate: toPct(fd.get("pmgRate")),
+    pmgRateHistory: toStrOrNull(fd.get("pmgRateHistory")),
     otherFeePct: toPct(fd.get("otherFeePct")),
     otherRevenue: toNum(fd.get("otherRevenue")),
     revenueReduction: toNum(fd.get("revenueReduction")),
