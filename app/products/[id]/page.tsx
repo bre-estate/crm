@@ -76,17 +76,35 @@ export default async function ProductDetailPage({
     .where(eq(costReconciliations.productId, id));
 
   // === Compute derived values ===
-  // Phí HH sale dự kiến = pmg_base × pmg_rate (gross, số CĐT phải trả BRE trên HH sale)
-  // Dùng %PMG mới nhất từ recon nếu có (để hồi tố khi %HH tăng)
+  // Phí HH sale dự kiến (net BRE nhận) = pmg_base × latestPmg − admin
+  // Đồng nhất với "Tổng DT (CĐT chuyển BRE)" ở Section 1.
   const latestPmgRate = Math.max(
     Number(p.pmgRate ?? 0),
     ...revRecs.map((r) => Number(r.rec.pmgCumulativePct ?? 0)),
   );
+  const expectedHHSaleGross = Number(p.pmgBasePrice ?? 0) * latestPmgRate;
   const expectedHHSale = isSecondary
     ? Number(p.totalRevenue ?? 0)
-    : Number(p.pmgBasePrice ?? 0) * latestPmgRate;
+    : Math.max(0, expectedHHSaleGross - Number(p.adminFee ?? 0));
   const expectedBonus =
     Number(p.cdtBonusSale ?? 0) + Number(p.cdtBonusManager ?? 0);
+
+  // Lịch sử %HH: distinct pmgCumulativePct từ các recon, sort tăng dần theo ngày
+  const pmgHistory = ((): Array<{ date: string; rate: number }> => {
+    const seen = new Map<number, string>();
+    const sorted = [...revRecs].sort((a, b) =>
+      (a.rec.reconciliationDate ?? "").localeCompare(b.rec.reconciliationDate ?? ""),
+    );
+    for (const r of sorted) {
+      const rate = Number(r.rec.pmgCumulativePct ?? 0);
+      if (rate > 0 && !seen.has(rate)) {
+        seen.set(rate, r.rec.reconciliationDate ?? "");
+      }
+    }
+    return Array.from(seen.entries())
+      .map(([rate, date]) => ({ date, rate }))
+      .sort((a, b) => a.rate - b.rate);
+  })();
 
   // Đã thu tách theo loại: HH sale vs Thưởng nóng
   // Phân loại recon: nếu có cdtBonus > 0 và revThis = 0 → là recon thưởng nóng
@@ -110,6 +128,22 @@ export default async function ProductDetailPage({
     .filter((p) => p.payment.reconciliationId && bonusReconIds.has(p.payment.reconciliationId))
     .reduce((s, r) => s + Number(r.payment.amount ?? 0), 0);
   const totalPaidInCash = paidHHSale + paidBonus;
+
+  // "Đã ghi nhận" = sum totalReceivable của recons (đã có biên bản ĐC + có invoice)
+  // Chú ý: totalReceivable trong đợt hồi tố là delta (không double count như revenueThisTime).
+  // Nhưng số này ở scale GROSS (gồm VAT admin CĐT giữ). Convert về net BRE nhận:
+  //   scale = 1 - admin/gross → tỷ lệ post-admin. Hoặc đơn giản: (totalReceivable / gross) × expectedNet
+  const recognizedHHGross = revRecs
+    .filter((r) => !isBonusRecon(r.rec))
+    .reduce((s, r) => s + Number(r.rec.totalReceivableThisTime ?? 0), 0);
+  const recognizedBonus = revRecs
+    .filter((r) => isBonusRecon(r.rec))
+    .reduce((s, r) => s + Number(r.rec.totalReceivableThisTime ?? 0), 0);
+  // Convert recognized gross → net BRE (trừ tỷ lệ admin tương ứng)
+  const recognizedHHNet =
+    expectedHHSaleGross > 0
+      ? (recognizedHHGross / expectedHHSaleGross) * expectedHHSale
+      : recognizedHHGross;
 
   // Backward compat: một số biến còn dùng
   const expectedFee = expectedHHSale;
@@ -749,37 +783,79 @@ export default async function ProductDetailPage({
       {/* === 4. THU PHÍ TỪ CĐT === (chỉ áp dụng cho sơ cấp) */}
       {!isSecondary && (
       <SectionCard title="4. Thu phí HH từ CĐT" icon="💰">
+        {/* Lịch sử %HH nếu có nhiều mốc */}
+        {pmgHistory.length > 1 && (
+          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50/60 p-3 text-xs">
+            <div className="font-semibold text-amber-900 mb-1">
+              📈 Lịch sử thay đổi %PMG_LK (hồi tố)
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {pmgHistory.map((h, i) => (
+                <span
+                  key={h.rate}
+                  className={`px-2 py-1 rounded ${i === pmgHistory.length - 1 ? "bg-amber-200 text-amber-900 font-semibold" : "bg-white text-amber-700"}`}
+                >
+                  {(h.rate * 100).toFixed(2)}%{" "}
+                  <span className="text-amber-600">({fmtDate(h.date)})</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* HH sale */}
         <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
           HH sale (theo %PMG_LK mới nhất: {(latestPmgRate * 100).toFixed(2)}%)
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
           <Info
             label="Dự kiến"
             value={fmtMoney(expectedHHSale)}
-            tooltip="pmg_base × %PMG_LK (dùng % mới nhất, nếu có hồi tố)"
+            tooltip={`= pmg_base × %PMG_LK − admin. Với %PMG_LK ${(latestPmgRate * 100).toFixed(2)}% hiện tại: ${fmtMoney(expectedHHSaleGross)} − ${fmtMoney(p.adminFee)} = ${fmtMoney(expectedHHSale)}`}
           />
-          <Info label="Đã thu" value={fmtMoney(paidHHSale)} accent="green" />
-          <Info label="Còn phải thu" value={fmtMoney(remainingFromCDT)} accent="orange" />
-          <Info label="% thu" value={`${pctCollected.toFixed(1)}%`} />
+          <Info
+            label="Đã ghi nhận"
+            value={fmtMoney(recognizedHHNet)}
+            tooltip="Tổng đợt ĐC đã lập (có biên bản/HĐ). Số này gồm cả hồi tố khi %PMG tăng."
+            accent="green"
+          />
+          <Info
+            label="Đã nhận tiền"
+            value={fmtMoney(paidHHSale)}
+            tooltip="Số thực đã vào TK BRE (từ payments_in)."
+            accent="green"
+          />
+          <Info
+            label="Còn phải nhận"
+            value={fmtMoney(Math.max(0, recognizedHHNet - paidHHSale))}
+            tooltip="Đã ghi nhận nhưng chưa vào TK"
+            accent="orange"
+          />
+          <Info
+            label="% đã nhận"
+            value={
+              expectedHHSale > 0 ? `${((paidHHSale / expectedHHSale) * 100).toFixed(1)}%` : "—"
+            }
+          />
         </div>
 
         {/* Thưởng nóng (nếu có) */}
-        {(expectedBonus > 0 || paidBonus > 0) && (
+        {(expectedBonus > 0 || recognizedBonus > 0 || paidBonus > 0) && (
           <>
             <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
               Thưởng nóng CĐT (transit)
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
               <Info label="Dự kiến" value={fmtMoney(expectedBonus)} />
-              <Info label="Đã thu" value={fmtMoney(paidBonus)} accent="green" />
+              <Info label="Đã ghi nhận" value={fmtMoney(recognizedBonus)} accent="green" />
+              <Info label="Đã nhận tiền" value={fmtMoney(paidBonus)} accent="green" />
               <Info
-                label="Còn phải thu"
-                value={fmtMoney(Math.max(0, expectedBonus - paidBonus))}
+                label="Còn phải nhận"
+                value={fmtMoney(Math.max(0, recognizedBonus - paidBonus))}
                 accent="orange"
               />
               <Info
-                label="% thu"
+                label="% đã nhận"
                 value={expectedBonus > 0 ? `${((paidBonus / expectedBonus) * 100).toFixed(1)}%` : "—"}
               />
             </div>
@@ -789,8 +865,13 @@ export default async function ProductDetailPage({
         {/* Tổng */}
         <div className="rounded-lg border-2 border-blue-200 bg-blue-50/60 p-3 mb-4">
           <div className="flex justify-between items-center">
-            <div className="text-sm font-semibold text-blue-900">
-              💰 Tổng đã thu vào TK cty
+            <div>
+              <div className="text-sm font-semibold text-blue-900">
+                💰 Tổng đã nhận tiền vào TK cty
+              </div>
+              <div className="text-xs text-blue-700 mt-0.5">
+                HH sale ({fmtMoney(paidHHSale)}) + Thưởng nóng ({fmtMoney(paidBonus)})
+              </div>
             </div>
             <div className="text-2xl font-bold tabular-nums text-blue-900">
               {fmtMoney(totalPaidInCash)}
