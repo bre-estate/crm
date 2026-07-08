@@ -43,11 +43,50 @@ export default function ProductForm({ product, projects, departments = [], onSav
   const [pmgSaleRateLive, setPmgSaleRateLive] = useState<number>(
     Number(product?.pmgSaleRate ?? 0),
   );
+  // Section Giá vốn state
+  const [adminFeeSaleLive, setAdminFeeSaleLive] = useState<number>(
+    Number(product?.adminFeeSale ?? 0),
+  );
+  const [saleCommRateLive, setSaleCommRateLive] = useState<number>(
+    Number(product?.saleCommissionRate ?? 0),
+  );
+  const [kpiCeoRateLive, setKpiCeoRateLive] = useState<number>(
+    Number(product?.kpiCeoRate ?? 0),
+  );
+  const [kpiTpkdRateLive, setKpiTpkdRateLive] = useState<number>(
+    Number(product?.kpiTpkdRate ?? 0),
+  );
+  const [kpiAdminRateLive, setKpiAdminRateLive] = useState<number>(
+    Number(product?.kpiAdminRate ?? 0),
+  );
+  const [customerSupportLive, setCustomerSupportLive] = useState<number>(
+    Number(product?.customerSupport ?? 0),
+  );
+  const [bonusMgrCtyLive, setBonusMgrCtyLive] = useState<number>(
+    Number(product?.bonusManager ?? 0),
+  );
 
   const cdtBonusTotal = cdtBonusSaleLive + cdtBonusMgrLive;
   const grossTotal = pmgBase * pmgRateLive + cdtBonusTotal;
   const netInternal = pmgBase * pmgRateLive - adminFeeLive;
   const dtThangDu = pmgBase * Math.max(0, pmgRateLive - pmgSaleRateLive);
+
+  // Giá vốn computed
+  const Q_sale = pmgBase * pmgSaleRateLive;
+  const hhSaleAmt = Q_sale * saleCommRateLive;
+  const kpiCeoAmt = Q_sale * kpiCeoRateLive;
+  const kpiTpkdAmt = Q_sale * kpiTpkdRateLive;
+  const kpiAdminAmt = Q_sale * kpiAdminRateLive;
+  const adminSubsidyLive = Math.max(0, adminFeeLive - adminFeeSaleLive);
+  const totalCostLive =
+    hhSaleAmt +
+    kpiCeoAmt +
+    kpiTpkdAmt +
+    kpiAdminAmt +
+    adminFeeSaleLive +
+    customerSupportLive +
+    bonusMgrCtyLive +
+    adminSubsidyLive;
 
   return (
     <form
@@ -140,15 +179,12 @@ export default function ProductForm({ product, projects, departments = [], onSav
               className="input"
             />
           </Field>
-          <Field label="Ngày hoàn thành dự kiến">
-            <input
-              type="date"
-              name="expectedCompleteDate"
-              defaultValue={product?.expectedCompleteDate ?? ""}
-              className="input"
-            />
-          </Field>
-          {/* PTTT ẩn — bỏ khỏi UI theo yêu cầu */}
+          {/* Ngày hoàn thành dự kiến + PTTT ẩn — bỏ khỏi UI theo yêu cầu */}
+          <input
+            type="hidden"
+            name="expectedCompleteDate"
+            value={product?.expectedCompleteDate ?? ""}
+          />
           <input type="hidden" name="paymentMethod" value={product?.paymentMethod ?? ""} />
         </div>
       </Section>
@@ -215,6 +251,7 @@ export default function ProductForm({ product, projects, departments = [], onSav
                 name="adminFeeSale"
                 defaultValue={product?.adminFeeSale ?? 0}
                 className="input"
+                onValueChange={setAdminFeeSaleLive}
               />
             </Field>
           </div>
@@ -287,9 +324,6 @@ export default function ProductForm({ product, projects, departments = [], onSav
 
       <Section title={isSecondary ? "Giá vốn (BRE trả NVKD)" : "Giá vốn (BRE trả nội bộ)"}>
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Tổng giá vốn">
-            <MoneyInput name="totalCost" defaultValue={product?.totalCost ?? 0} className="input" />
-          </Field>
           <Field label="%HH sale (NVKD)">
             <input
               name="saleCommissionRate"
@@ -297,15 +331,28 @@ export default function ProductForm({ product, projects, departments = [], onSav
               step="any"
               defaultValue={pctDisplay(product?.saleCommissionRate)}
               className="input"
+              onChange={(e) => {
+                const n = Number(e.target.value.replace(/,/g, "."));
+                setSaleCommRateLive(isNaN(n) ? 0 : n / 100);
+              }}
             />
           </Field>
           <Field label="Hỗ trợ khách">
-            <MoneyInput name="customerSupport" defaultValue={product?.customerSupport ?? 0} className="input" />
+            <MoneyInput
+              name="customerSupport"
+              defaultValue={product?.customerSupport ?? 0}
+              className="input"
+              onValueChange={setCustomerSupportLive}
+            />
           </Field>
           <Field label="CTY thưởng QL">
-            <MoneyInput name="bonusManager" defaultValue={product?.bonusManager ?? 0} className="input" />
+            <MoneyInput
+              name="bonusManager"
+              defaultValue={product?.bonusManager ?? 0}
+              className="input"
+              onValueChange={setBonusMgrCtyLive}
+            />
           </Field>
-          {/* bonusSale + otherCost toàn 0 → hidden */}
           <input type="hidden" name="bonusSale" value={0} />
           <input type="hidden" name="otherCost" value={0} />
           {!isSecondary && (
@@ -330,6 +377,10 @@ export default function ProductForm({ product, projects, departments = [], onSav
                   step="any"
                   defaultValue={pctDisplay(product?.kpiCeoRate)}
                   className="input"
+                  onChange={(e) => {
+                    const n = Number(e.target.value.replace(/,/g, "."));
+                    setKpiCeoRateLive(isNaN(n) ? 0 : n / 100);
+                  }}
                 />
               </Field>
               <Field label="%KPI TPKD (Trưởng phòng)">
@@ -339,6 +390,10 @@ export default function ProductForm({ product, projects, departments = [], onSav
                   step="any"
                   defaultValue={pctDisplay(product?.kpiTpkdRate)}
                   className="input"
+                  onChange={(e) => {
+                    const n = Number(e.target.value.replace(/,/g, "."));
+                    setKpiTpkdRateLive(isNaN(n) ? 0 : n / 100);
+                  }}
                 />
               </Field>
               <Field label="%KPI Admin">
@@ -348,10 +403,33 @@ export default function ProductForm({ product, projects, departments = [], onSav
                   step="any"
                   defaultValue={pctDisplay(product?.kpiAdminRate)}
                   className="input"
+                  onChange={(e) => {
+                    const n = Number(e.target.value.replace(/,/g, "."));
+                    setKpiAdminRateLive(isNaN(n) ? 0 : n / 100);
+                  }}
                 />
               </Field>
             </>
           )}
+        </div>
+
+        {/* Tổng giá vốn — read-only, live compute */}
+        <div className="mt-4 border-t border-slate-200 pt-4">
+          <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
+            Tổng giá vốn — tự động tính từ %HH sale, %KPI, thưởng, phí admin sale
+          </div>
+          <div className="rounded-lg border-2 border-orange-200 bg-orange-50/60 p-4">
+            <div className="flex justify-between items-center">
+              <div className="text-xs text-orange-700">
+                = HH sale + KPI (CEO+TPKD+Admin) + Hỗ trợ khách + Thưởng QL + Phí admin sale
+                {adminSubsidyLive > 0 && ` + Bù admin (${fmtMoney(adminSubsidyLive)})`}
+              </div>
+              <div className="text-2xl font-bold tabular-nums text-orange-900">
+                {fmtMoney(totalCostLive)}
+              </div>
+            </div>
+          </div>
+          <input type="hidden" name="totalCost" value={String(totalCostLive)} />
         </div>
         {isSecondary && (
           <>
