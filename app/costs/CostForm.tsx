@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { CostReconciliation } from "@/lib/schema";
 import MoneyInput from "@/components/MoneyInput";
 import SearchableSelect from "@/components/SearchableSelect";
-import { costTypeLabel, fmtMoney, fmtPctTight } from "@/lib/format";
+import { costTypeLabel, fmtMoney, fmtPct, fmtPctTight, fmtPctRaw } from "@/lib/format";
 
 type ProductOption = {
   id: number;
@@ -420,7 +420,7 @@ export default function CostForm({
                     className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-300 text-white text-[9px] cursor-help select-none"
                     title={
                       rateBased
-                        ? `Q_sale = Giá tính PMG × %PMG_LK_sale = ${fmtMoney(Number(product?.pmgBasePrice ?? 0))} × ${(Number(product?.pmgSaleRate ?? 0) * 100).toFixed(2).replace(".", ",")}% = ${fmtMoney(Q_sale_full)}`
+                        ? `Q_sale = Giá tính PMG × %PMG_LK_sale = ${fmtMoney(Number(product?.pmgBasePrice ?? 0))} × ${fmtPct(Number(product?.pmgSaleRate ?? 0), 2)} = ${fmtMoney(Q_sale_full)}`
                         : "Số flat lấy trực tiếp từ config căn"
                     }
                   >
@@ -432,7 +432,7 @@ export default function CostForm({
                 </div>
                 <div className="text-[10px] text-slate-400 mt-0.5 tabular-nums">
                   {rateBased
-                    ? `Q_sale × ${rateName} = ${fmtMoney(Q_sale_full)} × ${(rate * 100).toFixed(2).replace(".", ",")}%`
+                    ? `Q_sale × ${rateName} = ${fmtMoney(Q_sale_full)} × ${fmtPct(rate, 2)}`
                     : "Số flat từ căn"}
                 </div>
               </div>
@@ -444,7 +444,7 @@ export default function CostForm({
               {fmtMoney(paidBefore)}
             </div>
             <div className="text-[10px] text-slate-400 mt-0.5">
-              {paidBeforePct.toFixed(1).replace(".", ",")}% mức tối đa
+              {fmtPctRaw(paidBeforePct, 1)} mức tối đa
             </div>
           </div>
           <div className="rounded-lg bg-blue-50 border border-blue-200 p-3">
@@ -464,7 +464,7 @@ export default function CostForm({
               {fmtMoney(Math.max(0, remainingAfter))}
             </div>
             <div className="text-[10px] text-slate-400 mt-0.5">
-              {targetForType > 0 ? `${(100 - paidBeforePct - thisPctNum * 100).toFixed(1).replace(".", ",")}%` : "—"}
+              {targetForType > 0 ? fmtPctRaw(100 - paidBeforePct - thisPctNum * 100, 1) : "—"}
             </div>
           </div>
         </div>

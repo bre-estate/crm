@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { fmtMoney } from "@/lib/format";
+import { fmtMoney, fmtPctRaw } from "@/lib/format";
 import { partners, projects, products, revenueReconciliations, costReconciliations, paymentsIn } from "@/lib/schema";
 import { count, sum } from "drizzle-orm";
 import Link from "next/link";
@@ -90,7 +90,7 @@ export default async function Home() {
           >
             {fmtMoney(profit)}
           </div>
-          <div className="text-xs text-slate-500 mt-1">Biên LN: {margin.toFixed(1).replace(".", ",")}%</div>
+          <div className="text-xs text-slate-500 mt-1">Biên LN: {fmtPctRaw(margin, 1)}</div>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-4">
           <div className="text-xs text-slate-500">Tiền đã nhận từ CĐT/F1</div>

@@ -3,23 +3,24 @@ export const fmtMoney = (v: number | null | undefined): string => {
   return new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 0 }).format(Number(v));
 };
 
-// Pad to fixed digits: 7,00% / 5,50% / 4,45% (VN standard: comma decimal)
-export const fmtPct = (v: number | null | undefined, digits = 2): string => {
-  if (v === null || v === undefined || isNaN(Number(v))) return "0%";
-  return `${(Number(v) * 100).toFixed(digits).replace(".", ",")}%`;
-};
-
-// Compact: drop trailing zeros (7% / 5,5% / 4,45%)
-export const fmtPctTight = (v: number | null | undefined, maxDigits = 2): string => {
+// Compact: drop trailing zeros (7% / 5,5% / 4,45%). VN standard: comma decimal.
+// Value in decimal form (0.075 → 7,5%).
+export const fmtPct = (v: number | null | undefined, maxDigits = 2): string => {
   if (v === null || v === undefined || isNaN(Number(v))) return "0%";
   const fixed = (Number(v) * 100).toFixed(maxDigits);
   const trimmed = fixed.replace(/\.?0+$/, "");
   return `${(trimmed || "0").replace(".", ",")}%`;
 };
 
-export const fmtPctRaw = (v: number | null | undefined, digits = 2): string => {
+// Alias, kept for backward compat with existing imports.
+export const fmtPctTight = fmtPct;
+
+// Value already in percent form (7.5 → 7,5%). Drops trailing zeros.
+export const fmtPctRaw = (v: number | null | undefined, maxDigits = 2): string => {
   if (v === null || v === undefined || isNaN(Number(v))) return "0%";
-  return `${Number(v).toFixed(digits).replace(".", ",")}%`;
+  const fixed = Number(v).toFixed(maxDigits);
+  const trimmed = fixed.replace(/\.?0+$/, "");
+  return `${(trimmed || "0").replace(".", ",")}%`;
 };
 
 export const parseNumInput = (v: string): number => {

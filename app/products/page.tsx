@@ -7,7 +7,7 @@ import {
   revenueReconciliations,
   paymentsIn,
 } from "@/lib/schema";
-import { fmtMoney, fmtDate, fmtPctTight, displayPartnerName } from "@/lib/format";
+import { fmtMoney, fmtDate, fmtPctTight, fmtPctRaw, displayPartnerName } from "@/lib/format";
 import { eq, asc, desc, and, gte, lte, ilike, inArray, type SQL } from "drizzle-orm";
 import Link from "next/link";
 import SearchableSelect from "@/components/SearchableSelect";
@@ -470,11 +470,11 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
                         }`}
                         title={
                           overPaid
-                            ? `Thu quá target (${pctPaid.toFixed(1).replace(".", ",")}%) — kiểm tra lại data`
+                            ? `Thu quá target (${fmtPctRaw(pctPaid, 1)}) — kiểm tra lại data`
                             : fullyPaid
                               ? "Đã thu đủ"
                               : pctPaid > 0
-                                ? `Còn thiếu ${(100 - pctPaid).toFixed(1).replace(".", ",")}%`
+                                ? `Còn thiếu ${fmtPctRaw(100 - pctPaid, 1)}`
                                 : "Chưa thu"
                         }
                       >

@@ -9,7 +9,7 @@ import {
   paymentsIn,
   paymentsOut,
 } from "@/lib/schema";
-import { fmtMoney, displayPartnerName, isSecondaryPartner } from "@/lib/format";
+import { fmtMoney, fmtPctRaw, displayPartnerName, isSecondaryPartner } from "@/lib/format";
 import { eq } from "drizzle-orm";
 import Link from "next/link";
 
@@ -291,7 +291,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
           label="Biên lợi nhuận"
           value={
             grandTotals.revenueExp > 0
-              ? `${((profitExpected / (grandTotals.revenueExp / 1.1)) * 100).toFixed(1).replace(".", ",")}%`
+              ? fmtPctRaw((profitExpected / (grandTotals.revenueExp / 1.1)) * 100, 1)
               : "0%"
           }
         />
@@ -357,7 +357,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
                         <td className={`p-2 text-right tabular-nums font-semibold ${profit >= 0 ? "text-green-700" : "text-red-700"}`}>
                           {fmtMoney(profit)}
                         </td>
-                        <td className="p-2 text-right tabular-nums">{pct.toFixed(1).replace(".", ",")}%</td>
+                        <td className="p-2 text-right tabular-nums">{fmtPctRaw(pct, 1)}</td>
                       </tr>
                     );
                   })}
