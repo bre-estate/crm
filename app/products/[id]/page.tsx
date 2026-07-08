@@ -837,12 +837,12 @@ export default async function ProductDetailPage({
           </>
         )}
 
-        {/* Tổng đã thực nhận vào TK bank (từ payments_in) */}
+        {/* Tổng đã thực nhận vào TK bank */}
         <div className="rounded-lg border-2 border-blue-200 bg-blue-50/60 p-3 mb-4">
           <div className="flex justify-between items-center">
             <div>
               <div className="text-sm font-semibold text-blue-900">
-                💰 Đã thực nhận vào TK bank (payments_in)
+                💰 Đã thực nhận vào TK bank
               </div>
               <div className="text-xs text-blue-700 mt-0.5">
                 Số tiền CĐT thực chuyển vào ngân hàng — khác với "Đã nhận" ở trên (là số ghi
@@ -919,8 +919,13 @@ export default async function ProductDetailPage({
 
         {revPayments.length > 0 && (
           <div className="mt-4">
-            <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
-              Đã nhận thanh toán ({revPayments.length})
+            <div className="text-xs text-slate-500 uppercase font-semibold mb-2 flex items-center gap-2">
+              <span>Đã nhận thanh toán ({revPayments.length})</span>
+              {revPayments.length < revRecs.length && (
+                <span className="normal-case font-normal text-slate-400">
+                  · {revRecs.length - revPayments.length} đợt đã ĐC nhưng chưa vào TK
+                </span>
+              )}
             </div>
             <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
               <table className="w-full text-xs">
@@ -942,7 +947,7 @@ export default async function ProductDetailPage({
                     </tr>
                   ))}
                   <tr className="border-t-2 border-slate-300 bg-slate-50 font-semibold">
-                    <td className="p-2">Tổng đã thu (payment_in)</td>
+                    <td className="p-2">Tổng đã thu</td>
                     <td className="p-2 text-right tabular-nums text-green-700">
                       {fmtMoney(totalPaidInCash)}
                     </td>
