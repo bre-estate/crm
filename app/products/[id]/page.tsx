@@ -129,21 +129,14 @@ export default async function ProductDetailPage({
     .reduce((s, r) => s + Number(r.payment.amount ?? 0), 0);
   const totalPaidInCash = paidHHSale + paidBonus;
 
-  // "Đã ghi nhận" = sum totalReceivable của recons (đã có biên bản ĐC + có invoice)
-  // Chú ý: totalReceivable trong đợt hồi tố là delta (không double count như revenueThisTime).
-  // Nhưng số này ở scale GROSS (gồm VAT admin CĐT giữ). Convert về net BRE nhận:
-  //   scale = 1 - admin/gross → tỷ lệ post-admin. Hoặc đơn giản: (totalReceivable / gross) × expectedNet
-  const recognizedHHGross = revRecs
+  // "Đã nhận" = sum totalReceivable của recons đã có biên bản ĐC.
+  // totalReceivable đã là delta per đợt (đợt hồi tố chỉ chứa 4.795.525, không double count).
+  const receivedHH = revRecs
     .filter((r) => !isBonusRecon(r.rec))
     .reduce((s, r) => s + Number(r.rec.totalReceivableThisTime ?? 0), 0);
-  const recognizedBonus = revRecs
+  const receivedBonus = revRecs
     .filter((r) => isBonusRecon(r.rec))
     .reduce((s, r) => s + Number(r.rec.totalReceivableThisTime ?? 0), 0);
-  // Convert recognized gross → net BRE (trừ tỷ lệ admin tương ứng)
-  const recognizedHHNet =
-    expectedHHSaleGross > 0
-      ? (recognizedHHGross / expectedHHSaleGross) * expectedHHSale
-      : recognizedHHGross;
 
   // Backward compat: một số biến còn dùng
   const expectedFee = expectedHHSale;
@@ -807,70 +800,66 @@ export default async function ProductDetailPage({
         <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
           HH sale (theo %PMG_LK mới nhất: {(latestPmgRate * 100).toFixed(2)}%)
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
           <Info
             label="Dự kiến"
             value={fmtMoney(expectedHHSale)}
             tooltip={`= pmg_base × %PMG_LK − admin. Với %PMG_LK ${(latestPmgRate * 100).toFixed(2)}% hiện tại: ${fmtMoney(expectedHHSaleGross)} − ${fmtMoney(p.adminFee)} = ${fmtMoney(expectedHHSale)}`}
           />
           <Info
-            label="Đã ghi nhận"
-            value={fmtMoney(recognizedHHNet)}
-            tooltip="Tổng đợt ĐC đã lập (có biên bản/HĐ). Số này gồm cả hồi tố khi %PMG tăng."
-            accent="green"
-          />
-          <Info
-            label="Đã nhận tiền"
-            value={fmtMoney(paidHHSale)}
-            tooltip="Số thực đã vào TK BRE (từ payments_in)."
+            label="Đã nhận"
+            value={fmtMoney(receivedHH)}
+            tooltip="Tổng các đợt ĐC đã lập (cộng cả hồi tố). Vd căn A1-12A-07: 125.629.179 (đợt 1) + 4.795.525 (đợt 3 hồi tố) = 130.424.704"
             accent="green"
           />
           <Info
             label="Còn phải nhận"
-            value={fmtMoney(Math.max(0, recognizedHHNet - paidHHSale))}
-            tooltip="Đã ghi nhận nhưng chưa vào TK"
+            value={fmtMoney(Math.max(0, expectedHHSale - receivedHH))}
+            tooltip="Dự kiến − Đã nhận"
             accent="orange"
           />
           <Info
             label="% đã nhận"
             value={
-              expectedHHSale > 0 ? `${((paidHHSale / expectedHHSale) * 100).toFixed(1)}%` : "—"
+              expectedHHSale > 0 ? `${((receivedHH / expectedHHSale) * 100).toFixed(1)}%` : "—"
             }
           />
         </div>
 
         {/* Thưởng nóng (nếu có) */}
-        {(expectedBonus > 0 || recognizedBonus > 0 || paidBonus > 0) && (
+        {(expectedBonus > 0 || receivedBonus > 0) && (
           <>
             <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
               Thưởng nóng CĐT (transit)
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
               <Info label="Dự kiến" value={fmtMoney(expectedBonus)} />
-              <Info label="Đã ghi nhận" value={fmtMoney(recognizedBonus)} accent="green" />
-              <Info label="Đã nhận tiền" value={fmtMoney(paidBonus)} accent="green" />
+              <Info label="Đã nhận" value={fmtMoney(receivedBonus)} accent="green" />
               <Info
                 label="Còn phải nhận"
-                value={fmtMoney(Math.max(0, recognizedBonus - paidBonus))}
+                value={fmtMoney(Math.max(0, expectedBonus - receivedBonus))}
                 accent="orange"
               />
               <Info
                 label="% đã nhận"
-                value={expectedBonus > 0 ? `${((paidBonus / expectedBonus) * 100).toFixed(1)}%` : "—"}
+                value={
+                  expectedBonus > 0 ? `${((receivedBonus / expectedBonus) * 100).toFixed(1)}%` : "—"
+                }
               />
             </div>
           </>
         )}
 
-        {/* Tổng */}
+        {/* Tổng đã thực nhận vào TK bank (từ payments_in) */}
         <div className="rounded-lg border-2 border-blue-200 bg-blue-50/60 p-3 mb-4">
           <div className="flex justify-between items-center">
             <div>
               <div className="text-sm font-semibold text-blue-900">
-                💰 Tổng đã nhận tiền vào TK cty
+                💰 Đã thực nhận vào TK bank (payments_in)
               </div>
               <div className="text-xs text-blue-700 mt-0.5">
-                HH sale ({fmtMoney(paidHHSale)}) + Thưởng nóng ({fmtMoney(paidBonus)})
+                Số tiền CĐT thực chuyển vào ngân hàng — khác với "Đã nhận" ở trên (là số ghi
+                nhận trên biên bản ĐC/HĐ, có thể chưa vào TK)
               </div>
             </div>
             <div className="text-2xl font-bold tabular-nums text-blue-900">
