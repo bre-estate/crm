@@ -208,11 +208,6 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
     (s, x) => s + x.paidHH + x.paidBonus,
     0,
   );
-  // Target theo config (Giá tính PMG × %PMG_LK + thưởng CĐT) — dùng để tính gap "thiếu biên bản ĐC"
-  const totalExpected = Array.from(statsByProduct.values()).reduce(
-    (s, x) => s + x.expectedHH + x.expectedBonus,
-    0,
-  );
 
   const deptColor = (code: string | null | undefined): string => {
     switch ((code ?? "").toLowerCase()) {
@@ -315,16 +310,6 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
               }`}
             >
               {fmtMoney(Math.max(0, totalRecognized - totalPaid))}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs text-slate-500" title="= Target theo config (Giá tính PMG × %PMG_LK + thưởng CĐT) − Đã ĐC">Thiếu ĐC (hồi tố)</div>
-            <div
-              className={`font-bold tabular-nums ${
-                totalExpected - totalRecognized > 1000 ? "text-red-600" : "text-slate-400"
-              }`}
-            >
-              {fmtMoney(Math.max(0, totalExpected - totalRecognized))}
             </div>
           </div>
         </div>
