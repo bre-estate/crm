@@ -63,6 +63,7 @@ export default async function EditCostPage({
       date: costReconciliations.reconciliationDate,
       amount: costReconciliations.amountPayableThisTime,
       note: costReconciliations.note,
+      progressN: costReconciliations.paymentProgressPct,
     })
     .from(costReconciliations)
     .where(

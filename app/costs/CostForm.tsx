@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
+import { useState, useTransition, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { CostReconciliation } from "@/lib/schema";
 import MoneyInput from "@/components/MoneyInput";
@@ -35,6 +35,7 @@ type PreviousRecon = {
   date: string | null;
   amount: number | string | null;
   note: string | null;
+  progressN?: number | string | null;
 };
 
 // Recon light-weight cho client-side filter (từ /costs/new pre-load all).
@@ -102,8 +103,13 @@ export default function CostForm({
     if (!allRecons || !productId) return [];
     return allRecons
       .filter((r) => r.productId === productId && r.costType === costType)
-      .map((r) => ({ id: r.id, date: r.date, amount: r.amount, note: r.note }));
+      .map((r) => ({ id: r.id, date: r.date, amount: r.amount, note: r.note, progressN: r.progressN }));
   }, [previousReconsProp, allRecons, productId, costType]);
+
+  // Max N (Tiến độ) của các đợt trước → N đợt này phải ≥ giá trị này (không lùi tiến độ)
+  const maxPrevN = useMemo(() => {
+    return previousRecons.reduce((mx, r) => Math.max(mx, Number(r.progressN ?? 0)), 0);
+  }, [previousRecons]);
 
   // Lọc COST_TYPES: chỉ hiện loại có config > 0 trên căn (giữ costType hiện tại
   // của recon nếu đang edit, tránh trường hợp config vừa đổi làm mất option).
@@ -240,6 +246,18 @@ export default function CostForm({
   const thisPctNum = progressNNum;
   const thisAmountFromPct = thisAmountFromN;
 
+  // Auto-sync totalAmt = thisAmountFromN mỗi khi N/product/costType đổi.
+  // Cho phép override thủ công (manuallyOverriddenRef = true khi user sửa totalAmt trực tiếp).
+  const manuallyOverriddenRef = useRef(false);
+  useEffect(() => {
+    if (manuallyOverriddenRef.current) return;
+    if (thisAmountFromN > 0) setTotalAmt(thisAmountFromN);
+    else if (progressN === "") setTotalAmt(0);
+  }, [thisAmountFromN, progressN]);
+
+  // Validate N không được lùi so với đợt trước
+  const isNRegression = progressN !== "" && progressNNum < maxPrevN;
+
   // Auto default rate for KPI based on cost_type + product config
   const kpiRateDefault = useMemo(() => {
     if (costType === "kpi_ceo") return Number(product?.kpiCeoRate ?? 0);
@@ -281,6 +299,12 @@ export default function CostForm({
           if (isOverLimit) {
             alert(
               `Không cho lưu — tổng đã ĐC (${(paidBefore + totalAmt).toLocaleString("vi-VN")}) vượt mức tối đa (${targetForType.toLocaleString("vi-VN")}).\n\nVui lòng giảm số tiền hoặc sửa mức tối đa ở /products/{id}/edit.`,
+            );
+            return;
+          }
+          if (isNRegression) {
+            alert(
+              `Không cho lưu — Tiến độ N nhập ${(progressNNum * 100).toFixed(0)}% nhỏ hơn N của đợt trước ${(maxPrevN * 100).toFixed(0)}%. Không thể lùi tiến độ.`,
             );
             return;
           }
@@ -558,26 +582,32 @@ export default function CostForm({
               <input
                 type="number"
                 step="any"
-                min={0}
+                min={maxPrevN * 100}
                 max={100}
                 value={progressN}
                 onChange={(e) => {
+                  manuallyOverriddenRef.current = false;
                   setProgressN(e.target.value);
                 }}
-                onBlur={() => {
-                  // Auto set totalAmt = thisAmountFromN khi rời ô N (nếu chưa gõ manual)
-                  if (thisAmountFromN > 0) setTotalAmt(thisAmountFromN);
-                }}
-                placeholder="vd: 90 = khách đã trả CĐT 90%"
-                className="input pr-8"
+                placeholder={maxPrevN > 0 ? `≥ ${(maxPrevN * 100).toFixed(0)}%` : "vd: 90 = khách đã trả CĐT 90%"}
+                className={`input pr-8 ${isNRegression ? "border-red-400 text-red-700" : ""}`}
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
                 %
               </span>
             </div>
-            <div className="text-[10px] text-slate-500 mt-1">
-              = Khách đã trả CĐT bao nhiêu %. Đợt này auto = ((PMG Sale × N − admin_sale)/1,1 − hỗ trợ khách) × % − đã ĐC
-            </div>
+            {isNRegression ? (
+              <div className="text-[10px] text-red-600 mt-1 font-semibold">
+                ⚠️ N phải ≥ {(maxPrevN * 100).toFixed(0)}% (tiến độ đợt trước). Không thể lùi tiến độ.
+              </div>
+            ) : (
+              <div className="text-[10px] text-slate-500 mt-1">
+                = Khách đã trả CĐT bao nhiêu %. Đợt này auto = ((PMG Sale × N − admin_sale)/1,1 − hỗ trợ khách) × % − đã ĐC
+                {maxPrevN > 0 && (
+                  <span className="block mt-0.5">Tối thiểu {(maxPrevN * 100).toFixed(0)}% (theo đợt trước)</span>
+                )}
+              </div>
+            )}
           </Field>
         </div>
 
@@ -671,6 +701,7 @@ export default function CostForm({
                     onChange={(e) => {
                       const digits = e.target.value.replace(/\D/g, "");
                       const newTotal = digits ? Number(digits) : 0;
+                      manuallyOverriddenRef.current = true;
                       setTotalAmt(newTotal);
                     }}
                     onFocus={(e) => e.currentTarget.select()}
