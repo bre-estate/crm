@@ -3,7 +3,7 @@
 import { db } from "@/lib/db";
 import { costReconciliations, paymentsOut } from "@/lib/schema";
 import { toTitleCase } from "@/lib/format";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -67,6 +67,13 @@ function buildCostData(fd: FormData) {
     pmgRemaining: toNum(fd.get("pmgRemaining")),
     kpiRate: toPct(fd.get("kpiRate")),
     kpiAmount: toNum(fd.get("kpiAmount")),
+    // N = Tiến độ PMG đã thu tiền (0..1). Form submit dạng decimal (0.9 = 90%).
+    paymentProgressPct: (() => {
+      const raw = toStr(fd.get("paymentProgressPct"));
+      if (!raw) return 0;
+      const n = Number(raw);
+      return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 0;
+    })(),
     amountPayableThisTime: toNum(fd.get("amountPayableThisTime")),
     note: toStrOrNull(fd.get("note")),
   };
@@ -76,6 +83,24 @@ export async function createCost(fd: FormData) {
   const data = buildCostData(fd);
   if (!data.productId) throw new Error("Chọn căn (sản phẩm)");
   if (!data.employeeName) throw new Error("Nhập tên người được đối chiếu");
+
+  // KPI Admin: chỉ được ĐC 1 lần / căn (chốt với team - vì số nhỏ).
+  if (data.costType === "kpi_admin") {
+    const existing = await db
+      .select({ id: costReconciliations.id })
+      .from(costReconciliations)
+      .where(
+        and(
+          eq(costReconciliations.productId, data.productId),
+          eq(costReconciliations.costType, "kpi_admin"),
+        ),
+      );
+    if (existing.length > 0) {
+      throw new Error(
+        `KPI Admin cho căn này đã có (#${existing[0].id}). Mỗi căn chỉ được ĐC 1 lần cho KPI Admin.`,
+      );
+    }
+  }
 
   const [rec] = await db
     .insert(costReconciliations)
@@ -155,6 +180,21 @@ export async function createCostBulk(rows: BulkCostRow[]) {
         throw new Error(`Loại chi phí không hợp lệ: ${r.costType}`);
       if (!r.employeeName) throw new Error("Thiếu tên NVKD/TPKD");
       if (r.amountPayableThisTime <= 0) throw new Error("Số tiền phải > 0");
+
+      if (r.costType === "kpi_admin") {
+        const existing = await db
+          .select({ id: costReconciliations.id })
+          .from(costReconciliations)
+          .where(
+            and(
+              eq(costReconciliations.productId, r.productId),
+              eq(costReconciliations.costType, "kpi_admin"),
+            ),
+          );
+        if (existing.length > 0) {
+          throw new Error(`KPI Admin căn đã có (#${existing[0].id}), không cho ĐC 2 lần`);
+        }
+      }
 
       const [rec] = await db
         .insert(costReconciliations)

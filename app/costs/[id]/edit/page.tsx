@@ -55,6 +55,8 @@ export default async function EditCostPage({
     .orderBy(asc(paymentsOut.paymentDate));
 
   // Previous recons cùng (product × cost_type × employee) để hiển thị progress
+  // Previous recons cùng (căn × cost_type) — bỏ filter theo employee vì
+  // 1 căn thường chỉ 1 sale, và "Đã ĐC trước" logic là theo căn.
   const previousRecons = await db
     .select({
       id: costReconciliations.id,
@@ -67,9 +69,6 @@ export default async function EditCostPage({
       and(
         eq(costReconciliations.productId, recon.productId),
         eq(costReconciliations.costType, recon.costType),
-        recon.employeeName
-          ? eq(costReconciliations.employeeName, recon.employeeName)
-          : eq(costReconciliations.employeeName, ""),
         ne(costReconciliations.id, id),
       ),
     )

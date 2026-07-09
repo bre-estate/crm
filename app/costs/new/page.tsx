@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { products, projects, partners } from "@/lib/schema";
+import { products, projects, partners, costReconciliations } from "@/lib/schema";
 import { asc, eq } from "drizzle-orm";
 import Link from "next/link";
 import CostForm from "../CostForm";
@@ -38,6 +38,22 @@ export default async function NewCostPage({ searchParams }: { searchParams: Sear
     .leftJoin(partners, eq(projects.partnerId, partners.id))
     .orderBy(asc(projects.name), asc(products.unitCode));
 
+  // Pre-load tất cả cost recons (để CostForm client-side filter cho "Đã ĐC trước").
+  // Chỉ lấy field cần: productId, costType, amount, date, N, employee.
+  const allRecons = await db
+    .select({
+      id: costReconciliations.id,
+      productId: costReconciliations.productId,
+      costType: costReconciliations.costType,
+      date: costReconciliations.reconciliationDate,
+      amount: costReconciliations.amountPayableThisTime,
+      progressN: costReconciliations.paymentProgressPct,
+      employeeName: costReconciliations.employeeName,
+      note: costReconciliations.note,
+    })
+    .from(costReconciliations)
+    .orderBy(asc(costReconciliations.reconciliationDate));
+
   const backHref = defaultProductId ? `/products/${defaultProductId}` : "/costs";
   const backLabel = defaultProductId ? "← Về căn" : "← Giá vốn";
 
@@ -54,6 +70,7 @@ export default async function NewCostPage({ searchParams }: { searchParams: Sear
       <CostForm
         products={productOptions}
         defaultProductId={defaultProductId}
+        allRecons={allRecons}
         onSave={createCost}
       />
     </div>

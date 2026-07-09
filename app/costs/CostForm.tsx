@@ -37,12 +37,25 @@ type PreviousRecon = {
   note: string | null;
 };
 
+// Recon light-weight cho client-side filter (từ /costs/new pre-load all).
+export type AllReconRow = {
+  id: number;
+  productId: number;
+  costType: string;
+  date: string | null;
+  amount: number | string | null;
+  progressN: number | string | null;
+  employeeName: string;
+  note: string | null;
+};
+
 type Props = {
   recon?: CostReconciliation;
   paymentInit?: { paymentDate: string | null; amount: number } | null;
   products: ProductOption[];
   defaultProductId?: number;
   previousRecons?: PreviousRecon[];
+  allRecons?: AllReconRow[]; // Nếu có, dùng để tự filter previous theo productId+costType (client-side)
   onSave: (fd: FormData) => Promise<void>;
   onDelete?: () => Promise<void>;
 };
@@ -67,7 +80,8 @@ export default function CostForm({
   paymentInit,
   products,
   defaultProductId,
-  previousRecons = [],
+  previousRecons: previousReconsProp = [],
+  allRecons,
   onSave,
   onDelete,
 }: Props) {
@@ -81,6 +95,15 @@ export default function CostForm({
   );
   const product = useMemo(() => products.find((p) => p.id === productId), [products, productId]);
   const isEdit = !!recon;
+
+  // previousRecons: nếu edit → dùng prop từ server. Nếu new (có allRecons) → filter client-side.
+  const previousRecons = useMemo<PreviousRecon[]>(() => {
+    if (previousReconsProp.length > 0) return previousReconsProp;
+    if (!allRecons || !productId) return [];
+    return allRecons
+      .filter((r) => r.productId === productId && r.costType === costType)
+      .map((r) => ({ id: r.id, date: r.date, amount: r.amount, note: r.note }));
+  }, [previousReconsProp, allRecons, productId, costType]);
 
   // Lọc COST_TYPES: chỉ hiện loại có config > 0 trên căn (giữ costType hiện tại
   // của recon nếu đang edit, tránh trường hợp config vừa đổi làm mất option).
@@ -174,19 +197,48 @@ export default function CostForm({
     () => previousRecons.reduce((s, r) => s + Number(r.amount ?? 0), 0),
     [previousRecons],
   );
-  const paidBeforePct = targetForType > 0 ? (paidBefore / targetForType) * 100 : 0;
 
-  // Payment progress cho đợt này: nhập % → tự tính số tiền
-  const [thisPct, setThisPct] = useState<string>(
-    targetForType > 0 && recon?.amountPayableThisTime
-      ? ((Number(recon.amountPayableThisTime) / targetForType) * 100).toFixed(2).replace(".", ",")
+  // N = Tiến độ PMG đã thu tiền đến ngày ĐC (%). Excel col 13.
+  // Khách đã trả CĐT bao nhiêu % — dùng công thức Excel:
+  //   Lũy kế mới = ((L × M × N − Q) / 1,1 − R) × %
+  // Amount đợt này = Lũy kế mới − Đã ĐC trước.
+  const [progressN, setProgressN] = useState<string>(
+    recon?.paymentProgressPct
+      ? (Number(recon.paymentProgressPct) * 100).toString().replace(".", ",")
       : "",
   );
-  const thisPctNum = thisPct ? Number(thisPct.replace(/,/g, ".")) / 100 : 0;
-  const thisAmountFromPct = targetForType * thisPctNum;
+  const progressNNum = progressN ? Number(progressN.replace(/,/g, ".")) / 100 : 0;
 
+  // Lũy kế mới theo N nhập (dùng công thức Excel)
+  const luyKeAtN = useMemo(() => {
+    if (!product || !progressN) return 0;
+    const cfg: ProductConfig = {
+      pmgBasePrice: Number(product.pmgBasePrice ?? 0),
+      pmgSaleRate: Number(product.pmgSaleRate ?? 0) || Number(product.pmgRate ?? 0),
+      adminFeeSale: Number(product.adminFeeSale ?? 0),
+      customerSupport: Number(product.customerSupport ?? 0),
+      saleCommissionRate: Number(product.saleCommissionRate ?? 0),
+      kpiCeoRate: Number(product.kpiCeoRate ?? 0),
+      kpiTpkdRate: Number(product.kpiTpkdRate ?? 0),
+      kpiAdminRate: Number(product.kpiAdminRate ?? 0),
+      bonusSale: Number(product.bonusSale ?? 0),
+      bonusManager: Number(product.bonusManager ?? 0),
+      cdtBonusSale: Number(product.cdtBonusSale ?? 0),
+      cdtBonusManager: Number(product.cdtBonusManager ?? 0),
+    };
+    return computeLuyKe(cfg, costType as CostType, progressNNum);
+  }, [product, progressN, progressNNum, costType]);
+
+  const thisAmountFromN = Math.max(0, luyKeAtN - paidBefore);
+  const paidBeforePct = targetForType > 0 ? (paidBefore / targetForType) * 100 : 0;
   const remainingBefore = Math.max(0, targetForType - paidBefore);
-  const remainingAfter = remainingBefore - thisAmountFromPct;
+  const remainingAfter = Math.max(0, targetForType - paidBefore - thisAmountFromN);
+
+  // Legacy for backward compat with existing JSX
+  const thisPct = progressN;
+  const setThisPct = setProgressN;
+  const thisPctNum = progressNNum;
+  const thisAmountFromPct = thisAmountFromN;
 
   // Auto default rate for KPI based on cost_type + product config
   const kpiRateDefault = useMemo(() => {
@@ -453,10 +505,12 @@ export default function CostForm({
           <div className="rounded-lg bg-blue-50 border border-blue-200 p-3">
             <div className="text-xs text-blue-700">Đợt này (dự tính)</div>
             <div className="text-sm font-semibold tabular-nums mt-1 text-blue-900">
-              {fmtMoney(thisAmountFromPct)}
+              {fmtMoney(thisAmountFromN)}
             </div>
             <div className="text-[10px] text-blue-500 mt-0.5">
-              {thisPct ? `${thisPctNum * 100}%` : "chưa nhập %"} mức tối đa
+              {progressN
+                ? `Lũy kế mới ${fmtMoney(luyKeAtN)} − đã ĐC ${fmtMoney(paidBefore)}`
+                : "chưa nhập N"}
             </div>
           </div>
           <div className="rounded-lg bg-slate-50 border border-slate-200 p-3">
@@ -464,10 +518,12 @@ export default function CostForm({
             <div
               className={`text-sm font-semibold tabular-nums mt-1 ${remainingAfter < 1000 ? "text-slate-400" : "text-red-600"}`}
             >
-              {fmtMoney(Math.max(0, remainingAfter))}
+              {fmtMoney(remainingAfter)}
             </div>
             <div className="text-[10px] text-slate-400 mt-0.5">
-              {targetForType > 0 ? fmtPctRaw(100 - paidBeforePct - thisPctNum * 100, 1) : "—"}
+              {targetForType > 0
+                ? fmtPctRaw((remainingAfter / targetForType) * 100, 1)
+                : "—"}
             </div>
           </div>
         </div>
@@ -497,27 +553,31 @@ export default function CostForm({
               placeholder="vd: Đợt 1, Đợt 2, thưởng nóng, ..."
             />
           </Field>
-          <Field label="% số tiền thanh toán">
-            <input
-              type="number"
-              step="any"
-              value={thisPct}
-              onChange={(e) => {
-                setThisPct(e.target.value);
-                const n = Number(e.target.value.replace(/,/g, ".")) / 100;
-                if (targetForType > 0 && !isNaN(n)) {
-                  setTotalAmt(Math.round(targetForType * n));
-                }
-              }}
-              onBlur={(e) => {
-                const n = Number(e.target.value.replace(/,/g, ".")) / 100;
-                if (targetForType > 0 && !isNaN(n)) {
-                  setTotalAmt(Math.round(targetForType * n));
-                }
-              }}
-              placeholder="vd: 30 = 30% mức tối đa"
-              className="input"
-            />
+          <Field label="Tiến độ PMG đã thu tiền (N)">
+            <div className="relative">
+              <input
+                type="number"
+                step="any"
+                min={0}
+                max={100}
+                value={progressN}
+                onChange={(e) => {
+                  setProgressN(e.target.value);
+                }}
+                onBlur={() => {
+                  // Auto set totalAmt = thisAmountFromN khi rời ô N (nếu chưa gõ manual)
+                  if (thisAmountFromN > 0) setTotalAmt(thisAmountFromN);
+                }}
+                placeholder="vd: 90 = khách đã trả CĐT 90%"
+                className="input pr-8"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+                %
+              </span>
+            </div>
+            <div className="text-[10px] text-slate-500 mt-1">
+              = Khách đã trả CĐT bao nhiêu %. Đợt này auto = ((PMG Sale × N − admin_sale)/1,1 − hỗ trợ khách) × % − đã ĐC
+            </div>
           </Field>
         </div>
 
@@ -581,6 +641,8 @@ export default function CostForm({
             <input type="hidden" name="kpiAmount" value={String(totalAmt)} />
           </>
         )}
+        {/* N = Tiến độ PMG đã thu tiền, submit dạng decimal 0..1 */}
+        <input type="hidden" name="paymentProgressPct" value={String(progressNNum)} />
       </Section>
 
       <Section title="💰 Tổng phải trả đợt này">
@@ -599,7 +661,7 @@ export default function CostForm({
               >
                 <div className="flex justify-between items-center gap-3">
                   <div className={`text-xs ${overLimit ? "text-red-700" : "text-orange-700"}`}>
-                    Tự tính = Mức chi tối đa × % nhập ở trên. Nếu ghi đè thủ công, % tự cập nhật theo.
+                    Auto = Lũy kế mới (theo N nhập ở trên) − đã ĐC trước. Có thể ghi đè thủ công nếu cần.
                   </div>
                   <input
                     name="amountPayableThisTime"
@@ -610,11 +672,6 @@ export default function CostForm({
                       const digits = e.target.value.replace(/\D/g, "");
                       const newTotal = digits ? Number(digits) : 0;
                       setTotalAmt(newTotal);
-                      // Sync % lên trên (2-way binding)
-                      if (targetForType > 0) {
-                        const pct = (newTotal / targetForType) * 100;
-                        setThisPct(pct === 0 ? "" : pct.toFixed(2).replace(".", ","));
-                      }
                     }}
                     onFocus={(e) => e.currentTarget.select()}
                     className={`input text-right text-xl font-bold tabular-nums min-w-40 ${overLimit ? "text-red-700 border-red-400" : "text-orange-900"}`}
