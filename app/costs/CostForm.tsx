@@ -247,8 +247,10 @@ export default function CostForm({
   const thisAmountFromPct = thisAmountFromN;
 
   // Auto-sync totalAmt = thisAmountFromN mỗi khi N/product/costType đổi.
-  // Cho phép override thủ công (manuallyOverriddenRef = true khi user sửa totalAmt trực tiếp).
-  const manuallyOverriddenRef = useRef(false);
+  // Trên EDIT: khởi tạo manuallyOverriddenRef = true (giữ giá trị recon cũ, không ghi đè
+  //   bằng recompute — vì config M có thể đã đổi từ lúc recon được tạo).
+  //   Chỉ khi user chủ động sửa N → mới cho phép sync lại từ formula.
+  const manuallyOverriddenRef = useRef(isEdit);
   useEffect(() => {
     if (manuallyOverriddenRef.current) return;
     if (thisAmountFromN > 0) setTotalAmt(thisAmountFromN);
@@ -424,8 +426,12 @@ export default function CostForm({
                 return null;
             }
           })();
+          // M (%PMG_LK_sale): so sánh giá trị recon-time (đã lưu) vs config hiện tại
+          const mAtRecon = Number(recon?.pmgLkSaleRate ?? 0);
+          const mCurrent = Number(product.pmgSaleRate ?? 0);
+          const mChanged = isEdit && mAtRecon > 0 && Math.abs(mAtRecon - mCurrent) > 0.0001;
           return (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4 pt-3 border-t border-slate-100">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-3 border-t border-slate-100">
               <Field label="Giá tính PMG (từ căn)">
                 <input
                   type="text"
@@ -433,6 +439,30 @@ export default function CostForm({
                   readOnly
                   className="input bg-slate-100 text-slate-500 cursor-not-allowed tabular-nums"
                 />
+              </Field>
+              <Field label="%PMG_LK_sale (M)">
+                <input
+                  type="text"
+                  value={
+                    mChanged
+                      ? `${fmtPctTight(mAtRecon)} → ${fmtPctTight(mCurrent)}`
+                      : fmtPctTight(mCurrent)
+                  }
+                  readOnly
+                  className={`input tabular-nums cursor-not-allowed ${
+                    mChanged ? "bg-amber-50 text-amber-800 border-amber-300" : "bg-slate-100 text-slate-500"
+                  }`}
+                  title={
+                    mChanged
+                      ? `Đợt cũ ${fmtPctTight(mAtRecon)}, config hiện tại ${fmtPctTight(mCurrent)} (có điều chỉnh)`
+                      : undefined
+                  }
+                />
+                {mChanged && (
+                  <div className="text-[10px] text-amber-700 mt-0.5">
+                    ⚠️ M đã điều chỉnh từ {fmtPctTight(mAtRecon)} sang {fmtPctTight(mCurrent)}
+                  </div>
+                )}
               </Field>
               {rateForType && (
                 <Field label={rateForType.label}>
@@ -586,6 +616,7 @@ export default function CostForm({
                 max={100}
                 value={progressN}
                 onChange={(e) => {
+                  // User chủ động sửa N → cho phép auto-sync totalAmt lại
                   manuallyOverriddenRef.current = false;
                   setProgressN(e.target.value);
                 }}
