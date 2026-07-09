@@ -9,14 +9,11 @@ import {
   invoices,
   paymentsIn,
   paymentsOut,
-  productAdjustments,
 } from "@/lib/schema";
 import { fmtMoney, fmtDate, fmtPct, fmtPctTight, fmtPctRaw, costTypeLabel, toTitleCase } from "@/lib/format";
-import { eq, asc, desc } from "drizzle-orm";
+import { eq, asc } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import AdjustmentDialog from "./AdjustmentDialog";
-import { createProductAdjustment } from "@/lib/actions/products";
 
 export const dynamic = "force-dynamic";
 
@@ -77,12 +74,6 @@ export default async function ProductDetailPage({
       eq(paymentsOut.costReconciliationId, costReconciliations.id),
     )
     .where(eq(costReconciliations.productId, id));
-
-  const adjustments = await db
-    .select()
-    .from(productAdjustments)
-    .where(eq(productAdjustments.productId, id))
-    .orderBy(desc(productAdjustments.effectiveDate), desc(productAdjustments.id));
 
   // === Compute derived values ===
   // Phí HH sale dự kiến (net BRE nhận) = pmg_base × latestPmg − admin
@@ -392,7 +383,7 @@ export default async function ProductDetailPage({
                     <div className="text-xs text-green-700 font-semibold">B. DT thuần nội bộ</div>
                     <div className="text-lg font-bold tabular-nums mt-1">{fmtMoney(netIn)}</div>
                     <div className="text-[10px] text-slate-500 mt-1">
-                      PMG × %PMG_LK − admin (đã bỏ transit)
+                      = Giá tính PMG × %PMG_LK − phí admin
                     </div>
                   </div>
                   {thangDu > 0 && (
@@ -867,7 +858,7 @@ export default async function ProductDetailPage({
         {(expectedBonus > 0 || receivedBonus > 0) && (
           <>
             <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
-              (2) Thưởng nóng CĐT (transit)
+              (2) Thưởng nóng CĐT
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
               <Info label="Dự kiến" value={fmtMoney(expectedBonus)} />
@@ -1021,86 +1012,6 @@ export default async function ProductDetailPage({
           </div>
         )}
       </SectionCard>
-      )}
-
-      {/* === ĐIỀU CHỈNH CONFIG === */}
-      {!isSecondary && (
-        <SectionCard title="Điều chỉnh cấu hình căn" icon="⚙️">
-          <div className="flex justify-between items-center mb-3">
-            <div className="text-xs text-slate-600">
-              {adjustments.length === 0
-                ? "Chưa có lần điều chỉnh nào."
-                : `${adjustments.length} lần điều chỉnh — sắp xếp mới nhất trước.`}
-            </div>
-            <AdjustmentDialog
-              product={{
-                id: p.id,
-                pmgBasePrice: Number(p.pmgBasePrice ?? 0),
-                pmgRate: Number(p.pmgRate ?? 0),
-                pmgSaleRate: Number(p.pmgSaleRate ?? 0),
-                adminFee: Number(p.adminFee ?? 0),
-                adminFeeSale: Number(p.adminFeeSale ?? 0),
-                saleCommissionRate: Number(p.saleCommissionRate ?? 0),
-                kpiCeoRate: Number(p.kpiCeoRate ?? 0),
-                kpiTpkdRate: Number(p.kpiTpkdRate ?? 0),
-                kpiAdminRate: Number(p.kpiAdminRate ?? 0),
-                cdtBonusSale: Number(p.cdtBonusSale ?? 0),
-                cdtBonusManager: Number(p.cdtBonusManager ?? 0),
-                bonusSale: Number(p.bonusSale ?? 0),
-                bonusManager: Number(p.bonusManager ?? 0),
-                customerSupport: Number(p.customerSupport ?? 0),
-              }}
-              action={async (fd) => {
-                "use server";
-                await createProductAdjustment(p.id, fd);
-              }}
-            />
-          </div>
-
-          {adjustments.length > 0 && (
-            <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead className="bg-slate-50 text-slate-600">
-                  <tr>
-                    <th className="text-left p-2 whitespace-nowrap">Ngày</th>
-                    <th className="text-left p-2">Các trường thay đổi</th>
-                    <th className="text-left p-2">Ghi chú</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {adjustments.map((a) => {
-                    const changes: string[] = [];
-                    if (a.pmgBasePrice != null) changes.push(`Giá tính PMG = ${fmtMoney(a.pmgBasePrice)}`);
-                    if (a.pmgRate != null) changes.push(`%PMG_LK = ${fmtPctTight(a.pmgRate)}`);
-                    if (a.pmgSaleRate != null) changes.push(`%PMG_LK_sale = ${fmtPctTight(a.pmgSaleRate)}`);
-                    if (a.adminFee != null) changes.push(`Phí admin = ${fmtMoney(a.adminFee)}`);
-                    if (a.adminFeeSale != null) changes.push(`Phí admin sale = ${fmtMoney(a.adminFeeSale)}`);
-                    if (a.saleCommissionRate != null) changes.push(`%HH sale = ${fmtPctTight(a.saleCommissionRate)}`);
-                    if (a.kpiCeoRate != null) changes.push(`%KPI CEO = ${fmtPctTight(a.kpiCeoRate)}`);
-                    if (a.kpiTpkdRate != null) changes.push(`%KPI TPKD = ${fmtPctTight(a.kpiTpkdRate)}`);
-                    if (a.kpiAdminRate != null) changes.push(`%KPI Admin = ${fmtPctTight(a.kpiAdminRate)}`);
-                    if (a.cdtBonusSale != null) changes.push(`CĐT thưởng sale = ${fmtMoney(a.cdtBonusSale)}`);
-                    if (a.cdtBonusManager != null) changes.push(`CĐT thưởng QL = ${fmtMoney(a.cdtBonusManager)}`);
-                    if (a.bonusSale != null) changes.push(`CTY thưởng NVKD = ${fmtMoney(a.bonusSale)}`);
-                    if (a.bonusManager != null) changes.push(`CTY thưởng QL = ${fmtMoney(a.bonusManager)}`);
-                    if (a.customerSupport != null) changes.push(`Hỗ trợ khách = ${fmtMoney(a.customerSupport)}`);
-                    return (
-                      <tr key={a.id} className="border-t border-slate-100">
-                        <td className="p-2 whitespace-nowrap font-medium">
-                          {fmtDate(a.effectiveDate)}
-                        </td>
-                        <td className="p-2 text-slate-700">
-                          {changes.length > 0 ? changes.join(" · ") : "—"}
-                        </td>
-                        <td className="p-2 text-slate-500">{a.note ?? "—"}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </SectionCard>
       )}
 
       {/* === 5. TRẢ PHÍ NỘI BỘ === */}

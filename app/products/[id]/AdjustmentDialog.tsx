@@ -8,18 +8,7 @@ type ProductSnapshot = {
   id: number;
   pmgBasePrice: number;
   pmgRate: number;
-  pmgSaleRate: number;
   adminFee: number;
-  adminFeeSale: number;
-  saleCommissionRate: number;
-  kpiCeoRate: number;
-  kpiTpkdRate: number;
-  kpiAdminRate: number;
-  cdtBonusSale: number;
-  cdtBonusManager: number;
-  bonusSale: number;
-  bonusManager: number;
-  customerSupport: number;
 };
 
 type FieldDef = {
@@ -28,21 +17,13 @@ type FieldDef = {
   type: "money" | "percent";
 };
 
+// Trước mắt chỉ cho điều chỉnh 3 trường liên quan tới CĐT
+// (giá + %HH CĐT trả BRE + phí admin CĐT trừ).
+// Các trường nội bộ (%HH sale, KPI, thưởng...) sửa trực tiếp qua ProductForm.
 const FIELDS: FieldDef[] = [
-  { key: "pmgBasePrice", label: "Giá tính PMG", type: "money" },
+  { key: "pmgBasePrice", label: "Giá tính PMG (= giá bán căn)", type: "money" },
   { key: "pmgRate", label: "%PMG_LK (CĐT trả BRE)", type: "percent" },
-  { key: "pmgSaleRate", label: "%PMG_LK_sale (base sale)", type: "percent" },
-  { key: "adminFee", label: "Phí admin (CĐT giữ)", type: "money" },
-  { key: "adminFeeSale", label: "Phí admin sale", type: "money" },
-  { key: "saleCommissionRate", label: "%HH sale", type: "percent" },
-  { key: "kpiCeoRate", label: "%KPI CEO", type: "percent" },
-  { key: "kpiTpkdRate", label: "%KPI TPKD", type: "percent" },
-  { key: "kpiAdminRate", label: "%KPI Admin", type: "percent" },
-  { key: "cdtBonusSale", label: "CĐT thưởng nóng sale", type: "money" },
-  { key: "cdtBonusManager", label: "CĐT thưởng nóng QL", type: "money" },
-  { key: "bonusSale", label: "CTY thưởng NVKD", type: "money" },
-  { key: "bonusManager", label: "CTY thưởng QL", type: "money" },
-  { key: "customerSupport", label: "Hỗ trợ khách", type: "money" },
+  { key: "adminFee", label: "Phí admin (CĐT giữ, gồm VAT)", type: "money" },
 ];
 
 const fmtValue = (v: number, type: "money" | "percent") =>

@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import type { Product, Project, Partner, Department } from "@/lib/schema";
 import MoneyInput from "@/components/MoneyInput";
 import SearchableSelect from "@/components/SearchableSelect";
-import PmgRateHistoryEditor from "./PmgRateHistoryEditor";
 import { fmtMoney, toTitleCase } from "@/lib/format";
 
 type ProjectWithPartner = Project & { partnerName?: string | null };
@@ -224,7 +223,7 @@ export default function ProductForm({ product, projects, departments = [], onSav
           </>
         ) : (
           <>
-          {/* Row 1: Giá tính PMG (đã gộp Giá bán) + Lịch sử %PMG_LK */}
+          {/* Row 1: Giá tính PMG + %PMG_LK */}
           <div className="grid grid-cols-2 gap-4">
             <Field label="Giá tính PMG (= giá bán)">
               <MoneyInput
@@ -234,12 +233,22 @@ export default function ProductForm({ product, projects, departments = [], onSav
                 onValueChange={setPmgBase}
               />
             </Field>
-            <Field label="Lịch sử %PMG_LK (từ CĐT)">
-              <PmgRateHistoryEditor
-                defaultHistory={product?.pmgRateHistory ?? null}
-                defaultCurrentRate={product?.pmgRate ?? null}
-                onLatestChange={setPmgRateLive}
-              />
+            <Field label="%PMG_LK (CĐT trả BRE)">
+              <div className="relative">
+                <input
+                  type="number"
+                  step="any"
+                  name="pmgRate"
+                  defaultValue={product?.pmgRate ? Number((Number(product.pmgRate) * 100).toFixed(4)) : ""}
+                  onChange={(e) => setPmgRateLive(Number(e.target.value.replace(/,/g, ".")) / 100)}
+                  className="input pr-8"
+                  placeholder="VD: 6,75"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">%</span>
+              </div>
+              <div className="text-[10px] text-slate-500 mt-1">
+                Muốn track lịch sử điều chỉnh → dùng &quot;Điều chỉnh thông tin căn&quot; bên dưới
+              </div>
             </Field>
           </div>
 
@@ -302,7 +311,7 @@ export default function ProductForm({ product, projects, departments = [], onSav
                 </div>
                 <div className="text-lg font-bold tabular-nums mt-1">{fmtMoney(netInternal)}</div>
                 <div className="text-[10px] text-slate-500 mt-1">
-                  = PMG × %PMG_LK − phí admin (đã bỏ transit)
+                  = Giá tính PMG × %PMG_LK − phí admin
                 </div>
               </div>
               {dtThangDu > 0 && (
