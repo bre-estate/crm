@@ -787,28 +787,34 @@ export default async function ProductDetailPage({
         <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
           HH sale (theo %PMG_LK mới nhất: {fmtPct(latestPmgRate, 2)})
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-2">
           <Info
             label="Dự kiến"
             value={fmtMoney(expectedHHSale)}
             tooltip={`= pmg_base × %PMG_LK − admin. Với %PMG_LK ${fmtPct(latestPmgRate, 2)} hiện tại: ${fmtMoney(expectedHHSaleGross)} − ${fmtMoney(p.adminFee)} = ${fmtMoney(expectedHHSale)}`}
           />
           <Info
-            label="Đã nhận"
-            value={fmtMoney(receivedHH)}
-            tooltip="Tổng các đợt ĐC đã lập (cộng cả hồi tố). Vd căn A1-12A-07: 125.629.179 (đợt 1) + 4.795.525 (đợt 3 hồi tố) = 130.424.704"
+            label="Đã nhận (vào TK)"
+            value={fmtMoney(paidHHSale)}
+            tooltip="Số CĐT đã thực chuyển vào tài khoản BRE. Chỉ tính khi biên bản đã ĐC + CĐT đã thanh toán."
             accent="green"
           />
           {(() => {
-            const remaining = Math.max(0, expectedHHSale - receivedHH);
-            const pct = expectedHHSale > 0 ? (receivedHH / expectedHHSale) * 100 : 0;
-            const isDone = remaining < 1000; // threshold rounding
+            const remaining = Math.max(0, expectedHHSale - paidHHSale);
+            const remainDCPending = Math.max(0, receivedHH - paidHHSale); // đã ĐC chưa thu
+            const remainNotDC = Math.max(0, expectedHHSale - receivedHH); // chưa lập biên bản
+            const pct = expectedHHSale > 0 ? (paidHHSale / expectedHHSale) * 100 : 0;
+            const isDone = remaining < 1000;
             return (
               <>
                 <Info
                   label="Còn phải nhận"
                   value={fmtMoney(remaining)}
-                  tooltip="Dự kiến − Đã nhận"
+                  tooltip={
+                    remaining > 0
+                      ? `= Dự kiến − Đã nhận. Trong đó: ${fmtMoney(remainDCPending)} đã ĐC chờ CĐT chuyển tiền, ${fmtMoney(remainNotDC)} chưa lập biên bản ĐC.`
+                      : "Đã thu đủ"
+                  }
                   accent={isDone ? "slate" : "red"}
                 />
                 <Info
@@ -820,6 +826,27 @@ export default async function ProductDetailPage({
             );
           })()}
         </div>
+        {/* Breakdown chi tiết */}
+        {(() => {
+          const remainDCPending = Math.max(0, receivedHH - paidHHSale);
+          const remainNotDC = Math.max(0, expectedHHSale - receivedHH);
+          if (remainDCPending < 1000 && remainNotDC < 1000) return null;
+          return (
+            <div className="text-xs text-slate-600 bg-amber-50 border border-amber-200 rounded-lg p-2 mb-4">
+              <span className="font-semibold text-amber-800">Trong phần còn phải nhận:</span>
+              {remainDCPending >= 1000 && (
+                <span className="ml-2">
+                  ⏳ <b className="tabular-nums">{fmtMoney(remainDCPending)}</b> đã ĐC (có biên bản), chờ CĐT chuyển tiền
+                </span>
+              )}
+              {remainNotDC >= 1000 && (
+                <span className="ml-2">
+                  📋 <b className="tabular-nums">{fmtMoney(remainNotDC)}</b> chưa lập biên bản ĐC
+                </span>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Thưởng nóng (nếu có) */}
         {(expectedBonus > 0 || receivedBonus > 0) && (
@@ -893,38 +920,60 @@ export default async function ProductDetailPage({
                 <th className="text-right p-2 whitespace-nowrap">%PMG</th>
                 <th className="text-right p-2 whitespace-nowrap">Số tiền đợt</th>
                 <th className="text-right p-2 whitespace-nowrap">Phải thu</th>
+                <th className="text-left p-2 whitespace-nowrap">Trạng thái</th>
                 <th className="text-right p-2 whitespace-nowrap"></th>
               </tr>
             </thead>
             <tbody>
-              {revRecs.map(({ rec, invoice }) => (
-                <tr key={rec.id} className="border-t border-slate-100">
-                  <td className="p-2 text-center font-semibold">{rec.phaseNumber ?? "—"}</td>
-                  <td className="p-2">{fmtDate(rec.reconciliationDate)}</td>
-                  <td className="p-2 font-mono">{invoice?.invoiceNumber ?? "—"}</td>
-                  <td className="p-2">{fmtDate(invoice?.invoiceDate)}</td>
-                  <td className="p-2 text-right tabular-nums">
-                    {rec.pmgCumulativePct ? fmtPct(rec.pmgCumulativePct) : "—"}
-                  </td>
-                  <td className="p-2 text-right tabular-nums font-medium">
-                    {fmtMoney(rec.revenueThisTime)}
-                  </td>
-                  <td className="p-2 text-right tabular-nums font-semibold">
-                    {fmtMoney(rec.totalReceivableThisTime)}
-                  </td>
-                  <td className="p-2 text-right">
-                    <Link
-                      href={`/revenues/${rec.id}/edit`}
-                      className="text-blue-600 hover:underline"
-                    >
-                      Sửa
-                    </Link>
-                  </td>
-                </tr>
-              ))}
+              {revRecs.map(({ rec, invoice }) => {
+                const hasDate = !!rec.reconciliationDate;
+                const paidForThisRec = revPayments
+                  .filter((p) => p.payment.reconciliationId === rec.id)
+                  .reduce((s, p) => s + Number(p.payment.amount ?? 0), 0);
+                const receivable = Number(rec.totalReceivableThisTime ?? 0);
+                const isFullyPaid = receivable > 0 && Math.abs(paidForThisRec - receivable) < 1000;
+                const isPartialPaid = paidForThisRec > 0 && !isFullyPaid;
+                const hasInvoice = !!invoice?.invoiceNumber;
+                let status: { label: string; color: string } = { label: "?", color: "bg-slate-100 text-slate-600" };
+                if (!hasDate) status = { label: "📋 Chờ ĐC", color: "bg-slate-100 text-slate-700" };
+                else if (isFullyPaid && hasInvoice) status = { label: "✅ Hoàn thành", color: "bg-green-100 text-green-700" };
+                else if (isFullyPaid && !hasInvoice) status = { label: "⚠️ Thiếu HĐ", color: "bg-amber-100 text-amber-700" };
+                else if (isPartialPaid) status = { label: "⏳ Thu 1 phần", color: "bg-orange-100 text-orange-700" };
+                else status = { label: "⏳ Chờ CĐT TT", color: "bg-yellow-100 text-yellow-700" };
+                return (
+                  <tr key={rec.id} className="border-t border-slate-100">
+                    <td className="p-2 text-center font-semibold">{rec.phaseNumber ?? "—"}</td>
+                    <td className="p-2">{fmtDate(rec.reconciliationDate)}</td>
+                    <td className="p-2 font-mono">{invoice?.invoiceNumber ?? "—"}</td>
+                    <td className="p-2">{fmtDate(invoice?.invoiceDate)}</td>
+                    <td className="p-2 text-right tabular-nums">
+                      {rec.pmgCumulativePct ? fmtPct(rec.pmgCumulativePct) : "—"}
+                    </td>
+                    <td className="p-2 text-right tabular-nums font-medium">
+                      {fmtMoney(rec.revenueThisTime)}
+                    </td>
+                    <td className="p-2 text-right tabular-nums font-semibold">
+                      {fmtMoney(rec.totalReceivableThisTime)}
+                    </td>
+                    <td className="p-2">
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap ${status.color}`}>
+                        {status.label}
+                      </span>
+                    </td>
+                    <td className="p-2 text-right">
+                      <Link
+                        href={`/revenues/${rec.id}/edit`}
+                        className="text-blue-600 hover:underline"
+                      >
+                        Sửa
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
               {revRecs.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="p-4 text-center text-slate-500">
+                  <td colSpan={9} className="p-4 text-center text-slate-500">
                     Chưa có đợt đối chiếu nào.
                   </td>
                 </tr>

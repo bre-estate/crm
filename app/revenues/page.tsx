@@ -14,13 +14,23 @@ import SearchableSelect from "@/components/SearchableSelect";
 
 export const dynamic = "force-dynamic";
 
-type SearchParams = Promise<{ projectId?: string; unitCode?: string; tab?: string }>;
+type SearchParams = Promise<{ projectId?: string; unitCode?: string; tab?: string; status?: string }>;
+
+const STATUS_OPTIONS = [
+  { key: "all", label: "Tất cả", icon: "" },
+  { key: "done", label: "Hoàn thành", icon: "✅" },
+  { key: "waiting_pay", label: "Chờ CĐT thanh toán", icon: "⏳" },
+  { key: "partial", label: "Thu 1 phần", icon: "⏳" },
+  { key: "no_invoice", label: "Thiếu hóa đơn", icon: "⚠️" },
+  { key: "no_date", label: "Chưa lập biên bản", icon: "📋" },
+] as const;
 
 export default async function RevenuesPage({ searchParams }: { searchParams: SearchParams }) {
-  const { projectId, unitCode, tab } = await searchParams;
+  const { projectId, unitCode, tab, status } = await searchParams;
   const filterProjectId = projectId ? Number(projectId) : null;
   const filterUnitCode = unitCode?.trim() || null;
   const activeTab: "primary" | "secondary" = tab === "secondary" ? "secondary" : "primary";
+  const activeStatus = (STATUS_OPTIONS.find((s) => s.key === status)?.key ?? "all") as (typeof STATUS_OPTIONS)[number]["key"];
 
   const allProjects = await db
     .select({ id: projects.id, name: projects.name, fullCode: projects.fullCode })
@@ -85,8 +95,37 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
     .groupBy(paymentsIn.reconciliationId);
   const paidMap = new Map(paymentAgg.map((r) => [r.recId, Number(r.total ?? 0)]));
 
-  const totalReceivable = rows.reduce((s, r) => s + Number(r.totalReceivable ?? 0), 0);
-  const totalPaid = rows.reduce((s, r) => s + (paidMap.get(r.id) ?? 0), 0);
+  // Compute status per recon và filter theo activeStatus
+  const rowsWithStatus = rows.map((r) => {
+    const paid = paidMap.get(r.id) ?? 0;
+    const receivable = Number(r.totalReceivable ?? 0);
+    const hasDate = !!r.date;
+    const hasInvoice = !!r.invoiceNumber;
+    const isFullyPaid = receivable > 0 && Math.abs(paid - receivable) < 1000;
+    const isPartial = paid > 0 && !isFullyPaid;
+    let statusKey: (typeof STATUS_OPTIONS)[number]["key"] = "all";
+    if (!hasDate) statusKey = "no_date";
+    else if (isFullyPaid && hasInvoice) statusKey = "done";
+    else if (isFullyPaid && !hasInvoice) statusKey = "no_invoice";
+    else if (isPartial) statusKey = "partial";
+    else statusKey = "waiting_pay";
+    return { r, paid, status: statusKey };
+  });
+  const filteredRows = activeStatus === "all"
+    ? rowsWithStatus
+    : rowsWithStatus.filter((x) => x.status === activeStatus);
+  const rows2 = filteredRows.map((x) => x.r);
+  const statusOf = new Map(filteredRows.map((x) => [x.r.id, x.status]));
+
+  const totalReceivable = rows2.reduce((s, r) => s + Number(r.totalReceivable ?? 0), 0);
+  const totalPaid = rows2.reduce((s, r) => s + (paidMap.get(r.id) ?? 0), 0);
+
+  // Count per status (từ toàn bộ rows chưa filter theo status)
+  const statusCounts = new Map<string, number>();
+  for (const x of rowsWithStatus) {
+    statusCounts.set(x.status, (statusCounts.get(x.status) ?? 0) + 1);
+  }
+  statusCounts.set("all", rowsWithStatus.length);
 
   return (
     <div className="space-y-4">
@@ -144,6 +183,34 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
         })}
       </div>
 
+      {/* Status filter pills */}
+      <div className="flex flex-wrap gap-2 items-center">
+        <span className="text-xs text-slate-500 mr-1">Trạng thái:</span>
+        {STATUS_OPTIONS.map((s) => {
+          const isActive = activeStatus === s.key;
+          const count = statusCounts.get(s.key) ?? 0;
+          const params = new URLSearchParams();
+          params.set("tab", activeTab);
+          if (filterProjectId) params.set("projectId", String(filterProjectId));
+          if (filterUnitCode) params.set("unitCode", filterUnitCode);
+          if (s.key !== "all") params.set("status", s.key);
+          return (
+            <Link
+              key={s.key}
+              href={`/revenues?${params.toString()}`}
+              className={`text-xs px-3 py-1 rounded-full border transition ${
+                isActive
+                  ? "bg-blue-600 text-white border-blue-600"
+                  : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
+              }`}
+            >
+              {s.icon} {s.label}
+              <span className={`ml-1 ${isActive ? "text-blue-100" : "text-slate-400"}`}>({count})</span>
+            </Link>
+          );
+        })}
+      </div>
+
       <div className="bg-white border border-slate-200 rounded-xl p-4 flex gap-4 items-end flex-wrap">
         <form className="flex gap-2 items-end flex-wrap">
           <input type="hidden" name="tab" value={activeTab} />
@@ -187,7 +254,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
         <div className="flex gap-6 text-sm ml-auto">
           <div>
             <div className="text-xs text-slate-500">Số đợt ĐC</div>
-            <div className="font-bold">{rows.length}</div>
+            <div className="font-bold">{rows2.length}</div>
           </div>
           <div>
             <div className="text-xs text-slate-500">Tổng phải thu</div>
@@ -229,11 +296,12 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
               <th className="text-right p-2">Phải thu</th>
               <th className="text-right p-2">Đã thu</th>
               <th className="text-right p-2">Còn phải thu</th>
+              <th className="text-left p-2">Trạng thái</th>
               <th className="text-right p-2"></th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => {
+            {rows2.map((r) => {
               const receivable = Number(r.totalReceivable ?? 0);
               const paid = paidMap.get(r.id) ?? 0;
               const remaining = receivable - paid;
@@ -303,6 +371,27 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
                   >
                     {remaining > 0 ? fmtMoney(remaining) : "—"}
                   </td>
+                  <td className="p-2">
+                    {(() => {
+                      const st = statusOf.get(r.id) ?? "all";
+                      const opt = STATUS_OPTIONS.find((s) => s.key === st);
+                      const colorMap: Record<string, string> = {
+                        done: "bg-green-100 text-green-700",
+                        waiting_pay: "bg-yellow-100 text-yellow-700",
+                        partial: "bg-orange-100 text-orange-700",
+                        no_invoice: "bg-amber-100 text-amber-700",
+                        no_date: "bg-slate-100 text-slate-700",
+                        all: "bg-slate-100 text-slate-500",
+                      };
+                      return (
+                        <span
+                          className={`text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap ${colorMap[st]}`}
+                        >
+                          {opt?.icon} {opt?.label ?? "—"}
+                        </span>
+                      );
+                    })()}
+                  </td>
                   <td className="p-2 text-right">
                     <Link
                       href={`/revenues/${r.id}/edit`}
@@ -314,9 +403,9 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
                 </tr>
               );
             })}
-            {rows.length === 0 && (
+            {rows2.length === 0 && (
               <tr>
-                <td colSpan={activeTab === "primary" ? 12 : 9} className="p-6 text-center text-slate-500">
+                <td colSpan={activeTab === "primary" ? 13 : 10} className="p-6 text-center text-slate-500">
                   Chưa có đợt đối chiếu nào.
                 </td>
               </tr>
