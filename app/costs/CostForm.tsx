@@ -168,8 +168,8 @@ export default function CostForm({
     Number(recon?.amountPayableThisTime ?? 0),
   );
 
-  // Effective M (%PMG_LK_sale) dùng cho tính preview:
-  // - Edit mode: dùng M snapshot từ recon (đã lưu lúc gõ Excel), để match totalAmt cũ
+  // Effective M cho "Đợt này (dự tính)" — số recon lưu:
+  // - Edit mode: dùng M snapshot từ recon (giữ nguyên giá trị đã lưu)
   // - New mode: dùng M current từ product config
   const effectiveM = useMemo(() => {
     if (isEdit && recon?.pmgLkSaleRate && Number(recon.pmgLkSaleRate) > 0) {
@@ -178,7 +178,13 @@ export default function CostForm({
     return Number(product?.pmgSaleRate ?? 0) || Number(product?.pmgRate ?? 0);
   }, [isEdit, recon, product]);
 
-  // Config dùng cho tất cả compute, dùng effectiveM.
+  // M current từ config (đại diện target FULL + phần hồi tố nếu M đã tăng)
+  const currentM = useMemo(
+    () => Number(product?.pmgSaleRate ?? 0) || Number(product?.pmgRate ?? 0),
+    [product],
+  );
+
+  // Config dùng cho "Đợt này (dự tính)" — dùng effectiveM (snapshot).
   const effectiveCfg = useMemo<ProductConfig>(
     () => ({
       pmgBasePrice: Number(product?.pmgBasePrice ?? 0),
@@ -197,16 +203,23 @@ export default function CostForm({
     [product, effectiveM],
   );
 
+  // Config dùng cho "Mức chi tối đa" + "Còn lại sau đợt này" — dùng M current
+  // để phản ánh target CUỐI CÙNG (bao gồm hồi tố nếu M đã tăng).
+  const currentCfg = useMemo<ProductConfig>(
+    () => ({ ...effectiveCfg, pmgSaleRate: currentM }),
+    [effectiveCfg, currentM],
+  );
+
   // PMG Sale = Giá tính PMG × M (effective)
   const PMG_Sale = useMemo(
     () => Number(product?.pmgBasePrice ?? 0) * effectiveM,
     [product, effectiveM],
   );
-  // Target ĐỦ (khi khách trả 100%)
+  // Target ĐỦ (Mức chi tối đa) — dùng M current để include hồi tố nếu M đã tăng.
   const targetForType = useMemo(() => {
     if (!product) return 0;
-    return computeLuyKe(effectiveCfg, costType as CostType, 1);
-  }, [costType, product, effectiveCfg]);
+    return computeLuyKe(currentCfg, costType as CostType, 1);
+  }, [costType, product, currentCfg]);
 
   // Tổng đã ĐC các đợt trước (cùng cost_type, cùng employee, cùng căn)
   const paidBefore = useMemo(
@@ -565,17 +578,29 @@ export default function CostForm({
             </div>
           </div>
           <div className="rounded-lg bg-slate-50 border border-slate-200 p-3">
-            <div className="text-xs text-slate-500">Còn lại sau đợt này</div>
+            <div className="text-xs text-slate-500">
+              Còn lại sau đợt này
+              <span
+                className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-300 text-white text-[9px] cursor-help select-none ml-1"
+                title={
+                  isEdit && Math.abs(currentM - effectiveM) > 0.0001
+                    ? `Tính theo M current (${(currentM * 100).toFixed(2)}%) — bao gồm phần hồi tố do M tăng từ ${(effectiveM * 100).toFixed(2)}% lên ${(currentM * 100).toFixed(2)}%`
+                    : "= Mức chi tối đa − Đã ĐC trước − Đợt này. Là số sale sẽ nhận trong các đợt sau."
+                }
+              >
+                ?
+              </span>
+            </div>
             <div
               className={`text-sm font-semibold tabular-nums mt-1 ${remainingAfter < 1000 ? "text-slate-400" : "text-red-600"}`}
             >
               {fmtMoney(remainingAfter)}
             </div>
-            <div className="text-[10px] text-slate-400 mt-0.5">
-              {targetForType > 0
-                ? fmtPctRaw((remainingAfter / targetForType) * 100, 1)
-                : "—"}
-            </div>
+            {isEdit && Math.abs(currentM - effectiveM) > 0.0001 && remainingAfter > 1000 && (
+              <div className="text-[10px] text-amber-700 mt-0.5">
+                (đã include hồi tố M {(effectiveM * 100).toFixed(2)}% → {(currentM * 100).toFixed(2)}%)
+              </div>
+            )}
           </div>
         </div>
 
