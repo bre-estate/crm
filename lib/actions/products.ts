@@ -1,7 +1,14 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { products, projects, partners, revenueReconciliations, costReconciliations } from "@/lib/schema";
+import {
+  products,
+  projects,
+  partners,
+  revenueReconciliations,
+  costReconciliations,
+  productAdjustments,
+} from "@/lib/schema";
 import { toTitleCase } from "@/lib/format";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -213,4 +220,111 @@ export async function deleteProduct(id: number) {
   await db.delete(products).where(eq(products.id, id));
   revalidatePath("/products");
   redirect("/products");
+}
+
+/**
+ * Tạo product adjustment: điều chỉnh 1 hoặc nhiều field trên product config.
+ * Insert vào product_adjustments (giữ history) + update product với value mới.
+ */
+export async function createProductAdjustment(productId: number, fd: FormData) {
+  const effectiveDate = toStr(fd.get("effectiveDate"));
+  if (!effectiveDate) throw new Error("Nhập ngày điều chỉnh");
+  const note = toStrOrNull(fd.get("note"));
+
+  // Xác định field nào được điều chỉnh (checkbox 'change_<field>' = 'on')
+  const isChanged = (field: string) => fd.get(`change_${field}`) === "on";
+
+  const adj: Record<string, number> = {};
+  const productUpdate: Record<string, number> = {};
+
+  if (isChanged("pmgBasePrice")) {
+    const v = toNum(fd.get("pmgBasePrice"));
+    adj.pmgBasePrice = v;
+    productUpdate.pmgBasePrice = v;
+  }
+  if (isChanged("pmgRate")) {
+    const v = toPct(fd.get("pmgRate"));
+    adj.pmgRate = v;
+    productUpdate.pmgRate = v;
+  }
+  if (isChanged("pmgSaleRate")) {
+    const v = toPct(fd.get("pmgSaleRate"));
+    adj.pmgSaleRate = v;
+    productUpdate.pmgSaleRate = v;
+  }
+  if (isChanged("adminFee")) {
+    const v = toNum(fd.get("adminFee"));
+    adj.adminFee = v;
+    productUpdate.adminFee = v;
+  }
+  if (isChanged("adminFeeSale")) {
+    const v = toNum(fd.get("adminFeeSale"));
+    adj.adminFeeSale = v;
+    productUpdate.adminFeeSale = v;
+  }
+  if (isChanged("saleCommissionRate")) {
+    const v = toPct(fd.get("saleCommissionRate"));
+    adj.saleCommissionRate = v;
+    productUpdate.saleCommissionRate = v;
+  }
+  if (isChanged("kpiCeoRate")) {
+    const v = toPct(fd.get("kpiCeoRate"));
+    adj.kpiCeoRate = v;
+    productUpdate.kpiCeoRate = v;
+  }
+  if (isChanged("kpiTpkdRate")) {
+    const v = toPct(fd.get("kpiTpkdRate"));
+    adj.kpiTpkdRate = v;
+    productUpdate.kpiTpkdRate = v;
+  }
+  if (isChanged("kpiAdminRate")) {
+    const v = toPct(fd.get("kpiAdminRate"));
+    adj.kpiAdminRate = v;
+    productUpdate.kpiAdminRate = v;
+  }
+  if (isChanged("cdtBonusSale")) {
+    const v = toNum(fd.get("cdtBonusSale"));
+    adj.cdtBonusSale = v;
+    productUpdate.cdtBonusSale = v;
+  }
+  if (isChanged("cdtBonusManager")) {
+    const v = toNum(fd.get("cdtBonusManager"));
+    adj.cdtBonusManager = v;
+    productUpdate.cdtBonusManager = v;
+  }
+  if (isChanged("bonusSale")) {
+    const v = toNum(fd.get("bonusSale"));
+    adj.bonusSale = v;
+    productUpdate.bonusSale = v;
+  }
+  if (isChanged("bonusManager")) {
+    const v = toNum(fd.get("bonusManager"));
+    adj.bonusManager = v;
+    productUpdate.bonusManager = v;
+  }
+  if (isChanged("customerSupport")) {
+    const v = toNum(fd.get("customerSupport"));
+    adj.customerSupport = v;
+    productUpdate.customerSupport = v;
+  }
+
+  if (Object.keys(adj).length === 0) {
+    throw new Error("Chọn ít nhất 1 trường muốn điều chỉnh");
+  }
+
+  await db.insert(productAdjustments).values({
+    productId,
+    effectiveDate,
+    note,
+    ...adj,
+  });
+  await db.update(products).set(productUpdate).where(eq(products.id, productId));
+
+  revalidatePath(`/products/${productId}`);
+  revalidatePath("/products");
+}
+
+export async function deleteProductAdjustment(productId: number, adjId: number) {
+  await db.delete(productAdjustments).where(eq(productAdjustments.id, adjId));
+  revalidatePath(`/products/${productId}`);
 }
