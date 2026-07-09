@@ -11,6 +11,7 @@ import * as XLSX from "xlsx";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "../lib/schema";
+import { sql } from "drizzle-orm";
 import * as dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 
@@ -247,6 +248,42 @@ async function main() {
     const totalRec = toNum(r[26]);
     const payDate = excelDate(r[27]);
     const payAmt = toNum(r[28]);
+    const invDate = excelDate(r[3]);
+    const invNum = toStr(r[4]);
+    const invValue = toNum(r[5]) || totalRec;
+
+    // Get or create invoice khi có Số Inv + Ngày Inv
+    let invoiceId: number | null = null;
+    if (APPLY && invNum && invDate) {
+      // Lookup partnerId từ project của product
+      const [proj] = await db
+        .select({ partnerId: schema.projects.partnerId })
+        .from(schema.products)
+        .leftJoin(schema.projects, sql`${schema.projects.id} = ${schema.products.projectId}`)
+        .where(sql`${schema.products.id} = ${productId}`);
+      const partnerId = proj?.partnerId ?? null;
+      // Dedupe theo (number + date + partner)
+      const existing = await db
+        .select({ id: schema.invoices.id })
+        .from(schema.invoices)
+        .where(
+          sql`${schema.invoices.invoiceNumber} = ${invNum} AND ${schema.invoices.invoiceDate} = ${invDate} AND ${partnerId != null ? sql`${schema.invoices.partnerId} = ${partnerId}` : sql`${schema.invoices.partnerId} IS NULL`}`,
+        );
+      if (existing.length > 0) {
+        invoiceId = existing[0].id;
+      } else {
+        const [ins] = await db
+          .insert(schema.invoices)
+          .values({
+            invoiceNumber: invNum,
+            invoiceDate: invDate,
+            partnerId,
+            totalAmountVat: invValue,
+          })
+          .returning({ id: schema.invoices.id });
+        invoiceId = ins.id;
+      }
+    }
 
     if (APPLY) {
       const [ins] = await db
@@ -255,6 +292,7 @@ async function main() {
           productId,
           reconciliationDate: reconDate,
           minutesNumber: toStr(r[2]) || null,
+          invoiceId,
           phaseNumber: parsePhase(r[17]),
           pmgCumulativePct: toNum(r[12]),
           pmgSupportPct: toNum(r[13]),
