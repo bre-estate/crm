@@ -783,28 +783,15 @@ export default async function ProductDetailPage({
       {/* === 4. THU PHÍ TỪ CĐT === (chỉ áp dụng cho sơ cấp) */}
       {!isSecondary && (
       <SectionCard title="5. Thu phí HH từ CĐT" icon="💵">
-        <div className="text-xs text-slate-600 mb-3 -mt-1">
-          Thu phí từ CĐT gồm 2 phần:
-          {expectedBonus > 0 || receivedBonus > 0 ? (
-            <>
-              <br />
-              <span className="ml-3">
-                <b>(1)</b> HH sale theo %PMG_LK · <b>(2)</b> Thưởng nóng CĐT (transit — có
-                đợt gộp chung với HH sale)
-              </span>
-            </>
-          ) : (
-            <>
-              <br />
-              <span className="ml-3">
-                <b>(1)</b> HH sale theo %PMG_LK · <b>(2)</b> Thưởng nóng CĐT (căn này không có)
-              </span>
-            </>
-          )}
-        </div>
+        {(expectedBonus > 0 || receivedBonus > 0) && (
+          <div className="text-xs text-slate-600 mb-3 -mt-1">
+            Thu phí từ CĐT gồm 2 phần: <b>(1)</b> HH sale theo %PMG_LK · <b>(2)</b> Thưởng nóng CĐT
+          </div>
+        )}
         {/* (1) HH sale */}
         <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
-          (1) HH sale (theo %PMG_LK mới nhất: {fmtPct(latestPmgRate, 2)})
+          {expectedBonus > 0 || receivedBonus > 0 ? "(1) " : ""}
+          HH sale (theo %PMG_LK mới nhất: {fmtPct(latestPmgRate, 2)})
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-2">
           <Info
@@ -934,13 +921,13 @@ export default async function ProductDetailPage({
                 const receivable = Number(rec.totalReceivableThisTime ?? 0);
                 const isFullyPaid = receivable > 0 && Math.abs(paidForThisRec - receivable) < 1000;
                 const isPartialPaid = paidForThisRec > 0 && !isFullyPaid;
-                const hasInvoice = !!invoice?.invoiceNumber;
-                let status: { label: string; color: string } = { label: "?", color: "bg-slate-100 text-slate-600" };
-                if (!hasDate) status = { label: "📋 Chờ ĐC", color: "bg-slate-100 text-slate-700" };
-                else if (isFullyPaid && hasInvoice) status = { label: "✅ Hoàn thành", color: "bg-green-100 text-green-700" };
-                else if (isFullyPaid && !hasInvoice) status = { label: "⚠️ Thiếu HĐ", color: "bg-amber-100 text-amber-700" };
-                else if (isPartialPaid) status = { label: "⏳ Thu 1 phần", color: "bg-orange-100 text-orange-700" };
-                else status = { label: "⏳ Chờ CĐT TT", color: "bg-yellow-100 text-yellow-700" };
+                // 3 label chính: Đã ĐC, Đã thanh toán, Hoàn thành
+                let status: { label: string; color: string } = { label: "Chưa ĐC", color: "bg-slate-100 text-slate-600" };
+                if (!hasDate && isFullyPaid) status = { label: "Đã thanh toán", color: "bg-green-100 text-green-700" };
+                else if (!hasDate) status = { label: "Chưa ĐC", color: "bg-slate-100 text-slate-600" };
+                else if (isFullyPaid) status = { label: "Hoàn thành", color: "bg-green-100 text-green-700" };
+                else if (isPartialPaid) status = { label: "Đã ĐC · TT 1 phần", color: "bg-orange-100 text-orange-700" };
+                else status = { label: "Đã ĐC", color: "bg-yellow-100 text-yellow-700" };
                 return (
                   <tr key={rec.id} className="border-t border-slate-100">
                     <td className="p-2 text-center font-semibold">{rec.phaseNumber ?? "—"}</td>
@@ -1048,7 +1035,7 @@ export default async function ProductDetailPage({
                   const isDone = remaining < 1000;
                   return (
                     <>
-                      <Info label="Ghi nhận thanh toán riêng" value={fmtMoney(totalPaidOut)} />
+                      <Info label="Đã trả" value={fmtMoney(totalPaidOut)} accent="green" />
                       <Info
                         label="Còn phải trả"
                         value={fmtMoney(remaining)}
@@ -1087,15 +1074,30 @@ export default async function ProductDetailPage({
                 <th className="text-left p-2 whitespace-nowrap">Người</th>
                 <th className="text-left p-2 whitespace-nowrap">Loại chi phí</th>
                 <th className="text-right p-2 whitespace-nowrap">%HH / %KPI</th>
-                <th className="text-right p-2 whitespace-nowrap">PMG đợt</th>
-                <th className="text-right p-2 whitespace-nowrap">KPI đợt</th>
                 <th className="text-right p-2 whitespace-nowrap">Phải trả</th>
+                <th className="text-left p-2 whitespace-nowrap">Ngày TT</th>
+                <th className="text-right p-2 whitespace-nowrap">Đã trả</th>
+                <th className="text-left p-2 whitespace-nowrap">Trạng thái</th>
                 <th className="text-right p-2 whitespace-nowrap"></th>
               </tr>
             </thead>
             <tbody>
               {costRecs.map((r) => {
                 const payable = Number(r.amountPayableThisTime ?? 0);
+                const paymentsForRec = costPayments.filter(
+                  (p) => p.payment.costReconciliationId === r.id,
+                );
+                const paidAmt = paymentsForRec.reduce((s, p) => s + Number(p.payment.amount ?? 0), 0);
+                const paidDate = paymentsForRec.find((p) => p.payment.paymentDate)?.payment.paymentDate;
+                const hasDate = !!r.reconciliationDate;
+                const isFullyPaid = payable !== 0 && Math.abs(paidAmt - payable) < 1000;
+                const isPartial = paidAmt !== 0 && !isFullyPaid;
+                let status: { label: string; color: string } = { label: "Chưa ĐC", color: "bg-slate-100 text-slate-600" };
+                if (!hasDate && isFullyPaid) status = { label: "Đã thanh toán", color: "bg-green-100 text-green-700" };
+                else if (!hasDate) status = { label: "Chưa ĐC", color: "bg-slate-100 text-slate-600" };
+                else if (isFullyPaid) status = { label: "Hoàn thành", color: "bg-green-100 text-green-700" };
+                else if (isPartial) status = { label: "Đã ĐC · TT 1 phần", color: "bg-orange-100 text-orange-700" };
+                else status = { label: "Đã ĐC", color: "bg-yellow-100 text-yellow-700" };
                 return (
                   <tr key={r.id} className="border-t border-slate-100">
                     <td className="p-2">{fmtDate(r.reconciliationDate)}</td>
@@ -1108,17 +1110,22 @@ export default async function ProductDetailPage({
                     <td className="p-2 text-right tabular-nums">
                       {r.kpiRate ? fmtPct(r.kpiRate) : fmtPct(r.commissionRate)}
                     </td>
-                    <td className="p-2 text-right tabular-nums">{fmtMoney(r.pmgThisTime)}</td>
-                    <td
-                      className={`p-2 text-right tabular-nums ${Number(r.kpiAmount) < 0 ? "text-red-600" : ""}`}
-                    >
-                      {fmtMoney(r.kpiAmount)}
-                    </td>
                     <td
                       className={`p-2 text-right tabular-nums font-semibold ${payable < 0 ? "text-red-600" : ""}`}
                       title={payable < 0 ? "Số âm = điều chỉnh / hoàn trả" : ""}
                     >
                       {fmtMoney(payable)}
+                    </td>
+                    <td className="p-2">{fmtDate(paidDate)}</td>
+                    <td className="p-2 text-right tabular-nums text-green-700">
+                      {paidAmt > 0 ? fmtMoney(paidAmt) : <span className="text-slate-400">—</span>}
+                    </td>
+                    <td className="p-2">
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap ${status.color}`}
+                      >
+                        {status.label}
+                      </span>
                     </td>
                     <td className="p-2 text-right">
                       <Link
@@ -1133,7 +1140,7 @@ export default async function ProductDetailPage({
               })}
               {costRecs.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="p-4 text-center text-slate-500">
+                  <td colSpan={9} className="p-4 text-center text-slate-500">
                     Chưa có dòng giá vốn nào.
                   </td>
                 </tr>

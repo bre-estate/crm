@@ -18,11 +18,10 @@ type SearchParams = Promise<{ projectId?: string; unitCode?: string; tab?: strin
 
 const STATUS_OPTIONS = [
   { key: "all", label: "Tất cả", icon: "" },
-  { key: "done", label: "Hoàn thành", icon: "✅" },
-  { key: "waiting_pay", label: "Chờ CĐT thanh toán", icon: "⏳" },
-  { key: "partial", label: "Thu 1 phần", icon: "⏳" },
-  { key: "no_invoice", label: "Thiếu hóa đơn", icon: "⚠️" },
-  { key: "no_date", label: "Chưa lập biên bản", icon: "📋" },
+  { key: "done", label: "Hoàn thành", icon: "" },
+  { key: "waiting_pay", label: "Đã ĐC", icon: "" },
+  { key: "partial", label: "Đã ĐC · TT 1 phần", icon: "" },
+  { key: "no_date", label: "Chưa ĐC", icon: "" },
 ] as const;
 
 export default async function RevenuesPage({ searchParams }: { searchParams: SearchParams }) {
@@ -100,13 +99,11 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
     const paid = paidMap.get(r.id) ?? 0;
     const receivable = Number(r.totalReceivable ?? 0);
     const hasDate = !!r.date;
-    const hasInvoice = !!r.invoiceNumber;
     const isFullyPaid = receivable > 0 && Math.abs(paid - receivable) < 1000;
     const isPartial = paid > 0 && !isFullyPaid;
     let statusKey: (typeof STATUS_OPTIONS)[number]["key"] = "all";
     if (!hasDate) statusKey = "no_date";
-    else if (isFullyPaid && hasInvoice) statusKey = "done";
-    else if (isFullyPaid && !hasInvoice) statusKey = "no_invoice";
+    else if (isFullyPaid) statusKey = "done";
     else if (isPartial) statusKey = "partial";
     else statusKey = "waiting_pay";
     return { r, paid, status: statusKey };
@@ -379,8 +376,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
                         done: "bg-green-100 text-green-700",
                         waiting_pay: "bg-yellow-100 text-yellow-700",
                         partial: "bg-orange-100 text-orange-700",
-                        no_invoice: "bg-amber-100 text-amber-700",
-                        no_date: "bg-slate-100 text-slate-700",
+                        no_date: "bg-slate-100 text-slate-600",
                         all: "bg-slate-100 text-slate-500",
                       };
                       return (
