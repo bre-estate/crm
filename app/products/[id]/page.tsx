@@ -783,9 +783,28 @@ export default async function ProductDetailPage({
       {/* === 4. THU PHÍ TỪ CĐT === (chỉ áp dụng cho sơ cấp) */}
       {!isSecondary && (
       <SectionCard title="5. Thu phí HH từ CĐT" icon="💵">
-        {/* HH sale */}
+        <div className="text-xs text-slate-600 mb-3 -mt-1">
+          Thu phí từ CĐT gồm 2 phần:
+          {expectedBonus > 0 || receivedBonus > 0 ? (
+            <>
+              <br />
+              <span className="ml-3">
+                <b>(1)</b> HH sale theo %PMG_LK · <b>(2)</b> Thưởng nóng CĐT (transit — có
+                đợt gộp chung với HH sale)
+              </span>
+            </>
+          ) : (
+            <>
+              <br />
+              <span className="ml-3">
+                <b>(1)</b> HH sale theo %PMG_LK · <b>(2)</b> Thưởng nóng CĐT (căn này không có)
+              </span>
+            </>
+          )}
+        </div>
+        {/* (1) HH sale */}
         <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
-          HH sale (theo %PMG_LK mới nhất: {fmtPct(latestPmgRate, 2)})
+          (1) HH sale (theo %PMG_LK mới nhất: {fmtPct(latestPmgRate, 2)})
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-2">
           <Info
@@ -848,11 +867,11 @@ export default async function ProductDetailPage({
           );
         })()}
 
-        {/* Thưởng nóng (nếu có) */}
+        {/* (2) Thưởng nóng (nếu có) */}
         {(expectedBonus > 0 || receivedBonus > 0) && (
           <>
             <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
-              Thưởng nóng CĐT (transit)
+              (2) Thưởng nóng CĐT (transit)
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
               <Info label="Dự kiến" value={fmtMoney(expectedBonus)} />
@@ -879,24 +898,6 @@ export default async function ProductDetailPage({
             </div>
           </>
         )}
-
-        {/* Tổng đã thực nhận vào TK bank */}
-        <div className="rounded-lg border-2 border-blue-200 bg-blue-50/60 p-3 mb-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <div className="text-sm font-semibold text-blue-900">
-                💰 Đã thực nhận vào TK bank
-              </div>
-              <div className="text-xs text-blue-700 mt-0.5">
-                Số tiền CĐT thực chuyển vào ngân hàng — khác với "Đã nhận" ở trên (là số ghi
-                nhận trên biên bản ĐC/HĐ, có thể chưa vào TK)
-              </div>
-            </div>
-            <div className="text-2xl font-bold tabular-nums text-blue-900">
-              {fmtMoney(totalPaidInCash)}
-            </div>
-          </div>
-        </div>
 
         <div className="flex justify-between items-center mb-2">
           <div className="text-xs text-slate-500 uppercase font-semibold">
