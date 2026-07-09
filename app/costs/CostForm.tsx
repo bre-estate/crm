@@ -168,35 +168,45 @@ export default function CostForm({
     Number(recon?.amountPayableThisTime ?? 0),
   );
 
-  // Target base cho loại chi phí hiện tại
-  // PMG Sale = Giá tính PMG × %PMG_LK_sale (Excel col 11 × col 12)
-  const PMG_Sale = useMemo(() => {
-    const base = Number(product?.pmgBasePrice ?? 0);
-    const rate = Number(product?.pmgSaleRate ?? 0) || Number(product?.pmgRate ?? 0);
-    return base * rate;
-  }, [product]);
-  // Target ĐỦ (khi khách trả 100%) theo công thức Excel:
-  //   ((L × M − Q) / 1.1 − R) × %  (HH sale, KPI CEO/TPKD, KPI Admin)
-  //   Config flat cho bonus/support (cdt_bonus_*, bonus_*, customer_support)
+  // Effective M (%PMG_LK_sale) dùng cho tính preview:
+  // - Edit mode: dùng M snapshot từ recon (đã lưu lúc gõ Excel), để match totalAmt cũ
+  // - New mode: dùng M current từ product config
+  const effectiveM = useMemo(() => {
+    if (isEdit && recon?.pmgLkSaleRate && Number(recon.pmgLkSaleRate) > 0) {
+      return Number(recon.pmgLkSaleRate);
+    }
+    return Number(product?.pmgSaleRate ?? 0) || Number(product?.pmgRate ?? 0);
+  }, [isEdit, recon, product]);
+
+  // Config dùng cho tất cả compute, dùng effectiveM.
+  const effectiveCfg = useMemo<ProductConfig>(
+    () => ({
+      pmgBasePrice: Number(product?.pmgBasePrice ?? 0),
+      pmgSaleRate: effectiveM,
+      adminFeeSale: Number(product?.adminFeeSale ?? 0),
+      customerSupport: Number(product?.customerSupport ?? 0),
+      saleCommissionRate: Number(product?.saleCommissionRate ?? 0),
+      kpiCeoRate: Number(product?.kpiCeoRate ?? 0),
+      kpiTpkdRate: Number(product?.kpiTpkdRate ?? 0),
+      kpiAdminRate: Number(product?.kpiAdminRate ?? 0),
+      bonusSale: Number(product?.bonusSale ?? 0),
+      bonusManager: Number(product?.bonusManager ?? 0),
+      cdtBonusSale: Number(product?.cdtBonusSale ?? 0),
+      cdtBonusManager: Number(product?.cdtBonusManager ?? 0),
+    }),
+    [product, effectiveM],
+  );
+
+  // PMG Sale = Giá tính PMG × M (effective)
+  const PMG_Sale = useMemo(
+    () => Number(product?.pmgBasePrice ?? 0) * effectiveM,
+    [product, effectiveM],
+  );
+  // Target ĐỦ (khi khách trả 100%)
   const targetForType = useMemo(() => {
     if (!product) return 0;
-    const cfg: ProductConfig = {
-      pmgBasePrice: Number(product.pmgBasePrice ?? 0),
-      pmgSaleRate: Number(product.pmgSaleRate ?? 0) || Number(product.pmgRate ?? 0),
-      adminFeeSale: Number(product.adminFeeSale ?? 0),
-      customerSupport: Number(product.customerSupport ?? 0),
-      saleCommissionRate: Number(product.saleCommissionRate ?? 0),
-      kpiCeoRate: Number(product.kpiCeoRate ?? 0),
-      kpiTpkdRate: Number(product.kpiTpkdRate ?? 0),
-      kpiAdminRate: Number(product.kpiAdminRate ?? 0),
-      bonusSale: Number(product.bonusSale ?? 0),
-      bonusManager: Number(product.bonusManager ?? 0),
-      cdtBonusSale: Number(product.cdtBonusSale ?? 0),
-      cdtBonusManager: Number(product.cdtBonusManager ?? 0),
-    };
-    // N=1 → target ĐỦ
-    return computeLuyKe(cfg, costType as CostType, 1);
-  }, [costType, product]);
+    return computeLuyKe(effectiveCfg, costType as CostType, 1);
+  }, [costType, product, effectiveCfg]);
 
   // Tổng đã ĐC các đợt trước (cùng cost_type, cùng employee, cùng căn)
   const paidBefore = useMemo(
@@ -218,22 +228,9 @@ export default function CostForm({
   // Lũy kế mới theo N nhập (dùng công thức Excel)
   const luyKeAtN = useMemo(() => {
     if (!product || !progressN) return 0;
-    const cfg: ProductConfig = {
-      pmgBasePrice: Number(product.pmgBasePrice ?? 0),
-      pmgSaleRate: Number(product.pmgSaleRate ?? 0) || Number(product.pmgRate ?? 0),
-      adminFeeSale: Number(product.adminFeeSale ?? 0),
-      customerSupport: Number(product.customerSupport ?? 0),
-      saleCommissionRate: Number(product.saleCommissionRate ?? 0),
-      kpiCeoRate: Number(product.kpiCeoRate ?? 0),
-      kpiTpkdRate: Number(product.kpiTpkdRate ?? 0),
-      kpiAdminRate: Number(product.kpiAdminRate ?? 0),
-      bonusSale: Number(product.bonusSale ?? 0),
-      bonusManager: Number(product.bonusManager ?? 0),
-      cdtBonusSale: Number(product.cdtBonusSale ?? 0),
-      cdtBonusManager: Number(product.cdtBonusManager ?? 0),
-    };
+    const cfg = effectiveCfg;
     return computeLuyKe(cfg, costType as CostType, progressNNum);
-  }, [product, progressN, progressNNum, costType]);
+  }, [product, progressN, progressNNum, costType, effectiveCfg]);
 
   const thisAmountFromN = Math.max(0, luyKeAtN - paidBefore);
   const paidBeforePct = targetForType > 0 ? (paidBefore / targetForType) * 100 : 0;
