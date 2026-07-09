@@ -7,6 +7,7 @@ import {
   paymentsOut,
 } from "@/lib/schema";
 import { fmtMoney, fmtDate, costTypeLabel, fmtPct, toTitleCase } from "@/lib/format";
+import { computeLuyKe } from "@/lib/costCalc";
 import { eq, desc, sum } from "drizzle-orm";
 import Link from "next/link";
 import SearchableSelect from "@/components/SearchableSelect";
@@ -53,6 +54,7 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
       productBonusMgr: products.bonusManager,
       productCdtBonusSale: products.cdtBonusSale,
       productCdtBonusMgr: products.cdtBonusManager,
+      productAdminFeeSale: products.adminFeeSale,
     })
     .from(costReconciliations)
     .leftJoin(products, eq(costReconciliations.productId, products.id))
@@ -103,19 +105,26 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
   const singleProduct = uniqueProdIds.size === 1 ? rows[0] : null;
   const targetByType = new Map<string, number>();
   if (singleProduct) {
-    const pmgBase = Number(singleProduct.productPmgBase ?? 0);
-    const pmgSaleRate =
-      Number(singleProduct.productPmgSaleRate ?? 0) || Number(singleProduct.productPmgRate ?? 0);
-    const Q_sale = pmgBase * pmgSaleRate;
-    targetByType.set("sale_commission", Q_sale * Number(singleProduct.productSaleCommRate ?? 0));
-    targetByType.set("kpi_ceo", Q_sale * Number(singleProduct.productKpiCeoRate ?? 0));
-    targetByType.set("kpi_tpkd", Q_sale * Number(singleProduct.productKpiTpkdRate ?? 0));
-    targetByType.set("kpi_admin", Q_sale * Number(singleProduct.productKpiAdminRate ?? 0));
-    targetByType.set("customer_support", Number(singleProduct.productCustSupport ?? 0));
-    targetByType.set("bonus_sale", Number(singleProduct.productBonusSale ?? 0));
-    targetByType.set("bonus_manager", Number(singleProduct.productBonusMgr ?? 0));
-    targetByType.set("cdt_bonus_sale", Number(singleProduct.productCdtBonusSale ?? 0));
-    targetByType.set("cdt_bonus_manager", Number(singleProduct.productCdtBonusMgr ?? 0));
+    // Target ĐỦ theo công thức Excel: ((L × M − Q) / 1.1 − R) × %
+    const cfg = {
+      pmgBasePrice: Number(singleProduct.productPmgBase ?? 0),
+      pmgSaleRate:
+        Number(singleProduct.productPmgSaleRate ?? 0) || Number(singleProduct.productPmgRate ?? 0),
+      adminFeeSale: Number(singleProduct.productAdminFeeSale ?? 0),
+      customerSupport: Number(singleProduct.productCustSupport ?? 0),
+      saleCommissionRate: Number(singleProduct.productSaleCommRate ?? 0),
+      kpiCeoRate: Number(singleProduct.productKpiCeoRate ?? 0),
+      kpiTpkdRate: Number(singleProduct.productKpiTpkdRate ?? 0),
+      kpiAdminRate: Number(singleProduct.productKpiAdminRate ?? 0),
+      bonusSale: Number(singleProduct.productBonusSale ?? 0),
+      bonusManager: Number(singleProduct.productBonusMgr ?? 0),
+      cdtBonusSale: Number(singleProduct.productCdtBonusSale ?? 0),
+      cdtBonusManager: Number(singleProduct.productCdtBonusMgr ?? 0),
+    };
+    for (const t of ["sale_commission", "customer_support", "bonus_sale", "bonus_manager",
+      "cdt_bonus_sale", "cdt_bonus_manager", "kpi_ceo", "kpi_tpkd", "kpi_admin"] as const) {
+      targetByType.set(t, computeLuyKe(cfg, t, 1));
+    }
   }
   const subtotalByType = new Map<
     string,

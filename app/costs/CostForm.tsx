@@ -6,6 +6,7 @@ import type { CostReconciliation } from "@/lib/schema";
 import MoneyInput from "@/components/MoneyInput";
 import SearchableSelect from "@/components/SearchableSelect";
 import { costTypeLabel, fmtMoney, fmtPct, fmtPctTight, fmtPctRaw } from "@/lib/format";
+import { computeLuyKe, type ProductConfig, type CostType } from "@/lib/costCalc";
 
 type ProductOption = {
   id: number;
@@ -139,25 +140,34 @@ export default function CostForm({
   );
 
   // Target base cho loại chi phí hiện tại
-  const Q_sale_full = useMemo(() => {
+  // PMG Sale = Giá tính PMG × %PMG_LK_sale (Excel col 11 × col 12)
+  const PMG_Sale = useMemo(() => {
     const base = Number(product?.pmgBasePrice ?? 0);
     const rate = Number(product?.pmgSaleRate ?? 0) || Number(product?.pmgRate ?? 0);
     return base * rate;
   }, [product]);
+  // Target ĐỦ (khi khách trả 100%) theo công thức Excel:
+  //   ((L × M − Q) / 1.1 − R) × %  (HH sale, KPI CEO/TPKD, KPI Admin)
+  //   Config flat cho bonus/support (cdt_bonus_*, bonus_*, customer_support)
   const targetForType = useMemo(() => {
     if (!product) return 0;
-    if (costType === "sale_commission")
-      return Q_sale_full * Number(product.saleCommissionRate ?? 0);
-    if (costType === "kpi_ceo") return Q_sale_full * Number(product.kpiCeoRate ?? 0);
-    if (costType === "kpi_tpkd") return Q_sale_full * Number(product.kpiTpkdRate ?? 0);
-    if (costType === "kpi_admin") return Q_sale_full * Number(product.kpiAdminRate ?? 0);
-    if (costType === "customer_support") return Number(product.customerSupport ?? 0);
-    if (costType === "bonus_sale") return Number(product.bonusSale ?? 0);
-    if (costType === "bonus_manager") return Number(product.bonusManager ?? 0);
-    if (costType === "cdt_bonus_sale") return Number(product.cdtBonusSale ?? 0);
-    if (costType === "cdt_bonus_manager") return Number(product.cdtBonusManager ?? 0);
-    return 0;
-  }, [costType, product, Q_sale_full]);
+    const cfg: ProductConfig = {
+      pmgBasePrice: Number(product.pmgBasePrice ?? 0),
+      pmgSaleRate: Number(product.pmgSaleRate ?? 0) || Number(product.pmgRate ?? 0),
+      adminFeeSale: Number(product.adminFeeSale ?? 0),
+      customerSupport: Number(product.customerSupport ?? 0),
+      saleCommissionRate: Number(product.saleCommissionRate ?? 0),
+      kpiCeoRate: Number(product.kpiCeoRate ?? 0),
+      kpiTpkdRate: Number(product.kpiTpkdRate ?? 0),
+      kpiAdminRate: Number(product.kpiAdminRate ?? 0),
+      bonusSale: Number(product.bonusSale ?? 0),
+      bonusManager: Number(product.bonusManager ?? 0),
+      cdtBonusSale: Number(product.cdtBonusSale ?? 0),
+      cdtBonusManager: Number(product.cdtBonusManager ?? 0),
+    };
+    // N=1 → target ĐỦ
+    return computeLuyKe(cfg, costType as CostType, 1);
+  }, [costType, product]);
 
   // Tổng đã ĐC các đợt trước (cùng cost_type, cùng employee, cùng căn)
   const paidBefore = useMemo(
@@ -178,13 +188,6 @@ export default function CostForm({
   const remainingBefore = Math.max(0, targetForType - paidBefore);
   const remainingAfter = remainingBefore - thisAmountFromPct;
 
-  // Q_sale = pmgBase × pmgSaleRate (fallback pmgRate)
-  const Q_sale = useMemo(() => {
-    const base = Number(product?.pmgBasePrice ?? 0);
-    const rate = Number(product?.pmgSaleRate ?? 0) || Number(product?.pmgRate ?? 0);
-    return base * rate;
-  }, [product]);
-
   // Auto default rate for KPI based on cost_type + product config
   const kpiRateDefault = useMemo(() => {
     if (costType === "kpi_ceo") return Number(product?.kpiCeoRate ?? 0);
@@ -199,19 +202,19 @@ export default function CostForm({
   // Suggested amount
   const suggested = useMemo(() => {
     if (showCommission) {
-      // HH sale: pmgThisTime × commissionRate (nếu có), fallback Q_sale × commissionRate
-      const base = pmgThis > 0 ? pmgThis : Q_sale;
+      // HH sale: pmgThisTime × commissionRate (nếu có), fallback PMG_Sale × commissionRate
+      const base = pmgThis > 0 ? pmgThis : PMG_Sale;
       return base * commissionRateNum;
     }
     if (showKpi) {
-      // KPI: Q_sale × kpiRate
-      return Q_sale * kpiRateNum;
+      // KPI: PMG_Sale × kpiRate
+      return PMG_Sale * kpiRateNum;
     }
     if (costType === "bonus_sale") return Number(product?.bonusSale ?? 0);
     if (costType === "bonus_manager") return Number(product?.bonusManager ?? 0);
     if (costType === "customer_support") return Number(product?.customerSupport ?? 0);
     return 0;
-  }, [showCommission, showKpi, costType, pmgThis, Q_sale, commissionRateNum, kpiRateNum, product]);
+  }, [showCommission, showKpi, costType, pmgThis, PMG_Sale, commissionRateNum, kpiRateNum, product]);
 
   const applyValue = (v: number) => setTotalAmt(Math.round(v));
 
@@ -420,7 +423,7 @@ export default function CostForm({
                     className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-300 text-white text-[9px] cursor-help select-none"
                     title={
                       rateBased
-                        ? `Q_sale = Giá tính PMG × %PMG_LK_sale = ${fmtMoney(Number(product?.pmgBasePrice ?? 0))} × ${fmtPct(Number(product?.pmgSaleRate ?? 0), 2)} = ${fmtMoney(Q_sale_full)}`
+                        ? `PMG Sale = Giá tính PMG × %PMG_LK_sale = ${fmtMoney(Number(product?.pmgBasePrice ?? 0))} × ${fmtPct(Number(product?.pmgSaleRate ?? 0), 2)} = ${fmtMoney(PMG_Sale)}. Target ĐỦ (khi khách trả 100%) = ((PMG Sale − admin_sale)/1,1 − hỗ trợ khách) × %`
                         : "Số flat lấy trực tiếp từ config căn"
                     }
                   >
@@ -432,7 +435,7 @@ export default function CostForm({
                 </div>
                 <div className="text-[10px] text-slate-400 mt-0.5 tabular-nums">
                   {rateBased
-                    ? `Q_sale × ${rateName} = ${fmtMoney(Q_sale_full)} × ${fmtPct(rate, 2)}`
+                    ? `((PMG Sale − admin) / 1,1 − R) × ${rateName} = ${fmtMoney(targetForType)}`
                     : "Số flat từ căn"}
                 </div>
               </div>

@@ -246,10 +246,44 @@ export const costReconciliations = pgTable("cost_reconciliations", {
   kpiRate: doublePrecision("kpi_rate").default(0),
   kpiAmount: doublePrecision("kpi_amount").default(0),
 
+  // N = "Tiến độ PMG đã thu tiền đến ngày đối chiếu" (Excel col 13)
+  // Là % khách hàng đã trả CĐT tại thời điểm ĐC. Dùng trong công thức:
+  //   HH/KPI lũy kế = ((L × M × N − Q) / 1.1 − R) × P
+  paymentProgressPct: doublePrecision("payment_progress_pct").default(0),
+
   amountPayableThisTime: doublePrecision("amount_payable_this_time").default(0),
 
   snapshotAt: timestamp("snapshot_at", { withTimezone: true }),
   note: text("note"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ===================== 8.5 PRODUCT ADJUSTMENTS =====================
+// Mỗi lần CĐT/công ty điều chỉnh giá/rate/thưởng => 1 adjustment record.
+// NULL trong 1 field = "không đổi field đó ở lần điều chỉnh này".
+// Sau khi tạo adjustment => auto update product config sang value mới.
+export const productAdjustments = pgTable("product_adjustments", {
+  id: serial("id").primaryKey(),
+  productId: integer("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+  effectiveDate: text("effective_date").notNull(), // ngày điều chỉnh
+  note: text("note"),
+
+  // Chỉ điền field muốn đổi. NULL = giữ nguyên.
+  pmgBasePrice: doublePrecision("pmg_base_price"),
+  pmgRate: doublePrecision("pmg_rate"),
+  pmgSaleRate: doublePrecision("pmg_sale_rate"),
+  adminFee: doublePrecision("admin_fee"),
+  adminFeeSale: doublePrecision("admin_fee_sale"),
+  saleCommissionRate: doublePrecision("sale_commission_rate"),
+  kpiCeoRate: doublePrecision("kpi_ceo_rate"),
+  kpiTpkdRate: doublePrecision("kpi_tpkd_rate"),
+  kpiAdminRate: doublePrecision("kpi_admin_rate"),
+  cdtBonusSale: doublePrecision("cdt_bonus_sale"),
+  cdtBonusManager: doublePrecision("cdt_bonus_manager"),
+  bonusSale: doublePrecision("bonus_sale"),
+  bonusManager: doublePrecision("bonus_manager"),
+  customerSupport: doublePrecision("customer_support"),
+
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -341,6 +375,8 @@ export type PaymentIn = typeof paymentsIn.$inferSelect;
 export type NewPaymentIn = typeof paymentsIn.$inferInsert;
 export type CostReconciliation = typeof costReconciliations.$inferSelect;
 export type NewCostReconciliation = typeof costReconciliations.$inferInsert;
+export type ProductAdjustment = typeof productAdjustments.$inferSelect;
+export type NewProductAdjustment = typeof productAdjustments.$inferInsert;
 export type PaymentOut = typeof paymentsOut.$inferSelect;
 export type NewPaymentOut = typeof paymentsOut.$inferInsert;
 
