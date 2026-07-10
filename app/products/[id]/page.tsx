@@ -619,14 +619,18 @@ export default async function ProductDetailPage({
           const totalRevenue = Number(p.totalRevenue ?? 0);
           const totalCostStored = Number(p.totalCost ?? 0);
 
-          // Business logic (2026-07-07 confirmed):
-          // - CĐT/F1 trả BRE: pmgBase × pmgRate + cdtBonus - adminFee
-          // - Base tính HH sale + KPI: Q_sale = pmgBase × pmgSaleRate
-          // - BRE giữ chênh: pmgBase × (pmgRate − pmgSaleRate) = thưởng manager + cty giữ
-          // - CĐT thưởng NVKD/QL = transit (chuyển tiếp cho NV/manager)
+          // Business logic (2026-07-10 confirmed with admin):
+          // Công thức Excel sheet 2.1 col R:
+          //   base_net = (pmgBase × pmgSaleRate − admin_sale) / 1,1 − hỗ trợ khách
+          //   HH sale = base_net × %HH + (CĐT thưởng sale + CĐT thưởng QL)/1,1 + CTY thưởng NVKD
+          //   KPI CEO/TPKD/Admin = base_net × %KPI
+          //   Phí admin sale (BRE trả F1) — hiển thị info, KHÔNG cộng vào tổng
+          //   Tổng = HH sale + KPI CEO + KPI TPKD + KPI Admin + CTY thưởng QL + Chi phí khác
           const grossFeeFromCDT = pmgBase * pmgRate;
-          const Q_sale = pmgBase * pmgSaleRate;
-          const chenh = pmgBase * (pmgRate - pmgSaleRate); // BRE giữ (cty + thưởng manager)
+          const adminFeeSaleAmt = Number(p.adminFeeSale ?? 0);
+          const supportAmt =
+            derivedFlatByType.get("customer_support") || Number(p.customerSupport ?? 0);
+          const baseNet = (pmgBase * pmgSaleRate - adminFeeSaleAmt) / 1.1 - supportAmt;
 
           // % lấy từ actual cost_recons trước, fallback config
           const hhSaleRate =
@@ -638,90 +642,69 @@ export default async function ProductDetailPage({
           const kpiAdminRate =
             derivedRateByType.get("kpi_admin") || Number(p.kpiAdminRate ?? 0);
 
-          const hhSaleAmt = Q_sale * hhSaleRate;
-          const kpiCeoAmt = Q_sale * kpiCeoRate;
-          const kpiTpkdAmt = Q_sale * kpiTpkdRate;
-          const kpiAdminAmt = Q_sale * kpiAdminRate;
-          const adminFeeSaleAmt = Number(p.adminFeeSale ?? 0);
-          // Chênh admin: CTY bù cho sale khi admin thực > admin ghi cho sale
-          // (vd admin thực CĐT giữ 8.8tr, ghi cho sale 3.85tr → cty bù 4.95tr từ Pool B)
-          const adminFeeReal = Number(p.adminFee ?? 0);
-          const adminFeeSubsidy = Math.max(0, adminFeeReal - adminFeeSaleAmt);
-          const supportAmt =
-            derivedFlatByType.get("customer_support") || Number(p.customerSupport ?? 0);
+          const cdtBonusNet = (cdtBonusSale + cdtBonusMgr) / 1.1;
           const bonusSaleCtyAmt =
             derivedFlatByType.get("bonus_sale") || Number(p.bonusSale ?? 0);
           const bonusMgrCtyAmt =
             derivedFlatByType.get("bonus_manager") || Number(p.bonusManager ?? 0);
           const otherCostAmt = Number(p.otherCost ?? 0);
 
-          const chiTuQSale =
-            hhSaleAmt +
-            kpiCeoAmt +
-            kpiTpkdAmt +
-            kpiAdminAmt +
-            adminFeeSaleAmt +
-            supportAmt +
-            bonusSaleCtyAmt +
-            otherCostAmt;
-          const conLaiQSale = Q_sale - chiTuQSale; // Q_sale còn dư sau khi trả HH + KPI + chi khác
-          // Pool B chi ra: thưởng manager + bù admin cho sale
-          const chenhSauChi = chenh - bonusMgrCtyAmt - adminFeeSubsidy;
-          const breProfit = conLaiQSale + chenhSauChi;
-          const totalReceived = grossFeeFromCDT - adminFee;
-          const breProfitPct = totalReceived > 0 ? (breProfit / totalReceived) * 100 : 0;
+          // HH sale (NVKD) đầy đủ theo admin: base_net × %HH + CĐT bonus/1.1 + CTY thưởng NVKD
+          const hhSaleBase = baseNet * hhSaleRate;
+          const hhSaleAmt = hhSaleBase + cdtBonusNet + bonusSaleCtyAmt;
+          const kpiCeoAmt = baseNet * kpiCeoRate;
+          const kpiTpkdAmt = baseNet * kpiTpkdRate;
+          const kpiAdminAmt = baseNet * kpiAdminRate;
 
-          const acctProfit = totalRevenue > 0 && totalCostStored > 0 ? totalRevenue / 1.1 - totalCostStored : null;
+          // Doanh thu công ty (A) = Tổng ghi nhận theo Excel col P
+          const dtThuanNoibo =
+            pmgBase * pmgRate - adminFee + cdtBonusSale + cdtBonusMgr;
 
-          const dtThuanNoibo = grossFeeFromCDT - adminFee; // = pmg × %PMG_LK − admin
+          // Tổng chi phí (Excel col R): HH+KPI+CTY thưởng QL+chi phí khác
+          // (KHÔNG cộng phí admin sale - đó là số CĐT giữ tính vào base)
           const totalCost =
-            hhSaleAmt +
-            kpiCeoAmt +
-            kpiTpkdAmt +
-            kpiAdminAmt +
-            adminFeeSaleAmt +
-            supportAmt +
-            bonusSaleCtyAmt +
-            bonusMgrCtyAmt +
-            adminFeeSubsidy +
-            otherCostAmt;
+            hhSaleAmt + kpiCeoAmt + kpiTpkdAmt + kpiAdminAmt + bonusMgrCtyAmt + otherCostAmt;
           const loiNhuan = dtThuanNoibo - totalCost;
           const bienLN = dtThuanNoibo > 0 ? (loiNhuan / dtThuanNoibo) * 100 : 0;
 
+          const acctProfit = totalRevenue > 0 && totalCostStored > 0 ? totalRevenue / 1.1 - totalCostStored : null;
+
           const costRows: Array<[string, number, string?]> = [];
-          if (hhSaleAmt > 0)
-            costRows.push([`HH sale (NVKD) — ${fmtPctTight(hhSaleRate)} × Q_sale`, hhSaleAmt]);
-          if (kpiCeoAmt > 0)
-            costRows.push([`KPI CEO — ${fmtPctTight(kpiCeoRate)} × Q_sale`, kpiCeoAmt]);
-          if (kpiTpkdAmt > 0)
-            costRows.push([`KPI TPKD — ${fmtPctTight(kpiTpkdRate)} × Q_sale`, kpiTpkdAmt]);
-          if (kpiAdminAmt > 0)
-            costRows.push([`KPI Admin — ${fmtPctTight(kpiAdminRate)} × Q_sale`, kpiAdminAmt]);
           if (adminFeeSaleAmt > 0)
-            costRows.push(["Phí admin sale (BRE trả F1)", adminFeeSaleAmt]);
-          if (adminFeeSubsidy > 0)
             costRows.push([
-              "Bù admin cho sale",
-              adminFeeSubsidy,
-              `Admin thực ${fmtMoney(adminFeeReal)} − ghi ${fmtMoney(adminFeeSaleAmt)}`,
+              "Phí admin sale (BRE trả F1)",
+              adminFeeSaleAmt,
+              "Đã trừ trong base tính HH+KPI, hiển thị info — không cộng vào tổng",
             ]);
-          if (supportAmt > 0) costRows.push(["Hỗ trợ khách", supportAmt]);
-          if (bonusSaleCtyAmt > 0) costRows.push(["Thưởng NVKD (CTY)", bonusSaleCtyAmt]);
-          if (bonusMgrCtyAmt > 0) costRows.push(["Thưởng TPKD (CTY)", bonusMgrCtyAmt]);
+          if (hhSaleAmt > 0) {
+            const parts: string[] = [`${fmtPctTight(hhSaleRate)} × base = ${fmtMoney(hhSaleBase)}`];
+            if (cdtBonusNet > 0)
+              parts.push(`+ CĐT thưởng/1,1 = ${fmtMoney(cdtBonusNet)}`);
+            if (bonusSaleCtyAmt > 0)
+              parts.push(`+ CTY thưởng NVKD = ${fmtMoney(bonusSaleCtyAmt)}`);
+            costRows.push([`HH sale (NVKD)`, hhSaleAmt, parts.join(" ")]);
+          }
+          if (kpiCeoAmt > 0)
+            costRows.push([`KPI CEO — ${fmtPctTight(kpiCeoRate)} × base`, kpiCeoAmt]);
+          if (kpiTpkdAmt > 0)
+            costRows.push([`KPI TPKD — ${fmtPctTight(kpiTpkdRate)} × base`, kpiTpkdAmt]);
+          if (kpiAdminAmt > 0)
+            costRows.push([`KPI Admin — ${fmtPctTight(kpiAdminRate)} × base`, kpiAdminAmt]);
+          if (bonusMgrCtyAmt > 0) costRows.push(["CTY thưởng QL", bonusMgrCtyAmt]);
           if (otherCostAmt !== 0) costRows.push(["Chi phí khác", otherCostAmt]);
 
           return (
             <div className="text-sm space-y-3">
-              {/* Doanh thu nội bộ */}
+              {/* Doanh thu công ty */}
               <div className="rounded-lg border border-green-200 bg-green-50/50 p-3">
                 <div className="text-xs uppercase text-green-700 font-semibold mb-2">
-                  A. Doanh thu công ty
+                  A. Tổng doanh thu ghi nhận
                 </div>
                 <div className="text-xs text-slate-500 mb-2">
-                  Số CĐT/F1 chuyển vào TK BRE (không kể thưởng nóng — chuyển thẳng cho NV).
+                  Số CĐT trả BRE (bao gồm cả thưởng nóng transit).
                 </div>
                 <Row
-                  label={`Giá PMG × %PMG_LK (${fmtPctTight(pmgRate)}) − Phí admin`}
+                  label={`= Giá PMG × ${fmtPctTight(pmgRate)} − phí admin + CĐT thưởng`}
                   value={fmtMoney(dtThuanNoibo)}
                   bold
                   color="green"
@@ -734,18 +717,20 @@ export default async function ProductDetailPage({
                   B. Chi phí phân bổ
                 </div>
                 <div className="text-xs text-slate-500 mb-2">
-                  Base tính HH sale + KPI = <b>Q_sale</b> = Giá PMG ×{" "}
-                  {fmtPctTight(pmgSaleRate)} = {fmtMoney(Q_sale)}
+                  Base tính HH sale + KPI = (Giá PMG × {fmtPctTight(pmgSaleRate)} − phí admin sale) / 1,1 − hỗ trợ khách = <b>{fmtMoney(baseNet)}</b>
                 </div>
-                {costRows.map(([label, amt, sub]) => (
-                  <Row
-                    key={label}
-                    label={label}
-                    value={`− ${fmtMoney(amt)}`}
-                    color="red"
-                    sub={sub}
-                  />
-                ))}
+                {costRows.map(([label, amt, sub]) => {
+                  const isInfo = label.startsWith("Phí admin sale");
+                  return (
+                    <Row
+                      key={label}
+                      label={label}
+                      value={isInfo ? fmtMoney(amt) : `− ${fmtMoney(amt)}`}
+                      color={isInfo ? undefined : "red"}
+                      sub={sub}
+                    />
+                  );
+                })}
                 <div className="border-t border-orange-200 mt-1 pt-1">
                   <Row
                     label="Tổng chi phí"
