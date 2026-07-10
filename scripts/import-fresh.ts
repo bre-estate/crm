@@ -55,10 +55,18 @@ async function main() {
   const wb = XLSX.readFile(XLSX_PATH);
 
   const partners = await db.select().from(schema.partners);
-  const projects = await db.select().from(schema.projects);
+  const projects = await db
+    .select({ id: schema.projects.id, name: schema.projects.name, fullCode: schema.projects.fullCode, partnerId: schema.projects.partnerId })
+    .from(schema.projects);
   const depts = await db.select().from(schema.departments);
   const partnerByName = new Map(partners.map((p) => [p.name, p.id]));
-  const projectByName = new Map(projects.map((p) => [p.name, p.id]));
+  // Project lookup by (projectName × partnerId) — mỗi hợp đồng CĐT khác nhau =
+  // 1 project riêng dù cùng tên dự án (VD: Emerald Garden View × Dataloca 2025
+  // vs Emerald Garden View × Zland 2026).
+  const projectByPair = new Map<string, number>();
+  for (const p of projects) {
+    projectByPair.set(`${p.name}|${p.partnerId}`, p.id);
+  }
   const deptByName = new Map(depts.map((d) => [d.name.toLowerCase(), d.id]));
   const partnerCodes = new Set(partners.map((p) => p.code));
   const projectFullCodes = new Set(projects.map((p) => p.fullCode));
@@ -95,7 +103,8 @@ async function main() {
   };
 
   const ensureProject = async (name: string, projCode: string, partnerCode: string, partnerId: number): Promise<number> => {
-    let id = projectByName.get(name);
+    // Lookup theo (name × partnerId) — cùng tên dự án nhưng khác partner = 2 project riêng
+    let id = projectByPair.get(`${name}|${partnerId}`);
     if (id) return id;
     const fullCode = `${projCode}_${partnerCode}`;
     let uniqueFull = fullCode;
@@ -112,7 +121,7 @@ async function main() {
     } else {
       id = -1;
     }
-    projectByName.set(name, id);
+    projectByPair.set(`${name}|${partnerId}`, id);
     projectFullCodes.add(uniqueFull);
     console.log(`  + Created project: "${name}" (fullCode=${uniqueFull}, partnerId=${partnerId})`);
     return id;
