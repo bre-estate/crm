@@ -174,50 +174,54 @@ export default function ProjectForm({ project, partners, onSave, onDelete }: Pro
         </div>
       </Section>
 
-      <Section title="Đợt thanh toán & %PMG từng đợt">
-        <div className="grid grid-cols-3 gap-4">
-          <Field label="Số đợt">
-            <input
-              name="paymentPhases"
-              type="number"
-              min="1"
-              max="5"
-              defaultValue={project?.paymentPhases ?? 1}
-              className="input"
-            />
-          </Field>
-          {[1, 2, 3, 4, 5].map((n) => (
-            <Field key={n} label={`%PMG đợt ${n}`}>
+      {!isSecondary && (
+        <Section title="Đợt thanh toán & %PMG từng đợt">
+          <div className="grid grid-cols-3 gap-4">
+            <Field label="Số đợt">
               <input
-                name={`phaseRate${n}`}
+                name="paymentPhases"
                 type="number"
-                step="any"
-                defaultValue={Number(
-                  (((project?.[`phaseRate${n}` as keyof Project] as number) ?? 0) * 100).toFixed(4),
-                )}
+                min="1"
+                max="5"
+                defaultValue={project?.paymentPhases ?? 1}
                 className="input"
               />
             </Field>
-          ))}
-        </div>
-      </Section>
+            {[1, 2, 3, 4, 5].map((n) => (
+              <Field key={n} label={`%PMG đợt ${n}`}>
+                <input
+                  name={`phaseRate${n}`}
+                  type="number"
+                  step="any"
+                  defaultValue={Number(
+                    (((project?.[`phaseRate${n}` as keyof Project] as number) ?? 0) * 100).toFixed(4),
+                  )}
+                  className="input"
+                />
+              </Field>
+            ))}
+          </div>
+        </Section>
+      )}
 
-      <Section title="Thưởng / Chi phí khác">
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="CĐT thưởng sale (VND, gồm VAT)">
-            <MoneyInput name="cdtBonusSale" defaultValue={project?.cdtBonusSale ?? 0} className="input" />
-          </Field>
-          <Field label="CĐT thưởng quản lý">
-            <MoneyInput name="cdtBonusManager" defaultValue={project?.cdtBonusManager ?? 0} className="input" />
-          </Field>
-          <Field label="CTY thưởng sale">
-            <MoneyInput name="ctyBonusSale" defaultValue={project?.ctyBonusSale ?? 0} className="input" />
-          </Field>
-          <Field label="CTY thưởng quản lý">
-            <MoneyInput name="ctyBonusManager" defaultValue={project?.ctyBonusManager ?? 0} className="input" />
-          </Field>
-        </div>
-      </Section>
+      {!isSecondary && (
+        <Section title="Thưởng / Chi phí khác">
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="CĐT thưởng sale (VND, gồm VAT)">
+              <MoneyInput name="cdtBonusSale" defaultValue={project?.cdtBonusSale ?? 0} className="input" />
+            </Field>
+            <Field label="CĐT thưởng quản lý">
+              <MoneyInput name="cdtBonusManager" defaultValue={project?.cdtBonusManager ?? 0} className="input" />
+            </Field>
+            <Field label="CTY thưởng sale">
+              <MoneyInput name="ctyBonusSale" defaultValue={project?.ctyBonusSale ?? 0} className="input" />
+            </Field>
+            <Field label="CTY thưởng quản lý">
+              <MoneyInput name="ctyBonusManager" defaultValue={project?.ctyBonusManager ?? 0} className="input" />
+            </Field>
+          </div>
+        </Section>
+      )}
 
       <Section title="Hồ sơ & ghi chú">
         <div className="grid grid-cols-1 gap-4">
