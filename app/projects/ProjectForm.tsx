@@ -15,11 +15,16 @@ type Props = {
 export default function ProjectForm({ project, partners, onSave, onDelete }: Props) {
   const [pending, start] = useTransition();
   const router = useRouter();
+  const [defaultSaleType, setDefaultSaleType] = useState<"primary" | "secondary">(
+    (project?.defaultSaleType as "primary" | "secondary") ?? "primary",
+  );
   const [partnerId, setPartnerId] = useState<number>(project?.partnerId ?? partners[0]?.id ?? 0);
   const [breRole, setBreRole] = useState<"f1" | "f2">((project?.breRole as "f1" | "f2") ?? "f1");
+  const isSecondary = defaultSaleType === "secondary";
 
   const selectedPartner = partners.find((p) => p.id === partnerId);
-  const partnerCode = selectedPartner?.code ?? "";
+  // Secondary → partnerCode "SCND" (đối tác trống). Server sẽ tự append số nếu full_code trùng.
+  const partnerCode = isSecondary ? "SCND" : (selectedPartner?.code ?? "");
   const f1Partners = partners.filter((p) => p.type === "f1");
 
   return (
@@ -39,55 +44,74 @@ export default function ProjectForm({ project, partners, onSave, onDelete }: Pro
     >
       <Section title="Thông tin cơ bản">
         <div className="grid grid-cols-2 gap-4">
+          <Field label="Loại giao dịch mặc định" required>
+            <select
+              name="defaultSaleType"
+              value={defaultSaleType}
+              onChange={(e) => setDefaultSaleType(e.target.value as "primary" | "secondary")}
+              className="input"
+            >
+              <option value="primary">Sơ cấp — BRE broker cho CĐT</option>
+              <option value="secondary">Thứ cấp — mua bán lại, không có CĐT/vai trò BRE</option>
+            </select>
+            <div className="text-[10px] text-slate-500 mt-1">
+              Một dự án có thể vừa sơ cấp vừa thứ cấp → tạo 2 record riêng.
+            </div>
+          </Field>
+          <div />
           <Field label="Mã dự án (4 ký tự)" required>
             <input name="code" defaultValue={project?.code ?? ""} className="input" maxLength={8} required />
           </Field>
           <Field label="Tên dự án" required>
             <input name="name" defaultValue={project?.name ?? ""} className="input" required />
           </Field>
-          <Field label="Đối tác (CĐT/F1)" required>
-            <select
-              name="partnerId"
-              value={partnerId}
-              onChange={(e) => setPartnerId(Number(e.target.value))}
-              className="input"
-              required
-            >
-              {partners
-                .filter((p) => p.type === "cdt" || p.type === "f1")
-                .map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} ({p.type.toUpperCase()})
-                  </option>
-                ))}
-            </select>
-          </Field>
-          <Field label="Vai trò BRE">
-            <select
-              name="breRole"
-              value={breRole}
-              onChange={(e) => setBreRole(e.target.value as "f1" | "f2")}
-              className="input"
-            >
-              <option value="f1">F1 — nhận trực tiếp từ CĐT</option>
-              <option value="f2">F2 — nhận qua F1 liên kết</option>
-            </select>
-          </Field>
-          {breRole === "f2" && (
-            <Field label="Sàn F1 liên kết">
-              <select
-                name="linkedF1PartnerId"
-                defaultValue={project?.linkedF1PartnerId ?? ""}
-                className="input"
-              >
-                <option value="">— Chọn —</option>
-                {f1Partners.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
+          {!isSecondary && (
+            <>
+              <Field label="Đối tác (CĐT/F1)" required>
+                <select
+                  name="partnerId"
+                  value={partnerId}
+                  onChange={(e) => setPartnerId(Number(e.target.value))}
+                  className="input"
+                  required
+                >
+                  {partners
+                    .filter((p) => p.type === "cdt" || p.type === "f1")
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} ({p.type.toUpperCase()})
+                      </option>
+                    ))}
+                </select>
+              </Field>
+              <Field label="Vai trò BRE">
+                <select
+                  name="breRole"
+                  value={breRole}
+                  onChange={(e) => setBreRole(e.target.value as "f1" | "f2")}
+                  className="input"
+                >
+                  <option value="f1">F1 — nhận trực tiếp từ CĐT</option>
+                  <option value="f2">F2 — nhận qua F1 liên kết</option>
+                </select>
+              </Field>
+              {breRole === "f2" && (
+                <Field label="Sàn F1 liên kết">
+                  <select
+                    name="linkedF1PartnerId"
+                    defaultValue={project?.linkedF1PartnerId ?? ""}
+                    className="input"
+                  >
+                    <option value="">— Chọn —</option>
+                    {f1Partners.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              )}
+            </>
           )}
           <Field label="Tình trạng HĐ">
             <select

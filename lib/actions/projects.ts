@@ -29,13 +29,20 @@ function toPct(v: FormDataEntryValue | null): number {
 function buildProjectData(fd: FormData) {
   const code = toStr(fd.get("code"));
   const partnerCode = toStr(fd.get("partnerCode"));
+  const rawDefaultSaleType = toStr(fd.get("defaultSaleType"));
+  const defaultSaleType: "primary" | "secondary" =
+    rawDefaultSaleType === "secondary" ? "secondary" : "primary";
+  const isSecondary = defaultSaleType === "secondary";
   return {
     code,
-    fullCode: `${code}_${partnerCode}`,
+    // Secondary: dùng suffix "SCND" (thay cho partnerCode) — server auto-append số nếu trùng.
+    fullCode: `${code}_${isSecondary ? "SCND" : partnerCode}`,
     name: toStr(fd.get("name")),
-    partnerId: toNum(fd.get("partnerId")),
-    breRole: toStr(fd.get("breRole")) as "f1" | "f2",
-    linkedF1PartnerId: toNum(fd.get("linkedF1PartnerId")) || null,
+    // Thứ cấp không có đối tác + không có vai trò BRE
+    partnerId: isSecondary ? null : toNum(fd.get("partnerId")) || null,
+    breRole: (isSecondary ? "f1" : (toStr(fd.get("breRole")) as "f1" | "f2")) as "f1" | "f2",
+    linkedF1PartnerId: isSecondary ? null : toNum(fd.get("linkedF1PartnerId")) || null,
+    defaultSaleType,
     contractInfo: toStr(fd.get("contractInfo")),
     contractStatus: toStr(fd.get("contractStatus")) as "chua_ky" | "dang_dam_phan" | "da_ky" | "ngung_hop_tac",
     contractDocs: toStr(fd.get("contractDocs")),
@@ -58,9 +65,31 @@ function buildProjectData(fd: FormData) {
   };
 }
 
+// Nếu full_code đã tồn tại (nhiều dự án thứ cấp cùng code) → append số.
+async function uniqueFullCode(base: string, excludeId?: number): Promise<string> {
+  let candidate = base;
+  let n = 2;
+  while (true) {
+    const existing = await db
+      .select({ id: projects.id })
+      .from(projects)
+      .where(eq(projects.fullCode, candidate));
+    if (existing.length === 0 || (existing.length === 1 && existing[0].id === excludeId)) {
+      return candidate;
+    }
+    candidate = `${base}${n}`;
+    n++;
+    if (n > 20) throw new Error("Quá nhiều dự án cùng mã, không sinh được full_code duy nhất");
+  }
+}
+
 export async function createProject(fd: FormData) {
   const data = buildProjectData(fd);
-  if (!data.code || !data.name || !data.partnerId) throw new Error("Thiếu mã, tên dự án hoặc đối tác");
+  if (!data.code || !data.name) throw new Error("Thiếu mã hoặc tên dự án");
+  if (data.defaultSaleType === "primary" && !data.partnerId) {
+    throw new Error("Dự án sơ cấp cần chọn đối tác (CĐT/F1)");
+  }
+  data.fullCode = await uniqueFullCode(data.fullCode);
   await db.insert(projects).values(data);
   revalidatePath("/projects");
   redirect("/projects");
@@ -68,7 +97,11 @@ export async function createProject(fd: FormData) {
 
 export async function updateProject(id: number, fd: FormData) {
   const data = buildProjectData(fd);
-  if (!data.code || !data.name || !data.partnerId) throw new Error("Thiếu mã, tên dự án hoặc đối tác");
+  if (!data.code || !data.name) throw new Error("Thiếu mã hoặc tên dự án");
+  if (data.defaultSaleType === "primary" && !data.partnerId) {
+    throw new Error("Dự án sơ cấp cần chọn đối tác (CĐT/F1)");
+  }
+  data.fullCode = await uniqueFullCode(data.fullCode, id);
   await db.update(projects).set(data).where(eq(projects.id, id));
   revalidatePath("/projects");
   revalidatePath(`/projects/${id}`);
