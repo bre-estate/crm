@@ -364,105 +364,36 @@ export default function RevenueForm({
         />
       </Section>
 
-      {/* Cấu hình phân bổ HH & KPI — nhập tại đây, các trang khác đọc lại */}
-      {!isSecondary && (
-        <Section title="⚙️ Cấu hình phân bổ HH & KPI (áp lên căn khi lưu)">
+      {/* Cấu hình HH & KPI — READ-ONLY, sync từ căn */}
+      {!isSecondary && product && (
+        <Section title="⚙️ Cấu hình HH & KPI (từ căn)">
           <div className="text-xs text-slate-500 -mt-2 mb-3">
-            Nhập các tỷ lệ & thưởng ở đây. Khi lưu, hệ thống tự cập nhật lên căn để tất cả các
-            trang khác (giá vốn, báo cáo) dùng chung.
+            Các tỷ lệ & thưởng dưới đây lấy từ config căn — chỉ hiển thị. Muốn đổi thì{" "}
+            <a
+              href={`/products/${product.id}/edit`}
+              className="text-blue-600 hover:underline"
+            >
+              vào trang chỉnh sửa căn
+            </a>
+            .
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <Field label="%PMG_LK_sale (base HH+KPI)">
-              <input
-                name="cfgPmgSaleRate"
-                type="number"
-                step="any"
-                defaultValue={pctDisplay(product?.pmgSaleRate)}
-                className="input"
-                placeholder="vd: 5.25"
-              />
-            </Field>
-            <Field label="%HH sale (NVKD)">
-              <input
-                name="cfgSaleCommRate"
-                type="number"
-                step="any"
-                defaultValue={pctDisplay(product?.saleCommissionRate)}
-                className="input"
-                placeholder="vd: 55"
-              />
-            </Field>
-            <Field label="%KPI CEO">
-              <input
-                name="cfgKpiCeoRate"
-                type="number"
-                step="any"
-                defaultValue={pctDisplay(product?.kpiCeoRate)}
-                className="input"
-                placeholder="vd: 3.5"
-              />
-            </Field>
-            <Field label="%KPI TPKD">
-              <input
-                name="cfgKpiTpkdRate"
-                type="number"
-                step="any"
-                defaultValue={pctDisplay(product?.kpiTpkdRate)}
-                className="input"
-                placeholder="vd: 2"
-              />
-            </Field>
-            <Field label="%KPI Admin">
-              <input
-                name="cfgKpiAdminRate"
-                type="number"
-                step="any"
-                defaultValue={pctDisplay(product?.kpiAdminRate)}
-                className="input"
-                placeholder="vd: 0.25"
-              />
-            </Field>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <RefInfo label="%PMG_LK_sale" value={fmtPctTight(product.pmgSaleRate)} />
+            <RefInfo label="%HH sale (NVKD)" value={fmtPctTight(product.saleCommissionRate)} />
+            <RefInfo label="%KPI CEO" value={fmtPctTight(product.kpiCeoRate)} />
+            <RefInfo label="%KPI TPKD" value={fmtPctTight(product.kpiTpkdRate)} />
+            <RefInfo label="%KPI Admin" value={fmtPctTight(product.kpiAdminRate)} />
           </div>
           <div className="border-t border-slate-200 mt-3 pt-3">
             <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
-              Thưởng nóng CĐT & CTY (số flat)
+              Thưởng nóng CĐT & CTY (từ căn)
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <Field label="Thưởng nóng CĐT (sale)">
-                <MoneyInput
-                  name="cfgCdtBonusSale"
-                  defaultValue={product?.cdtBonusSale ?? 0}
-                  className="input"
-                />
-              </Field>
-              <Field label="Thưởng nóng CĐT (QL)">
-                <MoneyInput
-                  name="cfgCdtBonusManager"
-                  defaultValue={product?.cdtBonusManager ?? 0}
-                  className="input"
-                />
-              </Field>
-              <Field label="Thưởng NVKD (CTY)">
-                <MoneyInput
-                  name="cfgBonusSale"
-                  defaultValue={product?.bonusSale ?? 0}
-                  className="input"
-                />
-              </Field>
-              <Field label="Thưởng TPKD (CTY)">
-                <MoneyInput
-                  name="cfgBonusManager"
-                  defaultValue={product?.bonusManager ?? 0}
-                  className="input"
-                />
-              </Field>
-              <Field label="Hỗ trợ khách">
-                <MoneyInput
-                  name="cfgCustomerSupport"
-                  defaultValue={product?.customerSupport ?? 0}
-                  className="input"
-                />
-              </Field>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <RefInfo label="Thưởng nóng CĐT (sale)" value={fmtMoney(product.cdtBonusSale)} />
+              <RefInfo label="Thưởng nóng CĐT (QL)" value={fmtMoney(product.cdtBonusManager)} />
+              <RefInfo label="Thưởng NVKD (CTY)" value={fmtMoney(product.bonusSale)} />
+              <RefInfo label="Thưởng TPKD (CTY)" value={fmtMoney(product.bonusManager)} />
+              <RefInfo label="Hỗ trợ khách" value={fmtMoney(product.customerSupport)} />
             </div>
           </div>
         </Section>
