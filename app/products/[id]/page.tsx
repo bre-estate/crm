@@ -664,10 +664,12 @@ export default async function ProductDetailPage({
           // (KHÔNG cộng phí admin sale - đó là số CĐT giữ tính vào base)
           const totalCost =
             hhSaleAmt + kpiCeoAmt + kpiTpkdAmt + kpiAdminAmt + bonusMgrCtyAmt + otherCostAmt;
-          const loiNhuan = dtThuanNoibo - totalCost;
-          const bienLN = dtThuanNoibo > 0 ? (loiNhuan / dtThuanNoibo) * 100 : 0;
-
-          const acctProfit = totalRevenue > 0 && totalCostStored > 0 ? totalRevenue / 1.1 - totalCostStored : null;
+          // Lợi nhuận công ty theo công thức kế toán: P/1,1 − R (Excel col S)
+          //   P/1,1 = trừ VAT 10% khỏi tổng doanh thu ghi nhận
+          //   R    = tổng giá vốn (đã net VAT)
+          const dtNetVat = dtThuanNoibo / 1.1;
+          const loiNhuan = dtNetVat - totalCost;
+          const bienLN = dtNetVat > 0 ? (loiNhuan / dtNetVat) * 100 : 0;
 
           const costRows: Array<[string, number, string?]> = [];
           if (adminFeeSaleAmt > 0)
@@ -753,7 +755,7 @@ export default async function ProductDetailPage({
                       C. Lợi nhuận công ty (dự kiến)
                     </div>
                     <div className="text-xs text-slate-500 mt-0.5">
-                      = A − B · Biên {fmtPctRaw(bienLN, 1)}
+                      = A / 1,1 − B · Biên {fmtPctRaw(bienLN, 1)}
                     </div>
                   </div>
                   <div
@@ -764,21 +766,7 @@ export default async function ProductDetailPage({
                     {fmtMoney(loiNhuan)}
                   </div>
                 </div>
-                {acctProfit !== null && Math.abs(acctProfit - loiNhuan) > 10000 && (
-                  <div className="mt-2 pt-2 border-t border-slate-200 text-xs text-slate-500">
-                    Kế toán tính (P÷1,1 − R từ Excel):{" "}
-                    <b>{fmtMoney(acctProfit)}</b> (chênh do VAT logic)
-                  </div>
-                )}
               </div>
-
-              {/* Ghi chú thưởng nóng transit */}
-              {(cdtBonusSale > 0 || cdtBonusMgr > 0) && (
-                <div className="text-xs text-slate-500 italic">
-                  💡 Thưởng nóng CĐT ({fmtMoney(cdtBonusSale + cdtBonusMgr)}) chuyển thẳng qua BRE
-                  tới NVKD/QL, không tính vào lợi nhuận công ty.
-                </div>
-              )}
 
               <div className="text-xs text-slate-500 italic">
                 Số dự kiến khi thu đủ 100% phí. Số thực đã trả có thể khác — xem ở mục 6.
