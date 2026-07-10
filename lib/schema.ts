@@ -58,6 +58,8 @@ export const projects = pgTable("projects", {
   name: text("name").notNull(),
   partnerId: integer("partner_id").references(() => partners.id),
   breRole: text("bre_role", { enum: ["f1", "f2"] }).notNull().default("f1"),
+  // Phân loại sơ cấp / thứ cấp. Null = chưa phân loại (dùng heuristic).
+  defaultSaleType: text("default_sale_type", { enum: ["primary", "secondary"] }),
   linkedF1PartnerId: integer("linked_f1_partner_id").references(() => partners.id),
 
   contractInfo: text("contract_info"),

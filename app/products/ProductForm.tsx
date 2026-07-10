@@ -9,8 +9,6 @@ import { fmtMoney, toTitleCase } from "@/lib/format";
 
 type ProjectWithPartner = Project & {
   partnerName?: string | null;
-  hasPrimary?: boolean;
-  hasSecondary?: boolean;
 };
 
 type Props = {
@@ -35,14 +33,11 @@ export default function ProductForm({ product, projects, departments = [], onSav
   );
   const isSecondary = saleType === "secondary";
 
-  // Filter dự án theo loại giao dịch — chỉ hiện dự án đã có sản phẩm cùng loại.
-  // Dự án chưa có sản phẩm nào → hiện ở cả 2 loại (chưa phân loại).
+  // Filter dự án theo default_sale_type. Null = chưa phân loại → hiện ở cả 2 tab.
   const filteredProjects = useMemo(() => {
     return projects.filter((p) => {
-      const hasP = p.hasPrimary ?? false;
-      const hasS = p.hasSecondary ?? false;
-      if (!hasP && !hasS) return true; // new project — allow all
-      return saleType === "secondary" ? hasS : hasP;
+      if (!p.defaultSaleType) return true;
+      return p.defaultSaleType === saleType;
     });
   }, [projects, saleType]);
 
