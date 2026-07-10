@@ -204,11 +204,15 @@ export async function deletePaymentIn(id: number) {
 export type BulkRevenueRow = {
   productId: number;
   reconciliationDate?: string | null;
+  minutesNumber?: string;
   reconType: string; // "phase:N" or "bonus_sale" or "bonus_manager"
   amount: number;
   pmgCumulativePct?: number; // display value 0-100
   invoiceNumber?: string;
   invoiceDate?: string | null;
+  invoiceTotalVat?: number;
+  paymentDate?: string | null;
+  paymentAmount?: number;
   note?: string;
 };
 
@@ -228,20 +232,37 @@ export async function createRevenueBulk(rows: BulkRevenueRow[]) {
 
       let invoiceId: number | null = null;
       if (r.invoiceNumber) {
-        invoiceId = await findOrCreateInvoice(r.invoiceNumber, r.invoiceDate ?? null, 0);
+        invoiceId = await findOrCreateInvoice(
+          r.invoiceNumber,
+          r.invoiceDate ?? null,
+          r.invoiceTotalVat ?? 0,
+        );
       }
-      await db.insert(revenueReconciliations).values({
-        productId: r.productId,
-        reconciliationDate: r.reconciliationDate ?? null,
-        phaseNumber: phaseN,
-        pmgCumulativePct: r.pmgCumulativePct ? r.pmgCumulativePct / 100 : 0,
-        revenueThisTime,
-        cdtBonusSale,
-        cdtBonusManager,
-        totalReceivableThisTime: r.amount,
-        note: r.note ?? null,
-        invoiceId,
-      });
+      const [inserted] = await db
+        .insert(revenueReconciliations)
+        .values({
+          productId: r.productId,
+          reconciliationDate: r.reconciliationDate ?? null,
+          minutesNumber: r.minutesNumber ?? null,
+          phaseNumber: phaseN,
+          pmgCumulativePct: r.pmgCumulativePct ? r.pmgCumulativePct / 100 : 0,
+          revenueThisTime,
+          cdtBonusSale,
+          cdtBonusManager,
+          totalReceivableThisTime: r.amount,
+          note: r.note ?? null,
+          invoiceId,
+        })
+        .returning({ id: revenueReconciliations.id });
+
+      // Nếu có thông tin thanh toán → insert payments_in.
+      if (r.paymentAmount && r.paymentAmount > 0 && inserted) {
+        await db.insert(paymentsIn).values({
+          reconciliationId: inserted.id,
+          paymentDate: r.paymentDate ?? null,
+          amount: r.paymentAmount,
+        });
+      }
       ok++;
     } catch (e) {
       errors.push({ index: i, message: e instanceof Error ? e.message : "Lỗi" });
