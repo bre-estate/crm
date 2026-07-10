@@ -29,6 +29,7 @@ const pctDisplay = (v: number | null | undefined): string =>
 export default function ProductForm({ product, projects, departments = [], onSave, onDelete, returnTo }: Props) {
   const [pending, start] = useTransition();
   const router = useRouter();
+  const isEdit = !!product;
   const [saleType, setSaleType] = useState<"primary" | "secondary">(
     (product?.saleType as "primary" | "secondary") ?? "primary",
   );
@@ -136,10 +137,16 @@ export default function ProductForm({ product, projects, departments = [], onSav
               value={saleType}
               onChange={(e) => setSaleType(e.target.value as "primary" | "secondary")}
               className="input"
+              disabled={isEdit}
             >
               <option value="primary">Sơ cấp</option>
               <option value="secondary">Thứ cấp</option>
             </select>
+            {isEdit && (
+              <div className="text-[10px] text-slate-500 mt-1">
+                Không đổi được. Nhầm loại → xóa & tạo giao dịch mới.
+              </div>
+            )}
           </Field>
           <Field label="Dự án" required>
             <SearchableSelect
@@ -148,11 +155,17 @@ export default function ProductForm({ product, projects, departments = [], onSav
               onChange={setProjectId}
               placeholder="Gõ tên dự án..."
               required
+              disabled={isEdit}
               options={filteredProjects.map((p) => ({
                 value: p.id,
                 label: p.partnerName ? `${p.name} - ${p.partnerName}` : p.name,
               }))}
             />
+            {isEdit && (
+              <div className="text-[10px] text-slate-500 mt-1">
+                Không đổi được. Nhầm dự án → xóa & tạo giao dịch mới.
+              </div>
+            )}
           </Field>
           <Field label="Mã căn" required>
             <input

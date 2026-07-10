@@ -1004,8 +1004,8 @@ export default async function ProductDetailPage({
                     <td className="p-2 text-right tabular-nums font-semibold">
                       {fmtMoney(rec.totalReceivableThisTime)}
                     </td>
-                    <td className="p-2">
-                      <div className="flex gap-1 items-center flex-wrap">
+                    <td className="p-2 whitespace-nowrap">
+                      <div className="inline-flex gap-1 items-center">
                         {hasDate ? (
                           <span className="text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap bg-yellow-100 text-yellow-700">
                             Đã ĐC
