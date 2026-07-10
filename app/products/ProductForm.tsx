@@ -252,31 +252,13 @@ export default function ProductForm({ product, projects, departments = [], onSav
             </Field>
           </div>
 
-          {/* Row 2: 2 loại phí admin */}
-          <div className="grid grid-cols-2 gap-4 mt-4">
-            <Field label="Phí admin (CĐT trừ khỏi PMG)">
-              <MoneyInput
-                name="adminFee"
-                defaultValue={product?.adminFee ?? 0}
-                className="input"
-                onValueChange={setAdminFeeLive}
-              />
-              <div className="text-[10px] text-slate-500 mt-1">
-                Số CĐT trừ khỏi PMG trước khi chuyển tiền vào TK BRE
-              </div>
-            </Field>
-            <Field label="Phí admin (dùng tính HH sale)">
-              <MoneyInput
-                name="adminFeeSale"
-                defaultValue={product?.adminFeeSale ?? 0}
-                className="input"
-                onValueChange={setAdminFeeSaleLive}
-              />
-              <div className="text-[10px] text-slate-500 mt-1">
-                Số ghi trong công thức HH sale. Có thể thấp hơn phí thực để sale nhận HH cao hơn — chênh cty tự chịu
-              </div>
-            </Field>
-          </div>
+          {/* Row 2: Phí admin (gộp 1 ô nếu bằng nhau, có toggle tách) */}
+          <AdminFeeRow
+            initialFee={Number(product?.adminFee ?? 0)}
+            initialFeeSale={Number(product?.adminFeeSale ?? 0)}
+            onFeeChange={setAdminFeeLive}
+            onFeeSaleChange={setAdminFeeSaleLive}
+          />
 
           {/* Row 3: CĐT thưởng nóng */}
           <div className="grid grid-cols-2 gap-4 mt-4">
@@ -542,6 +524,92 @@ function Field({
         {label} {required && <span className="text-red-500">*</span>}
       </label>
       {children}
+    </div>
+  );
+}
+
+// Gộp 2 ô admin fee thành 1 khi bằng nhau. User có thể toggle để tách 2 ô.
+function AdminFeeRow({
+  initialFee,
+  initialFeeSale,
+  onFeeChange,
+  onFeeSaleChange,
+}: {
+  initialFee: number;
+  initialFeeSale: number;
+  onFeeChange: (v: number) => void;
+  onFeeSaleChange: (v: number) => void;
+}) {
+  const areEqual = Math.abs(initialFee - initialFeeSale) < 1000;
+  const [split, setSplit] = useState(!areEqual);
+  const [feeShared, setFeeShared] = useState(initialFee);
+
+  if (!split) {
+    // 1 ô gộp — set cả 2 field cùng value
+    return (
+      <div className="mt-4">
+        <Field label="Phí admin">
+          <MoneyInput
+            name="adminFee"
+            defaultValue={feeShared}
+            className="input"
+            onValueChange={(v) => {
+              setFeeShared(v);
+              onFeeChange(v);
+              onFeeSaleChange(v);
+            }}
+          />
+          <input type="hidden" name="adminFeeSale" value={feeShared} />
+          <div className="text-[10px] text-slate-500 mt-1 flex items-center gap-2">
+            <span>
+              Số CĐT trừ khỏi PMG, cũng là số dùng khi tính HH sale.
+            </span>
+            <button
+              type="button"
+              onClick={() => setSplit(true)}
+              className="text-blue-600 hover:underline"
+            >
+              Tách 2 phí khác nhau →
+            </button>
+          </div>
+        </Field>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-4 mt-4">
+      <Field label="Phí admin (CĐT trừ khỏi PMG)">
+        <MoneyInput
+          name="adminFee"
+          defaultValue={initialFee}
+          className="input"
+          onValueChange={onFeeChange}
+        />
+        <div className="text-[10px] text-slate-500 mt-1">
+          Số CĐT trừ khỏi PMG trước khi chuyển tiền vào TK BRE
+        </div>
+      </Field>
+      <Field label="Phí admin (dùng tính HH sale)">
+        <MoneyInput
+          name="adminFeeSale"
+          defaultValue={initialFeeSale}
+          className="input"
+          onValueChange={onFeeSaleChange}
+        />
+        <div className="text-[10px] text-slate-500 mt-1 flex items-center gap-2">
+          <span>
+            Số ghi trong công thức HH sale. Chênh cty tự chịu.
+          </span>
+          <button
+            type="button"
+            onClick={() => setSplit(false)}
+            className="text-blue-600 hover:underline"
+          >
+            Gộp 2 phí →
+          </button>
+        </div>
+      </Field>
     </div>
   );
 }

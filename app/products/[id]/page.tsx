@@ -336,6 +336,12 @@ export default async function ProductDetailPage({
           <Info label="Ngày cọc" value={fmtDate(p.depositDate)} />
           <Info label="Tháng ghi nhận DT" value={p.recognitionMonth ?? "—"} mono />
         </div>
+        {p.note && p.note.trim() && (
+          <div className="mt-3 pt-3 border-t border-slate-100">
+            <div className="text-xs text-slate-500 uppercase font-semibold mb-1">Ghi chú</div>
+            <div className="text-sm text-slate-700 whitespace-pre-wrap">{p.note}</div>
+          </div>
+        )}
       </SectionCard>
 
       {/* === 2. DOANH THU === (chỉ áp dụng sơ cấp) */}

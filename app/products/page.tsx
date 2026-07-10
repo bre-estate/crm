@@ -62,6 +62,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
     projectName: projects.name,
     partnerName: partners.name,
     projectId: products.projectId,
+    note: products.note,
   };
 
   const whereParts: SQL[] = [eq(products.saleType, activeTab)];
@@ -430,6 +431,14 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
                     <Link href={`/products/${r.id}`} className="text-blue-600 hover:underline">
                       {r.unitCode}
                     </Link>
+                    {r.note && r.note.trim() && (
+                      <span
+                        className="ml-1 text-slate-400 cursor-help"
+                        title={r.note}
+                      >
+                        📝
+                      </span>
+                    )}
                   </td>
                   <td className="p-2">
                     <div className="font-medium text-xs">{r.projectName}</div>
