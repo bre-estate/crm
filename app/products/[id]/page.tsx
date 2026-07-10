@@ -86,9 +86,8 @@ export default async function ProductDetailPage({
   const expectedHHSale = isSecondary
     ? Number(p.totalRevenue ?? 0)
     : Math.max(0, expectedHHSaleGross - Number(p.adminFee ?? 0));
-  // expectedBonus lấy từ config, nhưng nếu CĐT phát sinh thưởng ngoài dự kiến
-  // (bonus recon > 0 mà config = 0), dùng số recon thực để không "lệch" dự kiến vs đã nhận.
-  const cfgBonus = Number(p.cdtBonusSale ?? 0) + Number(p.cdtBonusManager ?? 0);
+  const expectedBonus =
+    Number(p.cdtBonusSale ?? 0) + Number(p.cdtBonusManager ?? 0);
 
   // Lịch sử %HH: ưu tiên product.pmgRateHistory (nhập explicit),
   // fallback distinct pmgCumulativePct từ các recon.
@@ -157,8 +156,17 @@ export default async function ProductDetailPage({
     .filter((r) => isBonusRecon(r.rec))
     .reduce((s, r) => s + Number(r.rec.totalReceivableThisTime ?? 0), 0);
 
-  // Nếu CĐT thưởng bonus ngoài config (recon > cfg), dùng recon actual làm expected.
-  const expectedBonus = Math.max(cfgBonus, receivedBonus);
+  // Data quality check: recon có CĐT thưởng nhưng config căn không nhập →
+  // hiển thị warning banner để admin biết cần bổ sung config.
+  const sumReconCdtSale = revRecs
+    .filter((r) => isBonusRecon(r.rec))
+    .reduce((s, r) => s + Number(r.rec.cdtBonusSale ?? 0), 0);
+  const sumReconCdtMgr = revRecs
+    .filter((r) => isBonusRecon(r.rec))
+    .reduce((s, r) => s + Number(r.rec.cdtBonusManager ?? 0), 0);
+  const missingCfgSale = Math.max(0, sumReconCdtSale - Number(p.cdtBonusSale ?? 0));
+  const missingCfgMgr = Math.max(0, sumReconCdtMgr - Number(p.cdtBonusManager ?? 0));
+  const hasMissingCdtBonusCfg = missingCfgSale >= 1000 || missingCfgMgr >= 1000;
 
   // Backward compat: một số biến còn dùng
   const expectedFee = expectedHHSale;
@@ -282,7 +290,42 @@ export default async function ProductDetailPage({
         </div>
       )}
 
-      {/* === 1. THÔNG TIN CĂN === */}
+      {/* Data quality warnings */}
+      {hasMissingCdtBonusCfg && (
+        <div className="bg-amber-50 border border-amber-300 rounded-lg p-4 flex gap-3">
+          <div className="text-2xl leading-none">⚠️</div>
+          <div className="flex-1">
+            <div className="text-sm font-semibold text-amber-900">
+              Config căn thiếu &quot;CĐT thưởng nóng&quot;
+            </div>
+            <div className="text-xs text-amber-800 mt-1">
+              Có {revRecs.filter((r) => isBonusRecon(r.rec)).length} đợt ĐC bonus với tổng{" "}
+              <b>{fmtMoney(sumReconCdtSale + sumReconCdtMgr)}</b> nhưng config căn chưa nhập:
+              {missingCfgSale >= 1000 && (
+                <div>
+                  · Thiếu <b>CĐT thưởng sale</b>: cần {fmtMoney(sumReconCdtSale)}, config hiện{" "}
+                  {fmtMoney(p.cdtBonusSale)}
+                </div>
+              )}
+              {missingCfgMgr >= 1000 && (
+                <div>
+                  · Thiếu <b>CĐT thưởng QL</b>: cần {fmtMoney(sumReconCdtMgr)}, config hiện{" "}
+                  {fmtMoney(p.cdtBonusManager)}
+                </div>
+              )}
+            </div>
+            <div className="mt-2">
+              <Link
+                href={`/products/${id}/edit`}
+                className="text-xs bg-amber-600 text-white px-3 py-1 rounded hover:bg-amber-700"
+              >
+                Sửa config căn →
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* === 1. THÔNG TIN CĂN === */}
       <SectionCard title="1. Thông tin căn" icon="🏠">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
