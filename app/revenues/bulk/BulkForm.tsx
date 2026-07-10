@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { BulkRevenueRow } from "@/lib/actions/revenues";
 import SearchableSelect from "@/components/SearchableSelect";
@@ -36,64 +36,11 @@ const emptyRow = (): Row => ({
   note: "",
 });
 
-// Mapping options — cột trong TSV được gán field nào trong Row.
-const COLUMN_FIELDS = [
-  { key: "skip", label: "— Bỏ qua —" },
-  { key: "unitCode", label: "Mã căn" },
-  { key: "amount", label: "Số tiền" },
-  { key: "pmgCumulativePct", label: "%PMG lũy kế" },
-  { key: "reconciliationDate", label: "Ngày ĐC" },
-  { key: "invoiceNumber", label: "Số HĐ" },
-  { key: "invoiceDate", label: "Ngày HĐ" },
-  { key: "note", label: "Ghi chú" },
-] as const;
-type ColumnField = (typeof COLUMN_FIELDS)[number]["key"];
-
-// Parse TSV Excel-style: cell chứa \n hoặc \t được quote bằng "..." (RFC-4180).
-// Double-quote bên trong = "".
-function parseTSV(raw: string): string[][] {
-  const s = raw.replace(/\r\n?/g, "\n");
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let cell = "";
-  let inQuotes = false;
-  for (let i = 0; i < s.length; i++) {
-    const ch = s[i];
-    if (inQuotes) {
-      if (ch === '"') {
-        if (s[i + 1] === '"') {
-          cell += '"';
-          i++;
-        } else {
-          inQuotes = false;
-        }
-      } else {
-        cell += ch;
-      }
-      continue;
-    }
-    if (ch === '"') {
-      inQuotes = true;
-    } else if (ch === "\t") {
-      row.push(cell.trim());
-      cell = "";
-    } else if (ch === "\n") {
-      row.push(cell.trim());
-      rows.push(row);
-      row = [];
-      cell = "";
-    } else {
-      cell += ch;
-    }
-  }
-  if (cell !== "" || row.length > 0) {
-    row.push(cell.trim());
-    rows.push(row);
-  }
-  // Bỏ trailing empty rows
-  while (rows.length > 0 && rows[rows.length - 1].every((c) => c === "")) rows.pop();
-  // Normalize header cell: gộp \n giữa cell thành space (do quoted multi-line cell)
-  return rows.map((r) => r.map((c) => c.replace(/\s+/g, " ").trim()));
+// Split 1 cột (dán dọc từ Excel): tách theo \n, trim mỗi dòng, bỏ dòng trailing rỗng.
+function splitColumn(raw: string): string[] {
+  const s = raw.replace(/\r\n?/g, "\n").split("\n").map((x) => x.trim());
+  while (s.length > 0 && s[s.length - 1] === "") s.pop();
+  return s;
 }
 
 // Parse số tiền: bỏ dấu . , dấu cách. "65.105.193" hoặc "65,105,193" → 65105193.
@@ -141,15 +88,18 @@ export default function BulkForm({
   const router = useRouter();
   const [rows, setRows] = useState<Row[]>([emptyRow(), emptyRow(), emptyRow()]);
 
-  // === Paste TSV state ===
+  // === Paste column-by-column state ===
   const [showPaste, setShowPaste] = useState(false);
-  const [tsvRaw, setTsvRaw] = useState("");
-  const [skipRows, setSkipRows] = useState(0);
-  const [hasHeader, setHasHeader] = useState(true);
-  const [colMap, setColMap] = useState<ColumnField[]>([]);
+  const [colUnit, setColUnit] = useState("");
+  const [colAmount, setColAmount] = useState("");
+  const [colPct, setColPct] = useState("");
+  const [colRecDate, setColRecDate] = useState("");
+  const [colInvNum, setColInvNum] = useState("");
+  const [colInvDate, setColInvDate] = useState("");
+  const [colNote, setColNote] = useState("");
   const [defaultReconType, setDefaultReconType] = useState("phase:1");
   const [defaultDate, setDefaultDate] = useState("");
-  const [replaceMode, setReplaceMode] = useState(true); // true = thay bảng, false = thêm vào
+  const [replaceMode, setReplaceMode] = useState(true);
 
   // Reverse map: unitCode (normalized) → productId
   const unitCodeToId = useMemo(() => {
@@ -161,35 +111,52 @@ export default function BulkForm({
     return m;
   }, [products]);
 
-  const tsvGrid = useMemo(() => parseTSV(tsvRaw).slice(skipRows), [tsvRaw, skipRows]);
-  const nCols = Math.max(0, ...tsvGrid.map((r) => r.length));
-  // Auto-init colMap khi số cột đổi
-  useEffect(() => {
-    if (colMap.length !== nCols) {
-      setColMap(Array.from({ length: nCols }, () => "skip"));
-    }
-  }, [nCols, colMap.length]);
+  const cols = useMemo(
+    () => ({
+      unit: splitColumn(colUnit),
+      amount: splitColumn(colAmount),
+      pct: splitColumn(colPct),
+      recDate: splitColumn(colRecDate),
+      invNum: splitColumn(colInvNum),
+      invDate: splitColumn(colInvDate),
+      note: splitColumn(colNote),
+    }),
+    [colUnit, colAmount, colPct, colRecDate, colInvNum, colInvDate, colNote],
+  );
+
+  const nRows = cols.unit.length;
+  const rowCountMismatch = (): string | null => {
+    const checks: [string, number][] = [
+      ["Số tiền", cols.amount.length],
+      ["%PMG", cols.pct.length],
+      ["Ngày ĐC", cols.recDate.length],
+      ["Số HĐ", cols.invNum.length],
+      ["Ngày HĐ", cols.invDate.length],
+      ["Ghi chú", cols.note.length],
+    ];
+    const mismatched = checks.filter(([, n]) => n > 0 && n !== nRows);
+    if (mismatched.length === 0) return null;
+    return mismatched.map(([name, n]) => `${name}: ${n} dòng`).join(", ");
+  };
 
   const applyPaste = () => {
-    const idx = (field: ColumnField) => colMap.findIndex((c) => c === field);
-    const iUnit = idx("unitCode");
-    if (iUnit < 0) {
-      alert("Cần map cột 'Mã căn' trước khi import.");
+    if (nRows === 0) {
+      alert("Cần paste ít nhất cột 'Mã căn'.");
       return;
     }
-    const iAmount = idx("amount");
-    const iPct = idx("pmgCumulativePct");
-    const iRecDate = idx("reconciliationDate");
-    const iInvNum = idx("invoiceNumber");
-    const iInvDate = idx("invoiceDate");
-    const iNote = idx("note");
+    const mismatch = rowCountMismatch();
+    if (mismatch) {
+      const ok = confirm(
+        `⚠ Số dòng các cột không khớp — Mã căn ${nRows}, ${mismatch}.\n\n` +
+          `Nếu tiếp tục, dòng thiếu sẽ để trống. OK?`,
+      );
+      if (!ok) return;
+    }
 
     const newRows: Row[] = [];
     const missing: string[] = [];
-    // Nếu hasHeader → bỏ row 0 (dùng làm header cho column mapping)
-    const dataRows = hasHeader ? tsvGrid.slice(1) : tsvGrid;
-    for (const r of dataRows) {
-      const unit = (r[iUnit] ?? "").trim();
+    for (let i = 0; i < nRows; i++) {
+      const unit = cols.unit[i];
       if (!unit) continue;
       const norm = unit.replace(/[\s.\-]/g, "").toLowerCase();
       const productId = unitCodeToId.get(norm);
@@ -199,15 +166,16 @@ export default function BulkForm({
       }
       newRows.push({
         productId,
-        reconciliationDate: iRecDate >= 0 ? parseDate(r[iRecDate] ?? "") : defaultDate,
+        reconciliationDate: cols.recDate[i] ? parseDate(cols.recDate[i]) : defaultDate,
         reconType: defaultReconType,
-        amount: iAmount >= 0 ? parseMoney(r[iAmount] ?? "") : 0,
-        pmgCumulativePct: iPct >= 0 ? parsePctDisplay(r[iPct] ?? "") : "",
-        invoiceNumber: iInvNum >= 0 ? (r[iInvNum] ?? "").trim() : "",
-        invoiceDate: iInvDate >= 0 ? parseDate(r[iInvDate] ?? "") : "",
-        note: iNote >= 0 ? (r[iNote] ?? "").trim() : "",
+        amount: cols.amount[i] ? parseMoney(cols.amount[i]) : 0,
+        pmgCumulativePct: cols.pct[i] ? parsePctDisplay(cols.pct[i]) : "",
+        invoiceNumber: cols.invNum[i] ?? "",
+        invoiceDate: cols.invDate[i] ? parseDate(cols.invDate[i]) : "",
+        note: cols.note[i] ?? "",
       });
     }
+
     if (newRows.length === 0) {
       alert(
         `Không tìm ra căn hợp lệ nào. Các mã không match:\n${missing.slice(0, 10).join(", ") || "(rỗng)"}`,
@@ -216,14 +184,20 @@ export default function BulkForm({
     }
     let msg = `Import ${newRows.length} dòng.`;
     if (missing.length > 0) {
-      msg += `\n\n⚠ ${missing.length} mã căn không tìm thấy trong DB (đã bỏ qua):\n${missing.slice(0, 10).join(", ")}${missing.length > 10 ? "..." : ""}`;
+      msg +=
+        `\n\n⚠ ${missing.length} mã căn không tìm thấy trong DB (đã bỏ qua):\n` +
+        `${missing.slice(0, 10).join(", ")}${missing.length > 10 ? "..." : ""}`;
     }
     if (!confirm(msg + "\n\nOK để tiếp tục?")) return;
     setRows(replaceMode ? newRows : [...rows.filter((r) => r.productId), ...newRows]);
     setShowPaste(false);
-    setTsvRaw("");
-    setSkipRows(0);
-    setColMap([]);
+    setColUnit("");
+    setColAmount("");
+    setColPct("");
+    setColRecDate("");
+    setColInvNum("");
+    setColInvDate("");
+    setColNote("");
   };
 
   const productBySaleType = (id: number | "") =>
@@ -296,147 +270,138 @@ export default function BulkForm({
       {showPaste && (
         <div className="border-2 border-blue-200 bg-blue-50/40 rounded-xl p-4 space-y-3">
           <div className="text-xs text-slate-600">
-            <b>Cách dùng:</b> mở file Excel CĐT gửi → select cả vùng dữ liệu (bao gồm header) →
-            Ctrl+C → click vào ô textarea dưới → Ctrl+V. Rồi map từng cột.
+            <b>Cách dùng:</b> mở file Excel CĐT gửi → click header cột (VD "MÃ CĂN") để select
+            toàn bộ cột → Ctrl+C → paste vào ô "Mã căn" bên dưới. Lặp lại cho từng field cần nhập.
+            Các cột phải có <b>cùng số dòng</b> và thứ tự dòng khớp nhau.
           </div>
-          <textarea
-            value={tsvRaw}
-            onChange={(e) => setTsvRaw(e.target.value)}
-            placeholder={`Paste TSV ở đây. Ví dụ:\nSTT\tMã căn\t%PMG\tTiền đợt này\n1\tA.10.10\t5,5%\t65.105.193\n2\tA.10.11\t5,5%\t68.203.145`}
-            className="input font-mono text-xs w-full min-h-32"
-          />
-          {tsvGrid.length > 0 && (
-            <>
-              <div className="flex items-center gap-4 text-xs">
-                <label>
-                  Bỏ N dòng đầu (header rác):{" "}
-                  <input
-                    type="number"
-                    min="0"
-                    value={skipRows}
-                    onChange={(e) => setSkipRows(Math.max(0, Number(e.target.value)))}
-                    className="input py-1 w-16 inline-block text-center"
-                  />
-                </label>
-                <label>
-                  Loại đợt áp cho tất cả:{" "}
-                  <select
-                    value={defaultReconType}
-                    onChange={(e) => setDefaultReconType(e.target.value)}
-                    className="input py-1 inline-block"
-                  >
-                    <option value="phase:1">Đợt 1</option>
-                    <option value="phase:2">Đợt 2</option>
-                    <option value="phase:3">Đợt 3</option>
-                    <option value="phase:4">Đợt 4</option>
-                    <option value="phase:5">Đợt 5</option>
-                    <option value="bonus_sale">Thưởng nóng sale</option>
-                    <option value="bonus_manager">Thưởng nóng QL</option>
-                  </select>
-                </label>
-                <label>
-                  Ngày ĐC mặc định (nếu file không có):{" "}
-                  <input
-                    type="date"
-                    value={defaultDate}
-                    onChange={(e) => setDefaultDate(e.target.value)}
-                    className="input py-1 inline-block"
-                  />
-                </label>
-                <label className="flex items-center gap-1">
-                  <input
-                    type="checkbox"
-                    checked={hasHeader}
-                    onChange={(e) => setHasHeader(e.target.checked)}
-                  />
-                  Dòng đầu là header
-                </label>
-                <label className="flex items-center gap-1">
-                  <input
-                    type="checkbox"
-                    checked={replaceMode}
-                    onChange={(e) => setReplaceMode(e.target.checked)}
-                  />
-                  Thay bảng (bỏ tick để append)
-                </label>
-              </div>
 
-              <div className="text-xs text-slate-600">
-                Preview {Math.min(5, tsvGrid.length)}/{tsvGrid.length} dòng. Map cột ở header:
-              </div>
-              <div className="overflow-x-auto bg-white border border-slate-200 rounded-lg">
-                <table className="text-xs">
-                  <thead className="bg-slate-100">
-                    <tr>
-                      {Array.from({ length: nCols }).map((_, i) => (
-                        <th key={i} className="p-1 border-r border-slate-200">
-                          <select
-                            value={colMap[i] ?? "skip"}
-                            onChange={(e) => {
-                              const next = [...colMap];
-                              next[i] = e.target.value as ColumnField;
-                              setColMap(next);
-                            }}
-                            className={`input text-[10px] py-0.5 ${colMap[i] && colMap[i] !== "skip" ? "bg-green-50 border-green-300" : ""}`}
-                          >
-                            {COLUMN_FIELDS.map((f) => (
-                              <option key={f.key} value={f.key}>
-                                {f.label}
-                              </option>
-                            ))}
-                          </select>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {tsvGrid.slice(0, 5).map((row, ri) => {
-                      const isHeaderRow = hasHeader && ri === 0;
-                      return (
-                        <tr
-                          key={ri}
-                          className={`border-t border-slate-100 ${
-                            isHeaderRow ? "bg-slate-50 text-slate-500 italic" : ""
-                          }`}
-                          title={isHeaderRow ? "Header — không import, chỉ để xem tên cột" : ""}
-                        >
-                          {Array.from({ length: nCols }).map((_, ci) => (
-                            <td
-                              key={ci}
-                              className="p-1 border-r border-slate-100 whitespace-nowrap max-w-40 truncate"
-                            >
-                              {row[ci] ?? ""}
-                            </td>
-                          ))}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+          <div className="flex flex-wrap items-center gap-4 text-xs bg-white border border-slate-200 rounded-lg p-2">
+            <label>
+              Loại đợt áp cho tất cả:{" "}
+              <select
+                value={defaultReconType}
+                onChange={(e) => setDefaultReconType(e.target.value)}
+                className="input py-1 inline-block"
+              >
+                <option value="phase:1">Đợt 1</option>
+                <option value="phase:2">Đợt 2</option>
+                <option value="phase:3">Đợt 3</option>
+                <option value="phase:4">Đợt 4</option>
+                <option value="phase:5">Đợt 5</option>
+                <option value="bonus_sale">Thưởng nóng sale</option>
+                <option value="bonus_manager">Thưởng nóng QL</option>
+              </select>
+            </label>
+            <label>
+              Ngày ĐC mặc định (nếu không paste cột Ngày ĐC):{" "}
+              <input
+                type="date"
+                value={defaultDate}
+                onChange={(e) => setDefaultDate(e.target.value)}
+                className="input py-1 inline-block"
+              />
+            </label>
+            <label className="flex items-center gap-1">
+              <input
+                type="checkbox"
+                checked={replaceMode}
+                onChange={(e) => setReplaceMode(e.target.checked)}
+              />
+              Thay bảng (bỏ tick để append)
+            </label>
+          </div>
 
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTsvRaw("");
-                    setSkipRows(0);
-                    setColMap([]);
-                  }}
-                  className="text-sm text-slate-500 hover:text-slate-700 px-3 py-1.5"
-                >
-                  Xóa paste
-                </button>
-                <button
-                  type="button"
-                  onClick={applyPaste}
-                  className="bg-blue-600 text-white rounded-lg px-4 py-2 text-sm hover:bg-blue-700"
-                >
-                  Áp dụng vào bảng ({Math.max(0, tsvGrid.length - (hasHeader ? 1 : 0))} dòng data)
-                </button>
-              </div>
-            </>
-          )}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <ColBox
+              label="Mã căn"
+              required
+              value={colUnit}
+              onChange={setColUnit}
+              placeholder="A.10.10&#10;B.03.16&#10;..."
+              nRows={cols.unit.length}
+              nExpected={nRows}
+              accent="orange"
+            />
+            <ColBox
+              label="Số tiền"
+              value={colAmount}
+              onChange={setColAmount}
+              placeholder="65,105,193&#10;68,203,145&#10;..."
+              nRows={cols.amount.length}
+              nExpected={nRows}
+            />
+            <ColBox
+              label="%PMG lũy kế"
+              value={colPct}
+              onChange={setColPct}
+              placeholder="5,5%&#10;5,5%&#10;..."
+              nRows={cols.pct.length}
+              nExpected={nRows}
+            />
+            <ColBox
+              label="Ngày ĐC"
+              value={colRecDate}
+              onChange={setColRecDate}
+              placeholder="24/06/2026&#10;24/06/2026&#10;..."
+              nRows={cols.recDate.length}
+              nExpected={nRows}
+            />
+            <ColBox
+              label="Số HĐ"
+              value={colInvNum}
+              onChange={setColInvNum}
+              placeholder="0001234&#10;0001235&#10;..."
+              nRows={cols.invNum.length}
+              nExpected={nRows}
+            />
+            <ColBox
+              label="Ngày HĐ"
+              value={colInvDate}
+              onChange={setColInvDate}
+              placeholder="24/06/2026&#10;..."
+              nRows={cols.invDate.length}
+              nExpected={nRows}
+            />
+            <ColBox
+              label="Ghi chú"
+              value={colNote}
+              onChange={setColNote}
+              placeholder="Đợt 3&#10;Đợt 1&#10;..."
+              nRows={cols.note.length}
+              nExpected={nRows}
+            />
+          </div>
+
+          <div className="flex justify-end items-center gap-2">
+            <div className="text-xs text-slate-500 mr-auto">
+              {nRows > 0 && rowCountMismatch() && (
+                <span className="text-red-600">⚠ {rowCountMismatch()} — không khớp {nRows} dòng của Mã căn</span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setColUnit("");
+                setColAmount("");
+                setColPct("");
+                setColRecDate("");
+                setColInvNum("");
+                setColInvDate("");
+                setColNote("");
+              }}
+              className="text-sm text-slate-500 hover:text-slate-700 px-3 py-1.5"
+            >
+              Xóa hết
+            </button>
+            <button
+              type="button"
+              onClick={applyPaste}
+              disabled={nRows === 0}
+              className="bg-blue-600 text-white rounded-lg px-4 py-2 text-sm hover:bg-blue-700 disabled:opacity-50"
+            >
+              Áp dụng vào bảng ({nRows} dòng)
+            </button>
+          </div>
         </div>
       )}
 
@@ -591,6 +556,54 @@ export default function BulkForm({
           {pending ? "Đang lưu..." : "Lưu tất cả"}
         </button>
       </div>
+    </div>
+  );
+}
+
+function ColBox({
+  label,
+  value,
+  onChange,
+  placeholder,
+  nRows,
+  nExpected,
+  required,
+  accent,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  nRows: number;
+  nExpected: number;
+  required?: boolean;
+  accent?: "orange";
+}) {
+  const mismatch = nRows > 0 && nExpected > 0 && nRows !== nExpected;
+  const empty = nRows === 0;
+  return (
+    <div>
+      <div
+        className={`text-xs font-medium mb-1 flex justify-between ${
+          accent === "orange" ? "text-orange-700" : "text-slate-700"
+        }`}
+      >
+        <span>
+          {label}
+          {required && <span className="text-red-500 ml-0.5">*</span>}
+        </span>
+        {!empty && (
+          <span className={mismatch ? "text-red-600" : "text-slate-500"}>{nRows} dòng</span>
+        )}
+      </div>
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className={`input font-mono text-xs w-full min-h-24 ${
+          accent === "orange" ? "border-orange-300" : ""
+        } ${mismatch ? "border-red-400" : ""}`}
+      />
     </div>
   );
 }
