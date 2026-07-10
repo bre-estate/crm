@@ -145,6 +145,7 @@ export default function BulkForm({
   const [showPaste, setShowPaste] = useState(false);
   const [tsvRaw, setTsvRaw] = useState("");
   const [skipRows, setSkipRows] = useState(0);
+  const [hasHeader, setHasHeader] = useState(true);
   const [colMap, setColMap] = useState<ColumnField[]>([]);
   const [defaultReconType, setDefaultReconType] = useState("phase:1");
   const [defaultDate, setDefaultDate] = useState("");
@@ -185,7 +186,9 @@ export default function BulkForm({
 
     const newRows: Row[] = [];
     const missing: string[] = [];
-    for (const r of tsvGrid) {
+    // Nếu hasHeader → bỏ row 0 (dùng làm header cho column mapping)
+    const dataRows = hasHeader ? tsvGrid.slice(1) : tsvGrid;
+    for (const r of dataRows) {
       const unit = (r[iUnit] ?? "").trim();
       if (!unit) continue;
       const norm = unit.replace(/[\s.\-]/g, "").toLowerCase();
@@ -343,6 +346,14 @@ export default function BulkForm({
                 <label className="flex items-center gap-1">
                   <input
                     type="checkbox"
+                    checked={hasHeader}
+                    onChange={(e) => setHasHeader(e.target.checked)}
+                  />
+                  Dòng đầu là header
+                </label>
+                <label className="flex items-center gap-1">
+                  <input
+                    type="checkbox"
                     checked={replaceMode}
                     onChange={(e) => setReplaceMode(e.target.checked)}
                   />
@@ -379,18 +390,27 @@ export default function BulkForm({
                     </tr>
                   </thead>
                   <tbody>
-                    {tsvGrid.slice(0, 5).map((row, ri) => (
-                      <tr key={ri} className="border-t border-slate-100">
-                        {Array.from({ length: nCols }).map((_, ci) => (
-                          <td
-                            key={ci}
-                            className="p-1 border-r border-slate-100 whitespace-nowrap max-w-40 truncate"
-                          >
-                            {row[ci] ?? ""}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
+                    {tsvGrid.slice(0, 5).map((row, ri) => {
+                      const isHeaderRow = hasHeader && ri === 0;
+                      return (
+                        <tr
+                          key={ri}
+                          className={`border-t border-slate-100 ${
+                            isHeaderRow ? "bg-slate-50 text-slate-500 italic" : ""
+                          }`}
+                          title={isHeaderRow ? "Header — không import, chỉ để xem tên cột" : ""}
+                        >
+                          {Array.from({ length: nCols }).map((_, ci) => (
+                            <td
+                              key={ci}
+                              className="p-1 border-r border-slate-100 whitespace-nowrap max-w-40 truncate"
+                            >
+                              {row[ci] ?? ""}
+                            </td>
+                          ))}
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -412,7 +432,7 @@ export default function BulkForm({
                   onClick={applyPaste}
                   className="bg-blue-600 text-white rounded-lg px-4 py-2 text-sm hover:bg-blue-700"
                 >
-                  Áp dụng vào bảng ({tsvGrid.length} dòng)
+                  Áp dụng vào bảng ({Math.max(0, tsvGrid.length - (hasHeader ? 1 : 0))} dòng data)
                 </button>
               </div>
             </>
