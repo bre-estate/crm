@@ -86,8 +86,9 @@ export default async function ProductDetailPage({
   const expectedHHSale = isSecondary
     ? Number(p.totalRevenue ?? 0)
     : Math.max(0, expectedHHSaleGross - Number(p.adminFee ?? 0));
-  const expectedBonus =
-    Number(p.cdtBonusSale ?? 0) + Number(p.cdtBonusManager ?? 0);
+  // expectedBonus lấy từ config, nhưng nếu CĐT phát sinh thưởng ngoài dự kiến
+  // (bonus recon > 0 mà config = 0), dùng số recon thực để không "lệch" dự kiến vs đã nhận.
+  const cfgBonus = Number(p.cdtBonusSale ?? 0) + Number(p.cdtBonusManager ?? 0);
 
   // Lịch sử %HH: ưu tiên product.pmgRateHistory (nhập explicit),
   // fallback distinct pmgCumulativePct từ các recon.
@@ -155,6 +156,9 @@ export default async function ProductDetailPage({
   const receivedBonus = revRecs
     .filter((r) => isBonusRecon(r.rec))
     .reduce((s, r) => s + Number(r.rec.totalReceivableThisTime ?? 0), 0);
+
+  // Nếu CĐT thưởng bonus ngoài config (recon > cfg), dùng recon actual làm expected.
+  const expectedBonus = Math.max(cfgBonus, receivedBonus);
 
   // Backward compat: một số biến còn dùng
   const expectedFee = expectedHHSale;
