@@ -292,34 +292,21 @@ export default async function ProductDetailPage({
 
       {/* Data quality warnings */}
       {hasMissingCdtBonusCfg && (
-        <div className="bg-amber-50 border border-amber-300 rounded-lg p-4 flex gap-3">
+        <div className="bg-amber-50 border border-amber-300 rounded-lg p-4 flex gap-3 items-start">
           <div className="text-2xl leading-none">⚠️</div>
           <div className="flex-1">
             <div className="text-sm font-semibold text-amber-900">
-              Config căn thiếu &quot;CĐT thưởng nóng&quot;
-            </div>
-            <div className="text-xs text-amber-800 mt-1">
-              Có {revRecs.filter((r) => isBonusRecon(r.rec)).length} đợt ĐC bonus với tổng{" "}
-              <b>{fmtMoney(sumReconCdtSale + sumReconCdtMgr)}</b> nhưng config căn chưa nhập:
-              {missingCfgSale >= 1000 && (
-                <div>
-                  · Thiếu <b>CĐT thưởng sale</b>: cần {fmtMoney(sumReconCdtSale)}, config hiện{" "}
-                  {fmtMoney(p.cdtBonusSale)}
-                </div>
-              )}
-              {missingCfgMgr >= 1000 && (
-                <div>
-                  · Thiếu <b>CĐT thưởng QL</b>: cần {fmtMoney(sumReconCdtMgr)}, config hiện{" "}
-                  {fmtMoney(p.cdtBonusManager)}
-                </div>
-              )}
+              Thông tin căn thiếu nhập:
+              {missingCfgSale >= 1000 && <span> &quot;chủ đầu tư thưởng sale&quot;</span>}
+              {missingCfgSale >= 1000 && missingCfgMgr >= 1000 && <span>,</span>}
+              {missingCfgMgr >= 1000 && <span> &quot;chủ đầu tư thưởng quản lý&quot;</span>}
             </div>
             <div className="mt-2">
               <Link
                 href={`/products/${id}/edit`}
                 className="text-xs bg-amber-600 text-white px-3 py-1 rounded hover:bg-amber-700"
               >
-                Sửa config căn →
+                Sửa thông tin căn →
               </Link>
             </div>
           </div>
