@@ -49,10 +49,51 @@ const COLUMN_FIELDS = [
 ] as const;
 type ColumnField = (typeof COLUMN_FIELDS)[number]["key"];
 
-// Parse TSV: paste từ Excel → row cách nhau \n, cell cách nhau \t.
+// Parse TSV Excel-style: cell chứa \n hoặc \t được quote bằng "..." (RFC-4180).
+// Double-quote bên trong = "".
 function parseTSV(raw: string): string[][] {
-  const lines = raw.replace(/\r\n?/g, "\n").split("\n");
-  return lines.map((l) => l.split("\t"));
+  const s = raw.replace(/\r\n?/g, "\n");
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = "";
+  let inQuotes = false;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (s[i + 1] === '"') {
+          cell += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        cell += ch;
+      }
+      continue;
+    }
+    if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === "\t") {
+      row.push(cell.trim());
+      cell = "";
+    } else if (ch === "\n") {
+      row.push(cell.trim());
+      rows.push(row);
+      row = [];
+      cell = "";
+    } else {
+      cell += ch;
+    }
+  }
+  if (cell !== "" || row.length > 0) {
+    row.push(cell.trim());
+    rows.push(row);
+  }
+  // Bỏ trailing empty rows
+  while (rows.length > 0 && rows[rows.length - 1].every((c) => c === "")) rows.pop();
+  // Normalize header cell: gộp \n giữa cell thành space (do quoted multi-line cell)
+  return rows.map((r) => r.map((c) => c.replace(/\s+/g, " ").trim()));
 }
 
 // Parse số tiền: bỏ dấu . , dấu cách. "65.105.193" hoặc "65,105,193" → 65105193.
