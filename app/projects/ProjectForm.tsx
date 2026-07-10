@@ -51,8 +51,8 @@ export default function ProjectForm({ project, partners, onSave, onDelete }: Pro
               onChange={(e) => setDefaultSaleType(e.target.value as "primary" | "secondary")}
               className="input"
             >
-              <option value="primary">Sơ cấp — BRE broker cho CĐT</option>
-              <option value="secondary">Thứ cấp — mua bán lại, không có CĐT/vai trò BRE</option>
+              <option value="primary">Sơ cấp</option>
+              <option value="secondary">Thứ cấp</option>
             </select>
             <div className="text-[10px] text-slate-500 mt-1">
               Một dự án có thể vừa sơ cấp vừa thứ cấp → tạo 2 record riêng.
