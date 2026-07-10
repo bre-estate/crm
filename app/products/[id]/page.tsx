@@ -369,19 +369,37 @@ export default async function ProductDetailPage({
             </div>
           </div>
 
-          {/* Row 2: 2 loại phí admin */}
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <Info
-              label="Phí admin thực (CĐT giữ)"
-              value={fmtMoney(p.adminFee)}
-              tooltip={`Số CĐT trực tiếp giữ để trả sàn F1. Có thể khác "Phí admin ghi cho sale" (${fmtMoney(p.adminFeeSale)}): chênh CTY tự bù từ Pool B.`}
-            />
-            <Info
-              label="Phí admin sale (ghi cho sale)"
-              value={fmtMoney(p.adminFeeSale)}
-              tooltip="Số ghi trong bảng lương sale — thường thấp hơn admin thực để sale ko thấy chán."
-            />
-          </div>
+          {/* Row 2: Phí admin */}
+          {(() => {
+            const feeReal = Number(p.adminFee ?? 0);
+            const feeSale = Number(p.adminFeeSale ?? 0);
+            const sameFee = Math.abs(feeReal - feeSale) < 1000;
+            if (sameFee) {
+              return (
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <Info
+                    label="Phí admin"
+                    value={fmtMoney(feeReal)}
+                    tooltip="Số CĐT trừ khỏi PMG trước khi trả BRE. Đồng thời cũng là số dùng khi tính HH sale."
+                  />
+                </div>
+              );
+            }
+            return (
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <Info
+                  label="Phí admin (CĐT trừ)"
+                  value={fmtMoney(feeReal)}
+                  tooltip="Số CĐT trừ khỏi PMG trước khi trả BRE (VD PMG 100M − admin 8,8M → BRE nhận 91,2M)."
+                />
+                <Info
+                  label="Phí admin (tính HH sale)"
+                  value={fmtMoney(feeSale)}
+                  tooltip={`Số dùng trong công thức tính HH sale — thấp hơn phí thực (${fmtMoney(feeReal)}) để sale nhận HH cao hơn. Chênh ${fmtMoney(feeReal - feeSale)} công ty tự chịu.`}
+                />
+              </div>
+            );
+          })()}
 
           {/* Row 3: CĐT thưởng nóng */}
           <div className="grid grid-cols-2 gap-3 mb-4">

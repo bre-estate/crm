@@ -254,21 +254,27 @@ export default function ProductForm({ product, projects, departments = [], onSav
 
           {/* Row 2: 2 loại phí admin */}
           <div className="grid grid-cols-2 gap-4 mt-4">
-            <Field label="Phí admin thực (CĐT giữ, gồm VAT)">
+            <Field label="Phí admin (CĐT trừ khỏi PMG)">
               <MoneyInput
                 name="adminFee"
                 defaultValue={product?.adminFee ?? 0}
                 className="input"
                 onValueChange={setAdminFeeLive}
               />
+              <div className="text-[10px] text-slate-500 mt-1">
+                Số CĐT trừ khỏi PMG trước khi chuyển tiền vào TK BRE
+              </div>
             </Field>
-            <Field label="Phí admin sale (ghi cho sale, có thể thấp hơn)">
+            <Field label="Phí admin (dùng tính HH sale)">
               <MoneyInput
                 name="adminFeeSale"
                 defaultValue={product?.adminFeeSale ?? 0}
                 className="input"
                 onValueChange={setAdminFeeSaleLive}
               />
+              <div className="text-[10px] text-slate-500 mt-1">
+                Số ghi trong công thức HH sale. Có thể thấp hơn phí thực để sale nhận HH cao hơn — chênh cty tự chịu
+              </div>
             </Field>
           </div>
 
