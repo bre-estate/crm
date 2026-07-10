@@ -965,25 +965,12 @@ export default async function ProductDetailPage({
             <tbody>
               {revRecs.map(({ rec, invoice }) => {
                 const hasDate = !!rec.reconciliationDate;
-                const paidForThisRec = revPayments
-                  .filter((p) => p.payment.reconciliationId === rec.id)
-                  .reduce((s, p) => s + Number(p.payment.amount ?? 0), 0);
-                const receivable = Number(rec.totalReceivableThisTime ?? 0);
-                const isFullyPaid = receivable > 0 && Math.abs(paidForThisRec - receivable) < 1000;
-                const isPartialPaid = paidForThisRec > 0 && !isFullyPaid;
                 const bonusSaleAmt = Number(rec.cdtBonusSale ?? 0);
                 const bonusMgrAmt = Number(rec.cdtBonusManager ?? 0);
                 const isBonusSale = bonusSaleAmt > 0;
                 const isBonusMgr = bonusMgrAmt > 0;
                 const isBonus = isBonusSale || isBonusMgr;
                 const hasInvoice = !!invoice?.invoiceNumber;
-                // 3 label chính: Đã ĐC, Đã thanh toán, Hoàn thành
-                let status: { label: string; color: string } = { label: "Chưa ĐC", color: "bg-slate-100 text-slate-600" };
-                if (!hasDate && isFullyPaid) status = { label: "Đã thanh toán", color: "bg-green-100 text-green-700" };
-                else if (!hasDate) status = { label: "Chưa ĐC", color: "bg-slate-100 text-slate-600" };
-                else if (isFullyPaid) status = { label: "Hoàn thành", color: "bg-green-100 text-green-700" };
-                else if (isPartialPaid) status = { label: "Đã ĐC · TT 1 phần", color: "bg-orange-100 text-orange-700" };
-                else status = { label: "Đã ĐC", color: "bg-yellow-100 text-yellow-700" };
                 return (
                   <tr key={rec.id} className="border-t border-slate-100">
                     <td className="p-2 text-center font-semibold">{rec.phaseNumber ?? "—"}</td>
@@ -1005,9 +992,9 @@ export default async function ProductDetailPage({
                         </span>
                       )}
                     </td>
-                    <td className="p-2">{fmtDate(rec.reconciliationDate)}</td>
+                    <td className="p-2 whitespace-nowrap">{fmtDate(rec.reconciliationDate)}</td>
                     <td className="p-2 font-mono">{invoice?.invoiceNumber ?? "—"}</td>
-                    <td className="p-2">{fmtDate(invoice?.invoiceDate)}</td>
+                    <td className="p-2 whitespace-nowrap">{fmtDate(invoice?.invoiceDate)}</td>
                     <td className="p-2 text-right tabular-nums">
                       {rec.pmgCumulativePct ? fmtPct(rec.pmgCumulativePct) : "—"}
                     </td>
@@ -1018,19 +1005,19 @@ export default async function ProductDetailPage({
                       {fmtMoney(rec.totalReceivableThisTime)}
                     </td>
                     <td className="p-2">
-                      <div className="flex flex-col gap-1 items-start">
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap ${status.color}`}>
-                          {status.label}
-                        </span>
-                        {hasDate && (
-                          <span
-                            className={`text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap ${
-                              hasInvoice
-                                ? "bg-green-50 text-green-700 border border-green-200"
-                                : "bg-red-50 text-red-700 border border-red-200"
-                            }`}
-                          >
-                            {hasInvoice ? "Đã có HĐ" : "Chưa có HĐ"}
+                      <div className="flex gap-1 items-center flex-wrap">
+                        {hasDate ? (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap bg-yellow-100 text-yellow-700">
+                            Đã ĐC
+                          </span>
+                        ) : (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap bg-slate-100 text-slate-500">
+                            Chưa ĐC
+                          </span>
+                        )}
+                        {hasInvoice && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap bg-green-100 text-green-700">
+                            Đã có HĐ
                           </span>
                         )}
                       </div>

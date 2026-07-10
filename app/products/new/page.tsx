@@ -1,12 +1,12 @@
 import { db } from "@/lib/db";
-import { projects, partners, departments } from "@/lib/schema";
+import { products, projects, partners, departments } from "@/lib/schema";
 import { asc, eq } from "drizzle-orm";
 import Link from "next/link";
 import ProductForm from "../ProductForm";
 import { createProduct } from "@/lib/actions/products";
 
 export default async function NewProductPage() {
-  const allProjects = await db
+  const rawProjects = await db
     .select({
       id: projects.id,
       code: projects.code,
@@ -43,6 +43,22 @@ export default async function NewProductPage() {
     .from(projects)
     .leftJoin(partners, eq(projects.partnerId, partners.id))
     .orderBy(asc(projects.name));
+
+  const productSaleTypes = await db
+    .select({ projectId: products.projectId, saleType: products.saleType })
+    .from(products);
+  const primarySet = new Set<number>();
+  const secondarySet = new Set<number>();
+  for (const p of productSaleTypes) {
+    if (!p.projectId) continue;
+    if (p.saleType === "secondary") secondarySet.add(p.projectId);
+    else primarySet.add(p.projectId);
+  }
+  const allProjects = rawProjects.map((p) => ({
+    ...p,
+    hasPrimary: primarySet.has(p.id),
+    hasSecondary: secondarySet.has(p.id),
+  }));
 
   const allPartners = await db.select().from(partners).orderBy(asc(partners.name));
   const allDepts = await db.select().from(departments).orderBy(asc(departments.name));

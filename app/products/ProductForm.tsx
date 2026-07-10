@@ -1,13 +1,17 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Product, Project, Partner, Department } from "@/lib/schema";
 import MoneyInput from "@/components/MoneyInput";
 import SearchableSelect from "@/components/SearchableSelect";
 import { fmtMoney, toTitleCase } from "@/lib/format";
 
-type ProjectWithPartner = Project & { partnerName?: string | null };
+type ProjectWithPartner = Project & {
+  partnerName?: string | null;
+  hasPrimary?: boolean;
+  hasSecondary?: boolean;
+};
 
 type Props = {
   product?: Product;
@@ -29,6 +33,28 @@ export default function ProductForm({ product, projects, departments = [], onSav
     (product?.saleType as "primary" | "secondary") ?? "primary",
   );
   const isSecondary = saleType === "secondary";
+
+  // Filter dự án theo loại giao dịch — chỉ hiện dự án đã có sản phẩm cùng loại.
+  // Dự án chưa có sản phẩm nào → hiện ở cả 2 loại (chưa phân loại).
+  const filteredProjects = useMemo(() => {
+    return projects.filter((p) => {
+      const hasP = p.hasPrimary ?? false;
+      const hasS = p.hasSecondary ?? false;
+      if (!hasP && !hasS) return true; // new project — allow all
+      return saleType === "secondary" ? hasS : hasP;
+    });
+  }, [projects, saleType]);
+
+  const [projectId, setProjectId] = useState<string>(
+    String(product?.projectId ?? filteredProjects[0]?.id ?? ""),
+  );
+  // Nếu switch saleType → project hiện tại không còn trong list → reset về option đầu
+  useEffect(() => {
+    if (!projectId) return;
+    if (!filteredProjects.some((p) => String(p.id) === projectId)) {
+      setProjectId(String(filteredProjects[0]?.id ?? ""));
+    }
+  }, [filteredProjects, projectId]);
 
   // === Live compute state (Section Doanh thu) ===
   const [pmgBase, setPmgBase] = useState<number>(Number(product?.pmgBasePrice ?? 0));
@@ -104,16 +130,27 @@ export default function ProductForm({ product, projects, departments = [], onSav
     >
       <Section title="Thông tin căn">
         <div className="grid grid-cols-2 gap-4">
+          <Field label="Loại giao dịch" required>
+            <select
+              name="saleType"
+              value={saleType}
+              onChange={(e) => setSaleType(e.target.value as "primary" | "secondary")}
+              className="input"
+            >
+              <option value="primary">Sơ cấp</option>
+              <option value="secondary">Thứ cấp</option>
+            </select>
+          </Field>
           <Field label="Dự án" required>
             <SearchableSelect
               name="projectId"
-              defaultValue={product?.projectId ?? projects[0]?.id ?? ""}
+              value={projectId}
+              onChange={setProjectId}
               placeholder="Gõ tên dự án..."
               required
-              options={projects.map((p) => ({
+              options={filteredProjects.map((p) => ({
                 value: p.id,
-                label: p.name,
-                sublabel: p.fullCode,
+                label: p.partnerName ? `${p.name} - ${p.partnerName}` : p.name,
               }))}
             />
           </Field>
@@ -158,17 +195,6 @@ export default function ProductForm({ product, projects, departments = [], onSav
               }))}
             />
             <input type="hidden" name="deptName" defaultValue={product?.deptName ?? ""} />
-          </Field>
-          <Field label="Loại giao dịch">
-            <select
-              name="saleType"
-              value={saleType}
-              onChange={(e) => setSaleType(e.target.value as "primary" | "secondary")}
-              className="input"
-            >
-              <option value="primary">Sơ cấp</option>
-              <option value="secondary">Thứ cấp</option>
-            </select>
           </Field>
           <Field label="Tháng ghi nhận DT (YYYY-MM)">
             <input
