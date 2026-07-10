@@ -16,12 +16,13 @@ type Props = {
   departments?: Department[];
   onSave: (fd: FormData) => Promise<void>;
   onDelete?: () => Promise<void>;
+  returnTo?: string | null;
 };
 
 const pctDisplay = (v: number | null | undefined): string =>
   v == null ? "" : String(Number((Number(v) * 100).toFixed(4)));
 
-export default function ProductForm({ product, projects, departments = [], onSave, onDelete }: Props) {
+export default function ProductForm({ product, projects, departments = [], onSave, onDelete, returnTo }: Props) {
   const [pending, start] = useTransition();
   const router = useRouter();
   const [saleType, setSaleType] = useState<"primary" | "secondary">(
@@ -477,9 +478,13 @@ export default function ProductForm({ product, projects, departments = [], onSav
           </button>
         )}
         <div className="flex-1" />
+        {returnTo && <input type="hidden" name="__returnTo" value={returnTo} />}
         <button
           type="button"
-          onClick={() => router.back()}
+          onClick={() => {
+            if (returnTo) router.push(returnTo);
+            else router.back();
+          }}
           className="px-4 py-2 border border-slate-300 rounded-lg text-sm hover:bg-slate-50"
         >
           Hủy

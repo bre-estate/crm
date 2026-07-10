@@ -19,10 +19,20 @@ export const dynamic = "force-dynamic";
 
 export default async function ProductDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ returnTo?: string }>;
 }) {
   const { id: idStr } = await params;
+  const sp = await searchParams;
+  const returnTo =
+    sp.returnTo && sp.returnTo.startsWith("/") && !sp.returnTo.startsWith("//")
+      ? sp.returnTo
+      : null;
+  const editHref = returnTo
+    ? `/products/${idStr}/edit?returnTo=${encodeURIComponent(returnTo)}`
+    : `/products/${idStr}/edit`;
   const id = Number(idStr);
   if (!Number.isFinite(id)) notFound();
 
@@ -237,7 +247,7 @@ export default async function ProductDetailPage({
           </div>
         </div>
         <Link
-          href={`/products/${id}/edit`}
+          href={editHref}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 whitespace-nowrap"
         >
           Sửa giao dịch
@@ -303,7 +313,7 @@ export default async function ProductDetailPage({
             </div>
             <div className="mt-2">
               <Link
-                href={`/products/${id}/edit`}
+                href={editHref}
                 className="text-xs bg-amber-600 text-white px-3 py-1 rounded hover:bg-amber-700"
               >
                 Sửa thông tin căn →

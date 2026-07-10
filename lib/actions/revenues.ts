@@ -146,6 +146,14 @@ export async function createRevenue(fd: FormData) {
   redirect("/revenues");
 }
 
+function safeReturnTo(fd: FormData): string | null {
+  const raw = fd.get("__returnTo");
+  if (!raw) return null;
+  const s = String(raw).trim();
+  if (!s.startsWith("/") || s.startsWith("//")) return null;
+  return s;
+}
+
 export async function updateRevenue(id: number, fd: FormData) {
   const data = buildRevenueData(fd);
   if (!data.productId) throw new Error("Chọn căn (sản phẩm)");
@@ -162,9 +170,10 @@ export async function updateRevenue(id: number, fd: FormData) {
 
   await applyConfigToProduct(fd, data.productId, data.pmgCumulativePct);
 
+  const returnTo = safeReturnTo(fd);
   revalidatePath("/revenues");
   revalidatePath(`/revenues/${id}/edit`);
-  redirect("/revenues");
+  redirect(returnTo ?? "/revenues");
 }
 
 export async function deleteRevenue(id: number) {

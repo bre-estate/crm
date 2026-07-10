@@ -49,6 +49,16 @@ async function buildProductCode(projectId: number, unitCode: string): Promise<st
   return `${pj.projectCode}_${pj.partnerCode ?? "XXXX"}_${unitCode}`;
 }
 
+// Only allow relative same-origin returnTo (e.g., /products?dept=1) — reject
+// absolute URLs, protocol-relative (//evil.com), or empty strings.
+function safeReturnTo(fd: FormData): string | null {
+  const raw = fd.get("__returnTo");
+  if (!raw) return null;
+  const s = String(raw).trim();
+  if (!s.startsWith("/") || s.startsWith("//")) return null;
+  return s;
+}
+
 function buildProductData(fd: FormData) {
   const saleTypeRaw = toStr(fd.get("saleType"));
   const saleType: "primary" | "secondary" = saleTypeRaw === "secondary" ? "secondary" : "primary";
@@ -115,9 +125,10 @@ export async function updateProduct(id: number, fd: FormData) {
   if (!data.projectId || !data.unitCode) throw new Error("Chọn dự án và nhập mã căn");
   const productCode = await buildProductCode(data.projectId, data.unitCode);
   await db.update(products).set({ productCode, ...data }).where(eq(products.id, id));
+  const returnTo = safeReturnTo(fd);
   revalidatePath("/products");
   revalidatePath(`/products/${id}`);
-  redirect(`/products/${id}`);
+  redirect(returnTo ?? `/products/${id}`);
 }
 
 export type BulkProductRow = {

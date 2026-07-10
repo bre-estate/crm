@@ -22,10 +22,17 @@ import {
 
 export default async function EditRevenuePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ returnTo?: string }>;
 }) {
   const { id: idStr } = await params;
+  const sp = await searchParams;
+  const returnTo =
+    sp.returnTo && sp.returnTo.startsWith("/") && !sp.returnTo.startsWith("//")
+      ? sp.returnTo
+      : null;
   const id = Number(idStr);
   if (!Number.isFinite(id)) notFound();
 
@@ -111,6 +118,7 @@ export default async function EditRevenuePage({
         recon={recon}
         invoiceInit={invoiceInit}
         products={productOptions}
+        returnTo={returnTo}
         onSave={async (fd) => {
           "use server";
           await updateRevenue(id, fd);

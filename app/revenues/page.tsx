@@ -31,6 +31,15 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
   const activeTab: "primary" | "secondary" = tab === "secondary" ? "secondary" : "primary";
   const activeStatus = (STATUS_OPTIONS.find((s) => s.key === status)?.key ?? "all") as (typeof STATUS_OPTIONS)[number]["key"];
 
+  const returnToParams = new URLSearchParams();
+  if (projectId) returnToParams.set("projectId", String(projectId));
+  if (unitCode) returnToParams.set("unitCode", String(unitCode));
+  if (tab) returnToParams.set("tab", String(tab));
+  if (status) returnToParams.set("status", String(status));
+  const returnToQs = returnToParams.toString();
+  const returnTo = returnToQs ? `/revenues?${returnToQs}` : "/revenues";
+  const editQs = `?returnTo=${encodeURIComponent(returnTo)}`;
+
   const allProjects = await db
     .select({ id: projects.id, name: projects.name, fullCode: projects.fullCode })
     .from(projects)
@@ -47,6 +56,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
     cdtBonusSale: revenueReconciliations.cdtBonusSale,
     cdtBonusManager: revenueReconciliations.cdtBonusManager,
     totalReceivable: revenueReconciliations.totalReceivableThisTime,
+    note: revenueReconciliations.note,
     invoiceNumber: invoices.invoiceNumber,
     invoiceDate: invoices.invoiceDate,
     unitCode: products.unitCode,
@@ -337,6 +347,14 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
                         Thưởng nóng
                       </span>
                     )}
+                    {r.note && r.note.trim() && (
+                      <span
+                        className="ml-1 text-slate-400 cursor-help"
+                        title={r.note}
+                      >
+                        📝
+                      </span>
+                    )}
                   </td>
                   <td className="p-2 font-mono text-xs">{r.invoiceNumber ?? "—"}</td>
                   <td className="p-2 text-xs">{fmtDate(r.invoiceDate)}</td>
@@ -390,7 +408,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
                   </td>
                   <td className="p-2 text-right">
                     <Link
-                      href={`/revenues/${r.id}/edit`}
+                      href={`/revenues/${r.id}/edit${editQs}`}
                       className="text-blue-600 hover:underline text-xs"
                     >
                       Sửa

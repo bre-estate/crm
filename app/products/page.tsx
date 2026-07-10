@@ -32,6 +32,18 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
   const dateTo = to?.trim() || null;
   const filterUnitCode = unitCode?.trim() || null;
 
+  // Preserve filter state khi user vào edit rồi save → quay lại list
+  const returnToParams = new URLSearchParams();
+  if (projectId) returnToParams.set("projectId", String(projectId));
+  if (departmentId) returnToParams.set("departmentId", String(departmentId));
+  if (tab) returnToParams.set("tab", String(tab));
+  if (from) returnToParams.set("from", String(from));
+  if (to) returnToParams.set("to", String(to));
+  if (unitCode) returnToParams.set("unitCode", String(unitCode));
+  const returnToQs = returnToParams.toString();
+  const returnTo = returnToQs ? `/products?${returnToQs}` : "/products";
+  const detailQs = `?returnTo=${encodeURIComponent(returnTo)}`;
+
   const allProjects = await db
     .select({ id: projects.id, name: projects.name, fullCode: projects.fullCode })
     .from(projects)
@@ -428,7 +440,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
               return (
                 <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50">
                   <td className="p-2 font-mono text-xs">
-                    <Link href={`/products/${r.id}`} className="text-blue-600 hover:underline">
+                    <Link href={`/products/${r.id}${detailQs}`} className="text-blue-600 hover:underline">
                       {r.unitCode}
                     </Link>
                     {r.note && r.note.trim() && (
@@ -511,7 +523,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
                     )}
                   </td>
                   <td className="p-2 text-right">
-                    <Link href={`/products/${r.id}`} className="text-blue-600 hover:underline text-sm">
+                    <Link href={`/products/${r.id}${detailQs}`} className="text-blue-600 hover:underline text-sm">
                       Chi tiết
                     </Link>
                   </td>

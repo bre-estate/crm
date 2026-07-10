@@ -10,10 +10,17 @@ import { updateProduct, deleteProduct, createProductAdjustment } from "@/lib/act
 
 export default async function EditProductPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ returnTo?: string }>;
 }) {
   const { id: idStr } = await params;
+  const sp = await searchParams;
+  const returnTo =
+    sp.returnTo && sp.returnTo.startsWith("/") && !sp.returnTo.startsWith("//")
+      ? sp.returnTo
+      : null;
   const id = Number(idStr);
   if (!Number.isFinite(id)) notFound();
 
@@ -88,6 +95,7 @@ export default async function EditProductPage({
         projects={allProjects}
         partners={allPartners}
         departments={allDepts}
+        returnTo={returnTo}
         onSave={async (fd) => {
           "use server";
           await updateProduct(id, fd);
