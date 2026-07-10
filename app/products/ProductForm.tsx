@@ -94,28 +94,37 @@ export default function ProductForm({ product, projects, departments = [], onSav
   );
 
   const cdtBonusTotal = cdtBonusSaleLive + cdtBonusMgrLive;
-  // Chuẩn Excel col P: PMG × %PMG_LK − phí admin + CĐT thưởng
-  // (đồng bộ với trang detail)
-  const grossTotal = pmgBase * pmgRateLive - adminFeeLive + cdtBonusTotal;
+  // Chuẩn Excel col P: PMG × (%PMG_LK + %phí khác) + DT khác − giảm DT − admin + CĐT thưởng
+  // Các field legacy (otherFeePct/otherRevenue/revenueReduction) không có UI, chỉ preserve từ DB.
+  const otherFeePctLegacy = Number(product?.otherFeePct ?? 0);
+  const otherRevenueLegacy = Number(product?.otherRevenue ?? 0);
+  const revenueReductionLegacy = Number(product?.revenueReduction ?? 0);
+  const grossTotal =
+    pmgBase * (pmgRateLive + otherFeePctLegacy) +
+    otherRevenueLegacy -
+    revenueReductionLegacy -
+    adminFeeLive +
+    cdtBonusTotal;
   const netInternal = pmgBase * pmgRateLive - adminFeeLive;
   const dtThangDu = pmgBase * Math.max(0, pmgRateLive - pmgSaleRateLive);
 
-  // Giá vốn computed
-  const Q_sale = pmgBase * pmgSaleRateLive;
-  const hhSaleAmt = Q_sale * saleCommRateLive;
-  const kpiCeoAmt = Q_sale * kpiCeoRateLive;
-  const kpiTpkdAmt = Q_sale * kpiTpkdRateLive;
-  const kpiAdminAmt = Q_sale * kpiAdminRateLive;
-  const adminSubsidyLive = Math.max(0, adminFeeLive - adminFeeSaleLive);
+  // Giá vốn — CHUẨN Excel col R (đồng bộ trang detail):
+  //   baseNet = (PMG × %PMG_LK_sale − admin sale) / 1,1 − hỗ trợ khách
+  //   HH sale = baseNet × %HH + CĐT thưởng / 1,1 + CTY thưởng NVKD
+  //   KPI CEO/TPKD/Admin = baseNet × %KPI
+  //   Tổng = HH sale + KPI CEO + KPI TPKD + KPI Admin + CTY thưởng QL + CP khác
+  const otherCostStored = Number(product?.otherCost ?? 0);
+  const bonusSaleStored = Number(product?.bonusSale ?? 0);
+  const baseNetLive =
+    (pmgBase * pmgSaleRateLive - adminFeeSaleLive) / 1.1 - customerSupportLive;
+  const cdtBonusNetLive = cdtBonusTotal / 1.1;
+  const hhSaleBaseLive = baseNetLive * saleCommRateLive;
+  const hhSaleAmt = hhSaleBaseLive + cdtBonusNetLive + bonusSaleStored;
+  const kpiCeoAmt = baseNetLive * kpiCeoRateLive;
+  const kpiTpkdAmt = baseNetLive * kpiTpkdRateLive;
+  const kpiAdminAmt = baseNetLive * kpiAdminRateLive;
   const totalCostLive =
-    hhSaleAmt +
-    kpiCeoAmt +
-    kpiTpkdAmt +
-    kpiAdminAmt +
-    adminFeeSaleLive +
-    customerSupportLive +
-    bonusMgrCtyLive +
-    adminSubsidyLive;
+    hhSaleAmt + kpiCeoAmt + kpiTpkdAmt + kpiAdminAmt + bonusMgrCtyLive + otherCostStored;
 
   return (
     <form
@@ -376,12 +385,22 @@ export default function ProductForm({ product, projects, departments = [], onSav
             </div>
           </div>
 
-          {/* Hidden: totalRevenue tự tính = netInternal, sellPrice = pmgBasePrice */}
-          <input type="hidden" name="totalRevenue" value={String(netInternal)} />
+          {/* Hidden: totalRevenue = Tổng ghi nhận (Excel col P, khớp reports).
+              sellPrice = pmgBasePrice.
+              Preserve otherFeePct/otherRevenue/revenueReduction từ legacy — không hard-zero. */}
+          <input type="hidden" name="totalRevenue" value={String(grossTotal)} />
           <input type="hidden" name="sellPrice" value={String(pmgBase)} />
-          <input type="hidden" name="otherFeePct" value="" />
-          <input type="hidden" name="otherRevenue" value={0} />
-          <input type="hidden" name="revenueReduction" value={0} />
+          <input
+            type="hidden"
+            name="otherFeePct"
+            value={product?.otherFeePct != null ? String(Number(product.otherFeePct) * 100) : ""}
+          />
+          <input type="hidden" name="otherRevenue" value={String(Number(product?.otherRevenue ?? 0))} />
+          <input
+            type="hidden"
+            name="revenueReduction"
+            value={String(Number(product?.revenueReduction ?? 0))}
+          />
           </>
         )}
       </Section>
@@ -417,8 +436,9 @@ export default function ProductForm({ product, projects, departments = [], onSav
               onValueChange={setBonusMgrCtyLive}
             />
           </Field>
-          <input type="hidden" name="bonusSale" value={0} />
-          <input type="hidden" name="otherCost" value={0} />
+          {/* Preserve giá trị legacy — không hard-zero */}
+          <input type="hidden" name="bonusSale" value={String(bonusSaleStored)} />
+          <input type="hidden" name="otherCost" value={String(otherCostStored)} />
           {!isSecondary && (
             <>
               <Field label="%PMG_LK_sale (base tính HH sale)">
@@ -485,7 +505,7 @@ export default function ProductForm({ product, projects, departments = [], onSav
                 Tổng giá vốn
                 <span
                   className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-orange-300 text-white text-[10px] cursor-help select-none"
-                  title={`Tự động tính từ:\n= HH sale (Q_sale × %HH)\n+ KPI CEO/TPKD/Admin (Q_sale × %KPI)\n+ Hỗ trợ khách\n+ CTY thưởng QL\n+ Phí admin sale${adminSubsidyLive > 0 ? `\n+ Bù admin ${fmtMoney(adminSubsidyLive)} (admin thực > admin sale)` : ""}\n\nQ_sale = Giá tính PMG × %PMG_LK_sale`}
+                  title={`Tự động tính theo Excel col R:\nbaseNet = (PMG × %PMG_LK_sale − admin sale) / 1,1 − hỗ trợ khách\n\n= HH sale (baseNet × %HH + CĐT thưởng/1,1 + CTY thưởng NVKD)\n+ KPI CEO/TPKD/Admin (baseNet × %KPI)\n+ CTY thưởng QL\n+ CP giá vốn khác`}
                 >
                   ?
                 </span>
