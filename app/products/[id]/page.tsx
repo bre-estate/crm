@@ -779,36 +779,51 @@ export default async function ProductDetailPage({
       {/* === 4. THU PHÍ TỪ CĐT === (chỉ áp dụng cho sơ cấp) */}
       {!isSecondary && (
       <SectionCard title="5. Thu phí HH từ CĐT" icon="💵">
-        {(expectedBonus > 0 || receivedBonus > 0) && (
-          <div className="text-xs text-slate-600 mb-3 -mt-1">
-            Thu phí từ CĐT gồm 2 phần: <b>(1)</b> HH sale theo %PMG_LK · <b>(2)</b> Thưởng nóng CĐT
-          </div>
-        )}
-        {/* (1) HH sale */}
-        <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
-          {expectedBonus > 0 || receivedBonus > 0 ? "(1) " : ""}
-          HH sale (theo %PMG_LK mới nhất: {fmtPct(latestPmgRate, 2)})
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-2">
-          <Info
-            label="Dự kiến"
-            value={fmtMoney(expectedHHSale)}
-            tooltip={`= pmg_base × %PMG_LK − admin. Với %PMG_LK ${fmtPct(latestPmgRate, 2)} hiện tại: ${fmtMoney(expectedHHSaleGross)} − ${fmtMoney(p.adminFee)} = ${fmtMoney(expectedHHSale)}`}
-          />
-          <Info
-            label="Đã nhận (vào TK)"
-            value={fmtMoney(paidHHSale)}
-            tooltip="Số CĐT đã thực chuyển vào tài khoản BRE. Chỉ tính khi biên bản đã ĐC + CĐT đã thanh toán."
-            accent="green"
-          />
-          {(() => {
-            const remaining = Math.max(0, expectedHHSale - paidHHSale);
-            const remainDCPending = Math.max(0, receivedHH - paidHHSale); // đã ĐC chưa thu
-            const remainNotDC = Math.max(0, expectedHHSale - receivedHH); // chưa lập biên bản
-            const pct = expectedHHSale > 0 ? (paidHHSale / expectedHHSale) * 100 : 0;
-            const isDone = remaining < 1000;
-            return (
-              <>
+        {(() => {
+          const hasBonus = expectedBonus > 0 || receivedBonus > 0;
+          const expectedTotal = expectedHHSale + expectedBonus;
+          const paidTotal = paidHHSale + paidBonus;
+          const receivedTotal = receivedHH + receivedBonus;
+          const remaining = Math.max(0, expectedTotal - paidTotal);
+          const remainDCPending = Math.max(0, receivedTotal - paidTotal); // đã ĐC chưa thu
+          const remainNotDC = Math.max(0, expectedTotal - receivedTotal); // chưa lập biên bản
+          const pct = expectedTotal > 0 ? (paidTotal / expectedTotal) * 100 : 0;
+          const isDone = remaining < 1000;
+          return (
+            <>
+              <div className="text-xs text-slate-600 mb-3 -mt-1">
+                Thu phí từ CĐT gồm{" "}
+                {hasBonus ? (
+                  <>
+                    <b>HH sale</b> ({fmtMoney(expectedHHSale)}) + <b>Thưởng nóng CĐT</b> (
+                    {fmtMoney(expectedBonus)}) = {fmtMoney(expectedTotal)}
+                  </>
+                ) : (
+                  <>
+                    <b>HH sale</b> theo %PMG_LK mới nhất {fmtPct(latestPmgRate, 2)}
+                  </>
+                )}
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-2">
+                <Info
+                  label="Dự kiến"
+                  value={fmtMoney(expectedTotal)}
+                  tooltip={
+                    hasBonus
+                      ? `= HH sale (${fmtMoney(expectedHHSale)}) + Thưởng nóng (${fmtMoney(expectedBonus)}). HH sale = pmg_base × %PMG_LK − admin.`
+                      : `= pmg_base × %PMG_LK − admin. Với ${fmtPct(latestPmgRate, 2)}: ${fmtMoney(expectedHHSaleGross)} − ${fmtMoney(p.adminFee)} = ${fmtMoney(expectedHHSale)}`
+                  }
+                />
+                <Info
+                  label="Đã nhận (vào TK)"
+                  value={fmtMoney(paidTotal)}
+                  tooltip={
+                    hasBonus
+                      ? `Tổng CĐT đã chuyển vào TK. Trong đó: HH sale ${fmtMoney(paidHHSale)} + Thưởng nóng ${fmtMoney(paidBonus)}.`
+                      : "Số CĐT đã thực chuyển vào tài khoản BRE."
+                  }
+                  accent="green"
+                />
                 <Info
                   label="Còn phải nhận"
                   value={fmtMoney(remaining)}
@@ -821,66 +836,30 @@ export default async function ProductDetailPage({
                 />
                 <Info
                   label="% đã nhận"
-                  value={expectedHHSale > 0 ? fmtPctRaw(pct, 1) : "—"}
+                  value={expectedTotal > 0 ? fmtPctRaw(pct, 1) : "—"}
                   accent={isDone ? "green" : "red"}
                 />
-              </>
-            );
-          })()}
-        </div>
-        {/* Breakdown chi tiết */}
-        {(() => {
-          const remainDCPending = Math.max(0, receivedHH - paidHHSale);
-          const remainNotDC = Math.max(0, expectedHHSale - receivedHH);
-          if (remainDCPending < 1000 && remainNotDC < 1000) return null;
-          return (
-            <div className="text-xs text-slate-600 bg-amber-50 border border-amber-200 rounded-lg p-2 mb-4">
-              <span className="font-semibold text-amber-800">Trong phần còn phải nhận:</span>
-              {remainDCPending >= 1000 && (
-                <span className="ml-2">
-                  ⏳ <b className="tabular-nums">{fmtMoney(remainDCPending)}</b> đã ĐC (có biên bản), chờ CĐT chuyển tiền
-                </span>
+              </div>
+              {/* Breakdown chi tiết */}
+              {(remainDCPending >= 1000 || remainNotDC >= 1000) && (
+                <div className="text-xs text-slate-600 bg-amber-50 border border-amber-200 rounded-lg p-2 mb-4">
+                  <span className="font-semibold text-amber-800">Trong phần còn phải nhận:</span>
+                  {remainDCPending >= 1000 && (
+                    <span className="ml-2">
+                      ⏳ <b className="tabular-nums">{fmtMoney(remainDCPending)}</b> đã ĐC (có biên
+                      bản), chờ CĐT chuyển tiền
+                    </span>
+                  )}
+                  {remainNotDC >= 1000 && (
+                    <span className="ml-2">
+                      📋 <b className="tabular-nums">{fmtMoney(remainNotDC)}</b> chưa lập biên bản ĐC
+                    </span>
+                  )}
+                </div>
               )}
-              {remainNotDC >= 1000 && (
-                <span className="ml-2">
-                  📋 <b className="tabular-nums">{fmtMoney(remainNotDC)}</b> chưa lập biên bản ĐC
-                </span>
-              )}
-            </div>
+            </>
           );
         })()}
-
-        {/* (2) Thưởng nóng (nếu có) */}
-        {(expectedBonus > 0 || receivedBonus > 0) && (
-          <>
-            <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
-              (2) Thưởng nóng CĐT
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-              <Info label="Dự kiến" value={fmtMoney(expectedBonus)} />
-              <Info label="Đã nhận" value={fmtMoney(receivedBonus)} accent="green" />
-              {(() => {
-                const remaining = Math.max(0, expectedBonus - receivedBonus);
-                const pct = expectedBonus > 0 ? (receivedBonus / expectedBonus) * 100 : 0;
-                const isDone = remaining < 1000;
-                return (
-                  <>
-                    <Info
-                      label="Còn phải nhận"
-                      value={fmtMoney(remaining)}
-                      accent={isDone ? "slate" : "red"}
-                    />
-                    <Info
-                      label="% đã nhận"
-                      value={expectedBonus > 0 ? fmtPctRaw(pct, 1) : "—"}
-                      accent={isDone ? "green" : "red"}
-                    />
-                  </>
-                );
-              })()}
-            </div>
-          </>
-        )}
 
         <div className="flex justify-between items-center mb-2">
           <div className="text-xs text-slate-500 uppercase font-semibold">
