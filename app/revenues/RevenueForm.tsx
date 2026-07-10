@@ -519,10 +519,7 @@ export default function RevenueForm({
         {returnTo && <input type="hidden" name="__returnTo" value={returnTo} />}
         <button
           type="button"
-          onClick={() => {
-            if (returnTo) router.push(returnTo);
-            else router.back();
-          }}
+          onClick={() => router.back()}
           className="px-4 py-2 border border-slate-300 rounded-lg text-sm hover:bg-slate-50"
         >
           Hủy

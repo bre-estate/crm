@@ -128,7 +128,12 @@ export async function updateProduct(id: number, fd: FormData) {
   const returnTo = safeReturnTo(fd);
   revalidatePath("/products");
   revalidatePath(`/products/${id}`);
-  redirect(returnTo ?? `/products/${id}`);
+  // Luôn quay về detail. Giữ returnTo trong URL để breadcrumb "← Giao dịch"
+  // biết đường về list-với-filter.
+  const dest = returnTo
+    ? `/products/${id}?returnTo=${encodeURIComponent(returnTo)}`
+    : `/products/${id}`;
+  redirect(dest);
 }
 
 export type BulkProductRow = {

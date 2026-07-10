@@ -33,6 +33,12 @@ export default async function ProductDetailPage({
   const editHref = returnTo
     ? `/products/${idStr}/edit?returnTo=${encodeURIComponent(returnTo)}`
     : `/products/${idStr}/edit`;
+  // URL của trang detail này (kèm returnTo về list nếu có) — dùng cho
+  // Sửa recon để save xong quay về đây
+  const detailSelfUrl = returnTo
+    ? `/products/${idStr}?returnTo=${encodeURIComponent(returnTo)}`
+    : `/products/${idStr}`;
+  const childEditQs = `?returnTo=${encodeURIComponent(detailSelfUrl)}`;
   const id = Number(idStr);
   if (!Number.isFinite(id)) notFound();
 
@@ -220,7 +226,7 @@ export default async function ProductDetailPage({
     <div className="space-y-6 max-w-6xl">
       {/* Breadcrumb + title */}
       <div className="flex items-center gap-2 text-sm">
-        <Link href="/products" className="text-blue-600 hover:underline">
+        <Link href={returnTo ?? "/products"} className="text-blue-600 hover:underline">
           ← Giao dịch
         </Link>
         <span className="text-slate-400">/</span>
@@ -945,6 +951,7 @@ export default async function ProductDetailPage({
             <thead className="bg-slate-50 text-slate-600">
               <tr>
                 <th className="text-center p-2 whitespace-nowrap">Đợt</th>
+                <th className="text-left p-2 whitespace-nowrap">Loại</th>
                 <th className="text-left p-2 whitespace-nowrap">Ngày ĐC</th>
                 <th className="text-left p-2 whitespace-nowrap">Số HĐ</th>
                 <th className="text-left p-2 whitespace-nowrap">Ngày HĐ</th>
@@ -964,6 +971,12 @@ export default async function ProductDetailPage({
                 const receivable = Number(rec.totalReceivableThisTime ?? 0);
                 const isFullyPaid = receivable > 0 && Math.abs(paidForThisRec - receivable) < 1000;
                 const isPartialPaid = paidForThisRec > 0 && !isFullyPaid;
+                const bonusSaleAmt = Number(rec.cdtBonusSale ?? 0);
+                const bonusMgrAmt = Number(rec.cdtBonusManager ?? 0);
+                const isBonusSale = bonusSaleAmt > 0;
+                const isBonusMgr = bonusMgrAmt > 0;
+                const isBonus = isBonusSale || isBonusMgr;
+                const hasInvoice = !!invoice?.invoiceNumber;
                 // 3 label chính: Đã ĐC, Đã thanh toán, Hoàn thành
                 let status: { label: string; color: string } = { label: "Chưa ĐC", color: "bg-slate-100 text-slate-600" };
                 if (!hasDate && isFullyPaid) status = { label: "Đã thanh toán", color: "bg-green-100 text-green-700" };
@@ -974,6 +987,24 @@ export default async function ProductDetailPage({
                 return (
                   <tr key={rec.id} className="border-t border-slate-100">
                     <td className="p-2 text-center font-semibold">{rec.phaseNumber ?? "—"}</td>
+                    <td className="p-2">
+                      {isBonus ? (
+                        <span
+                          className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 whitespace-nowrap"
+                          title={
+                            isBonusMgr
+                              ? "Thưởng nóng CĐT cho QL sàn"
+                              : "Thưởng nóng CĐT cho sale"
+                          }
+                        >
+                          Thưởng nóng
+                        </span>
+                      ) : (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 whitespace-nowrap">
+                          HH
+                        </span>
+                      )}
+                    </td>
                     <td className="p-2">{fmtDate(rec.reconciliationDate)}</td>
                     <td className="p-2 font-mono">{invoice?.invoiceNumber ?? "—"}</td>
                     <td className="p-2">{fmtDate(invoice?.invoiceDate)}</td>
@@ -987,13 +1018,26 @@ export default async function ProductDetailPage({
                       {fmtMoney(rec.totalReceivableThisTime)}
                     </td>
                     <td className="p-2">
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap ${status.color}`}>
-                        {status.label}
-                      </span>
+                      <div className="flex flex-col gap-1 items-start">
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap ${status.color}`}>
+                          {status.label}
+                        </span>
+                        {hasDate && (
+                          <span
+                            className={`text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap ${
+                              hasInvoice
+                                ? "bg-green-50 text-green-700 border border-green-200"
+                                : "bg-red-50 text-red-700 border border-red-200"
+                            }`}
+                          >
+                            {hasInvoice ? "Đã có HĐ" : "Chưa có HĐ"}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="p-2 text-right">
                       <Link
-                        href={`/revenues/${rec.id}/edit`}
+                        href={`/revenues/${rec.id}/edit${childEditQs}`}
                         className="text-blue-600 hover:underline"
                       >
                         Sửa
@@ -1004,7 +1048,7 @@ export default async function ProductDetailPage({
               })}
               {revRecs.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="p-4 text-center text-slate-500">
+                  <td colSpan={10} className="p-4 text-center text-slate-500">
                     Chưa có đợt đối chiếu nào.
                   </td>
                 </tr>
@@ -1028,22 +1072,48 @@ export default async function ProductDetailPage({
                 <thead className="bg-slate-50 text-slate-600">
                   <tr>
                     <th className="text-left p-2">Ngày nhận</th>
+                    <th className="text-left p-2">Loại</th>
                     <th className="text-right p-2">Số tiền thực nhận</th>
                     <th className="text-left p-2">Ghi chú</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {revPayments.map((r) => (
-                    <tr key={r.payment.id} className="border-t border-slate-100">
-                      <td className="p-2">{fmtDate(r.payment.paymentDate)}</td>
-                      <td className="p-2 text-right tabular-nums font-medium text-green-700">
-                        {fmtMoney(r.payment.amount)}
-                      </td>
-                      <td className="p-2 text-slate-500">{r.payment.note ?? "—"}</td>
-                    </tr>
-                  ))}
+                  {revPayments.map((r) => {
+                    const parentRec = revRecs.find((x) => x.rec.id === r.payment.reconciliationId)?.rec;
+                    const pIsBonusSale = Number(parentRec?.cdtBonusSale ?? 0) > 0;
+                    const pIsBonusMgr = Number(parentRec?.cdtBonusManager ?? 0) > 0;
+                    const pIsBonus = pIsBonusSale || pIsBonusMgr;
+                    return (
+                      <tr key={r.payment.id} className="border-t border-slate-100">
+                        <td className="p-2">{fmtDate(r.payment.paymentDate)}</td>
+                        <td className="p-2">
+                          {pIsBonus ? (
+                            <span
+                              className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 whitespace-nowrap"
+                              title={
+                                pIsBonusMgr
+                                  ? "Thưởng nóng CĐT cho QL sàn"
+                                  : "Thưởng nóng CĐT cho sale"
+                              }
+                            >
+                              Thưởng nóng
+                            </span>
+                          ) : (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 whitespace-nowrap">
+                              HH
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-2 text-right tabular-nums font-medium text-green-700">
+                          {fmtMoney(r.payment.amount)}
+                        </td>
+                        <td className="p-2 text-slate-500">{r.payment.note ?? "—"}</td>
+                      </tr>
+                    );
+                  })}
                   <tr className="border-t-2 border-slate-300 bg-slate-50 font-semibold">
                     <td className="p-2">Tổng đã thu</td>
+                    <td className="p-2"></td>
                     <td className="p-2 text-right tabular-nums text-green-700">
                       {fmtMoney(totalPaidInCash)}
                     </td>
@@ -1172,7 +1242,7 @@ export default async function ProductDetailPage({
                     </td>
                     <td className="p-2 text-right">
                       <Link
-                        href={`/costs/${r.id}/edit`}
+                        href={`/costs/${r.id}/edit${childEditQs}`}
                         className="text-blue-600 hover:underline"
                       >
                         Sửa

@@ -79,11 +79,18 @@ export default async function EditProductPage({
   return (
     <div className="space-y-4 max-w-4xl">
       <div className="flex items-center gap-2 text-sm">
-        <Link href="/products" className="text-blue-600 hover:underline">
+        <Link href={returnTo ?? "/products"} className="text-blue-600 hover:underline">
           ← Giao dịch
         </Link>
         <span className="text-slate-400">/</span>
-        <Link href={`/products/${id}`} className="text-blue-600 hover:underline font-mono">
+        <Link
+          href={
+            returnTo
+              ? `/products/${id}?returnTo=${encodeURIComponent(returnTo)}`
+              : `/products/${id}`
+          }
+          className="text-blue-600 hover:underline font-mono"
+        >
           {product.productCode}
         </Link>
         <span className="text-slate-400">/</span>
