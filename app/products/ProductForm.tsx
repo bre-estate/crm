@@ -94,7 +94,9 @@ export default function ProductForm({ product, projects, departments = [], onSav
   );
 
   const cdtBonusTotal = cdtBonusSaleLive + cdtBonusMgrLive;
-  const grossTotal = pmgBase * pmgRateLive + cdtBonusTotal;
+  // Chuẩn Excel col P: PMG × %PMG_LK − phí admin + CĐT thưởng
+  // (đồng bộ với trang detail)
+  const grossTotal = pmgBase * pmgRateLive - adminFeeLive + cdtBonusTotal;
   const netInternal = pmgBase * pmgRateLive - adminFeeLive;
   const dtThangDu = pmgBase * Math.max(0, pmgRateLive - pmgSaleRateLive);
 
@@ -348,7 +350,7 @@ export default function ProductForm({ product, projects, departments = [], onSav
                 <div className="text-xs text-blue-700 font-semibold">A. Tổng ghi nhận</div>
                 <div className="text-lg font-bold tabular-nums mt-1">{fmtMoney(grossTotal)}</div>
                 <div className="text-[10px] text-slate-500 mt-1">
-                  = PMG × %PMG_LK + thưởng CĐT (chưa trừ admin)
+                  = PMG × %PMG_LK − phí admin + CĐT thưởng
                 </div>
               </div>
               <div className="rounded-lg border border-green-200 bg-green-50/60 p-3">
