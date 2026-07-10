@@ -355,16 +355,23 @@ export default async function ProductDetailPage({
             <Info label="CĐT thưởng nóng cho QL" value={fmtMoney(p.cdtBonusManager)} />
           </div>
 
-          {/* 3 cards Tổng doanh thu */}
+          {/* 3 cards Tổng doanh thu — theo công thức Excel sheet 2.1 col P */}
           {(() => {
             const pmgBase = Number(p.pmgBasePrice ?? 0);
             const rate = latestPmgRate;
             const admin = Number(p.adminFee ?? 0);
-            const cdtBonusTotal =
-              Number(p.cdtBonusSale ?? 0) + Number(p.cdtBonusManager ?? 0);
+            const otherFeePct = Number(p.otherFeePct ?? 0);
+            const otherRevenue = Number(p.otherRevenue ?? 0);
+            const revenueReduction = Number(p.revenueReduction ?? 0);
+            const cdtSale = Number(p.cdtBonusSale ?? 0);
+            const cdtMgr = Number(p.cdtBonusManager ?? 0);
             const pmgSaleRate = Number(p.pmgSaleRate ?? 0) || rate;
-            const gross = pmgBase * rate + cdtBonusTotal;
-            const netIn = pmgBase * rate - admin;
+            // Excel col P: T × (U+V) + W − X − Y + AA + AB
+            //   T=pmgBase, U=%PMG_LK, V=%phí khác, W=DT khác, X=giảm DT,
+            //   Y=phí admin, AA=CĐT thưởng sale, AB=CĐT thưởng QL
+            const gross =
+              pmgBase * (rate + otherFeePct) + otherRevenue - revenueReduction - admin + cdtSale + cdtMgr;
+            const netIn = pmgBase * rate - admin; // DT thuần (không CĐT thưởng)
             const thangDu = pmgBase * Math.max(0, rate - pmgSaleRate);
             return (
               <div className="border-t border-slate-200 pt-3">
@@ -376,7 +383,7 @@ export default async function ProductDetailPage({
                     <div className="text-xs text-blue-700 font-semibold">A. Tổng ghi nhận</div>
                     <div className="text-lg font-bold tabular-nums mt-1">{fmtMoney(gross)}</div>
                     <div className="text-[10px] text-slate-500 mt-1">
-                      PMG × %PMG_LK + thưởng CĐT
+                      = PMG × (%PMG_LK + %phí khác) + DT khác − giảm DT − phí admin + CĐT thưởng
                     </div>
                   </div>
                   <div className="rounded-lg border border-green-200 bg-green-50/60 p-3">
@@ -433,21 +440,37 @@ export default async function ProductDetailPage({
           />
         </div>
 
-        {/* Tổng giá vốn */}
+        {/* Tổng giá vốn — theo công thức Excel sheet 2.1 col R:
+             ((L×M − Q)/1.1 − R) × (%HH + Σ%KPI) + (CĐT_thưởng)/1.1 + CTY thưởng + CP giá vốn khác
+        */}
         {(() => {
           const pmgBase = Number(p.pmgBasePrice ?? 0);
           const pmgSaleRate = Number(p.pmgSaleRate ?? 0) || Number(p.pmgRate ?? 0);
-          const Q_sale = pmgBase * pmgSaleRate;
-          const hhSale = Q_sale * Number(p.saleCommissionRate ?? 0);
-          const kpiCeo = Q_sale * Number(p.kpiCeoRate ?? 0);
-          const kpiTpkd = Q_sale * Number(p.kpiTpkdRate ?? 0);
-          const kpiAdmin = Q_sale * Number(p.kpiAdminRate ?? 0);
-          const support = Number(p.customerSupport ?? 0);
-          const bonusMgr = Number(p.bonusManager ?? 0);
           const adminSale = Number(p.adminFeeSale ?? 0);
-          const adminSubsidy = Math.max(0, Number(p.adminFee ?? 0) - adminSale);
-          const total = hhSale + kpiCeo + kpiTpkd + kpiAdmin + support + bonusMgr + adminSale + adminSubsidy;
-          const tooltipText = `= HH sale (${fmtMoney(hhSale)}) + KPI CEO (${fmtMoney(kpiCeo)}) + KPI TPKD (${fmtMoney(kpiTpkd)}) + KPI Admin (${fmtMoney(kpiAdmin)}) + Hỗ trợ khách (${fmtMoney(support)}) + CTY thưởng QL (${fmtMoney(bonusMgr)}) + Phí admin sale (${fmtMoney(adminSale)})${adminSubsidy > 0 ? ` + Bù admin (${fmtMoney(adminSubsidy)})` : ""}. Q_sale = ${fmtMoney(pmgBase)} × ${fmtPct(pmgSaleRate, 2)}`;
+          const support = Number(p.customerSupport ?? 0);
+          const bonusSale = Number(p.bonusSale ?? 0);
+          const bonusMgr = Number(p.bonusManager ?? 0);
+          const cdtSale = Number(p.cdtBonusSale ?? 0);
+          const cdtMgr = Number(p.cdtBonusManager ?? 0);
+          const otherCost = Number(p.otherCost ?? 0);
+          const hhRate = Number(p.saleCommissionRate ?? 0);
+          const kpiCeo = Number(p.kpiCeoRate ?? 0);
+          const kpiTpkd = Number(p.kpiTpkdRate ?? 0);
+          const kpiAdmin = Number(p.kpiAdminRate ?? 0);
+
+          // Base net VAT sau khi trừ admin sale và hỗ trợ khách
+          const baseNet = (pmgBase * pmgSaleRate - adminSale) / 1.1 - support;
+          const hhSaleAmt = baseNet * hhRate;
+          const kpiCeoAmt = baseNet * kpiCeo;
+          const kpiTpkdAmt = baseNet * kpiTpkd;
+          const kpiAdminAmt = baseNet * kpiAdmin;
+          const cdtBonusNet = (cdtSale + cdtMgr) / 1.1; // CĐT thưởng đã trừ VAT
+
+          const total =
+            hhSaleAmt + kpiCeoAmt + kpiTpkdAmt + kpiAdminAmt + cdtBonusNet + bonusSale + bonusMgr + otherCost;
+
+          const tooltipText =
+            `= HH sale (${fmtMoney(hhSaleAmt)}) + KPI CEO (${fmtMoney(kpiCeoAmt)}) + KPI TPKD (${fmtMoney(kpiTpkdAmt)}) + KPI Admin (${fmtMoney(kpiAdminAmt)}) + CĐT thưởng net VAT (${fmtMoney(cdtBonusNet)}) + CTY thưởng NVKD (${fmtMoney(bonusSale)}) + CTY thưởng QL (${fmtMoney(bonusMgr)}) + CP giá vốn khác (${fmtMoney(otherCost)}). Base net = ((${fmtMoney(pmgBase)} × ${fmtPct(pmgSaleRate, 2)} − ${fmtMoney(adminSale)}) / 1,1 − ${fmtMoney(support)})`;
           return (
             <div className="border-t border-slate-200 pt-3">
               <div className="rounded-lg border-2 border-orange-200 bg-orange-50/60 p-3">
