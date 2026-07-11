@@ -359,3 +359,20 @@ export async function deleteProductAdjustment(productId: number, adjId: number) 
   await db.delete(productAdjustments).where(eq(productAdjustments.id, adjId));
   revalidatePath(`/products/${productId}`);
 }
+
+/**
+ * Cho phép sửa CHỈ ghi chú của 1 adjustment.
+ * Các field data khác (%HH, phí admin...) không sửa được — nếu nhầm số, tạo adjustment mới đè.
+ */
+export async function updateProductAdjustmentNote(
+  productId: number,
+  adjId: number,
+  note: string,
+) {
+  await db
+    .update(productAdjustments)
+    .set({ note: note.trim() || null })
+    .where(eq(productAdjustments.id, adjId));
+  revalidatePath(`/products/${productId}/edit`);
+  revalidatePath(`/products/${productId}`);
+}

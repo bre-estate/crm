@@ -16,7 +16,13 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import ProductForm from "../../ProductForm";
 import AdjustmentDialog from "../AdjustmentDialog";
-import { updateProduct, deleteProduct, createProductAdjustment } from "@/lib/actions/products";
+import AdjustmentNoteEditor from "./AdjustmentNoteEditor";
+import {
+  updateProduct,
+  deleteProduct,
+  createProductAdjustment,
+  updateProductAdjustmentNote,
+} from "@/lib/actions/products";
 
 export default async function EditProductPage({
   params,
@@ -138,7 +144,7 @@ export default async function EditProductPage({
       />
 
       {!isSecondary && hasRecons && (
-        <div className="bg-white border border-slate-200 rounded-xl p-5">
+        <div id="adjustments-block" className="bg-white border border-slate-200 rounded-xl p-5 scroll-mt-4">
           <div className="flex justify-between items-start mb-3">
             <div>
               <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -146,7 +152,7 @@ export default async function EditProductPage({
               </h2>
               <div className="text-xs text-slate-500 mt-1">
                 Khi CĐT tăng %HH, sửa giá, hoặc đổi phí admin — dùng nút bên phải để giữ
-                lịch sử điều chỉnh. Recon cũ vẫn giữ nguyên; recon mới dùng giá trị mới nhất.
+                lịch sử điều chỉnh. Đối chiếu cũ vẫn giữ nguyên; đối chiếu mới dùng giá trị mới nhất.
               </div>
             </div>
             <AdjustmentDialog
@@ -191,7 +197,16 @@ export default async function EditProductPage({
                         <td className="p-2 text-slate-700">
                           {changes.length > 0 ? changes.join(" · ") : "—"}
                         </td>
-                        <td className="p-2 text-slate-500">{a.note ?? "—"}</td>
+                        <td className="p-2 text-slate-500">
+                          <AdjustmentNoteEditor
+                            adjId={a.id}
+                            initialNote={a.note ?? ""}
+                            onSave={async (note) => {
+                              "use server";
+                              await updateProductAdjustmentNote(product.id, a.id, note);
+                            }}
+                          />
+                        </td>
                       </tr>
                     );
                   })}

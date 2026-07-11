@@ -292,11 +292,7 @@ export default function ProductForm({ product, projects, departments = [], onSav
                   onValueChange={setPmgBase}
                 />
               )}
-              {lockCoreFields && (
-                <div className="text-[10px] text-slate-500 mt-1">
-                  Khóa. Đổi qua &quot;Điều chỉnh thông tin căn&quot;.
-                </div>
-              )}
+              {lockCoreFields && <LockedFieldHint />}
             </Field>
             <Field label="%PMG_LK (CĐT trả BRE)">
               <div className="relative">
@@ -315,11 +311,13 @@ export default function ProductForm({ product, projects, departments = [], onSav
               {lockCoreFields && (
                 <input type="hidden" name="pmgRate" value={product?.pmgRate ? Number((Number(product.pmgRate) * 100).toFixed(4)) : ""} />
               )}
-              <div className="text-[10px] text-slate-500 mt-1">
-                {lockCoreFields
-                  ? "Khóa. Đổi qua \"Điều chỉnh thông tin căn\"."
-                  : "Muốn track lịch sử → dùng \"Điều chỉnh thông tin căn\""}
-              </div>
+              {lockCoreFields ? (
+                <LockedFieldHint />
+              ) : (
+                <div className="text-[10px] text-slate-500 mt-1">
+                  Muốn track lịch sử → dùng &quot;Điều chỉnh thông tin căn&quot;
+                </div>
+              )}
             </Field>
             <Field label="Phí admin (CĐT trừ khỏi PMG)">
               {lockCoreFields ? (
@@ -340,11 +338,13 @@ export default function ProductForm({ product, projects, departments = [], onSav
                   onValueChange={setAdminFeeLive}
                 />
               )}
-              <div className="text-[10px] text-slate-500 mt-1">
-                {lockCoreFields
-                  ? "Khóa. Đổi qua \"Điều chỉnh thông tin căn\"."
-                  : "CĐT trừ khỏi PMG trước khi chuyển vào TK BRE"}
-              </div>
+              {lockCoreFields ? (
+                <LockedFieldHint />
+              ) : (
+                <div className="text-[10px] text-slate-500 mt-1">
+                  CĐT trừ khỏi PMG trước khi chuyển vào TK BRE
+                </div>
+              )}
             </Field>
             <Field label="Phí admin (dùng tính HH sale)">
               <MoneyInput
@@ -635,6 +635,22 @@ function Field({
       </label>
       {children}
     </div>
+  );
+}
+
+// Button scroll xuống block "Điều chỉnh thông tin căn" khi field bị khóa
+function LockedFieldHint() {
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        const el = document.getElementById("adjustments-block");
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }}
+      className="mt-1 text-[10px] text-blue-600 hover:underline"
+    >
+      🔒 Khóa — click để đi đến &quot;Điều chỉnh thông tin căn&quot; ↓
+    </button>
   );
 }
 

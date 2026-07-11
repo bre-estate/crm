@@ -86,9 +86,9 @@ export default function AdjustmentDialog({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+        className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 whitespace-nowrap"
       >
-        + Thêm điều chỉnh
+        + Thêm
       </button>
       {open && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
