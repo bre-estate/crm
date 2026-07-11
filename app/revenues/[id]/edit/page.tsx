@@ -87,6 +87,21 @@ export default async function EditRevenuePage({
     .where(eq(paymentsIn.reconciliationId, id))
     .orderBy(asc(paymentsIn.paymentDate));
 
+  // Prev recons (mọi recon của mọi căn) — RevenueForm dùng để compute
+  // LK đã ĐC cho căn hiện tại → gợi ý "Số tiền" đợt mới. Exclude recon này.
+  const prevRecons = await db
+    .select({
+      id: revenueReconciliations.id,
+      productId: revenueReconciliations.productId,
+      pmgCumulativePct: revenueReconciliations.pmgCumulativePct,
+      phasePctThisTime: revenueReconciliations.phasePctThisTime,
+      revenueThisTime: revenueReconciliations.revenueThisTime,
+      totalReceivableThisTime: revenueReconciliations.totalReceivableThisTime,
+      cdtBonusSale: revenueReconciliations.cdtBonusSale,
+      cdtBonusManager: revenueReconciliations.cdtBonusManager,
+    })
+    .from(revenueReconciliations);
+
   return (
     <div className="space-y-4 max-w-4xl">
       <div className="flex items-center gap-2 text-sm">
@@ -118,6 +133,7 @@ export default async function EditRevenuePage({
         recon={recon}
         invoiceInit={invoiceInit}
         products={productOptions}
+        prevRecons={prevRecons}
         returnTo={returnTo}
         onSave={async (fd) => {
           "use server";

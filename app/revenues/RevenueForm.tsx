@@ -32,12 +32,24 @@ type ProductOption = {
 
 type InvoiceInfo = { number: string; date: string | null; totalAmountVat: number };
 
+type PrevRecon = {
+  id: number;
+  productId: number;
+  pmgCumulativePct: number | null;
+  phasePctThisTime: number | null;
+  revenueThisTime: number | null;
+  totalReceivableThisTime: number | null;
+  cdtBonusSale: number | null;
+  cdtBonusManager: number | null;
+};
+
 type Props = {
   recon?: RevenueReconciliation;
   invoiceInit?: InvoiceInfo;
   paymentInit?: { paymentDate: string | null; amount: number } | null;
   products: ProductOption[];
   defaultProductId?: number;
+  prevRecons?: PrevRecon[];
   onSave: (fd: FormData) => Promise<void>;
   onDelete?: () => Promise<void>;
   returnTo?: string | null;
@@ -58,6 +70,7 @@ export default function RevenueForm({
   paymentInit,
   products,
   defaultProductId,
+  prevRecons = [],
   onSave,
   onDelete,
   returnTo,
@@ -96,19 +109,41 @@ export default function RevenueForm({
   const [amount, setAmount] = useState<number>(initialAmount);
   const amountDisplay = amount ? amount.toLocaleString("vi-VN") : "";
 
+  // Controlled % — cần cho auto-suggest "Số tiền" khi commission.
+  const [pmgLkDisplay, setPmgLkDisplay] = useState(pctDisplay(recon?.pmgCumulativePct));
+  const [phasePctDisplay, setPhasePctDisplay] = useState(
+    pctDisplay(recon?.phasePctThisTime),
+  );
+
   const isCommission = reconType === "commission";
   const revenueThisTimeVal = isCommission ? amount : 0;
   const cdtBonusSaleVal = reconType === "bonus_sale" ? amount : 0;
   const cdtBonusManagerVal = reconType === "bonus_manager" ? amount : 0;
 
+  // Tổng đã ĐC LK trước đây cho căn này (không tính recon đang edit).
+  // Excel col 18 "DT theo tien do da doi chieu LK" — dùng để trừ khi tính đợt mới.
+  const prevCumulativeLK = useMemo(() => {
+    if (!product) return 0;
+    return prevRecons
+      .filter((r) => r.productId === product.id && r.id !== recon?.id)
+      .reduce((sum, r) => sum + Number(r.revenueThisTime ?? 0), 0);
+  }, [prevRecons, product, recon?.id]);
+
   // Suggest amount dựa loại đợt + product config
+  // Commission: theo Excel col 20 = pmgBase × %PMG_LK × %thu − LK đã ĐC trước
   const suggested = useMemo(() => {
     if (!product) return 0;
     if (reconType === "bonus_sale") return Number(product.cdtBonusSale ?? 0);
     if (reconType === "bonus_manager") return Number(product.cdtBonusManager ?? 0);
-    // Phase types: chưa có formula chính xác (cần biết đợt trước) → không gợi ý
-    return 0;
-  }, [reconType, product]);
+    // Commission
+    const pmgLk = Number(pmgLkDisplay.replace(",", ".")) / 100;
+    const phasePct = Number(phasePctDisplay.replace(",", ".")) / 100;
+    if (!Number.isFinite(pmgLk) || !Number.isFinite(phasePct) || pmgLk <= 0 || phasePct <= 0) {
+      return 0;
+    }
+    const gross = Number(product.pmgBasePrice ?? 0) * pmgLk * phasePct;
+    return Math.max(0, Math.round(gross - prevCumulativeLK));
+  }, [reconType, product, pmgLkDisplay, phasePctDisplay, prevCumulativeLK]);
 
   return (
     <form
@@ -193,7 +228,9 @@ export default function RevenueForm({
                   name="phasePctThisTime"
                   type="number"
                   step="any"
-                  defaultValue={pctDisplay(recon?.phasePctThisTime)}
+                  value={phasePctDisplay}
+                  onChange={(e) => setPhasePctDisplay(e.target.value)}
+                  onBlur={() => isCommission && suggested > 0 && setAmount(suggested)}
                   className="input"
                   placeholder="% khách đã trả CĐT tại đợt này"
                 />
@@ -203,7 +240,9 @@ export default function RevenueForm({
                   name="pmgCumulativePct"
                   type="number"
                   step="any"
-                  defaultValue={pctDisplay(recon?.pmgCumulativePct)}
+                  value={pmgLkDisplay}
+                  onChange={(e) => setPmgLkDisplay(e.target.value)}
+                  onBlur={() => isCommission && suggested > 0 && setAmount(suggested)}
                   className="input"
                   placeholder="Commission rate BRE nhận từ CĐT"
                 />
@@ -319,8 +358,13 @@ export default function RevenueForm({
             {suggested > 0 && Math.abs(suggested - amount) > 100 && (
               <div className="text-xs mt-1.5 flex items-center gap-2 bg-blue-50 border border-blue-200 rounded px-2 py-1">
                 <span className="text-blue-700">
-                  💡 Gợi ý từ căn:{" "}
-                  <b className="tabular-nums">{fmtMoney(suggested)}</b>
+                  💡 Gợi ý{" "}
+                  {isCommission
+                    ? `(pmgBase × ${pmgLkDisplay || 0}% × ${phasePctDisplay || 0}%${
+                        prevCumulativeLK > 0 ? ` − LK đã ĐC ${fmtMoney(prevCumulativeLK)}` : ""
+                      })`
+                    : "từ căn"}
+                  : <b className="tabular-nums">{fmtMoney(suggested)}</b>
                 </span>
                 <button
                   type="button"

@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { products, projects, partners } from "@/lib/schema";
+import { products, projects, partners, revenueReconciliations } from "@/lib/schema";
 import { asc, eq } from "drizzle-orm";
 import Link from "next/link";
 import RevenueForm from "../RevenueForm";
@@ -39,6 +39,21 @@ export default async function NewRevenuePage({ searchParams }: { searchParams: S
     .leftJoin(partners, eq(projects.partnerId, partners.id))
     .orderBy(asc(projects.name), asc(products.unitCode));
 
+  // Prev recons cho từng product — để RevenueForm compute LK đã ĐC → gợi ý
+  // "Số tiền" đợt mới = LK current − LK prev.
+  const prevRecons = await db
+    .select({
+      id: revenueReconciliations.id,
+      productId: revenueReconciliations.productId,
+      pmgCumulativePct: revenueReconciliations.pmgCumulativePct,
+      phasePctThisTime: revenueReconciliations.phasePctThisTime,
+      revenueThisTime: revenueReconciliations.revenueThisTime,
+      totalReceivableThisTime: revenueReconciliations.totalReceivableThisTime,
+      cdtBonusSale: revenueReconciliations.cdtBonusSale,
+      cdtBonusManager: revenueReconciliations.cdtBonusManager,
+    })
+    .from(revenueReconciliations);
+
   const backHref = defaultProductId ? `/products/${defaultProductId}` : "/revenues";
   const backLabel = defaultProductId ? "← Về căn" : "← Doanh thu";
 
@@ -55,6 +70,7 @@ export default async function NewRevenuePage({ searchParams }: { searchParams: S
       <RevenueForm
         products={productOptions}
         defaultProductId={defaultProductId}
+        prevRecons={prevRecons}
         onSave={createRevenue}
       />
     </div>
