@@ -273,13 +273,25 @@ export default function ProductForm({ product, projects, departments = [], onSav
           <>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <Field label="Giá tính PMG (= giá bán)">
-              <MoneyInput
-                name="pmgBasePrice"
-                defaultValue={product?.pmgBasePrice ?? 0}
-                className="input"
-                onValueChange={setPmgBase}
-                disabled={lockCoreFields}
-              />
+              {lockCoreFields ? (
+                <>
+                  <MoneyInput
+                    name="_locked_pmgBase"
+                    defaultValue={product?.pmgBasePrice ?? 0}
+                    className="input"
+                    disabled
+                  />
+                  {/* Hidden để form submit đúng giá trị (disabled field không submit) */}
+                  <input type="hidden" name="pmgBasePrice" value={String(Math.round(Number(product?.pmgBasePrice ?? 0)))} />
+                </>
+              ) : (
+                <MoneyInput
+                  name="pmgBasePrice"
+                  defaultValue={product?.pmgBasePrice ?? 0}
+                  className="input"
+                  onValueChange={setPmgBase}
+                />
+              )}
               {lockCoreFields && (
                 <div className="text-[10px] text-slate-500 mt-1">
                   Khóa. Đổi qua &quot;Điều chỉnh thông tin căn&quot;.
@@ -291,7 +303,7 @@ export default function ProductForm({ product, projects, departments = [], onSav
                 <input
                   type="number"
                   step="any"
-                  name="pmgRate"
+                  name={lockCoreFields ? "_locked_pmgRate" : "pmgRate"}
                   defaultValue={product?.pmgRate ? Number((Number(product.pmgRate) * 100).toFixed(4)) : ""}
                   onChange={(e) => setPmgRateLive(Number(e.target.value.replace(/,/g, ".")) / 100)}
                   disabled={lockCoreFields}
@@ -300,6 +312,9 @@ export default function ProductForm({ product, projects, departments = [], onSav
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">%</span>
               </div>
+              {lockCoreFields && (
+                <input type="hidden" name="pmgRate" value={product?.pmgRate ? Number((Number(product.pmgRate) * 100).toFixed(4)) : ""} />
+              )}
               <div className="text-[10px] text-slate-500 mt-1">
                 {lockCoreFields
                   ? "Khóa. Đổi qua \"Điều chỉnh thông tin căn\"."
@@ -307,13 +322,24 @@ export default function ProductForm({ product, projects, departments = [], onSav
               </div>
             </Field>
             <Field label="Phí admin (CĐT trừ khỏi PMG)">
-              <MoneyInput
-                name="adminFee"
-                defaultValue={product?.adminFee ?? 0}
-                className="input"
-                onValueChange={setAdminFeeLive}
-                disabled={lockCoreFields}
-              />
+              {lockCoreFields ? (
+                <>
+                  <MoneyInput
+                    name="_locked_adminFee"
+                    defaultValue={product?.adminFee ?? 0}
+                    className="input"
+                    disabled
+                  />
+                  <input type="hidden" name="adminFee" value={String(Math.round(Number(product?.adminFee ?? 0)))} />
+                </>
+              ) : (
+                <MoneyInput
+                  name="adminFee"
+                  defaultValue={product?.adminFee ?? 0}
+                  className="input"
+                  onValueChange={setAdminFeeLive}
+                />
+              )}
               <div className="text-[10px] text-slate-500 mt-1">
                 {lockCoreFields
                   ? "Khóa. Đổi qua \"Điều chỉnh thông tin căn\"."
@@ -388,8 +414,9 @@ export default function ProductForm({ product, projects, departments = [], onSav
           {/* Hidden: totalRevenue = Tổng ghi nhận (Excel col P, khớp reports).
               sellPrice = pmgBasePrice.
               Preserve otherFeePct/otherRevenue/revenueReduction từ legacy — không hard-zero. */}
-          <input type="hidden" name="totalRevenue" value={String(grossTotal)} />
-          <input type="hidden" name="sellPrice" value={String(pmgBase)} />
+          {/* ROUND để tránh decimal → server toNum strip . thành 10^N */}
+          <input type="hidden" name="totalRevenue" value={String(Math.round(grossTotal))} />
+          <input type="hidden" name="sellPrice" value={String(Math.round(pmgBase))} />
           <input
             type="hidden"
             name="otherFeePct"
@@ -517,7 +544,7 @@ export default function ProductForm({ product, projects, departments = [], onSav
               </div>
             </div>
           </div>
-          <input type="hidden" name="totalCost" value={String(totalCostLive)} />
+          <input type="hidden" name="totalCost" value={String(Math.round(totalCostLive))} />
         </div>
         {isSecondary && (
           <>
