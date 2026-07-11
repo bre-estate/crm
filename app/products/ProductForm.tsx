@@ -649,7 +649,7 @@ function LockedFieldHint() {
       }}
       className="mt-1 text-[10px] text-blue-600 hover:underline"
     >
-      🔒 Khóa — click để đi đến &quot;Điều chỉnh thông tin căn&quot; ↓
+      🔒 Click để đi đến &quot;Điều chỉnh thông tin căn&quot; ↓
     </button>
   );
 }
