@@ -18,12 +18,10 @@ type Row = {
   productId: number | "";
   reconciliationDate: string;
   minutesNumber: string;
-  // 3 loại tiền riêng — điền cái nào có thì server tạo recon tương ứng
-  amountCommission: number;   // Hoa hồng (col P Excel)
-  amountBonusSale: number;    // Thưởng nóng CĐT cho sale
-  amountBonusManager: number; // Thưởng nóng CĐT cho quản lý
-  phasePctThisTime: string; // display % (đợt này) — chỉ áp cho hoa hồng
-  pmgCumulativePct: string; // display % (lũy kế) — chỉ áp cho hoa hồng
+  reconType: string; // "commission" | "bonus_sale" | "bonus_manager"
+  amount: number;
+  phasePctThisTime: string; // display % (đợt này)
+  pmgCumulativePct: string; // display % (lũy kế)
   invoiceNumber: string;
   invoiceDate: string;
   invoiceTotalVat: number;
@@ -36,9 +34,8 @@ const emptyRow = (): Row => ({
   productId: "",
   reconciliationDate: "",
   minutesNumber: "",
-  amountCommission: 0,
-  amountBonusSale: 0,
-  amountBonusManager: 0,
+  reconType: "commission",
+  amount: 0,
   phasePctThisTime: "",
   pmgCumulativePct: "",
   invoiceNumber: "",
@@ -105,9 +102,7 @@ export default function BulkForm({
   const [showPaste, setShowPaste] = useState(false);
   const [colUnit, setColUnit] = useState("");
   const [colMinutes, setColMinutes] = useState("");
-  const [colAmountHH, setColAmountHH] = useState("");
-  const [colAmountBonusSale, setColAmountBonusSale] = useState("");
-  const [colAmountBonusMgr, setColAmountBonusMgr] = useState("");
+  const [colAmount, setColAmount] = useState("");
   const [colPctThis, setColPctThis] = useState("");
   const [colPct, setColPct] = useState("");
   const [colRecDate, setColRecDate] = useState("");
@@ -117,6 +112,7 @@ export default function BulkForm({
   const [colPayDate, setColPayDate] = useState("");
   const [colPayAmount, setColPayAmount] = useState("");
   const [colNote, setColNote] = useState("");
+  const [defaultReconType, setDefaultReconType] = useState("commission");
   const [defaultDate, setDefaultDate] = useState("");
   const [replaceMode, setReplaceMode] = useState(true);
 
@@ -134,9 +130,7 @@ export default function BulkForm({
     () => ({
       unit: splitColumn(colUnit),
       minutes: splitColumn(colMinutes),
-      amountHH: splitColumn(colAmountHH),
-      amountBonusSale: splitColumn(colAmountBonusSale),
-      amountBonusMgr: splitColumn(colAmountBonusMgr),
+      amount: splitColumn(colAmount),
       pctThis: splitColumn(colPctThis),
       pct: splitColumn(colPct),
       recDate: splitColumn(colRecDate),
@@ -150,9 +144,7 @@ export default function BulkForm({
     [
       colUnit,
       colMinutes,
-      colAmountHH,
-      colAmountBonusSale,
-      colAmountBonusMgr,
+      colAmount,
       colPctThis,
       colPct,
       colRecDate,
@@ -169,9 +161,7 @@ export default function BulkForm({
   const rowCountMismatch = (): string | null => {
     const checks: [string, number][] = [
       ["Số biên bản", cols.minutes.length],
-      ["Số tiền HH", cols.amountHH.length],
-      ["Thưởng nóng sale", cols.amountBonusSale.length],
-      ["Thưởng nóng QL", cols.amountBonusMgr.length],
+      ["Số tiền", cols.amount.length],
       ["Tỷ lệ % thu đợt này", cols.pctThis.length],
       ["% PMG_LK", cols.pct.length],
       ["Ngày ĐC", cols.recDate.length],
@@ -216,9 +206,8 @@ export default function BulkForm({
         productId,
         reconciliationDate: cols.recDate[i] ? parseDate(cols.recDate[i]) : defaultDate,
         minutesNumber: cols.minutes[i] ?? "",
-        amountCommission: cols.amountHH[i] ? parseMoney(cols.amountHH[i]) : 0,
-        amountBonusSale: cols.amountBonusSale[i] ? parseMoney(cols.amountBonusSale[i]) : 0,
-        amountBonusManager: cols.amountBonusMgr[i] ? parseMoney(cols.amountBonusMgr[i]) : 0,
+        reconType: defaultReconType,
+        amount: cols.amount[i] ? parseMoney(cols.amount[i]) : 0,
         phasePctThisTime: cols.pctThis[i] ? parsePctDisplay(cols.pctThis[i]) : "",
         pmgCumulativePct: cols.pct[i] ? parsePctDisplay(cols.pct[i]) : "",
         invoiceNumber: cols.invNum[i] ?? "",
@@ -247,9 +236,7 @@ export default function BulkForm({
     setShowPaste(false);
     setColUnit("");
     setColMinutes("");
-    setColAmountHH("");
-    setColAmountBonusSale("");
-    setColAmountBonusMgr("");
+    setColAmount("");
     setColPctThis("");
     setColPct("");
     setColRecDate("");
@@ -261,6 +248,9 @@ export default function BulkForm({
     setColNote("");
   };
 
+  const productBySaleType = (id: number | "") =>
+    id ? products.find((p) => p.id === id)?.saleType : null;
+
   const update = (idx: number, patch: Partial<Row>) => {
     setRows((prev) => prev.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
   };
@@ -268,50 +258,26 @@ export default function BulkForm({
   const removeRow = (idx: number) => setRows((prev) => prev.filter((_, i) => i !== idx));
 
   const submit = () => {
-    // Mỗi Row (1 căn) → 1-3 BulkRevenueRow (recons) tùy amount điền
-    const validRows: BulkRevenueRow[] = [];
-    for (const r of rows) {
-      if (!r.productId) continue;
-      const hasAny = r.amountCommission > 0 || r.amountBonusSale > 0 || r.amountBonusManager > 0;
-      if (!hasAny) continue;
-
-      const shared = {
+    // Filter out empty rows (no productId or amount = 0)
+    const validRows: BulkRevenueRow[] = rows
+      .filter((r) => r.productId && r.amount > 0)
+      .map((r) => ({
         productId: r.productId as number,
         reconciliationDate: r.reconciliationDate || null,
         minutesNumber: r.minutesNumber || undefined,
+        reconType: r.reconType,
+        amount: r.amount,
+        phasePctThisTime: r.phasePctThisTime ? Number(r.phasePctThisTime) : undefined,
+        pmgCumulativePct: r.pmgCumulativePct ? Number(r.pmgCumulativePct) : undefined,
         invoiceNumber: r.invoiceNumber || undefined,
         invoiceDate: r.invoiceDate || null,
         invoiceTotalVat: r.invoiceTotalVat || undefined,
+        paymentDate: r.paymentDate || null,
+        paymentAmount: r.paymentAmount || undefined,
         note: r.note || undefined,
-      };
-      const perRow: BulkRevenueRow[] = [];
-      if (r.amountCommission > 0) {
-        perRow.push({
-          ...shared,
-          reconType: "commission",
-          amount: r.amountCommission,
-          phasePctThisTime: r.phasePctThisTime ? Number(r.phasePctThisTime) : undefined,
-          pmgCumulativePct: r.pmgCumulativePct ? Number(r.pmgCumulativePct) : undefined,
-        });
-      }
-      if (r.amountBonusSale > 0) {
-        perRow.push({ ...shared, reconType: "bonus_sale", amount: r.amountBonusSale });
-      }
-      if (r.amountBonusManager > 0) {
-        perRow.push({ ...shared, reconType: "bonus_manager", amount: r.amountBonusManager });
-      }
-      // Payment: gắn vào recon ĐẦU TIÊN của căn (thường là HH nếu có, else thưởng đầu tiên)
-      if (r.paymentAmount > 0 && perRow.length > 0) {
-        perRow[0] = {
-          ...perRow[0],
-          paymentDate: r.paymentDate || null,
-          paymentAmount: r.paymentAmount,
-        };
-      }
-      validRows.push(...perRow);
-    }
+      }));
     if (validRows.length === 0) {
-      alert("Chưa có dòng nào hợp lệ (cần chọn căn + ít nhất 1 loại số tiền > 0)");
+      alert("Chưa có dòng nào hợp lệ (cần chọn căn + số tiền > 0)");
       return;
     }
     start(async () => {
@@ -363,12 +329,20 @@ export default function BulkForm({
           </div>
 
           <div className="flex flex-wrap items-center gap-4 text-xs bg-white border border-slate-200 rounded-lg p-2">
-            <div className="text-slate-600">
-              💡 <b>Cùng 1 căn có cả HH + Thưởng nóng</b> → paste 3 cột số tiền tương ứng (để trống nếu không có).
-              Server tự tách thành 1-3 đợt đối chiếu / căn.
-            </div>
             <label>
-              Ngày ĐC mặc định:{" "}
+              Loại đợt áp cho tất cả:{" "}
+              <select
+                value={defaultReconType}
+                onChange={(e) => setDefaultReconType(e.target.value)}
+                className="input py-1 inline-block"
+              >
+                <option value="commission">Hoa hồng</option>
+                <option value="bonus_sale">Thưởng nóng sale</option>
+                <option value="bonus_manager">Thưởng nóng QL</option>
+              </select>
+            </label>
+            <label>
+              Ngày ĐC mặc định (nếu không paste cột Ngày ĐC):{" "}
               <input
                 type="date"
                 value={defaultDate}
@@ -406,27 +380,11 @@ export default function BulkForm({
               nExpected={nRows}
             />
             <ColBox
-              label="Số tiền HH (hoa hồng)"
-              value={colAmountHH}
-              onChange={setColAmountHH}
+              label="Số tiền"
+              value={colAmount}
+              onChange={setColAmount}
               placeholder="65,105,193&#10;68,203,145&#10;..."
-              nRows={cols.amountHH.length}
-              nExpected={nRows}
-            />
-            <ColBox
-              label="Thưởng nóng sale"
-              value={colAmountBonusSale}
-              onChange={setColAmountBonusSale}
-              placeholder="11,000,000&#10;22,000,000&#10;..."
-              nRows={cols.amountBonusSale.length}
-              nExpected={nRows}
-            />
-            <ColBox
-              label="Thưởng nóng QL"
-              value={colAmountBonusMgr}
-              onChange={setColAmountBonusMgr}
-              placeholder="&#10;&#10;..."
-              nRows={cols.amountBonusMgr.length}
+              nRows={cols.amount.length}
               nExpected={nRows}
             />
             <ColBox
@@ -514,9 +472,7 @@ export default function BulkForm({
               onClick={() => {
                 setColUnit("");
                 setColMinutes("");
-                setColAmountHH("");
-                setColAmountBonusSale("");
-                setColAmountBonusMgr("");
+                setColAmount("");
                 setColPctThis("");
                 setColPct("");
                 setColRecDate("");
@@ -557,9 +513,8 @@ export default function BulkForm({
               <th className="text-left p-2 min-w-56">Căn</th>
               <th className="text-left p-2 min-w-32">Ngày ĐC</th>
               <th className="text-left p-2 min-w-28">Số BB</th>
-              <th className="text-right p-2 min-w-28">Số tiền HH</th>
-              <th className="text-right p-2 min-w-28">Thưởng sale</th>
-              <th className="text-right p-2 min-w-28">Thưởng QL</th>
+              <th className="text-left p-2 min-w-40">Loại đợt</th>
+              <th className="text-right p-2 min-w-32">Số tiền</th>
               <th className="text-right p-2 min-w-24">% thu đợt này</th>
               <th className="text-right p-2 min-w-20">% PMG_LK</th>
               <th className="text-left p-2 min-w-28">Số HĐ</th>
@@ -573,6 +528,7 @@ export default function BulkForm({
           </thead>
           <tbody>
             {rows.map((r, idx) => {
+              const isSecondary = productBySaleType(r.productId) === "secondary";
               return (
                 <tr key={idx} className="border-t border-slate-100">
                   <td className="p-1">
@@ -601,41 +557,24 @@ export default function BulkForm({
                     />
                   </td>
                   <td className="p-1">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={r.amountCommission ? r.amountCommission.toLocaleString("vi-VN") : ""}
-                      onChange={(e) => {
-                        const digits = e.target.value.replace(/\D/g, "");
-                        update(idx, { amountCommission: digits ? Number(digits) : 0 });
-                      }}
-                      onFocus={(e) => e.currentTarget.select()}
-                      placeholder="0"
-                      className="input text-xs py-1 text-right tabular-nums"
-                    />
+                    <select
+                      value={r.reconType}
+                      onChange={(e) => update(idx, { reconType: e.target.value })}
+                      className="input text-xs py-1"
+                    >
+                      <option value="commission">Hoa hồng</option>
+                      <option value="bonus_sale">Thưởng nóng sale</option>
+                      <option value="bonus_manager">Thưởng nóng QL</option>
+                    </select>
                   </td>
                   <td className="p-1">
                     <input
                       type="text"
                       inputMode="numeric"
-                      value={r.amountBonusSale ? r.amountBonusSale.toLocaleString("vi-VN") : ""}
+                      value={r.amount ? r.amount.toLocaleString("vi-VN") : ""}
                       onChange={(e) => {
                         const digits = e.target.value.replace(/\D/g, "");
-                        update(idx, { amountBonusSale: digits ? Number(digits) : 0 });
-                      }}
-                      onFocus={(e) => e.currentTarget.select()}
-                      placeholder="0"
-                      className="input text-xs py-1 text-right tabular-nums"
-                    />
-                  </td>
-                  <td className="p-1">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={r.amountBonusManager ? r.amountBonusManager.toLocaleString("vi-VN") : ""}
-                      onChange={(e) => {
-                        const digits = e.target.value.replace(/\D/g, "");
-                        update(idx, { amountBonusManager: digits ? Number(digits) : 0 });
+                        update(idx, { amount: digits ? Number(digits) : 0 });
                       }}
                       onFocus={(e) => e.currentTarget.select()}
                       placeholder="0"
@@ -649,7 +588,7 @@ export default function BulkForm({
                       value={r.phasePctThisTime}
                       onChange={(e) => update(idx, { phasePctThisTime: e.target.value })}
                       placeholder="vd: 60"
-                      disabled={!r.amountCommission}
+                      disabled={r.reconType.startsWith("bonus")}
                       className="input text-xs py-1 text-right"
                     />
                   </td>
@@ -660,7 +599,7 @@ export default function BulkForm({
                       value={r.pmgCumulativePct}
                       onChange={(e) => update(idx, { pmgCumulativePct: e.target.value })}
                       placeholder="vd: 5.5"
-                      disabled={!r.amountCommission}
+                      disabled={r.reconType.startsWith("bonus")}
                       className="input text-xs py-1 text-right"
                     />
                   </td>
@@ -759,7 +698,7 @@ export default function BulkForm({
         </button>
         <div className="flex-1" />
         <span className="text-xs text-slate-500">
-          {rows.filter((r) => r.productId && (r.amountCommission > 0 || r.amountBonusSale > 0 || r.amountBonusManager > 0)).length}/{rows.length} dòng hợp lệ
+          {rows.filter((r) => r.productId && r.amount > 0).length}/{rows.length} dòng hợp lệ
         </span>
         <button
           type="button"
