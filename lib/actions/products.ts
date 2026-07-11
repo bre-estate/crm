@@ -351,8 +351,55 @@ export async function createProductAdjustment(productId: number, fd: FormData) {
   });
   await db.update(products).set(productUpdate).where(eq(products.id, productId));
 
+  // Recompute derived fields (total_revenue, total_cost) từ config mới nhất
+  // để reports không dùng số cũ. Chỉ apply cho primary — secondary user nhập tay.
+  await recomputeDerived(productId);
+
   revalidatePath(`/products/${productId}`);
   revalidatePath("/products");
+}
+
+/**
+ * Recompute total_revenue + total_cost từ current product config.
+ * Formula khớp Excel col P (revenue) + col R (cost) — dùng cho auto-sync
+ * sau adjustment hoặc backfill batch.
+ */
+export async function recomputeDerived(productId: number) {
+  const [p] = await db.select().from(products).where(eq(products.id, productId));
+  if (!p || p.saleType === "secondary") return;
+
+  const pmgBase = Number(p.pmgBasePrice ?? 0);
+  const rate = Number(p.pmgRate ?? 0);
+  const otherFeePct = Number(p.otherFeePct ?? 0);
+  const otherRev = Number(p.otherRevenue ?? 0);
+  const revRed = Number(p.revenueReduction ?? 0);
+  const admin = Number(p.adminFee ?? 0);
+  const cdtSale = Number(p.cdtBonusSale ?? 0);
+  const cdtMgr = Number(p.cdtBonusManager ?? 0);
+  const pmgSaleRate = Number(p.pmgSaleRate ?? 0) || rate;
+  const adminSale = Number(p.adminFeeSale ?? 0);
+  const support = Number(p.customerSupport ?? 0);
+  const bonusSale = Number(p.bonusSale ?? 0);
+  const bonusMgr = Number(p.bonusManager ?? 0);
+  const otherCost = Number(p.otherCost ?? 0);
+  const hhRate = Number(p.saleCommissionRate ?? 0);
+  const kpiCeo = Number(p.kpiCeoRate ?? 0);
+  const kpiTpkd = Number(p.kpiTpkdRate ?? 0);
+  const kpiAdmin = Number(p.kpiAdminRate ?? 0);
+
+  const totalRevenue = Math.round(
+    pmgBase * (rate + otherFeePct) + otherRev - revRed - admin + cdtSale + cdtMgr,
+  );
+  const baseNet = (pmgBase * pmgSaleRate - adminSale) / 1.1 - support;
+  const cdtBonusNet = (cdtSale + cdtMgr) / 1.1;
+  const totalCost = Math.round(
+    baseNet * (hhRate + kpiCeo + kpiTpkd + kpiAdmin) + cdtBonusNet + bonusSale + bonusMgr + otherCost,
+  );
+
+  await db
+    .update(products)
+    .set({ totalRevenue, totalCost })
+    .where(eq(products.id, productId));
 }
 
 export async function deleteProductAdjustment(productId: number, adjId: number) {
