@@ -17,15 +17,15 @@ export default function AdjustmentNoteEditor({ adjId: _adjId, initialNote, onSav
 
   if (!editing) {
     return (
-      <div className="flex items-start gap-2">
-        <div className="flex-1 text-slate-500">{initialNote || "—"}</div>
+      <div className="flex items-center gap-2">
+        <div className="flex-1 text-sm text-slate-500">{initialNote || "—"}</div>
         <button
           type="button"
           onClick={() => {
             setValue(initialNote);
             setEditing(true);
           }}
-          className="text-[10px] text-blue-600 hover:underline whitespace-nowrap"
+          className="text-xs text-blue-600 hover:underline whitespace-nowrap"
           title="Sửa ghi chú (chỉ được sửa ghi chú, không sửa được data)"
         >
           ✏ Sửa
@@ -35,12 +35,12 @@ export default function AdjustmentNoteEditor({ adjId: _adjId, initialNote, onSav
   }
 
   return (
-    <div className="flex items-start gap-2">
+    <div className="flex items-center gap-2">
       <input
         type="text"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        className="input text-xs py-1 flex-1"
+        className="input text-sm flex-1"
         placeholder="Nhập ghi chú..."
         autoFocus
         onKeyDown={(e) => {
@@ -61,14 +61,14 @@ export default function AdjustmentNoteEditor({ adjId: _adjId, initialNote, onSav
             }
           });
         }}
-        className="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded hover:bg-blue-700 disabled:opacity-50"
+        className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap"
       >
         {pending ? "..." : "Lưu"}
       </button>
       <button
         type="button"
         onClick={() => setEditing(false)}
-        className="text-[10px] text-slate-500 hover:text-slate-700"
+        className="text-xs text-slate-500 hover:text-slate-700 whitespace-nowrap"
       >
         Hủy
       </button>
