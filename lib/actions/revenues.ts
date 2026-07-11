@@ -205,9 +205,10 @@ export type BulkRevenueRow = {
   productId: number;
   reconciliationDate?: string | null;
   minutesNumber?: string;
-  reconType: string; // "phase:N" or "bonus_sale" or "bonus_manager"
+  reconType: string; // "commission" | "bonus_sale" | "bonus_manager"
   amount: number;
-  pmgCumulativePct?: number; // display value 0-100
+  phasePctThisTime?: number; // display value 0-100 (%PMG đợt này)
+  pmgCumulativePct?: number; // display value 0-100 (%PMG lũy kế)
   invoiceNumber?: string;
   invoiceDate?: string | null;
   invoiceTotalVat?: number;
@@ -224,9 +225,8 @@ export async function createRevenueBulk(rows: BulkRevenueRow[]) {
     try {
       if (!r.productId) throw new Error("Thiếu căn");
       if (!r.reconType) throw new Error("Thiếu loại đợt");
-      const isPhase = r.reconType.startsWith("phase:");
-      const phaseN = isPhase ? Number(r.reconType.split(":")[1]) : null;
-      const revenueThisTime = isPhase ? r.amount : 0;
+      const isCommission = r.reconType === "commission";
+      const revenueThisTime = isCommission ? r.amount : 0;
       const cdtBonusSale = r.reconType === "bonus_sale" ? r.amount : 0;
       const cdtBonusManager = r.reconType === "bonus_manager" ? r.amount : 0;
 
@@ -244,7 +244,8 @@ export async function createRevenueBulk(rows: BulkRevenueRow[]) {
           productId: r.productId,
           reconciliationDate: r.reconciliationDate ?? null,
           minutesNumber: r.minutesNumber ?? null,
-          phaseNumber: phaseN,
+          phaseNumber: null,
+          phasePctThisTime: r.phasePctThisTime ? r.phasePctThisTime / 100 : 0,
           pmgCumulativePct: r.pmgCumulativePct ? r.pmgCumulativePct / 100 : 0,
           revenueThisTime,
           cdtBonusSale,

@@ -18,9 +18,10 @@ type Row = {
   productId: number | "";
   reconciliationDate: string;
   minutesNumber: string;
-  reconType: string;
+  reconType: string; // "commission" | "bonus_sale" | "bonus_manager"
   amount: number;
-  pmgCumulativePct: string; // display %
+  phasePctThisTime: string; // display % (đợt này)
+  pmgCumulativePct: string; // display % (lũy kế)
   invoiceNumber: string;
   invoiceDate: string;
   invoiceTotalVat: number;
@@ -33,8 +34,9 @@ const emptyRow = (): Row => ({
   productId: "",
   reconciliationDate: "",
   minutesNumber: "",
-  reconType: "phase:1",
+  reconType: "commission",
   amount: 0,
+  phasePctThisTime: "",
   pmgCumulativePct: "",
   invoiceNumber: "",
   invoiceDate: "",
@@ -101,6 +103,7 @@ export default function BulkForm({
   const [colUnit, setColUnit] = useState("");
   const [colMinutes, setColMinutes] = useState("");
   const [colAmount, setColAmount] = useState("");
+  const [colPctThis, setColPctThis] = useState("");
   const [colPct, setColPct] = useState("");
   const [colRecDate, setColRecDate] = useState("");
   const [colInvNum, setColInvNum] = useState("");
@@ -109,7 +112,7 @@ export default function BulkForm({
   const [colPayDate, setColPayDate] = useState("");
   const [colPayAmount, setColPayAmount] = useState("");
   const [colNote, setColNote] = useState("");
-  const [defaultReconType, setDefaultReconType] = useState("phase:1");
+  const [defaultReconType, setDefaultReconType] = useState("commission");
   const [defaultDate, setDefaultDate] = useState("");
   const [replaceMode, setReplaceMode] = useState(true);
 
@@ -128,6 +131,7 @@ export default function BulkForm({
       unit: splitColumn(colUnit),
       minutes: splitColumn(colMinutes),
       amount: splitColumn(colAmount),
+      pctThis: splitColumn(colPctThis),
       pct: splitColumn(colPct),
       recDate: splitColumn(colRecDate),
       invNum: splitColumn(colInvNum),
@@ -141,6 +145,7 @@ export default function BulkForm({
       colUnit,
       colMinutes,
       colAmount,
+      colPctThis,
       colPct,
       colRecDate,
       colInvNum,
@@ -157,7 +162,8 @@ export default function BulkForm({
     const checks: [string, number][] = [
       ["Số biên bản", cols.minutes.length],
       ["Số tiền", cols.amount.length],
-      ["%PMG", cols.pct.length],
+      ["%PMG đợt này", cols.pctThis.length],
+      ["%PMG lũy kế", cols.pct.length],
       ["Ngày ĐC", cols.recDate.length],
       ["Số HĐ", cols.invNum.length],
       ["Ngày HĐ", cols.invDate.length],
@@ -202,6 +208,7 @@ export default function BulkForm({
         minutesNumber: cols.minutes[i] ?? "",
         reconType: defaultReconType,
         amount: cols.amount[i] ? parseMoney(cols.amount[i]) : 0,
+        phasePctThisTime: cols.pctThis[i] ? parsePctDisplay(cols.pctThis[i]) : "",
         pmgCumulativePct: cols.pct[i] ? parsePctDisplay(cols.pct[i]) : "",
         invoiceNumber: cols.invNum[i] ?? "",
         invoiceDate: cols.invDate[i] ? parseDate(cols.invDate[i]) : "",
@@ -230,6 +237,7 @@ export default function BulkForm({
     setColUnit("");
     setColMinutes("");
     setColAmount("");
+    setColPctThis("");
     setColPct("");
     setColRecDate("");
     setColInvNum("");
@@ -259,6 +267,7 @@ export default function BulkForm({
         minutesNumber: r.minutesNumber || undefined,
         reconType: r.reconType,
         amount: r.amount,
+        phasePctThisTime: r.phasePctThisTime ? Number(r.phasePctThisTime) : undefined,
         pmgCumulativePct: r.pmgCumulativePct ? Number(r.pmgCumulativePct) : undefined,
         invoiceNumber: r.invoiceNumber || undefined,
         invoiceDate: r.invoiceDate || null,
@@ -327,11 +336,7 @@ export default function BulkForm({
                 onChange={(e) => setDefaultReconType(e.target.value)}
                 className="input py-1 inline-block"
               >
-                <option value="phase:1">Đợt 1</option>
-                <option value="phase:2">Đợt 2</option>
-                <option value="phase:3">Đợt 3</option>
-                <option value="phase:4">Đợt 4</option>
-                <option value="phase:5">Đợt 5</option>
+                <option value="commission">Hoa hồng</option>
                 <option value="bonus_sale">Thưởng nóng sale</option>
                 <option value="bonus_manager">Thưởng nóng QL</option>
               </select>
@@ -380,6 +385,14 @@ export default function BulkForm({
               onChange={setColAmount}
               placeholder="65,105,193&#10;68,203,145&#10;..."
               nRows={cols.amount.length}
+              nExpected={nRows}
+            />
+            <ColBox
+              label="%PMG đợt này"
+              value={colPctThis}
+              onChange={setColPctThis}
+              placeholder="2,5%&#10;2,5%&#10;..."
+              nRows={cols.pctThis.length}
               nExpected={nRows}
             />
             <ColBox
@@ -460,6 +473,7 @@ export default function BulkForm({
                 setColUnit("");
                 setColMinutes("");
                 setColAmount("");
+                setColPctThis("");
                 setColPct("");
                 setColRecDate("");
                 setColInvNum("");
@@ -494,6 +508,7 @@ export default function BulkForm({
               <th className="text-left p-2 min-w-28">Số BB</th>
               <th className="text-left p-2 min-w-40">Loại đợt</th>
               <th className="text-right p-2 min-w-32">Số tiền</th>
+              <th className="text-right p-2 min-w-20">%PMG đợt này</th>
               <th className="text-right p-2 min-w-20">%PMG lũy kế</th>
               <th className="text-left p-2 min-w-28">Số HĐ</th>
               <th className="text-left p-2 min-w-32">Ngày HĐ</th>
@@ -540,16 +555,7 @@ export default function BulkForm({
                       onChange={(e) => update(idx, { reconType: e.target.value })}
                       className="input text-xs py-1"
                     >
-                      {!isSecondary && (
-                        <>
-                          <option value="phase:1">Đợt 1</option>
-                          <option value="phase:2">Đợt 2</option>
-                          <option value="phase:3">Đợt 3</option>
-                          <option value="phase:4">Đợt 4</option>
-                          <option value="phase:5">Đợt 5</option>
-                        </>
-                      )}
-                      {isSecondary && <option value="phase:1">Đợt duy nhất</option>}
+                      <option value="commission">Hoa hồng</option>
                       <option value="bonus_sale">Thưởng nóng sale</option>
                       <option value="bonus_manager">Thưởng nóng QL</option>
                     </select>
@@ -566,6 +572,17 @@ export default function BulkForm({
                       onFocus={(e) => e.currentTarget.select()}
                       placeholder="0"
                       className="input text-xs py-1 text-right tabular-nums"
+                    />
+                  </td>
+                  <td className="p-1">
+                    <input
+                      type="number"
+                      step="any"
+                      value={r.phasePctThisTime}
+                      onChange={(e) => update(idx, { phasePctThisTime: e.target.value })}
+                      placeholder="vd: 2.5"
+                      disabled={r.reconType.startsWith("bonus")}
+                      className="input text-xs py-1 text-right"
                     />
                   </td>
                   <td className="p-1">

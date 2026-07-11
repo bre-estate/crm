@@ -71,14 +71,14 @@ export default function RevenueForm({
   const isEdit = !!recon;
   const isSecondary = product?.saleType === "secondary";
 
-  // Loại đợt: đợt tiến độ N (phase:N) hoặc bonus_sale / bonus_manager
+  // Loại đợt: commission (hoa hồng, gộp mọi đợt tiến độ) / bonus_sale / bonus_manager
+  // Đợt cụ thể (1/2/3) admin ghi vào Mô tả.
   const initialReconType = ((): string => {
     if (recon) {
       if (Number(recon.cdtBonusSale ?? 0) > 0) return "bonus_sale";
       if (Number(recon.cdtBonusManager ?? 0) > 0) return "bonus_manager";
-      if (recon.phaseNumber) return `phase:${recon.phaseNumber}`;
     }
-    return "phase:1";
+    return "commission";
   })();
   const [reconType, setReconType] = useState(initialReconType);
 
@@ -96,9 +96,8 @@ export default function RevenueForm({
   const [amount, setAmount] = useState<number>(initialAmount);
   const amountDisplay = amount ? amount.toLocaleString("vi-VN") : "";
 
-  const isPhaseType = reconType.startsWith("phase:");
-  const phaseN = isPhaseType ? Number(reconType.split(":")[1]) : 0;
-  const revenueThisTimeVal = isPhaseType ? amount : 0;
+  const isCommission = reconType === "commission";
+  const revenueThisTimeVal = isCommission ? amount : 0;
   const cdtBonusSaleVal = reconType === "bonus_sale" ? amount : 0;
   const cdtBonusManagerVal = reconType === "bonus_manager" ? amount : 0;
 
@@ -183,17 +182,33 @@ export default function RevenueForm({
             />
           </Field>
           {isSecondary ? (
-            <input type="hidden" name="pmgCumulativePct" defaultValue={pctDisplay(recon?.pmgCumulativePct)} />
+            <>
+              <input type="hidden" name="pmgCumulativePct" defaultValue={pctDisplay(recon?.pmgCumulativePct)} />
+              <input type="hidden" name="phasePctThisTime" defaultValue={pctDisplay(recon?.phasePctThisTime)} />
+            </>
           ) : (
-            <Field label="%PMG_LK lũy kế đến đợt này (vd: 5.5)">
-              <input
-                name="pmgCumulativePct"
-                type="number"
-                step="any"
-                defaultValue={pctDisplay(recon?.pmgCumulativePct)}
-                className="input"
-              />
-            </Field>
+            <>
+              <Field label="%PMG_LK đợt này (vd: 2.5)">
+                <input
+                  name="phasePctThisTime"
+                  type="number"
+                  step="any"
+                  defaultValue={pctDisplay(recon?.phasePctThisTime)}
+                  className="input"
+                  placeholder="Tỷ lệ % thu riêng đợt này"
+                />
+              </Field>
+              <Field label="%PMG_LK lũy kế đến đợt này (vd: 5.5)">
+                <input
+                  name="pmgCumulativePct"
+                  type="number"
+                  step="any"
+                  defaultValue={pctDisplay(recon?.pmgCumulativePct)}
+                  className="input"
+                  placeholder="Cộng dồn tới đợt này"
+                />
+              </Field>
+            </>
           )}
         </div>
       </Section>
@@ -233,11 +248,6 @@ export default function RevenueForm({
       </Section>
 
       {/* Các % Excel không có, giữ hidden để không break shape / data cũ */}
-      <input
-        type="hidden"
-        name="phasePctThisTime"
-        defaultValue={pctDisplay(recon?.phasePctThisTime)}
-      />
       <input
         type="hidden"
         name="pmgSupportPct"
@@ -283,19 +293,15 @@ export default function RevenueForm({
               onChange={(e) => setReconType(e.target.value)}
               className="input"
             >
-              {!isSecondary && (
-                <>
-                  <option value="phase:1">Đợt 1 (theo tiến độ)</option>
-                  <option value="phase:2">Đợt 2 (theo tiến độ)</option>
-                  <option value="phase:3">Đợt 3 (theo tiến độ)</option>
-                  <option value="phase:4">Đợt 4 (theo tiến độ)</option>
-                  <option value="phase:5">Đợt 5 (theo tiến độ)</option>
-                </>
-              )}
-              {isSecondary && <option value="phase:1">Đợt duy nhất</option>}
+              <option value="commission">Hoa hồng</option>
               <option value="bonus_sale">Thưởng nóng cho sale</option>
               <option value="bonus_manager">Thưởng nóng cho quản lý sàn</option>
             </select>
+            {isCommission && (
+              <div className="text-[10px] text-slate-500 mt-1">
+                Đợt cụ thể (đợt 1, đợt 2...) ghi vào Mô tả bên dưới.
+              </div>
+            )}
           </Field>
           <Field label="Số tiền" required>
             <input
@@ -337,7 +343,7 @@ export default function RevenueForm({
         </div>
 
         {/* Hidden inputs — route số tiền vào field đúng theo loại */}
-        <input type="hidden" name="phaseNumber" value={phaseN} />
+        <input type="hidden" name="phaseNumber" value={0} />
         <input type="hidden" name="revenueThisTime" value={revenueThisTimeVal} />
         <input type="hidden" name="cdtBonusSale" value={cdtBonusSaleVal} />
         <input type="hidden" name="cdtBonusManager" value={cdtBonusManagerVal} />
