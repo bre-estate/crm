@@ -8,6 +8,25 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Buttons + interactive elements: cursor pointer khi hover (UX standard).
+   Tailwind v4 và browsers modern không tự set — phải explicit. */
+button:not(:disabled),
+[role="button"]:not(:disabled),
+summary,
+label[for],
+select:not(:disabled),
+input[type="checkbox"]:not(:disabled),
+input[type="radio"]:not(:disabled),
+input[type="submit"]:not(:disabled),
+input[type="reset"]:not(:disabled) {
+  cursor: pointer;
+}
+
+button:disabled,
+[role="button"][aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
 .input {
   width: 100%;
   border: 1px solid rgb(203 213 225);
