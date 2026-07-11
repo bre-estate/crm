@@ -162,8 +162,8 @@ export default function BulkForm({
     const checks: [string, number][] = [
       ["Số biên bản", cols.minutes.length],
       ["Số tiền", cols.amount.length],
-      ["%PMG đợt này", cols.pctThis.length],
-      ["%PMG lũy kế", cols.pct.length],
+      ["Tỷ lệ % thu đợt này", cols.pctThis.length],
+      ["% PMG_LK", cols.pct.length],
       ["Ngày ĐC", cols.recDate.length],
       ["Số HĐ", cols.invNum.length],
       ["Ngày HĐ", cols.invDate.length],
@@ -388,15 +388,15 @@ export default function BulkForm({
               nExpected={nRows}
             />
             <ColBox
-              label="%PMG đợt này"
+              label="Tỷ lệ % thu đợt này"
               value={colPctThis}
               onChange={setColPctThis}
-              placeholder="2,5%&#10;2,5%&#10;..."
+              placeholder="60%&#10;70%&#10;..."
               nRows={cols.pctThis.length}
               nExpected={nRows}
             />
             <ColBox
-              label="%PMG lũy kế"
+              label="% PMG_LK"
               value={colPct}
               onChange={setColPct}
               placeholder="5,5%&#10;5,5%&#10;..."
@@ -508,8 +508,8 @@ export default function BulkForm({
               <th className="text-left p-2 min-w-28">Số BB</th>
               <th className="text-left p-2 min-w-40">Loại đợt</th>
               <th className="text-right p-2 min-w-32">Số tiền</th>
-              <th className="text-right p-2 min-w-20">%PMG đợt này</th>
-              <th className="text-right p-2 min-w-20">%PMG lũy kế</th>
+              <th className="text-right p-2 min-w-24">% thu đợt này</th>
+              <th className="text-right p-2 min-w-20">% PMG_LK</th>
               <th className="text-left p-2 min-w-28">Số HĐ</th>
               <th className="text-left p-2 min-w-32">Ngày HĐ</th>
               <th className="text-right p-2 min-w-32">Giá trị HĐ</th>
@@ -580,7 +580,7 @@ export default function BulkForm({
                       step="any"
                       value={r.phasePctThisTime}
                       onChange={(e) => update(idx, { phasePctThisTime: e.target.value })}
-                      placeholder="vd: 2.5"
+                      placeholder="vd: 60"
                       disabled={r.reconType.startsWith("bonus")}
                       className="input text-xs py-1 text-right"
                     />

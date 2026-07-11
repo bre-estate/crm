@@ -955,7 +955,7 @@ export default async function ProductDetailPage({
                 <th className="text-left p-2 whitespace-nowrap">Ngày ĐC</th>
                 <th className="text-left p-2 whitespace-nowrap">Số HĐ</th>
                 <th className="text-left p-2 whitespace-nowrap">Ngày HĐ</th>
-                <th className="text-right p-2 whitespace-nowrap">%PMG</th>
+                <th className="text-right p-2 whitespace-nowrap" title="Commission rate BRE nhận từ CĐT">% PMG_LK</th>
                 <th className="text-right p-2 whitespace-nowrap">Số tiền đợt</th>
                 <th className="text-right p-2 whitespace-nowrap">Phải thu</th>
                 <th className="text-left p-2 whitespace-nowrap">Trạng thái</th>

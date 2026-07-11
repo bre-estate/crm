@@ -188,24 +188,24 @@ export default function RevenueForm({
             </>
           ) : (
             <>
-              <Field label="%PMG_LK đợt này (vd: 2.5)">
+              <Field label="Tỷ lệ % thu PMG_LK đợt này (vd: 60)">
                 <input
                   name="phasePctThisTime"
                   type="number"
                   step="any"
                   defaultValue={pctDisplay(recon?.phasePctThisTime)}
                   className="input"
-                  placeholder="Tỷ lệ % thu riêng đợt này"
+                  placeholder="% khách đã trả CĐT tại đợt này"
                 />
               </Field>
-              <Field label="%PMG_LK lũy kế đến đợt này (vd: 5.5)">
+              <Field label="% PMG_LK (vd: 5.5)">
                 <input
                   name="pmgCumulativePct"
                   type="number"
                   step="any"
                   defaultValue={pctDisplay(recon?.pmgCumulativePct)}
                   className="input"
-                  placeholder="Cộng dồn tới đợt này"
+                  placeholder="Commission rate BRE nhận từ CĐT"
                 />
               </Field>
             </>
