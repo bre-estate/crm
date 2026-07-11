@@ -120,14 +120,33 @@ export default function RevenueForm({
   const cdtBonusSaleVal = reconType === "bonus_sale" ? amount : 0;
   const cdtBonusManagerVal = reconType === "bonus_manager" ? amount : 0;
 
-  // Tổng đã ĐC LK trước đây cho căn này (không tính recon đang edit).
-  // Excel col 18 "DT theo tien do da doi chieu LK" — dùng để trừ khi tính đợt mới.
-  const prevCumulativeLK = useMemo(() => {
-    if (!product) return 0;
-    return prevRecons
-      .filter((r) => r.productId === product.id && r.id !== recon?.id)
-      .reduce((sum, r) => sum + Number(r.revenueThisTime ?? 0), 0);
+  // Prev recons của căn này (loại recon đang edit + loại bonus)
+  const prevCommissions = useMemo(() => {
+    if (!product) return [];
+    return prevRecons.filter(
+      (r) =>
+        r.productId === product.id &&
+        r.id !== recon?.id &&
+        !(Number(r.cdtBonusSale) > 0 || Number(r.cdtBonusManager) > 0),
+    );
   }, [prevRecons, product, recon?.id]);
+
+  // Tổng đã ĐC LK trước đây (không tính bonus, không tính recon đang edit).
+  // Excel col 18 "DT theo tien do da doi chieu LK".
+  const prevCumulativeLK = useMemo(
+    () => prevCommissions.reduce((sum, r) => sum + Number(r.revenueThisTime ?? 0), 0),
+    [prevCommissions],
+  );
+
+  // %thu PMG_LK cao nhất từ các đợt trước — hint cho user biết đợt mới thường ≥ giá trị này
+  const prevMaxPhasePct = useMemo(
+    () =>
+      Math.max(
+        0,
+        ...prevCommissions.map((r) => Number(r.phasePctThisTime ?? 0)),
+      ),
+    [prevCommissions],
+  );
 
   // Suggest amount dựa loại đợt + product config
   // Commission theo Excel col 20 = (pmgBase × %PMG_LK × %thu − admin_fee) − sum(prev col 20)
@@ -162,48 +181,107 @@ export default function RevenueForm({
       }
       className="space-y-6 bg-white border border-slate-200 rounded-xl p-6"
     >
-      <Section title="Thông tin đợt đối chiếu">
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Căn (sản phẩm)" required>
-            {isEdit ? (
-              <>
-                <SearchableSelect
-                  value={productId}
-                  disabled
-                  options={products.map((p) => ({
-                    value: p.id,
-                    label: p.productCode,
-                    sublabel: `${p.projectName ?? ""}${p.partnerName && p.partnerName !== "Chợ thứ cấp" ? ` · ${p.partnerName}` : ""}`,
-                  }))}
-                />
-                <input type="hidden" name="productId" value={productId} />
-              </>
-            ) : (
+      {/* ===== 1. Chọn căn ===== */}
+      <Section title="Chọn căn">
+        <Field label="Căn (sản phẩm)" required>
+          {isEdit ? (
+            <>
               <SearchableSelect
-                name="productId"
                 value={productId}
-                onChange={(v) => setProductId(Number(v))}
-                placeholder="Gõ mã căn / tên dự án..."
-                required
+                disabled
                 options={products.map((p) => ({
                   value: p.id,
                   label: p.productCode,
                   sublabel: `${p.projectName ?? ""}${p.partnerName && p.partnerName !== "Chợ thứ cấp" ? ` · ${p.partnerName}` : ""}`,
                 }))}
               />
+              <input type="hidden" name="productId" value={productId} />
+            </>
+          ) : (
+            <SearchableSelect
+              name="productId"
+              value={productId}
+              onChange={(v) => setProductId(Number(v))}
+              placeholder="Gõ mã căn / tên dự án..."
+              required
+              options={products.map((p) => ({
+                value: p.id,
+                label: p.productCode,
+                sublabel: `${p.projectName ?? ""}${p.partnerName && p.partnerName !== "Chợ thứ cấp" ? ` · ${p.partnerName}` : ""}`,
+              }))}
+            />
+          )}
+          {isEdit && (
+            <div className="text-xs text-slate-500 mt-1">
+              Không đổi được căn khi sửa. Muốn chuyển đợt sang căn khác → xóa đợt này rồi tạo lại.
+            </div>
+          )}
+        </Field>
+      </Section>
+
+      {/* Các % Excel không có, giữ hidden để không break shape / data cũ */}
+      <input
+        type="hidden"
+        name="pmgSupportPct"
+        defaultValue={pctDisplay(recon?.pmgSupportPct)}
+      />
+      <input
+        type="hidden"
+        name="otherRevenuePct"
+        defaultValue={pctDisplay(recon?.otherRevenuePct)}
+      />
+
+      {/* ===== 2. Tham chiếu từ căn (gộp info + cấu hình HH/KPI) ===== */}
+      {product && (
+        <Section title="📌 Tham chiếu từ căn (chỉ hiển thị)">
+          <div className="text-xs text-slate-500 -mt-2 mb-3">
+            Dữ liệu lấy từ config căn. Muốn đổi thì{" "}
+            <a href={`/products/${product.id}/edit`} className="text-blue-600 hover:underline">
+              vào trang chỉnh sửa căn
+            </a>
+            .
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+            <RefInfo label="Giá tính PMG" value={fmtMoney(product.pmgBasePrice)} />
+            <RefInfo label="%PMG_LK (căn)" value={fmtPctTight(product.pmgRate)} />
+            <RefInfo label="Phí admin" value={fmtMoney(product.adminFee)} />
+            <RefInfo
+              label="HH BRE dự kiến"
+              value={fmtMoney(
+                Math.max(
+                  0,
+                  Number(product.pmgBasePrice ?? 0) * Number(product.pmgRate ?? 0) -
+                    Number(product.adminFee ?? 0),
+                ),
+              )}
+              highlight
+            />
+            {!isSecondary && (
+              <>
+                <RefInfo label="%PMG_LK_sale" value={fmtPctTight(product.pmgSaleRate)} />
+                <RefInfo label="%HH sale (NVKD)" value={fmtPctTight(product.saleCommissionRate)} />
+                <RefInfo label="%KPI CEO" value={fmtPctTight(product.kpiCeoRate)} />
+                <RefInfo label="%KPI TPKD" value={fmtPctTight(product.kpiTpkdRate)} />
+                <RefInfo label="%KPI Admin" value={fmtPctTight(product.kpiAdminRate)} />
+                <RefInfo label="Thưởng CĐT sale" value={fmtMoney(product.cdtBonusSale)} />
+                <RefInfo label="Thưởng CĐT QL" value={fmtMoney(product.cdtBonusManager)} />
+                <RefInfo label="Thưởng NVKD (CTY)" value={fmtMoney(product.bonusSale)} />
+                <RefInfo label="Thưởng TPKD (CTY)" value={fmtMoney(product.bonusManager)} />
+                <RefInfo label="Hỗ trợ khách" value={fmtMoney(product.customerSupport)} />
+                <RefInfo
+                  label="% thu PMG_LK đã ĐC"
+                  value={prevMaxPhasePct > 0 ? `${(prevMaxPhasePct * 100).toFixed(2)}%` : "0%"}
+                />
+                <RefInfo label="LK đã ĐC (đợt trước)" value={fmtMoney(prevCumulativeLK)} />
+              </>
             )}
-            {product && (
-              <div className="text-xs text-slate-500 mt-1">
-                Giá tính PMG: {fmtMoney(product.pmgBasePrice)} · %PMG_LK:{" "}
-                {fmtPctTight(product.pmgRate)}
-              </div>
-            )}
-            {isEdit && (
-              <div className="text-xs text-slate-500 mt-1">
-                Không đổi được căn khi sửa. Muốn chuyển đợt sang căn khác thì xóa đợt này rồi tạo lại.
-              </div>
-            )}
-          </Field>
+          </div>
+        </Section>
+      )}
+
+      {/* ===== 3. Nhập đợt đối chiếu ===== */}
+      <Section title="💵 Nhập đợt đối chiếu">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Field label="Ngày đối chiếu">
             <input
               type="date"
@@ -226,109 +304,44 @@ export default function RevenueForm({
             </>
           ) : (
             <>
+              <Field label="% PMG_LK đợt này (vd: 5.5)">
+                <input
+                  name="pmgCumulativePct"
+                  type="number"
+                  step="any"
+                  min="0"
+                  max="100"
+                  value={pmgLkDisplay}
+                  onChange={(e) => setPmgLkDisplay(e.target.value)}
+                  onBlur={() => isCommission && suggested > 0 && setAmount(suggested)}
+                  className="input"
+                  placeholder="Rate hiệu lực đợt này"
+                />
+                <div className="text-[10px] text-slate-500 mt-1">
+                  Thường trùng {product ? fmtPctTight(product.pmgRate) : "%PMG_LK của căn"}.
+                </div>
+              </Field>
               <Field label="Tỷ lệ % thu PMG_LK đợt này (vd: 60)">
                 <input
                   name="phasePctThisTime"
                   type="number"
                   step="any"
+                  min="0"
+                  max="100"
                   value={phasePctDisplay}
                   onChange={(e) => setPhasePctDisplay(e.target.value)}
                   onBlur={() => isCommission && suggested > 0 && setAmount(suggested)}
                   className="input"
-                  placeholder="% khách đã trả CĐT tại đợt này"
+                  placeholder="% khách đã trả CĐT"
                 />
-              </Field>
-              <Field label="% PMG_LK (vd: 5.5)">
-                <input
-                  name="pmgCumulativePct"
-                  type="number"
-                  step="any"
-                  value={pmgLkDisplay}
-                  onChange={(e) => setPmgLkDisplay(e.target.value)}
-                  onBlur={() => isCommission && suggested > 0 && setAmount(suggested)}
-                  className="input"
-                  placeholder="Commission rate BRE nhận từ CĐT"
-                />
+                {prevMaxPhasePct > 0 && (
+                  <div className="text-[10px] text-slate-500 mt-1">
+                    Đợt trước đã ĐC {(prevMaxPhasePct * 100).toFixed(2)}%. Đợt mới thường ≥.
+                  </div>
+                )}
               </Field>
             </>
           )}
-        </div>
-      </Section>
-
-      <Section title={`📄 Hóa đơn${invoiceInit?.number ? " · ✅ Đã lập" : ""}`}>
-        <div className="text-xs text-slate-500 -mt-2 mb-2">
-          Trạng thái xuất hóa đơn cho đợt đối chiếu này. Nếu chưa lập, cứ để trống.
-        </div>
-        <div className="grid grid-cols-3 gap-4">
-          <Field label="Số hóa đơn">
-            <input
-              name="invoiceNumber"
-              defaultValue={invoiceInit?.number ?? ""}
-              className="input"
-              placeholder="Để trống nếu chưa lập"
-            />
-          </Field>
-          <Field label="Ngày hóa đơn">
-            <input
-              type="date"
-              name="invoiceDate"
-              defaultValue={invoiceInit?.date ?? ""}
-              className="input"
-            />
-          </Field>
-          <Field label="Giá trị HĐ tổng (gồm VAT)">
-            <MoneyInput
-              name="invoiceTotalVat"
-              defaultValue={invoiceInit?.totalAmountVat ?? 0}
-              className="input"
-            />
-          </Field>
-        </div>
-        <div className="text-xs text-slate-500">
-          Nếu số HĐ + ngày HĐ trùng với HĐ đã có, hệ thống tự link vào HĐ đó.
-        </div>
-      </Section>
-
-      {/* Các % Excel không có, giữ hidden để không break shape / data cũ */}
-      <input
-        type="hidden"
-        name="pmgSupportPct"
-        defaultValue={pctDisplay(recon?.pmgSupportPct)}
-      />
-      <input
-        type="hidden"
-        name="otherRevenuePct"
-        defaultValue={pctDisplay(recon?.otherRevenuePct)}
-      />
-
-      {/* Tham chiếu từ căn — grayed out */}
-      {product && (
-        <Section title="📌 Tham chiếu từ căn">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-            <RefInfo label="Giá tính PMG" value={fmtMoney(product.pmgBasePrice)} />
-            <RefInfo
-              label="%PMG_LK"
-              value={fmtPctTight(product.pmgRate)}
-            />
-            <RefInfo label="Phí admin" value={fmtMoney(product.adminFee)} />
-            <RefInfo
-              label="HH BRE dự kiến"
-              value={fmtMoney(
-                Math.max(
-                  0,
-                  Number(product.pmgBasePrice ?? 0) * Number(product.pmgRate ?? 0) -
-                    Number(product.adminFee ?? 0),
-                ),
-              )}
-              highlight
-            />
-          </div>
-        </Section>
-      )}
-
-      {/* Số tiền đợt này */}
-      <Section title="💵 Số tiền đợt này">
-        <div className="grid grid-cols-2 gap-4">
           <Field label="Loại đợt" required>
             <select
               value={reconType}
@@ -341,7 +354,7 @@ export default function RevenueForm({
             </select>
             {isCommission && (
               <div className="text-[10px] text-slate-500 mt-1">
-                Đợt cụ thể (đợt 1, đợt 2...) ghi vào Mô tả bên dưới.
+                Đợt cụ thể (đợt 1, đợt 2...) ghi vào Mô tả.
               </div>
             )}
           </Field>
@@ -364,7 +377,7 @@ export default function RevenueForm({
               name="note"
               defaultValue={recon?.note ?? ""}
               className="input"
-              placeholder="vd: Đợt cọc, đợt HĐMB, thưởng nóng, ..."
+              placeholder="vd: Đợt 1, Đợt HĐMB, thưởng nóng, ..."
             />
           </Field>
         </div>
@@ -397,43 +410,9 @@ export default function RevenueForm({
         />
       </Section>
 
-      {/* Cấu hình HH & KPI — READ-ONLY, sync từ căn */}
-      {!isSecondary && product && (
-        <Section title="⚙️ Cấu hình HH & KPI (từ căn)">
-          <div className="text-xs text-slate-500 -mt-2 mb-3">
-            Các tỷ lệ & thưởng dưới đây lấy từ config căn — chỉ hiển thị. Muốn đổi thì{" "}
-            <a
-              href={`/products/${product.id}/edit`}
-              className="text-blue-600 hover:underline"
-            >
-              vào trang chỉnh sửa căn
-            </a>
-            .
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            <RefInfo label="%PMG_LK_sale" value={fmtPctTight(product.pmgSaleRate)} />
-            <RefInfo label="%HH sale (NVKD)" value={fmtPctTight(product.saleCommissionRate)} />
-            <RefInfo label="%KPI CEO" value={fmtPctTight(product.kpiCeoRate)} />
-            <RefInfo label="%KPI TPKD" value={fmtPctTight(product.kpiTpkdRate)} />
-            <RefInfo label="%KPI Admin" value={fmtPctTight(product.kpiAdminRate)} />
-          </div>
-          <div className="border-t border-slate-200 mt-3 pt-3">
-            <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
-              Thưởng nóng CĐT & CTY (từ căn)
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              <RefInfo label="Thưởng nóng CĐT (sale)" value={fmtMoney(product.cdtBonusSale)} />
-              <RefInfo label="Thưởng nóng CĐT (QL)" value={fmtMoney(product.cdtBonusManager)} />
-              <RefInfo label="Thưởng NVKD (CTY)" value={fmtMoney(product.bonusSale)} />
-              <RefInfo label="Thưởng TPKD (CTY)" value={fmtMoney(product.bonusManager)} />
-              <RefInfo label="Hỗ trợ khách" value={fmtMoney(product.customerSupport)} />
-            </div>
-          </div>
-        </Section>
-      )}
-
+      {/* ===== 4. Thanh toán (chỉ khi tạo mới) ===== */}
       {!isEdit && (
-        <Section title="🏦 Đã nhận tiền vào TK cty chưa? (tùy chọn — điền nếu CĐT đã trả rồi)">
+        <Section title="🏦 Đã nhận tiền vào TK cty chưa? (tùy chọn)">
           <div className="grid grid-cols-2 gap-4">
             <Field label="Ngày nhận tiền">
               <input
@@ -452,10 +431,45 @@ export default function RevenueForm({
             </Field>
           </div>
           <div className="text-xs text-slate-500">
-            Điền vào đây để tạo luôn 1 dòng thanh toán liên kết. Nếu chưa thu, cứ để trống.
+            Điền để tạo luôn 1 dòng thanh toán liên kết. Nếu chưa thu, để trống.
           </div>
         </Section>
       )}
+
+      {/* ===== 5. Hóa đơn (cuối) ===== */}
+      <Section title={`📄 Hóa đơn${invoiceInit?.number ? " · ✅ Đã lập" : ""}`}>
+        <div className="text-xs text-slate-500 -mt-2 mb-2">
+          Trạng thái xuất hóa đơn cho đợt này. Nếu chưa lập, cứ để trống.
+        </div>
+        <div className="grid grid-cols-3 gap-4">
+          <Field label="Số hóa đơn">
+            <input
+              name="invoiceNumber"
+              defaultValue={invoiceInit?.number ?? ""}
+              className="input"
+              placeholder="Để trống nếu chưa lập"
+            />
+          </Field>
+          <Field label="Ngày hóa đơn">
+            <input
+              type="date"
+              name="invoiceDate"
+              defaultValue={invoiceInit?.date ?? ""}
+              className="input"
+            />
+          </Field>
+          <Field label="Giá trị HĐ tổng (gồm VAT)">
+            <MoneyInput
+              name="invoiceTotalVat"
+              defaultValue={invoiceInit?.totalAmountVat ?? 0}
+              className="input"
+            />
+          </Field>
+        </div>
+        <div className="text-xs text-slate-500">
+          Số HĐ + ngày HĐ trùng HĐ đã có → hệ thống tự link.
+        </div>
+      </Section>
 
       <div className="flex justify-end gap-3 pt-2">
         {onDelete && (
