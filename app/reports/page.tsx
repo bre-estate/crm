@@ -279,7 +279,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
         </div>
       </form>
 
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card label="Tổng doanh thu dự kiến (gồm VAT)" value={fmtMoney(grandTotals.revenueExp)} sub="từ Tab Giao dịch" />
         <Card label="Tổng giá vốn dự kiến" value={fmtMoney(grandTotals.costExp)} warn />
         <Card
@@ -297,7 +297,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
         />
       </div>
 
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card label="Doanh thu đã ĐC" value={fmtMoney(grandTotals.revRec)} />
         <Card label="Giá vốn đã ĐC" value={fmtMoney(grandTotals.costRec)} warn />
         <Card
