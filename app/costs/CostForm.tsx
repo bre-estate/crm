@@ -336,8 +336,9 @@ export default function CostForm({
       }
       className="space-y-6 bg-white border border-slate-200 rounded-xl p-6"
     >
+      {/* ===== 1. Chọn căn + loại chi phí ===== */}
       <Section title="Thông tin đối chiếu">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Field label="Căn (sản phẩm)" required>
             {isEdit ? (
               <>
@@ -398,104 +399,60 @@ export default function CostForm({
               className="input"
             />
           </Field>
-          {/* fiscalYear ẩn — bỏ khỏi UI theo yêu cầu */}
           <input
             type="hidden"
             name="fiscalYear"
             value={recon?.fiscalYear ?? new Date().getFullYear()}
           />
         </div>
-
-        {/* Info căn dạng disabled inputs */}
-        {product && (() => {
-          const rateForType: { label: string; value: string } | null = (() => {
-            const pct = (r: number | null | undefined) => fmtPctTight(r);
-            switch (costType) {
-              case "sale_commission":
-                return { label: "%HH sale (chốt)", value: pct(product.saleCommissionRate) };
-              case "kpi_ceo":
-                return { label: "%KPI CEO", value: pct(product.kpiCeoRate) };
-              case "kpi_tpkd":
-                return { label: "%KPI TPKD", value: pct(product.kpiTpkdRate) };
-              case "kpi_admin":
-                return { label: "%KPI Admin", value: pct(product.kpiAdminRate) };
-              case "customer_support":
-                return {
-                  label: "Hỗ trợ khách (chốt)",
-                  value: fmtMoney(product.customerSupport),
-                };
-              case "bonus_manager":
-                return { label: "CTY thưởng QL", value: fmtMoney(product.bonusManager) };
-              case "bonus_sale":
-                return { label: "CTY thưởng NVKD", value: fmtMoney(product.bonusSale) };
-              case "cdt_bonus_sale":
-                return { label: "CĐT thưởng sale", value: fmtMoney(product.cdtBonusSale) };
-              case "cdt_bonus_manager":
-                return { label: "CĐT thưởng QL", value: fmtMoney(product.cdtBonusManager) };
-              default:
-                return null;
-            }
-          })();
-          // M (%PMG_LK_sale): so sánh giá trị recon-time (đã lưu) vs config hiện tại
-          const mAtRecon = Number(recon?.pmgLkSaleRate ?? 0);
-          const mCurrent = Number(product.pmgSaleRate ?? 0);
-          const mChanged = isEdit && mAtRecon > 0 && Math.abs(mAtRecon - mCurrent) > 0.0001;
-          return (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-3 border-t border-slate-100">
-              <Field label="Giá tính PMG (từ căn)">
-                <input
-                  type="text"
-                  value={fmtMoney(product.pmgBasePrice)}
-                  readOnly
-                  className="input bg-slate-100 text-slate-500 cursor-not-allowed tabular-nums"
-                />
-              </Field>
-              <Field label="%PMG_LK_sale (M)">
-                <input
-                  type="text"
-                  value={
-                    mChanged
-                      ? `${fmtPctTight(mAtRecon)} → ${fmtPctTight(mCurrent)}`
-                      : fmtPctTight(mCurrent)
-                  }
-                  readOnly
-                  className={`input tabular-nums cursor-not-allowed ${
-                    mChanged ? "bg-amber-50 text-amber-800 border-amber-300" : "bg-slate-100 text-slate-500"
-                  }`}
-                  title={
-                    mChanged
-                      ? `Đợt cũ ${fmtPctTight(mAtRecon)}, config hiện tại ${fmtPctTight(mCurrent)} (có điều chỉnh)`
-                      : undefined
-                  }
-                />
-                {mChanged && (
-                  <div className="text-[10px] text-amber-700 mt-0.5">
-                    ⚠️ M đã điều chỉnh từ {fmtPctTight(mAtRecon)} sang {fmtPctTight(mCurrent)}
-                  </div>
-                )}
-              </Field>
-              {rateForType && (
-                <Field label={rateForType.label}>
-                  <input
-                    type="text"
-                    value={rateForType.value}
-                    readOnly
-                    className="input bg-slate-100 text-slate-500 cursor-not-allowed tabular-nums"
-                  />
-                </Field>
-              )}
-              <Field label="NVKD">
-                <input
-                  type="text"
-                  value={product.salesPerson ?? "—"}
-                  readOnly
-                  className="input bg-slate-100 text-slate-500 cursor-not-allowed"
-                />
-              </Field>
-            </div>
-          );
-        })()}
       </Section>
+
+      {/* ===== 2. Tham chiếu từ căn (read-only, gộp tất cả config) ===== */}
+      {product && (() => {
+        const mAtRecon = Number(recon?.pmgLkSaleRate ?? 0);
+        const mCurrent = Number(product.pmgSaleRate ?? 0);
+        const mChanged = isEdit && mAtRecon > 0 && Math.abs(mAtRecon - mCurrent) > 0.0001;
+        return (
+          <Section title="📌 Tham chiếu từ căn (chỉ hiển thị)">
+            <div className="text-xs text-slate-500 -mt-2 mb-3">
+              Config lấy từ căn. Muốn đổi thì{" "}
+              <a href={`/products/${product.id}/edit`} className="text-blue-600 hover:underline">
+                vào trang chỉnh sửa căn
+              </a>
+              .
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+              <RefInfo label="Giá tính PMG" value={fmtMoney(product.pmgBasePrice)} />
+              <RefInfo label="%PMG_LK (căn)" value={fmtPctTight(product.pmgRate)} />
+              <RefInfo
+                label={mChanged ? "%PMG_LK_sale (⚠ đã đổi)" : "%PMG_LK_sale"}
+                value={
+                  mChanged
+                    ? `${fmtPctTight(mAtRecon)} → ${fmtPctTight(mCurrent)}`
+                    : fmtPctTight(mCurrent)
+                }
+              />
+              <RefInfo label="Phí admin sale" value={fmtMoney(product.adminFeeSale)} />
+              <RefInfo label="%HH sale (NVKD)" value={fmtPctTight(product.saleCommissionRate)} />
+              <RefInfo label="%KPI CEO" value={fmtPctTight(product.kpiCeoRate)} />
+              <RefInfo label="%KPI TPKD" value={fmtPctTight(product.kpiTpkdRate)} />
+              <RefInfo label="%KPI Admin" value={fmtPctTight(product.kpiAdminRate)} />
+              <RefInfo label="Thưởng CĐT sale" value={fmtMoney(product.cdtBonusSale)} />
+              <RefInfo label="Thưởng CĐT QL" value={fmtMoney(product.cdtBonusManager)} />
+              <RefInfo label="Thưởng NVKD (CTY)" value={fmtMoney(product.bonusSale)} />
+              <RefInfo label="Thưởng TPKD (CTY)" value={fmtMoney(product.bonusManager)} />
+              <RefInfo label="Hỗ trợ khách" value={fmtMoney(product.customerSupport)} />
+              <RefInfo label="NVKD (mặc định)" value={product.salesPerson ?? "—"} />
+            </div>
+            {mChanged && (
+              <div className="text-[10px] text-amber-700 mt-2">
+                ⚠️ %PMG_LK_sale đã điều chỉnh từ {fmtPctTight(mAtRecon)} sang {fmtPctTight(mCurrent)}
+                — dòng này lưu snapshot rate cũ, tính toán bên dưới dùng rate mới.
+              </div>
+            )}
+          </Section>
+        );
+      })()}
 
       {/* Progress + Payment cho đợt này */}
       <Section title="📊 Tiến độ chi trả">
@@ -882,11 +839,34 @@ function Field({
   full?: boolean;
 }) {
   return (
-    <div className={full ? "col-span-2" : ""}>
+    <div className={full ? "col-span-full" : ""}>
       <label className="block text-xs text-slate-600 mb-1">
         {label} {required && <span className="text-red-500">*</span>}
       </label>
       {children}
+    </div>
+  );
+}
+
+function RefInfo({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-lg p-3 ${highlight ? "bg-green-50 border border-green-200" : "bg-slate-100 border border-slate-200"}`}
+    >
+      <div className="text-xs text-slate-500">{label}</div>
+      <div
+        className={`text-sm font-semibold tabular-nums mt-0.5 ${highlight ? "text-green-700" : "text-slate-500"}`}
+      >
+        {value}
+      </div>
     </div>
   );
 }
