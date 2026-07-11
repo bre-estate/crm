@@ -113,22 +113,6 @@ export default async function EditRevenuePage({
       </div>
       <h1 className="text-2xl font-bold">Sửa đợt đối chiếu doanh thu</h1>
 
-      <PaymentsEditor
-        payments={payments}
-        onUpdate={async (paymentId, fd) => {
-          "use server";
-          await updatePaymentIn(paymentId, fd);
-        }}
-        onDelete={async (paymentId) => {
-          "use server";
-          await deletePaymentIn(paymentId);
-        }}
-        onAdd={async (fd) => {
-          "use server";
-          await addPaymentIn(id, fd);
-        }}
-      />
-
       <RevenueForm
         recon={recon}
         invoiceInit={invoiceInit}
@@ -142,6 +126,22 @@ export default async function EditRevenuePage({
         onDelete={async () => {
           "use server";
           await deleteRevenue(id);
+        }}
+      />
+
+      <PaymentsEditor
+        payments={payments}
+        onUpdate={async (paymentId, fd) => {
+          "use server";
+          await updatePaymentIn(paymentId, fd);
+        }}
+        onDelete={async (paymentId) => {
+          "use server";
+          await deletePaymentIn(paymentId);
+        }}
+        onAdd={async (fd) => {
+          "use server";
+          await addPaymentIn(id, fd);
         }}
       />
     </div>
