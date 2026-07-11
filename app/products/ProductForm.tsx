@@ -401,7 +401,22 @@ export default function ProductForm({ product, projects, departments = [], onSav
       </Section>
 
       <Section title={isSecondary ? "Giá vốn (BRE trả NVKD)" : "Giá vốn (BRE trả nội bộ)"}>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          {!isSecondary && (
+            <Field label="%PMG_LK_sale (base tính HH sale)">
+              <input
+                name="pmgSaleRate"
+                type="number"
+                step="any"
+                defaultValue={pctDisplay(product?.pmgSaleRate)}
+                className="input"
+                onChange={(e) => {
+                  const n = Number(e.target.value.replace(/,/g, "."));
+                  setPmgSaleRateLive(isNaN(n) ? 0 : n / 100);
+                }}
+              />
+            </Field>
+          )}
           <Field label="%HH sale (NVKD)">
             <input
               name="saleCommissionRate"
@@ -415,37 +430,18 @@ export default function ProductForm({ product, projects, departments = [], onSav
               }}
             />
           </Field>
-          <Field label="Hỗ trợ khách">
-            <MoneyInput
-              name="customerSupport"
-              defaultValue={product?.customerSupport ?? 0}
-              className="input"
-              onValueChange={setCustomerSupportLive}
-            />
-          </Field>
-          <Field label="CTY thưởng QL">
-            <MoneyInput
-              name="bonusManager"
-              defaultValue={product?.bonusManager ?? 0}
-              className="input"
-              onValueChange={setBonusMgrCtyLive}
-            />
-          </Field>
-          {/* Preserve giá trị legacy — không hard-zero */}
-          <input type="hidden" name="bonusSale" value={String(bonusSaleStored)} />
-          <input type="hidden" name="otherCost" value={String(otherCostStored)} />
           {!isSecondary && (
             <>
-              <Field label="%PMG_LK_sale (base tính HH sale)">
+              <Field label="%KPI TPKD (Trưởng phòng)">
                 <input
-                  name="pmgSaleRate"
+                  name="kpiTpkdRate"
                   type="number"
                   step="any"
-                  defaultValue={pctDisplay(product?.pmgSaleRate)}
+                  defaultValue={pctDisplay(product?.kpiTpkdRate)}
                   className="input"
                   onChange={(e) => {
                     const n = Number(e.target.value.replace(/,/g, "."));
-                    setPmgSaleRateLive(isNaN(n) ? 0 : n / 100);
+                    setKpiTpkdRateLive(isNaN(n) ? 0 : n / 100);
                   }}
                 />
               </Field>
@@ -459,19 +455,6 @@ export default function ProductForm({ product, projects, departments = [], onSav
                   onChange={(e) => {
                     const n = Number(e.target.value.replace(/,/g, "."));
                     setKpiCeoRateLive(isNaN(n) ? 0 : n / 100);
-                  }}
-                />
-              </Field>
-              <Field label="%KPI TPKD (Trưởng phòng)">
-                <input
-                  name="kpiTpkdRate"
-                  type="number"
-                  step="any"
-                  defaultValue={pctDisplay(product?.kpiTpkdRate)}
-                  className="input"
-                  onChange={(e) => {
-                    const n = Number(e.target.value.replace(/,/g, "."));
-                    setKpiTpkdRateLive(isNaN(n) ? 0 : n / 100);
                   }}
                 />
               </Field>
@@ -490,6 +473,25 @@ export default function ProductForm({ product, projects, departments = [], onSav
               </Field>
             </>
           )}
+          <Field label="CTY thưởng QL">
+            <MoneyInput
+              name="bonusManager"
+              defaultValue={product?.bonusManager ?? 0}
+              className="input"
+              onValueChange={setBonusMgrCtyLive}
+            />
+          </Field>
+          <Field label="Hỗ trợ khách">
+            <MoneyInput
+              name="customerSupport"
+              defaultValue={product?.customerSupport ?? 0}
+              className="input"
+              onValueChange={setCustomerSupportLive}
+            />
+          </Field>
+          {/* Preserve giá trị legacy — không hard-zero */}
+          <input type="hidden" name="bonusSale" value={String(bonusSaleStored)} />
+          <input type="hidden" name="otherCost" value={String(otherCostStored)} />
         </div>
 
         {/* Tổng giá vốn — read-only, live compute */}
