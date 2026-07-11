@@ -130,7 +130,7 @@ export default function RevenueForm({
   }, [prevRecons, product, recon?.id]);
 
   // Suggest amount dựa loại đợt + product config
-  // Commission: theo Excel col 20 = pmgBase × %PMG_LK × %thu − LK đã ĐC trước
+  // Commission theo Excel col 20 = (pmgBase × %PMG_LK × %thu − admin_fee) − sum(prev col 20)
   const suggested = useMemo(() => {
     if (!product) return 0;
     if (reconType === "bonus_sale") return Number(product.cdtBonusSale ?? 0);
@@ -142,8 +142,11 @@ export default function RevenueForm({
       return 0;
     }
     const gross = Number(product.pmgBasePrice ?? 0) * pmgLk * phasePct;
-    return Math.max(0, Math.round(gross - prevCumulativeLK));
-  }, [reconType, product, pmgLkDisplay, phasePctDisplay, prevCumulativeLK]);
+    // Admin fee: ưu tiên recon.adminFeeVat (đã lưu), fallback product.adminFee
+    const adminFee = Number(recon?.adminFeeVat ?? 0) || Number(product.adminFee ?? 0);
+    const lkThisTime = gross - adminFee; // = Excel col 19
+    return Math.max(0, Math.round(lkThisTime - prevCumulativeLK));
+  }, [reconType, product, recon, pmgLkDisplay, phasePctDisplay, prevCumulativeLK]);
 
   return (
     <form
@@ -355,26 +358,6 @@ export default function RevenueForm({
               className="input"
               placeholder="0"
             />
-            {suggested > 0 && Math.abs(suggested - amount) > 100 && (
-              <div className="text-xs mt-1.5 flex items-center gap-2 bg-blue-50 border border-blue-200 rounded px-2 py-1">
-                <span className="text-blue-700">
-                  💡 Gợi ý{" "}
-                  {isCommission
-                    ? `(pmgBase × ${pmgLkDisplay || 0}% × ${phasePctDisplay || 0}%${
-                        prevCumulativeLK > 0 ? ` − LK đã ĐC ${fmtMoney(prevCumulativeLK)}` : ""
-                      })`
-                    : "từ căn"}
-                  : <b className="tabular-nums">{fmtMoney(suggested)}</b>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setAmount(Math.round(suggested))}
-                  className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded hover:bg-blue-700"
-                >
-                  Áp dụng
-                </button>
-              </div>
-            )}
           </Field>
           <Field label="Mô tả / Ghi chú" full>
             <input
