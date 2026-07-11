@@ -499,6 +499,13 @@ export default function BulkForm({
         </div>
       )}
 
+      {rows.length === 0 ? (
+        <div className="bg-white border border-dashed border-slate-300 rounded-xl py-10 text-center text-sm text-slate-500">
+          Chưa có dòng nào. Bấm{" "}
+          <span className="font-semibold text-slate-700">&quot;+ Thêm dòng&quot;</span> hoặc{" "}
+          <span className="font-semibold text-slate-700">&quot;📋 Dán từ Excel&quot;</span> để bắt đầu.
+        </div>
+      ) : (
       <div className="bg-white overflow-x-auto">
         <table className="w-full text-xs border-collapse">
           <thead className="bg-slate-50 text-slate-600 text-[11px]">
@@ -672,6 +679,7 @@ export default function BulkForm({
           </tbody>
         </table>
       </div>
+      )}
 
       <div className="flex items-center gap-3 pt-2">
         <button
