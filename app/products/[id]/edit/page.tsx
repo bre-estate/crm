@@ -1,6 +1,14 @@
 import { db } from "@/lib/db";
-import { products, projects, partners, departments, productAdjustments } from "@/lib/schema";
-import { asc, desc, eq } from "drizzle-orm";
+import {
+  products,
+  projects,
+  partners,
+  departments,
+  productAdjustments,
+  revenueReconciliations,
+  costReconciliations,
+} from "@/lib/schema";
+import { asc, desc, eq, sql } from "drizzle-orm";
 // projects.default_sale_type mới thêm — 'primary' | 'secondary' | null.
 // Null = chưa phân loại, hiện ở cả 2 tab.
 import { fmtMoney, fmtDate, fmtPctTight } from "@/lib/format";
@@ -79,6 +87,18 @@ export default async function EditProductPage({
 
   const isSecondary = product.saleType === "secondary";
 
+  // Nếu căn đã có recon doanh thu hoặc giá vốn → khóa 3 field (pmgBase/pmgRate/adminFee)
+  // và bắt buộc dùng "Điều chỉnh thông tin căn" để giữ lịch sử. Chưa có recon → edit trực tiếp.
+  const [{ revC = 0 }] = await db
+    .select({ revC: sql<number>`count(*)::int` })
+    .from(revenueReconciliations)
+    .where(eq(revenueReconciliations.productId, id));
+  const [{ costC = 0 }] = await db
+    .select({ costC: sql<number>`count(*)::int` })
+    .from(costReconciliations)
+    .where(eq(costReconciliations.productId, id));
+  const hasRecons = Number(revC) + Number(costC) > 0;
+
   return (
     <div className="space-y-4 max-w-4xl">
       <div className="flex items-center gap-2 text-sm">
@@ -106,6 +126,7 @@ export default async function EditProductPage({
         partners={allPartners}
         departments={allDepts}
         returnTo={returnTo}
+        lockCoreFields={hasRecons}
         onSave={async (fd) => {
           "use server";
           await updateProduct(id, fd);
@@ -116,7 +137,7 @@ export default async function EditProductPage({
         }}
       />
 
-      {!isSecondary && (
+      {!isSecondary && hasRecons && (
         <div className="bg-white border border-slate-200 rounded-xl p-5">
           <div className="flex justify-between items-start mb-3">
             <div>

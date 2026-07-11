@@ -19,12 +19,14 @@ type Props = {
   onSave: (fd: FormData) => Promise<void>;
   onDelete?: () => Promise<void>;
   returnTo?: string | null;
+  // Nếu true → khóa 3 field pmgBase / pmgRate / adminFee (dùng "Điều chỉnh thông tin căn" thay)
+  lockCoreFields?: boolean;
 };
 
 const pctDisplay = (v: number | null | undefined): string =>
   v == null ? "" : String(Number((Number(v) * 100).toFixed(4)));
 
-export default function ProductForm({ product, projects, departments = [], onSave, onDelete, returnTo }: Props) {
+export default function ProductForm({ product, projects, departments = [], onSave, onDelete, returnTo, lockCoreFields = false }: Props) {
   const [pending, start] = useTransition();
   const router = useRouter();
   const isEdit = !!product;
@@ -198,6 +200,14 @@ export default function ProductForm({ product, projects, departments = [], onSav
               className="input"
             />
           </Field>
+          <Field label="Ngày cọc">
+            <input
+              type="date"
+              name="depositDate"
+              defaultValue={product?.depositDate ?? ""}
+              className="input"
+            />
+          </Field>
           <Field label="NVKD">
             <input name="salesPerson" defaultValue={product?.salesPerson ?? ""} className="input" />
           </Field>
@@ -221,14 +231,6 @@ export default function ProductForm({ product, projects, departments = [], onSav
               defaultValue={product?.recognitionMonth ?? ""}
               className="input"
               placeholder="vd: 2025-06"
-            />
-          </Field>
-          <Field label="Ngày cọc">
-            <input
-              type="date"
-              name="depositDate"
-              defaultValue={product?.depositDate ?? ""}
-              className="input"
             />
           </Field>
           {/* Ngày hoàn thành dự kiến + PTTT ẩn — bỏ khỏi UI theo yêu cầu */}
@@ -276,7 +278,13 @@ export default function ProductForm({ product, projects, departments = [], onSav
                 defaultValue={product?.pmgBasePrice ?? 0}
                 className="input"
                 onValueChange={setPmgBase}
+                disabled={lockCoreFields}
               />
+              {lockCoreFields && (
+                <div className="text-[10px] text-slate-500 mt-1">
+                  Khóa. Đổi qua &quot;Điều chỉnh thông tin căn&quot;.
+                </div>
+              )}
             </Field>
             <Field label="%PMG_LK (CĐT trả BRE)">
               <div className="relative">
@@ -286,13 +294,16 @@ export default function ProductForm({ product, projects, departments = [], onSav
                   name="pmgRate"
                   defaultValue={product?.pmgRate ? Number((Number(product.pmgRate) * 100).toFixed(4)) : ""}
                   onChange={(e) => setPmgRateLive(Number(e.target.value.replace(/,/g, ".")) / 100)}
-                  className="input pr-8"
+                  disabled={lockCoreFields}
+                  className={`input pr-8 ${lockCoreFields ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}`}
                   placeholder="VD: 6,75"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">%</span>
               </div>
               <div className="text-[10px] text-slate-500 mt-1">
-                Muốn track lịch sử → dùng &quot;Điều chỉnh thông tin căn&quot;
+                {lockCoreFields
+                  ? "Khóa. Đổi qua \"Điều chỉnh thông tin căn\"."
+                  : "Muốn track lịch sử → dùng \"Điều chỉnh thông tin căn\""}
               </div>
             </Field>
             <Field label="Phí admin (CĐT trừ khỏi PMG)">
@@ -301,9 +312,12 @@ export default function ProductForm({ product, projects, departments = [], onSav
                 defaultValue={product?.adminFee ?? 0}
                 className="input"
                 onValueChange={setAdminFeeLive}
+                disabled={lockCoreFields}
               />
               <div className="text-[10px] text-slate-500 mt-1">
-                CĐT trừ khỏi PMG trước khi chuyển vào TK BRE
+                {lockCoreFields
+                  ? "Khóa. Đổi qua \"Điều chỉnh thông tin căn\"."
+                  : "CĐT trừ khỏi PMG trước khi chuyển vào TK BRE"}
               </div>
             </Field>
             <Field label="Phí admin (dùng tính HH sale)">
