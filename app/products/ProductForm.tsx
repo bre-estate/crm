@@ -136,7 +136,7 @@ export default function ProductForm({ product, projects, departments = [], onSav
       className="space-y-6 bg-white border border-slate-200 rounded-xl p-6"
     >
       <Section title="Thông tin căn">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <Field label="Loại giao dịch" required>
             <select
               name="saleType"
@@ -244,7 +244,7 @@ export default function ProductForm({ product, projects, departments = [], onSav
       <Section title={isSecondary ? "Doanh thu" : "Doanh thu (CĐT/F1 trả BRE)"}>
         {isSecondary ? (
           <>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <Field label="Doanh thu về cty">
                 <MoneyInput
                   name="totalRevenue"
@@ -269,8 +269,7 @@ export default function ProductForm({ product, projects, departments = [], onSav
           </>
         ) : (
           <>
-          {/* Row 1: Giá tính PMG + %PMG_LK */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <Field label="Giá tính PMG (= giá bán)">
               <MoneyInput
                 name="pmgBasePrice"
@@ -293,13 +292,9 @@ export default function ProductForm({ product, projects, departments = [], onSav
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">%</span>
               </div>
               <div className="text-[10px] text-slate-500 mt-1">
-                Muốn track lịch sử điều chỉnh → dùng &quot;Điều chỉnh thông tin căn&quot; bên dưới
+                Muốn track lịch sử → dùng &quot;Điều chỉnh thông tin căn&quot;
               </div>
             </Field>
-          </div>
-
-          {/* Row 2: Phí admin — luôn 2 ô riêng (CĐT trừ vs dùng tính HH sale) */}
-          <div className="grid grid-cols-2 gap-4 mt-4">
             <Field label="Phí admin (CĐT trừ khỏi PMG)">
               <MoneyInput
                 name="adminFee"
@@ -308,7 +303,7 @@ export default function ProductForm({ product, projects, departments = [], onSav
                 onValueChange={setAdminFeeLive}
               />
               <div className="text-[10px] text-slate-500 mt-1">
-                Số CĐT trừ khỏi PMG trước khi chuyển tiền vào TK BRE
+                CĐT trừ khỏi PMG trước khi chuyển vào TK BRE
               </div>
             </Field>
             <Field label="Phí admin (dùng tính HH sale)">
@@ -322,10 +317,6 @@ export default function ProductForm({ product, projects, departments = [], onSav
                 Số ghi trong công thức HH sale. Chênh cty tự chịu.
               </div>
             </Field>
-          </div>
-
-          {/* Row 3: CĐT thưởng nóng */}
-          <div className="grid grid-cols-2 gap-4 mt-4">
             <Field label="CĐT thưởng nóng cho sale">
               <MoneyInput
                 name="cdtBonusSale"
@@ -597,7 +588,7 @@ function Field({
   full?: boolean;
 }) {
   return (
-    <div className={full ? "col-span-2" : ""}>
+    <div className={full ? "col-span-full" : ""}>
       <label className="block text-xs text-slate-600 mb-1">
         {label} {required && <span className="text-red-500">*</span>}
       </label>

@@ -19,7 +19,7 @@ export default function PartnerForm({ partner, onSave, onDelete }: Props) {
       action={(fd) => start(async () => await onSave(fd))}
       className="space-y-4 bg-white border border-slate-200 rounded-xl p-6"
     >
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <Field label="Mã đối tác (4 ký tự)" required>
           <input
             name="code"
@@ -120,7 +120,7 @@ function Field({
   full?: boolean;
 }) {
   return (
-    <div className={full ? "col-span-2" : ""}>
+    <div className={full ? "col-span-full" : ""}>
       <label className="block text-xs text-slate-600 mb-1">
         {label} {required && <span className="text-red-500">*</span>}
       </label>

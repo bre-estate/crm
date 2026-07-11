@@ -43,7 +43,7 @@ export default function ProjectForm({ project, partners, onSave, onDelete }: Pro
       className="space-y-6 bg-white border border-slate-200 rounded-xl p-6"
     >
       <Section title="Thông tin cơ bản">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <Field label="Loại giao dịch mặc định" required>
             <select
               name="defaultSaleType"
@@ -55,10 +55,9 @@ export default function ProjectForm({ project, partners, onSave, onDelete }: Pro
               <option value="secondary">Thứ cấp</option>
             </select>
             <div className="text-[10px] text-slate-500 mt-1">
-              Một dự án có thể vừa sơ cấp vừa thứ cấp → tạo 2 record riêng.
+              Dự án có thể vừa sơ cấp vừa thứ cấp → tạo 2 record.
             </div>
           </Field>
-          <div />
           <Field label="Mã dự án (4 ký tự)" required>
             <input name="code" defaultValue={project?.code ?? ""} className="input" maxLength={8} required />
           </Field>
@@ -137,7 +136,7 @@ export default function ProjectForm({ project, partners, onSave, onDelete }: Pro
       </Section>
 
       <Section title="Tỷ lệ phí môi giới">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <Field label="%PMG_LK (BRE nhận) — VD: 5.5 nghĩa là 5,5%">
             <input
               name="brokerageRate"
@@ -206,7 +205,7 @@ export default function ProjectForm({ project, partners, onSave, onDelete }: Pro
 
       {!isSecondary && (
         <Section title="Thưởng / Chi phí khác">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <Field label="CĐT thưởng sale (VND, gồm VAT)">
               <MoneyInput name="cdtBonusSale" defaultValue={project?.cdtBonusSale ?? 0} className="input" />
             </Field>
@@ -304,7 +303,7 @@ function Field({
   full?: boolean;
 }) {
   return (
-    <div className={full ? "col-span-2" : ""}>
+    <div className={full ? "col-span-full" : ""}>
       <label className="block text-xs text-slate-600 mb-1">
         {label} {required && <span className="text-red-500">*</span>}
       </label>
