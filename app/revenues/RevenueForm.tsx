@@ -304,7 +304,7 @@ export default function RevenueForm({
             </>
           ) : (
             <>
-              <Field label="% PMG_LK đợt này (vd: 5.5)">
+              <Field label="% PMG_LK đợt này">
                 <input
                   name="pmgCumulativePct"
                   type="number"
@@ -315,13 +315,13 @@ export default function RevenueForm({
                   onChange={(e) => setPmgLkDisplay(e.target.value)}
                   onBlur={() => isCommission && suggested > 0 && setAmount(suggested)}
                   className="input"
-                  placeholder="Rate hiệu lực đợt này"
+                  placeholder="vd: 5.5"
                 />
                 <div className="text-[10px] text-slate-500 mt-1">
-                  Thường trùng {product ? fmtPctTight(product.pmgRate) : "%PMG_LK của căn"}.
+                  Thường trùng {product ? fmtPctTight(product.pmgRate) : "%PMG_LK căn"}.
                 </div>
               </Field>
-              <Field label="Tỷ lệ % thu PMG_LK đợt này (vd: 60)">
+              <Field label="Tỷ lệ % thu PMG_LK đợt này">
                 <input
                   name="phasePctThisTime"
                   type="number"
@@ -332,7 +332,7 @@ export default function RevenueForm({
                   onChange={(e) => setPhasePctDisplay(e.target.value)}
                   onBlur={() => isCommission && suggested > 0 && setAmount(suggested)}
                   className="input"
-                  placeholder="% khách đã trả CĐT"
+                  placeholder="vd: 60"
                 />
                 {prevMaxPhasePct > 0 && (
                   <div className="text-[10px] text-slate-500 mt-1">
@@ -537,7 +537,7 @@ function Field({
   full?: boolean;
 }) {
   return (
-    <div className={full ? "col-span-full" : ""}>
+    <div className={full ? "col-span-2" : ""}>
       <label className="block text-xs text-slate-600 mb-1">
         {label} {required && <span className="text-red-500">*</span>}
       </label>
