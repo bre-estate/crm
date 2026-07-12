@@ -39,16 +39,27 @@ const RANGE_LABEL: Record<RangeKey, string> = {
   h2: "Nửa cuối năm (T7–T12)",
 };
 
-function inRange(recognitionMonth: string | null, year: number | null, range: RangeKey): boolean {
+// Ưu tiên recognition_month, fallback deposit_date (recognition_month hiện tại
+// đa số null vì admin chưa nhập).
+function effectiveYM(recognitionMonth: string | null, depositDate: string | null): { y: number; mo: number } | null {
+  const src = recognitionMonth || depositDate;
+  if (!src) return null;
+  const m = src.match(/^(\d{4})-(\d{2})/);
+  return m ? { y: Number(m[1]), mo: Number(m[2]) } : null;
+}
+
+function inRange(
+  recognitionMonth: string | null,
+  depositDate: string | null,
+  year: number | null,
+  range: RangeKey,
+): boolean {
   if (!year) return true;
-  if (!recognitionMonth) return false;
-  const m = recognitionMonth.match(/^(\d{4})-(\d{2})/);
-  if (!m) return false;
-  const y = Number(m[1]);
-  const mo = Number(m[2]);
-  if (y !== year) return false;
+  const ym = effectiveYM(recognitionMonth, depositDate);
+  if (!ym) return false;
+  if (ym.y !== year) return false;
   const [lo, hi] = RANGE_MONTHS[range];
-  return mo >= lo && mo <= hi;
+  return ym.mo >= lo && ym.mo <= hi;
 }
 
 export default async function ReportsPage({ searchParams }: { searchParams: SearchParams }) {
@@ -79,20 +90,21 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
       departmentName: departments.name,
       salesPerson: products.salesPerson,
       recognitionMonth: products.recognitionMonth,
+      depositDate: products.depositDate,
       saleType: products.saleType,
     })
     .from(products)
     .leftJoin(departments, eq(products.departmentId, departments.id));
 
-  // Danh sách năm có trong data (dùng cho dropdown)
+  // Danh sách năm có trong data (dùng cho dropdown) — ưu tiên recognition_month, fallback deposit_date
   const yearSet = new Set<number>();
   for (const p of prodRowsAll) {
-    const m = p.recognitionMonth?.match(/^(\d{4})/);
-    if (m) yearSet.add(Number(m[1]));
+    const ym = effectiveYM(p.recognitionMonth, p.depositDate);
+    if (ym) yearSet.add(ym.y);
   }
   const yearOptions = Array.from(yearSet).sort((a, b) => b - a);
 
-  const prodRows = prodRowsAll.filter((p) => inRange(p.recognitionMonth, year, range));
+  const prodRows = prodRowsAll.filter((p) => inRange(p.recognitionMonth, p.depositDate, year, range));
   const filteredProductIds = new Set(prodRows.map((p) => p.id));
 
   const revRowsAll = await db

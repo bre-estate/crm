@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import "./globals.css";
 import { createClient } from "@/lib/supabase/server";
 import SignOutButton from "./SignOutButton";
@@ -34,14 +33,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <div className="flex min-h-screen">
           <aside className="w-60 bg-white border-r border-slate-200 flex flex-col">
             <div className="p-4 flex items-center justify-center">
-              <Image
-                src="/logo.png"
-                alt="BRE — Better Real Estate"
-                width={180}
-                height={90}
-                priority
-                className="h-auto w-auto max-h-16"
-              />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.png" alt="BRE" className="h-16 w-auto object-contain" />
             </div>
             <NavLinks />
             <div className="p-3 border-t border-slate-200 space-y-2">
