@@ -58,3 +58,30 @@ export async function deletePartner(id: number) {
   revalidatePath("/partners");
   redirect("/partners");
 }
+
+// Variants không redirect — dùng cho dialog inline. Client tự router.refresh().
+export async function createPartnerNoRedirect(formData: FormData) {
+  const raw = formToObject(formData);
+  const data = PartnerSchema.parse(raw);
+  await db.insert(partners).values({ ...data });
+  revalidatePath("/partners");
+}
+
+export async function updatePartnerNoRedirect(id: number, formData: FormData) {
+  const raw = formToObject(formData);
+  const data = PartnerSchema.parse(raw);
+  await db.update(partners).set(data).where(eq(partners.id, id));
+  revalidatePath("/partners");
+}
+
+export async function deletePartnerNoRedirect(id: number) {
+  const used = await db
+    .select({ id: projects.id })
+    .from(projects)
+    .where(or(eq(projects.partnerId, id), eq(projects.linkedF1PartnerId, id)));
+  if (used.length > 0) {
+    throw new Error(`Đối tác đang được dùng bởi ${used.length} dự án — không xóa được.`);
+  }
+  await db.delete(partners).where(eq(partners.id, id));
+  revalidatePath("/partners");
+}

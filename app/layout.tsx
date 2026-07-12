@@ -34,7 +34,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <aside className="w-60 bg-white border-r border-slate-200 flex flex-col">
             <div className="p-4 flex items-center justify-center">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.png" alt="BRE" className="h-16 w-auto object-contain" />
+              <img
+                src="/logo.png"
+                alt="BRE"
+                className="h-16 w-auto object-contain"
+                style={{ mixBlendMode: "multiply" }}
+              />
             </div>
             <NavLinks />
             <div className="p-3 border-t border-slate-200 space-y-2">
