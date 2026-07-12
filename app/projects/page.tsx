@@ -95,7 +95,7 @@ export default async function ProjectsPage() {
                 <td className="p-3 text-xs">{contractStatusLabel(p.contractStatus ?? "")}</td>
                 <td className="p-3 text-right">
                   <Link href={`/projects/${p.id}`} className="text-blue-600 hover:underline text-sm">
-                    Xem / sửa
+                    Sửa
                   </Link>
                 </td>
               </tr>
