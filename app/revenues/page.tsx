@@ -409,7 +409,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
                   <td className="p-2 text-right">
                     <Link
                       href={`/revenues/${r.id}/edit${editQs}`}
-                      className="text-orange-600 hover:text-orange-700 hover:underline text-xs"
+                      className="text-blue-600 hover:underline text-xs"
                     >
                       Sửa
                     </Link>

@@ -389,7 +389,7 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
                   <td className="p-2 text-right">
                     <Link
                       href={`/costs/${r.id}/edit`}
-                      className="text-orange-600 hover:text-orange-700 hover:underline text-xs"
+                      className="text-blue-600 hover:underline text-xs"
                     >
                       Sửa
                     </Link>
