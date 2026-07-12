@@ -30,7 +30,7 @@ export default function NavLinks() {
             href={n.href}
             className={
               active
-                ? "block px-3 py-2 rounded-lg text-sm font-medium bg-blue-50 text-blue-700 border-l-2 border-blue-600"
+                ? "block px-3 py-2 rounded-lg text-sm font-medium bg-orange-50 text-orange-700 border-l-2 border-orange-500"
                 : "block px-3 py-2 rounded-lg text-sm text-slate-700 hover:bg-slate-100 transition-colors"
             }
           >

@@ -152,7 +152,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
           </Link>
           <Link
             href="/revenues/new"
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"
+            className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600"
           >
             + Thêm đợt đối chiếu
           </Link>
@@ -175,7 +175,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
               href={`/revenues?${params.toString()}`}
               className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition ${
                 isActive
-                  ? "border-blue-600 text-blue-700"
+                  ? "border-orange-500 text-blue-700"
                   : "border-transparent text-slate-500 hover:text-slate-700"
               }`}
             >
@@ -207,7 +207,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
               href={`/revenues?${params.toString()}`}
               className={`text-xs px-3 py-1 rounded-full border transition ${
                 isActive
-                  ? "bg-blue-600 text-white border-blue-600"
+                  ? "bg-orange-500 text-white border-orange-500"
                   : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
               }`}
             >

@@ -254,7 +254,7 @@ export default async function ProductDetailPage({
         </div>
         <Link
           href={editHref}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 whitespace-nowrap"
+          className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600 whitespace-nowrap"
         >
           Sửa giao dịch
         </Link>
@@ -941,7 +941,7 @@ export default async function ProductDetailPage({
           </div>
           <Link
             href={`/revenues/new?productId=${id}`}
-            className="text-xs bg-blue-600 text-white px-2.5 py-1 rounded hover:bg-blue-700"
+            className="text-xs bg-orange-500 text-white px-2.5 py-1 rounded hover:bg-orange-600"
           >
             + Thêm đợt
           </Link>
@@ -1161,7 +1161,7 @@ export default async function ProductDetailPage({
           </div>
           <Link
             href={`/costs/new?productId=${id}`}
-            className="text-xs bg-blue-600 text-white px-2.5 py-1 rounded hover:bg-blue-700"
+            className="text-xs bg-orange-500 text-white px-2.5 py-1 rounded hover:bg-orange-600"
           >
             + Thêm dòng
           </Link>

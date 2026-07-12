@@ -597,7 +597,7 @@ export default function ProductForm({ product, projects, departments = [], onSav
         <button
           type="submit"
           disabled={pending}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50"
+          className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm hover:bg-orange-600 disabled:opacity-50"
         >
           {pending ? "Đang lưu..." : "Lưu"}
         </button>

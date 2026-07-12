@@ -301,7 +301,7 @@ export default function BulkProductForm({
           type="button"
           onClick={submit}
           disabled={pending}
-          className="bg-blue-600 text-white rounded-lg px-6 py-2 text-sm hover:bg-blue-700 disabled:opacity-50"
+          className="bg-orange-500 text-white rounded-lg px-6 py-2 text-sm hover:bg-orange-600 disabled:opacity-50"
         >
           {pending ? "Đang lưu..." : "Lưu tất cả"}
         </button>

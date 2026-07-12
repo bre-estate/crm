@@ -172,7 +172,7 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
           </Link>
           <Link
             href="/costs/new"
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"
+            className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600"
           >
             + Thêm dòng đối chiếu
           </Link>

@@ -314,7 +314,7 @@ export default function BulkForm({
         <button
           type="button"
           onClick={() => setShowPaste((v) => !v)}
-          className="text-sm bg-blue-50 border border-blue-300 text-blue-700 rounded-lg px-3 py-1.5 hover:bg-blue-100 whitespace-nowrap"
+          className="text-sm bg-orange-50 border border-orange-300 text-orange-700 rounded-lg px-3 py-1.5 hover:bg-orange-100 whitespace-nowrap"
         >
           📋 {showPaste ? "Đóng" : "Dán từ Excel"}
         </button>
@@ -491,7 +491,7 @@ export default function BulkForm({
               type="button"
               onClick={applyPaste}
               disabled={nRows === 0}
-              className="bg-blue-600 text-white rounded-lg px-4 py-2 text-sm hover:bg-blue-700 disabled:opacity-50"
+              className="bg-orange-500 text-white rounded-lg px-4 py-2 text-sm hover:bg-orange-600 disabled:opacity-50"
             >
               Áp dụng vào bảng ({nRows} dòng)
             </button>
@@ -704,7 +704,7 @@ export default function BulkForm({
           type="button"
           onClick={submit}
           disabled={pending}
-          className="bg-blue-600 text-white rounded-lg px-6 py-2 text-sm hover:bg-blue-700 disabled:opacity-50"
+          className="bg-orange-500 text-white rounded-lg px-6 py-2 text-sm hover:bg-orange-600 disabled:opacity-50"
         >
           {pending ? "Đang lưu..." : "Lưu tất cả"}
         </button>

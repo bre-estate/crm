@@ -61,7 +61,7 @@ export default function AdjustmentNoteEditor({ adjId: _adjId, initialNote, onSav
             }
           });
         }}
-        className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap"
+        className="text-xs bg-orange-500 text-white px-3 py-1.5 rounded hover:bg-orange-600 disabled:opacity-50 whitespace-nowrap"
       >
         {pending ? "..." : "Lưu"}
       </button>

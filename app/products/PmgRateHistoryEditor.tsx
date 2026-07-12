@@ -143,7 +143,7 @@ export default function PmgRateHistoryEditor({
         <button
           type="button"
           onClick={add}
-          className="text-xs bg-blue-600 text-white rounded px-2 py-1 mt-2 hover:bg-blue-700"
+          className="text-xs bg-orange-500 text-white rounded px-2 py-1 mt-2 hover:bg-orange-600"
         >
           + Thêm mốc mới
         </button>

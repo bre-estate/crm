@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import "./globals.css";
 import { createClient } from "@/lib/supabase/server";
 import SignOutButton from "./SignOutButton";
@@ -32,9 +33,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="bg-slate-50 text-slate-900 min-h-screen antialiased">
         <div className="flex min-h-screen">
           <aside className="w-60 bg-white border-r border-slate-200 flex flex-col">
-            <div className="p-5 border-b border-slate-200">
-              <div className="text-lg font-bold text-blue-700">BRE</div>
-              <div className="text-xs text-slate-500">Sàn giao dịch BĐS</div>
+            <div className="p-4 border-b border-slate-200 flex items-center justify-center">
+              <Image
+                src="/logo.png"
+                alt="BRE — Better Real Estate"
+                width={180}
+                height={90}
+                priority
+                className="h-auto w-auto max-h-16"
+              />
             </div>
             <NavLinks />
             <div className="p-3 border-t border-slate-200 space-y-2">

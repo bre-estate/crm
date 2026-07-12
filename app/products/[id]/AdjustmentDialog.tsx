@@ -86,7 +86,7 @@ export default function AdjustmentDialog({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 whitespace-nowrap"
+        className="text-xs bg-orange-500 text-white px-3 py-1 rounded hover:bg-orange-600 whitespace-nowrap"
       >
         + Thêm
       </button>
@@ -201,7 +201,7 @@ export default function AdjustmentDialog({
                 type="button"
                 onClick={submit}
                 disabled={pending || checked.size === 0}
-                className="px-6 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                className="px-6 py-2 text-sm rounded-lg bg-orange-500 text-white hover:bg-orange-600 disabled:opacity-50"
               >
                 {pending ? "Đang lưu..." : `Lưu điều chỉnh (${checked.size} trường)`}
               </button>

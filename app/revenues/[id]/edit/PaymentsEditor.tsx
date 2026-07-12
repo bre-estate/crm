@@ -47,7 +47,7 @@ export default function PaymentsEditor({ payments, onUpdate, onDelete, onAdd }: 
           <button
             type="button"
             onClick={() => setShowAdd(true)}
-            className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700"
+            className="text-xs bg-orange-500 text-white px-3 py-1.5 rounded hover:bg-orange-600"
           >
             + Thêm thanh toán
           </button>
@@ -96,7 +96,7 @@ export default function PaymentsEditor({ payments, onUpdate, onDelete, onAdd }: 
             <button
               type="submit"
               disabled={pending}
-              className="flex-1 bg-blue-600 text-white text-xs px-2 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+              className="flex-1 bg-orange-500 text-white text-xs px-2 py-2 rounded hover:bg-orange-600 disabled:opacity-50"
             >
               Lưu
             </button>
