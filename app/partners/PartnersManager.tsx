@@ -119,7 +119,7 @@ export default function PartnersManager({ partners, onCreate, onUpdate, onDelete
                   <button
                     type="button"
                     onClick={() => setEditing(p)}
-                    className="text-blue-600 hover:underline text-sm"
+                    className="text-orange-600 hover:text-orange-700 hover:underline text-sm"
                     disabled={pending}
                   >
                     Sửa
@@ -127,7 +127,7 @@ export default function PartnersManager({ partners, onCreate, onUpdate, onDelete
                   <button
                     type="button"
                     onClick={() => del(p)}
-                    className="text-red-600 hover:underline text-sm"
+                    className="text-red-600 hover:text-red-700 hover:underline text-sm"
                     disabled={pending}
                   >
                     Xóa

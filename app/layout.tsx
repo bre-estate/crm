@@ -32,14 +32,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="bg-slate-50 text-slate-900 min-h-screen antialiased">
         <div className="flex min-h-screen">
           <aside className="w-60 bg-white border-r border-slate-200 flex flex-col">
-            <div className="p-4 flex items-center justify-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/logo.png"
-                alt="BRE"
-                className="h-16 w-auto object-contain"
-                style={{ mixBlendMode: "multiply" }}
-              />
+            <div className="p-5 flex flex-col items-center">
+              <div className="text-3xl font-bold flex items-center leading-none">
+                <span className="bg-orange-500 text-white px-2 py-1 rounded-md">B</span>
+                <span className="text-orange-500 ml-1">RE</span>
+              </div>
+              <div className="text-[10px] text-slate-400 tracking-widest mt-1 uppercase">
+                Better Real Estate
+              </div>
             </div>
             <NavLinks />
             <div className="p-3 border-t border-slate-200 space-y-2">
