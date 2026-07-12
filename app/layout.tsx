@@ -33,7 +33,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="bg-slate-50 text-slate-900 min-h-screen antialiased">
         <div className="flex min-h-screen">
           <aside className="w-60 bg-white border-r border-slate-200 flex flex-col">
-            <div className="p-4 border-b border-slate-200 flex items-center justify-center">
+            <div className="p-4 flex items-center justify-center">
               <Image
                 src="/logo.png"
                 alt="BRE — Better Real Estate"
