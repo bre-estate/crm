@@ -8,6 +8,9 @@ import {
   costReconciliations,
   paymentsIn,
   paymentsOut,
+  companyInvestments,
+  companyExpenses,
+  companySettings,
 } from "@/lib/schema";
 import { fmtMoney, fmtPctRaw, displayPartnerName, isSecondaryPartner } from "@/lib/format";
 import { eq } from "drizzle-orm";
@@ -238,6 +241,67 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
     ? `${RANGE_LABEL[range]} ${year}`
     : "Tất cả thời gian";
 
+  // ============ TÀI CHÍNH CÔNG TY: Lãi thuần + ROI + Payback ============
+  const [invRows, expRows, settingsRows] = await Promise.all([
+    db.select().from(companyInvestments),
+    db.select().from(companyExpenses),
+    db.select().from(companySettings),
+  ]);
+  const settings = settingsRows[0] ?? {
+    taxRate: 0.2,
+    businessStartDate: null as string | null,
+  };
+  const totalInvestment = invRows.reduce((s, i) => s + Number(i.amount), 0);
+
+  // Filter expenses trong period
+  const filteredExpenses = year
+    ? expRows.filter((e) => {
+        const m = e.expenseMonth?.match(/^(\d{4})-(\d{2})/);
+        if (!m) return false;
+        const y = Number(m[1]);
+        const mo = Number(m[2]);
+        const [minMo, maxMo] = RANGE_MONTHS[range];
+        return y === year && mo >= minMo && mo <= maxMo;
+      })
+    : expRows;
+  const totalExpense = filteredExpenses.reduce((s, e) => s + Number(e.amount), 0);
+
+  // Months trong period
+  let monthsInPeriod = 12;
+  if (year) {
+    const [minMo, maxMo] = RANGE_MONTHS[range];
+    monthsInPeriod = maxMo - minMo + 1;
+  } else if (settings.businessStartDate) {
+    const start = new Date(settings.businessStartDate);
+    const now = new Date();
+    monthsInPeriod = Math.max(
+      1,
+      Math.round((now.getTime() - start.getTime()) / (30 * 24 * 3600 * 1000)),
+    );
+  }
+
+  // Lãi trước thuế = Lãi gộp − CP QL trong period
+  const preTaxExpected = profitExpected - totalExpense;
+  const preTaxRealized = profitRealized - totalExpense;
+  // Lãi thuần sau thuế TNDN (nếu âm không tính thuế)
+  const taxRate = Number(settings.taxRate);
+  const netExpected =
+    preTaxExpected > 0 ? preTaxExpected * (1 - taxRate) : preTaxExpected;
+  const netRealized =
+    preTaxRealized > 0 ? preTaxRealized * (1 - taxRate) : preTaxRealized;
+  // Biên thuần
+  const netMarginExpected =
+    grandTotals.revenueExp > 0
+      ? (netExpected / (grandTotals.revenueExp / 1.1)) * 100
+      : 0;
+  // ROI dựa trên vốn đầu tư
+  const roiExpected =
+    totalInvestment > 0 ? (netExpected / totalInvestment) * 100 : null;
+  // Payback: bao nhiêu tháng hoàn vốn (dùng netExpected trung bình / tháng)
+  const monthlyNet = monthsInPeriod > 0 ? netExpected / monthsInPeriod : 0;
+  const paybackMonths =
+    totalInvestment > 0 && monthlyNet > 0 ? totalInvestment / monthlyNet : null;
+
   return (
     <div className="space-y-6">
       <div>
@@ -322,6 +386,90 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
           value={fmtMoney(grandTotals.revRec - grandTotals.paidIn - (grandTotals.costRec - grandTotals.paidOut))}
           sub={`Thu: ${fmtMoney(grandTotals.paidIn)} · Chi: ${fmtMoney(grandTotals.paidOut)}`}
         />
+      </div>
+
+      {/* ============ Tài chính công ty: Lãi thuần / ROI ============ */}
+      <div>
+        <div className="flex items-baseline justify-between mb-3">
+          <h2 className="text-lg font-semibold">
+            Lãi thuần sau CP quản lý + thuế TNDN
+          </h2>
+          <Link
+            href="/finance"
+            className="text-sm text-blue-600 hover:underline"
+          >
+            → Cấu hình đầu tư / CP quản lý
+          </Link>
+        </div>
+        {totalInvestment === 0 && filteredExpenses.length === 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800 mb-3">
+            Chưa nhập vốn đầu tư và chi phí quản lý. Số Lãi thuần bên dưới ={" "}
+            <b>Lãi gộp × (1 − thuế TNDN)</b>. Vào{" "}
+            <Link href="/finance" className="underline font-medium">
+              Tài chính công ty
+            </Link>{" "}
+            để nhập chi tiết → có ROI + Payback.
+          </div>
+        )}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Card
+            label={`CP QL trong kỳ (${monthsInPeriod} tháng)`}
+            value={fmtMoney(totalExpense)}
+            sub={`${filteredExpenses.length} dòng chi phí`}
+            warn
+          />
+          <Card
+            label={`Thuế TNDN (${fmtPctRaw(taxRate * 100, 0)})`}
+            value={fmtMoney(
+              preTaxExpected > 0 ? preTaxExpected * taxRate : 0,
+            )}
+            sub="Nếu lãi trước thuế > 0"
+            warn
+          />
+          <Card
+            label="Lãi thuần dự kiến"
+            value={fmtMoney(netExpected)}
+            highlight={netExpected >= 0}
+            sub={`Biên: ${fmtPctRaw(netMarginExpected, 1)}`}
+          />
+          <Card
+            label="Lãi thuần thực (đã ĐC)"
+            value={fmtMoney(netRealized)}
+            highlight={netRealized >= 0}
+          />
+        </div>
+        {totalInvestment > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
+            <Card
+              label="Tổng vốn đầu tư"
+              value={fmtMoney(totalInvestment)}
+              sub={`${invRows.length} khoản`}
+            />
+            <Card
+              label="ROI dự kiến"
+              value={
+                roiExpected !== null ? fmtPctRaw(roiExpected, 1) : "—"
+              }
+              highlight={(roiExpected ?? 0) >= 0}
+              sub="Lãi thuần / Vốn đầu tư"
+            />
+            <Card
+              label="Thời gian hoàn vốn"
+              value={
+                paybackMonths !== null
+                  ? paybackMonths < 12
+                    ? `${paybackMonths.toFixed(1)} tháng`
+                    : `${(paybackMonths / 12).toFixed(1)} năm`
+                  : "—"
+              }
+              sub={
+                monthlyNet > 0
+                  ? `Lãi thuần TB/tháng: ${fmtMoney(monthlyNet)}`
+                  : "Chưa có lãi dương"
+              }
+            />
+          </div>
+        )}
       </div>
 
       {/* ============ Theo Phòng ============ */}

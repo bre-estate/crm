@@ -300,7 +300,44 @@ export const paymentsOut = pgTable("payments_out", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-// ===================== 10. ACTIVITY LOGS =====================
+// ===================== 10. COMPANY FINANCE =====================
+// Vốn đầu tư (capex) — thiết bị/VP/license, có khấu hao hoặc 1 lần
+export const companyInvestments = pgTable("company_investments", {
+  id: serial("id").primaryKey(),
+  investedAt: text("invested_at").notNull(), // YYYY-MM-DD
+  category: text("category", {
+    enum: ["office", "equipment", "software", "vehicle", "other"],
+  }).notNull(),
+  description: text("description").notNull(),
+  amount: doublePrecision("amount").notNull(),
+  // NULL = không khấu hao (1 lần), số = phân bổ đều theo tháng
+  amortizationMonths: integer("amortization_months"),
+  note: text("note"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Chi phí quản lý (opex) — theo tháng, chi tiết từng khoản
+export const companyExpenses = pgTable("company_expenses", {
+  id: serial("id").primaryKey(),
+  expenseMonth: text("expense_month").notNull(), // YYYY-MM
+  category: text("category", {
+    enum: ["salary", "rent", "marketing", "utilities", "outsource", "other"],
+  }).notNull(),
+  amount: doublePrecision("amount").notNull(),
+  description: text("description"),
+  note: text("note"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Cấu hình toàn công ty (single row)
+export const companySettings = pgTable("company_settings", {
+  id: serial("id").primaryKey(),
+  taxRate: doublePrecision("tax_rate").notNull().default(0.20), // Thuế TNDN
+  businessStartDate: text("business_start_date"), // YYYY-MM-DD — ngày bắt đầu KD
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ===================== 11. ACTIVITY LOGS =====================
 // Audit trail cho mọi thay đổi cấu hình. Ghi ai / khi nào / thay đổi gì.
 // productId: nếu activity gắn với 1 căn cụ thể (dù entity type là recon
 // hay adjustment) → set để filter timeline theo căn dễ dàng.
@@ -400,6 +437,11 @@ export type ProductAdjustment = typeof productAdjustments.$inferSelect;
 export type NewProductAdjustment = typeof productAdjustments.$inferInsert;
 export type PaymentOut = typeof paymentsOut.$inferSelect;
 export type NewPaymentOut = typeof paymentsOut.$inferInsert;
+export type CompanyInvestment = typeof companyInvestments.$inferSelect;
+export type NewCompanyInvestment = typeof companyInvestments.$inferInsert;
+export type CompanyExpense = typeof companyExpenses.$inferSelect;
+export type NewCompanyExpense = typeof companyExpenses.$inferInsert;
+export type CompanySettings = typeof companySettings.$inferSelect;
 
 // Used in raw SQL for profile auto-create trigger
 export const _sql = sql;
