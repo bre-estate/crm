@@ -6,6 +6,7 @@ import { toTitleCase } from "@/lib/format";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { logActivity } from "@/lib/audit";
 
 function toNum(v: FormDataEntryValue | null): number {
   if (v === null || v === undefined) return 0;
@@ -117,6 +118,15 @@ export async function createCost(fd: FormData) {
     });
   }
 
+  await logActivity({
+    entityType: "cost_reconciliation",
+    entityId: rec.id,
+    productId: data.productId,
+    action: "create",
+    after: data as Record<string, unknown>,
+    summary: `Tạo ĐC giá vốn (${data.costType}) cho ${data.employeeName} — ${Number(data.amountPayableThisTime ?? 0).toLocaleString("vi-VN")}`,
+  });
+
   revalidatePath("/costs");
   redirect(`/costs/${rec.id}/edit?created=1`);
 }
@@ -132,7 +142,20 @@ export async function updateCost(id: number, fd: FormData, returnTo?: string | n
   if (!data.productId) throw new Error("Chọn căn (sản phẩm)");
   if (!data.employeeName) throw new Error("Nhập tên người được đối chiếu");
 
+  const [before] = await db
+    .select()
+    .from(costReconciliations)
+    .where(eq(costReconciliations.id, id));
   await db.update(costReconciliations).set(data).where(eq(costReconciliations.id, id));
+  await logActivity({
+    entityType: "cost_reconciliation",
+    entityId: id,
+    productId: data.productId,
+    action: "update",
+    before: before as unknown as Record<string, unknown>,
+    after: { ...before, ...data } as unknown as Record<string, unknown>,
+    summary: `Sửa ĐC giá vốn #${id}`,
+  });
 
   revalidatePath("/costs");
   revalidatePath(`/costs/${id}/edit`);
@@ -140,8 +163,20 @@ export async function updateCost(id: number, fd: FormData, returnTo?: string | n
 }
 
 export async function deleteCost(id: number, returnTo?: string | null) {
+  const [before] = await db
+    .select()
+    .from(costReconciliations)
+    .where(eq(costReconciliations.id, id));
   await db.delete(paymentsOut).where(eq(paymentsOut.costReconciliationId, id));
   await db.delete(costReconciliations).where(eq(costReconciliations.id, id));
+  await logActivity({
+    entityType: "cost_reconciliation",
+    entityId: id,
+    productId: before?.productId,
+    action: "delete",
+    before: before as unknown as Record<string, unknown>,
+    summary: `Xóa ĐC giá vốn #${id}`,
+  });
   revalidatePath("/costs");
   redirect(buildReturnUrl(returnTo, "deleted", id));
 }

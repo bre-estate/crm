@@ -49,3 +49,6 @@ yarn-error.log*
 next-env.d.ts
 backups/
 scripts/inspect-*.ts
+
+# Sample folder — bug videos operator gửi + extracted frames + bulk test files (local only)
+sample/

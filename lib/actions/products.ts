@@ -13,6 +13,7 @@ import { toTitleCase } from "@/lib/format";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { logActivity } from "@/lib/audit";
 
 function toNum(v: FormDataEntryValue | null): number {
   if (v === null || v === undefined) return 0;
@@ -130,7 +131,18 @@ export async function createProduct(fd: FormData) {
   const data = buildProductData(fd);
   if (!data.projectId || !data.unitCode) throw new Error("Chọn dự án và nhập mã căn");
   const productCode = await buildProductCode(data.projectId, data.unitCode);
-  await db.insert(products).values({ productCode, ...data });
+  const [rec] = await db
+    .insert(products)
+    .values({ productCode, ...data })
+    .returning({ id: products.id });
+  await logActivity({
+    entityType: "product",
+    entityId: rec.id,
+    productId: rec.id,
+    action: "create",
+    after: { productCode, ...data } as Record<string, unknown>,
+    summary: `Tạo căn ${data.unitCode}`,
+  });
   revalidatePath("/products");
   redirect("/products");
 }
@@ -139,7 +151,17 @@ export async function updateProduct(id: number, fd: FormData) {
   const data = buildProductData(fd);
   if (!data.projectId || !data.unitCode) throw new Error("Chọn dự án và nhập mã căn");
   const productCode = await buildProductCode(data.projectId, data.unitCode);
+  const [before] = await db.select().from(products).where(eq(products.id, id));
   await db.update(products).set({ productCode, ...data }).where(eq(products.id, id));
+  await logActivity({
+    entityType: "product",
+    entityId: id,
+    productId: id,
+    action: "update",
+    before: before as unknown as Record<string, unknown>,
+    after: { ...before, productCode, ...data } as unknown as Record<string, unknown>,
+    summary: "Sửa cấu hình căn",
+  });
   const returnTo = safeReturnTo(fd);
   revalidatePath("/products");
   revalidatePath(`/products/${id}`);
@@ -248,7 +270,16 @@ export async function deleteProduct(id: number) {
       `Căn này đang có ${usedRev.length} đối chiếu DT và ${usedCost.length} đối chiếu GV — không xóa được.`,
     );
   }
+  const [before] = await db.select().from(products).where(eq(products.id, id));
   await db.delete(products).where(eq(products.id, id));
+  await logActivity({
+    entityType: "product",
+    entityId: id,
+    productId: id,
+    action: "delete",
+    before: before as unknown as Record<string, unknown>,
+    summary: `Xóa căn ${before?.unitCode ?? id}`,
+  });
   revalidatePath("/products");
   redirect("/products");
 }
@@ -343,17 +374,40 @@ export async function createProductAdjustment(productId: number, fd: FormData) {
     throw new Error("Chọn ít nhất 1 trường muốn điều chỉnh");
   }
 
-  await db.insert(productAdjustments).values({
-    productId,
-    effectiveDate,
-    note,
-    ...adj,
-  });
+  const [before] = await db.select().from(products).where(eq(products.id, productId));
+  const [adjRec] = await db
+    .insert(productAdjustments)
+    .values({
+      productId,
+      effectiveDate,
+      note,
+      ...adj,
+    })
+    .returning({ id: productAdjustments.id });
   await db.update(products).set(productUpdate).where(eq(products.id, productId));
 
   // Recompute derived fields (total_revenue, total_cost) từ config mới nhất
   // để reports không dùng số cũ. Chỉ apply cho primary — secondary user nhập tay.
   await recomputeDerived(productId);
+
+  // Log: cả adjustment record + change trên product
+  await logActivity({
+    entityType: "product_adjustment",
+    entityId: adjRec.id,
+    productId,
+    action: "create",
+    after: { effectiveDate, note, ...adj } as Record<string, unknown>,
+    summary: `Điều chỉnh ${Object.keys(adj).join(", ")} ngày ${effectiveDate}${note ? " · " + note : ""}`,
+  });
+  await logActivity({
+    entityType: "product",
+    entityId: productId,
+    productId,
+    action: "update",
+    before: before as unknown as Record<string, unknown>,
+    after: { ...before, ...productUpdate } as unknown as Record<string, unknown>,
+    summary: `Áp dụng adjustment #${adjRec.id}`,
+  });
 
   revalidatePath(`/products/${productId}`);
   revalidatePath("/products");
@@ -403,7 +457,19 @@ export async function recomputeDerived(productId: number) {
 }
 
 export async function deleteProductAdjustment(productId: number, adjId: number) {
+  const [before] = await db
+    .select()
+    .from(productAdjustments)
+    .where(eq(productAdjustments.id, adjId));
   await db.delete(productAdjustments).where(eq(productAdjustments.id, adjId));
+  await logActivity({
+    entityType: "product_adjustment",
+    entityId: adjId,
+    productId,
+    action: "delete",
+    before: before as unknown as Record<string, unknown>,
+    summary: `Xóa adjustment #${adjId}`,
+  });
   revalidatePath(`/products/${productId}`);
 }
 

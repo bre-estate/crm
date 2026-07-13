@@ -7,6 +7,7 @@ import {
   timestamp,
   boolean,
   uuid,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
@@ -296,6 +297,24 @@ export const paymentsOut = pgTable("payments_out", {
   paymentDate: text("payment_date"),
   amount: doublePrecision("amount").default(0),
   note: text("note"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ===================== 10. ACTIVITY LOGS =====================
+// Audit trail cho mọi thay đổi cấu hình. Ghi ai / khi nào / thay đổi gì.
+// productId: nếu activity gắn với 1 căn cụ thể (dù entity type là recon
+// hay adjustment) → set để filter timeline theo căn dễ dàng.
+export const activityLogs = pgTable("activity_logs", {
+  id: serial("id").primaryKey(),
+  entityType: text("entity_type").notNull(), // "product" | "product_adjustment" | "revenue_reconciliation" | "cost_reconciliation" | "project" | "partner"
+  entityId: integer("entity_id").notNull(),
+  action: text("action", { enum: ["create", "update", "delete"] }).notNull(),
+  productId: integer("product_id"), // nullable — filter timeline theo căn
+  actorEmail: text("actor_email"),
+  actorIp: text("actor_ip"),
+  // { fieldName: { from: any, to: any } }. Create → chỉ from=null. Delete → chỉ to=null.
+  changes: jsonb("changes").$type<Record<string, { from: unknown; to: unknown }>>(),
+  summary: text("summary"), // Free text tóm tắt, VD "Sửa %PMG_LK 7% → 8%"
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

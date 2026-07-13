@@ -9,9 +9,12 @@ import {
   invoices,
   paymentsIn,
   paymentsOut,
+  productAdjustments,
+  activityLogs,
 } from "@/lib/schema";
 import { fmtMoney, fmtDate, fmtPct, fmtPctTight, fmtPctRaw, costTypeLabel, toTitleCase } from "@/lib/format";
-import { eq, asc } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
+import { asc } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 
@@ -91,6 +94,19 @@ export default async function ProductDetailPage({
     )
     .where(eq(costReconciliations.productId, id));
 
+  const adjustments = await db
+    .select()
+    .from(productAdjustments)
+    .where(eq(productAdjustments.productId, id))
+    .orderBy(asc(productAdjustments.effectiveDate));
+
+  const activities = await db
+    .select()
+    .from(activityLogs)
+    .where(eq(activityLogs.productId, id))
+    .orderBy(desc(activityLogs.createdAt))
+    .limit(50);
+
   // === Compute derived values ===
   // Phí HH sale dự kiến (net BRE nhận) = pmg_base × latestPmg − admin
   // Đồng nhất với "Tổng DT (CĐT chuyển BRE)" ở Section 1.
@@ -105,9 +121,12 @@ export default async function ProductDetailPage({
   const expectedBonus =
     Number(p.cdtBonusSale ?? 0) + Number(p.cdtBonusManager ?? 0);
 
-  // Lịch sử %HH: ưu tiên product.pmgRateHistory (nhập explicit),
-  // fallback distinct pmgCumulativePct từ các recon.
+  // Lịch sử %HH: gộp 3 nguồn (theo thứ tự ưu tiên):
+  //   1) product.pmgRateHistory (JSON manual)
+  //   2) product_adjustments (mỗi record có pmg_rate hoặc pmg_sale_rate)
+  //   3) revenue_reconciliations.pmg_cumulative_pct (theo tiến độ ĐC)
   const pmgHistory = ((): Array<{ date: string; rate: number; note?: string }> => {
+    const entries: Array<{ date: string; rate: number; note?: string }> = [];
     try {
       if (p.pmgRateHistory) {
         const arr = JSON.parse(p.pmgRateHistory) as Array<{
@@ -115,29 +134,42 @@ export default async function ProductDetailPage({
           date: string;
           note?: string;
         }>;
-        if (Array.isArray(arr) && arr.length > 0) {
-          return arr
-            .filter((e) => e.rate > 0)
-            .sort((a, b) => a.rate - b.rate);
+        if (Array.isArray(arr)) {
+          for (const e of arr) {
+            if (e.rate > 0) entries.push({ date: e.date, rate: e.rate, note: e.note });
+          }
         }
       }
     } catch {
       // ignore
     }
-    // Fallback: recon-derived
-    const seen = new Map<number, string>();
-    const sorted = [...revRecs].sort((a, b) =>
-      (a.rec.reconciliationDate ?? "").localeCompare(b.rec.reconciliationDate ?? ""),
-    );
-    for (const r of sorted) {
-      const rate = Number(r.rec.pmgCumulativePct ?? 0);
-      if (rate > 0 && !seen.has(rate)) {
-        seen.set(rate, r.rec.reconciliationDate ?? "");
+    // Adjustments: chỉ lấy record có pmg_rate (bỏ qua record chỉ sửa admin/hh)
+    for (const a of adjustments) {
+      const r = Number(a.pmgRate ?? 0);
+      if (r > 0) {
+        entries.push({
+          date: a.effectiveDate,
+          rate: r,
+          note: a.note ?? "Điều chỉnh %PMG_LK",
+        });
       }
     }
-    return Array.from(seen.entries())
-      .map(([rate, date]) => ({ date, rate }))
-      .sort((a, b) => a.rate - b.rate);
+    // Recon-derived (chỉ dùng nếu không có nguồn nào phía trên)
+    if (entries.length === 0) {
+      const seen = new Map<number, string>();
+      const sorted = [...revRecs].sort((a, b) =>
+        (a.rec.reconciliationDate ?? "").localeCompare(b.rec.reconciliationDate ?? ""),
+      );
+      for (const r of sorted) {
+        const rate = Number(r.rec.pmgCumulativePct ?? 0);
+        if (rate > 0 && !seen.has(rate)) {
+          seen.set(rate, r.rec.reconciliationDate ?? "");
+        }
+      }
+      for (const [rate, date] of seen) entries.push({ date, rate });
+    }
+    // Sort theo ngày (cũ → mới)
+    return entries.sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""));
   })();
 
   // Đã thu tách theo loại: HH sale vs Thưởng nóng
@@ -1251,7 +1283,150 @@ export default async function ProductDetailPage({
           </table>
         </div>
       </SectionCard>
+
+      {/* === 7. LỊCH SỬ THAY ĐỔI === */}
+      <SectionCard title="7. Lịch sử thay đổi" icon="🕓">
+        {activities.length === 0 ? (
+          <div className="text-sm text-slate-500 italic p-3">
+            Chưa có thay đổi nào được ghi nhận.
+          </div>
+        ) : (
+          <ul className="divide-y divide-slate-100">
+            {activities.map((a) => (
+              <ActivityRow key={a.id} activity={a} />
+            ))}
+          </ul>
+        )}
+      </SectionCard>
     </div>
+  );
+}
+
+// Format 1 value cho hiển thị diff — money-friendly, %-friendly
+function fmtDiffValue(v: unknown): string {
+  if (v === null || v === undefined) return "—";
+  if (typeof v === "number") {
+    // Rate 0..1 → hiển thị %
+    if (Math.abs(v) > 0 && Math.abs(v) < 1) return `${(v * 100).toFixed(2)}%`;
+    // Số lớn → định dạng tiền
+    if (Math.abs(v) >= 1000) return v.toLocaleString("vi-VN");
+    return String(v);
+  }
+  if (typeof v === "string") return v || "—";
+  return JSON.stringify(v);
+}
+
+// Vietnamese label cho 1 số field key phổ biến (không exhaustive — key lạ vẫn hiện raw)
+const FIELD_LABEL: Record<string, string> = {
+  pmgRate: "%PMG_LK",
+  pmgSaleRate: "%PMG_LK_sale",
+  pmgBasePrice: "Giá PMG",
+  adminFee: "Phí admin",
+  adminFeeSale: "Phí admin (sale)",
+  saleCommissionRate: "%HH sale",
+  kpiCeoRate: "%KPI CEO",
+  kpiTpkdRate: "%KPI TPKD",
+  kpiAdminRate: "%KPI Admin",
+  cdtBonusSale: "CĐT thưởng sale",
+  cdtBonusManager: "CĐT thưởng QL",
+  bonusSale: "CTY thưởng NVKD",
+  bonusManager: "CTY thưởng QL",
+  customerSupport: "Hỗ trợ khách",
+  otherCost: "CP khác",
+  totalRevenue: "Tổng DT",
+  totalCost: "Tổng GV",
+  amountPayableThisTime: "Số phải trả",
+  revenueThisTime: "Doanh thu đợt",
+  pmgCumulativePct: "%PMG lũy kế",
+  note: "Ghi chú",
+  effectiveDate: "Ngày hiệu lực",
+  employeeName: "Người nhận",
+  costType: "Loại chi phí",
+};
+
+function ActivityRow({ activity }: { activity: typeof activityLogs.$inferSelect }) {
+  const changes = (activity.changes ?? {}) as Record<string, { from: unknown; to: unknown }>;
+  const changeEntries = Object.entries(changes);
+  const actionLabel =
+    activity.action === "create" ? "Tạo" : activity.action === "update" ? "Sửa" : "Xóa";
+  const actionColor =
+    activity.action === "create"
+      ? "text-green-700 bg-green-50 border-green-200"
+      : activity.action === "update"
+        ? "text-blue-700 bg-blue-50 border-blue-200"
+        : "text-red-700 bg-red-50 border-red-200";
+  const entityLabel: Record<string, string> = {
+    product: "Cấu hình căn",
+    product_adjustment: "Điều chỉnh",
+    revenue_reconciliation: "ĐC doanh thu",
+    cost_reconciliation: "ĐC giá vốn",
+  };
+  const timestamp = activity.createdAt
+    ? new Date(activity.createdAt).toLocaleString("vi-VN", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "?";
+  return (
+    <li className="py-3 px-2 hover:bg-slate-50">
+      <div className="flex items-start gap-3 text-sm">
+        <span
+          className={`shrink-0 text-xs px-2 py-0.5 rounded border ${actionColor} font-medium`}
+        >
+          {actionLabel}
+        </span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline gap-2 text-slate-600 text-xs mb-1">
+            <span className="font-medium text-slate-700">
+              {entityLabel[activity.entityType] ?? activity.entityType} #{activity.entityId}
+            </span>
+            <span className="text-slate-400">·</span>
+            <span>{timestamp}</span>
+            {activity.actorEmail && (
+              <>
+                <span className="text-slate-400">·</span>
+                <span>{activity.actorEmail}</span>
+              </>
+            )}
+            {!activity.actorEmail && activity.actorIp && (
+              <>
+                <span className="text-slate-400">·</span>
+                <span className="font-mono text-slate-400">{activity.actorIp}</span>
+              </>
+            )}
+          </div>
+          {activity.summary && (
+            <div className="text-slate-700 mb-1">{activity.summary}</div>
+          )}
+          {changeEntries.length > 0 && activity.action === "update" && (
+            <ul className="text-xs text-slate-600 space-y-0.5 mt-1">
+              {changeEntries.slice(0, 8).map(([field, { from, to }]) => (
+                <li key={field} className="flex items-baseline gap-2">
+                  <span className="text-slate-500 min-w-32 truncate">
+                    {FIELD_LABEL[field] ?? field}
+                  </span>
+                  <span className="text-slate-400 line-through tabular-nums">
+                    {fmtDiffValue(from)}
+                  </span>
+                  <span className="text-slate-400">→</span>
+                  <span className="text-slate-800 font-medium tabular-nums">
+                    {fmtDiffValue(to)}
+                  </span>
+                </li>
+              ))}
+              {changeEntries.length > 8 && (
+                <li className="text-slate-400 italic">
+                  ...và {changeEntries.length - 8} field khác
+                </li>
+              )}
+            </ul>
+          )}
+        </div>
+      </div>
+    </li>
   );
 }
 
