@@ -296,6 +296,23 @@ export async function createProductAdjustment(productId: number, fd: FormData) {
   // Xác định field nào được điều chỉnh (checkbox 'change_<field>' = 'on')
   const isChanged = (field: string) => fd.get(`change_${field}`) === "on";
 
+  // Guard: check ô mà bỏ trống → chặn (bug 655: user check %PMG_LK, gõ
+  // "7,5" bị browser reject → server nhận "" → toPct = 0 → lưu 0%).
+  const CHECKABLE = [
+    "pmgBasePrice", "pmgRate", "pmgSaleRate", "adminFee", "adminFeeSale",
+    "saleCommissionRate", "kpiCeoRate", "kpiTpkdRate", "kpiAdminRate",
+    "cdtBonusSale", "cdtBonusManager", "bonusSale", "bonusManager", "customerSupport",
+  ];
+  const emptyChecked: string[] = [];
+  for (const f of CHECKABLE) {
+    if (isChanged(f) && !toStr(fd.get(f))) emptyChecked.push(f);
+  }
+  if (emptyChecked.length > 0) {
+    throw new Error(
+      `Đã tick nhưng bỏ trống: ${emptyChecked.join(", ")}. Điền giá trị hoặc bỏ tick.`,
+    );
+  }
+
   const adj: Record<string, number> = {};
   const productUpdate: Record<string, number> = {};
 

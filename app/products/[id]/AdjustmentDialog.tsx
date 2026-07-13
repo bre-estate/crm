@@ -60,6 +60,20 @@ export default function AdjustmentDialog({
       alert("Chọn ít nhất 1 trường muốn điều chỉnh");
       return;
     }
+    // Guard: ô check nhưng bỏ trống / gõ 0 → chặn (bug hôm nay 655: user
+    // check %PMG_LK nhưng gõ nhầm empty → server toPct("") = 0 → lưu 0%).
+    const empty: string[] = [];
+    for (const key of checked) {
+      const raw = (values[key] ?? "").trim();
+      if (!raw) empty.push(key);
+    }
+    if (empty.length > 0) {
+      const labels = empty
+        .map((k) => FIELDS.find((f) => f.key === k)?.label ?? k)
+        .join(", ");
+      alert(`Chưa nhập giá trị mới cho: ${labels}. Bỏ tick hoặc điền giá trị.`);
+      return;
+    }
     const fd = new FormData();
     fd.append("effectiveDate", effectiveDate);
     fd.append("note", note);
