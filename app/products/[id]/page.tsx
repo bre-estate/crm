@@ -108,12 +108,10 @@ export default async function ProductDetailPage({
     .limit(50);
 
   // === Compute derived values ===
-  // Phí HH sale dự kiến (net BRE nhận) = pmg_base × latestPmg − admin
-  // Đồng nhất với "Tổng DT (CĐT chuyển BRE)" ở Section 1.
-  const latestPmgRate = Math.max(
-    Number(p.pmgRate ?? 0),
-    ...revRecs.map((r) => Number(r.rec.pmgCumulativePct ?? 0)),
-  );
+  // Latest %PMG_LK — CANONICAL từ product config (updated bởi mọi adjustment
+  // + auto-elevate từ recon cao hơn). Không dùng Math.max nữa vì nếu
+  // adjustment mới hạ rate xuống, max sẽ giữ giá trị cũ (sai).
+  const latestPmgRate = Number(p.pmgRate ?? 0);
   const expectedHHSaleGross = Number(p.pmgBasePrice ?? 0) * latestPmgRate;
   const expectedHHSale = isSecondary
     ? Number(p.totalRevenue ?? 0)
@@ -167,19 +165,26 @@ export default async function ProductDetailPage({
       }
     }
     for (const [rate, date] of seenRate) entries.push({ date, rate });
-    // Dedup theo key (rate + date). Sort theo ngày (cũ → mới).
-    const dedupMap = new Map<string, { date: string; rate: number; note?: string }>();
+    // Dedup: sort theo ngày (cũ → mới), chỉ giữ entry khi rate KHÁC entry
+    // trước đó (chip consecutive cùng rate = nhiễu, không phải cột mốc).
+    // Cùng ngày cùng rate → giữ 1 (ưu tiên entry có note).
+    const uniqueByRateDate = new Map<string, { date: string; rate: number; note?: string }>();
     for (const e of entries) {
       const key = `${e.rate}@${e.date}`;
-      if (!dedupMap.has(key)) dedupMap.set(key, e);
-      else if (e.note && !dedupMap.get(key)!.note) {
-        // Giữ note tốt hơn nếu có
-        dedupMap.set(key, e);
+      const existing = uniqueByRateDate.get(key);
+      if (!existing || (e.note && !existing.note)) {
+        uniqueByRateDate.set(key, e);
       }
     }
-    return Array.from(dedupMap.values()).sort((a, b) =>
+    const sorted = Array.from(uniqueByRateDate.values()).sort((a, b) =>
       (a.date ?? "").localeCompare(b.date ?? ""),
     );
+    const compacted: typeof sorted = [];
+    for (const e of sorted) {
+      const prev = compacted[compacted.length - 1];
+      if (!prev || prev.rate !== e.rate) compacted.push(e);
+    }
+    return compacted;
   })();
 
   // Đã thu tách theo loại: HH sale vs Thưởng nóng
