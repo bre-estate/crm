@@ -367,7 +367,9 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
                           <span className="text-slate-400">—</span>
                         )}
                       </td>
-                      <td className="p-2 text-center text-xs">{r.phase ?? "—"}</td>
+                      <td className="p-2 text-center text-xs">
+                        {r.note?.trim() ? r.note : r.phase ? `Đợt ${r.phase}` : "—"}
+                      </td>
                       <td className="p-2 text-right tabular-nums text-xs">
                         {r.pmgCumPct ? fmtPct(r.pmgCumPct) : "—"}
                       </td>

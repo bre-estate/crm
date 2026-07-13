@@ -973,7 +973,9 @@ export default async function ProductDetailPage({
                 const hasInvoice = !!invoice?.invoiceNumber;
                 return (
                   <tr key={rec.id} className="border-t border-slate-100">
-                    <td className="p-2 text-center font-semibold">{rec.phaseNumber ?? "—"}</td>
+                    <td className="p-2 text-center font-semibold text-xs">
+                      {rec.note?.trim() ? rec.note : rec.phaseNumber ? `Đợt ${rec.phaseNumber}` : "—"}
+                    </td>
                     <td className="p-2">
                       {isBonus ? (
                         <span
