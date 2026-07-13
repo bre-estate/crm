@@ -9,10 +9,9 @@ import { getOwnerEmail } from "@/lib/auth";
 export const metadata: Metadata = {
   title: "BRE — Quản lý sàn giao dịch BĐS",
   description: "Hệ thống quản lý doanh thu, giá vốn, báo cáo",
-  icons: {
-    icon: "/favicon-bre.png",
-    apple: "/favicon-bre.png",
-  },
+  // Favicon: dùng Next.js file-convention → `app/icon.png` được auto-detect
+  // + generate <link rel="icon"> với hash cache-busting. Không cần config
+  // metadata.icons — nếu set sẽ conflict với auto-detect.
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
