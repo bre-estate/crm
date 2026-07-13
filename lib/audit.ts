@@ -1,4 +1,4 @@
-"use server";
+import "server-only";
 
 import { db } from "@/lib/db";
 import { activityLogs } from "@/lib/schema";
