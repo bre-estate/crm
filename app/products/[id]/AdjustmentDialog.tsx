@@ -174,6 +174,10 @@ export default function AdjustmentDialog({
                                   : `VD: ${(currentVal * 100).toFixed(2)}`
                               }
                               className="input text-xs py-1"
+                              autoComplete="off"
+                              data-1p-ignore
+                              data-lpignore="true"
+                              data-form-type="other"
                               autoFocus
                             />
                           ) : (
