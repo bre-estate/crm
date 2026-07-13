@@ -121,10 +121,11 @@ export default async function ProductDetailPage({
   const expectedBonus =
     Number(p.cdtBonusSale ?? 0) + Number(p.cdtBonusManager ?? 0);
 
-  // Lịch sử %HH: gộp 3 nguồn (theo thứ tự ưu tiên):
-  //   1) product.pmgRateHistory (JSON manual)
-  //   2) product_adjustments (mỗi record có pmg_rate hoặc pmg_sale_rate)
+  // Lịch sử %PMG_LK: gộp 3 nguồn, dedup theo (rate, date):
+  //   1) product.pmgRateHistory (JSON manual — nếu user nhập explicit)
+  //   2) product_adjustments (mỗi record có pmg_rate)
   //   3) revenue_reconciliations.pmg_cumulative_pct (theo tiến độ ĐC)
+  // Dedup: nếu 2 nguồn cùng rate + cùng ngày → giữ 1. Ngày khác → giữ cả 2.
   const pmgHistory = ((): Array<{ date: string; rate: number; note?: string }> => {
     const entries: Array<{ date: string; rate: number; note?: string }> = [];
     try {
@@ -143,33 +144,42 @@ export default async function ProductDetailPage({
     } catch {
       // ignore
     }
-    // Adjustments: chỉ lấy record có pmg_rate (bỏ qua record chỉ sửa admin/hh)
+    // Adjustments: mọi record có pmg_rate được ghi lại
     for (const a of adjustments) {
       const r = Number(a.pmgRate ?? 0);
       if (r > 0) {
         entries.push({
           date: a.effectiveDate,
           rate: r,
-          note: a.note ?? "Điều chỉnh %PMG_LK",
+          note: a.note ?? "Điều chỉnh",
         });
       }
     }
-    // Recon-derived (chỉ dùng nếu không có nguồn nào phía trên)
-    if (entries.length === 0) {
-      const seen = new Map<number, string>();
-      const sorted = [...revRecs].sort((a, b) =>
-        (a.rec.reconciliationDate ?? "").localeCompare(b.rec.reconciliationDate ?? ""),
-      );
-      for (const r of sorted) {
-        const rate = Number(r.rec.pmgCumulativePct ?? 0);
-        if (rate > 0 && !seen.has(rate)) {
-          seen.set(rate, r.rec.reconciliationDate ?? "");
-        }
+    // Revenue recons: distinct pmgCumulativePct (mỗi lần rate tăng ghi 1 lần)
+    const seenRate = new Map<number, string>();
+    const sortedRev = [...revRecs].sort((a, b) =>
+      (a.rec.reconciliationDate ?? "").localeCompare(b.rec.reconciliationDate ?? ""),
+    );
+    for (const r of sortedRev) {
+      const rate = Number(r.rec.pmgCumulativePct ?? 0);
+      if (rate > 0 && !seenRate.has(rate)) {
+        seenRate.set(rate, r.rec.reconciliationDate ?? "");
       }
-      for (const [rate, date] of seen) entries.push({ date, rate });
     }
-    // Sort theo ngày (cũ → mới)
-    return entries.sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""));
+    for (const [rate, date] of seenRate) entries.push({ date, rate });
+    // Dedup theo key (rate + date). Sort theo ngày (cũ → mới).
+    const dedupMap = new Map<string, { date: string; rate: number; note?: string }>();
+    for (const e of entries) {
+      const key = `${e.rate}@${e.date}`;
+      if (!dedupMap.has(key)) dedupMap.set(key, e);
+      else if (e.note && !dedupMap.get(key)!.note) {
+        // Giữ note tốt hơn nếu có
+        dedupMap.set(key, e);
+      }
+    }
+    return Array.from(dedupMap.values()).sort((a, b) =>
+      (a.date ?? "").localeCompare(b.date ?? ""),
+    );
   })();
 
   // Đã thu tách theo loại: HH sale vs Thưởng nóng
