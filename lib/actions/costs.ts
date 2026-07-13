@@ -118,10 +118,16 @@ export async function createCost(fd: FormData) {
   }
 
   revalidatePath("/costs");
-  redirect("/costs");
+  redirect(`/costs/${rec.id}/edit?created=1`);
 }
 
-export async function updateCost(id: number, fd: FormData) {
+function buildReturnUrl(returnTo: string | null | undefined, flag: string, id: number): string {
+  const safe = returnTo && returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/costs";
+  const sep = safe.includes("?") ? "&" : "?";
+  return `${safe}${sep}${flag}=${id}`;
+}
+
+export async function updateCost(id: number, fd: FormData, returnTo?: string | null) {
   const data = buildCostData(fd);
   if (!data.productId) throw new Error("Chọn căn (sản phẩm)");
   if (!data.employeeName) throw new Error("Nhập tên người được đối chiếu");
@@ -130,14 +136,14 @@ export async function updateCost(id: number, fd: FormData) {
 
   revalidatePath("/costs");
   revalidatePath(`/costs/${id}/edit`);
-  redirect("/costs");
+  redirect(buildReturnUrl(returnTo, "updated", id));
 }
 
-export async function deleteCost(id: number) {
+export async function deleteCost(id: number, returnTo?: string | null) {
   await db.delete(paymentsOut).where(eq(paymentsOut.costReconciliationId, id));
   await db.delete(costReconciliations).where(eq(costReconciliations.id, id));
   revalidatePath("/costs");
-  redirect("/costs");
+  redirect(buildReturnUrl(returnTo, "deleted", id));
 }
 
 export async function addPaymentOut(costReconciliationId: number, fd: FormData) {

@@ -340,33 +340,30 @@ export default function CostForm({
       <Section title="Thông tin đối chiếu">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Field label="Căn (sản phẩm)" required>
-            {isEdit ? (
-              <>
+            {(() => {
+              const productOptions = products.map((p) => ({
+                value: p.id,
+                label: p.unitCode,
+                sublabel: [p.projectName, p.partnerName, p.productCode]
+                  .filter(Boolean)
+                  .join(" · "),
+              }));
+              return isEdit ? (
+                <>
+                  <SearchableSelect value={productId} disabled options={productOptions} />
+                  <input type="hidden" name="productId" value={productId} />
+                </>
+              ) : (
                 <SearchableSelect
+                  name="productId"
                   value={productId}
-                  disabled
-                  options={products.map((p) => ({
-                    value: p.id,
-                    label: p.productCode,
-                    sublabel: p.projectName ?? undefined,
-                  }))}
+                  onChange={(v) => setProductId(Number(v))}
+                  placeholder="Gõ mã căn / tên dự án / CĐT..."
+                  required
+                  options={productOptions}
                 />
-                <input type="hidden" name="productId" value={productId} />
-              </>
-            ) : (
-              <SearchableSelect
-                name="productId"
-                value={productId}
-                onChange={(v) => setProductId(Number(v))}
-                placeholder="Gõ mã căn / tên dự án..."
-                required
-                options={products.map((p) => ({
-                  value: p.id,
-                  label: p.productCode,
-                  sublabel: p.projectName ?? undefined,
-                }))}
-              />
-            )}
+              );
+            })()}
           </Field>
           <Field label="Loại chi phí" required>
             <select
@@ -612,7 +609,7 @@ export default function CostForm({
               </div>
             ) : (
               <div className="text-[10px] text-slate-500 mt-1">
-                = Khách đã trả CĐT bao nhiêu %. Đợt này auto = ((PMG Sale × N − admin_sale)/1,1 − hỗ trợ khách) × % − đã ĐC
+                = ((PMG Sale × N − admin_sale)/1,1 − hỗ trợ khách) × % − đã ĐC
                 {maxPrevN > 0 && (
                   <span className="block mt-0.5">Tối thiểu {(maxPrevN * 100).toFixed(0)}% (theo đợt trước)</span>
                 )}

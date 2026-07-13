@@ -8,12 +8,21 @@ import { updateCost, deleteCost } from "@/lib/actions/costs";
 
 export default async function EditCostPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ created?: string; returnTo?: string }>;
 }) {
   const { id: idStr } = await params;
+  const { created, returnTo: rawReturnTo } = await searchParams;
   const id = Number(idStr);
   if (!Number.isFinite(id)) notFound();
+  const justCreated = created === "1";
+  // Chỉ nhận relative path, chống open-redirect
+  const returnTo =
+    rawReturnTo && rawReturnTo.startsWith("/") && !rawReturnTo.startsWith("//")
+      ? rawReturnTo
+      : null;
 
   const [recon] = await db
     .select()
@@ -78,13 +87,28 @@ export default async function EditCostPage({
   return (
     <div className="space-y-4 max-w-4xl">
       <div className="flex items-center gap-2 text-sm">
-        <Link href="/costs" className="text-blue-600 hover:underline">
+        <Link href={returnTo ?? "/costs"} className="text-blue-600 hover:underline">
           ← Giá vốn
         </Link>
         <span className="text-slate-400">/</span>
         <span>Sửa dòng #{id}</span>
       </div>
       <h1 className="text-2xl font-bold">Sửa đối chiếu giá vốn</h1>
+
+      {justCreated && (
+        <div className="bg-green-50 border border-green-300 rounded-lg p-3 text-sm text-green-800 flex items-center justify-between">
+          <span>
+            <span className="font-semibold">Đã tạo đối chiếu #{id}.</span>{" "}
+            Có thể chỉnh sửa tiếp bên dưới hoặc thêm thanh toán.
+          </span>
+          <Link
+            href="/costs"
+            className="text-green-700 hover:underline text-xs"
+          >
+            Về danh sách →
+          </Link>
+        </div>
+      )}
 
       {payments.length > 0 && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm">
@@ -106,11 +130,11 @@ export default async function EditCostPage({
         previousRecons={previousRecons}
         onSave={async (fd) => {
           "use server";
-          await updateCost(id, fd);
+          await updateCost(id, fd, returnTo);
         }}
         onDelete={async () => {
           "use server";
-          await deleteCost(id);
+          await deleteCost(id, returnTo);
         }}
       />
     </div>

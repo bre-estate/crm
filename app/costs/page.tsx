@@ -14,10 +14,23 @@ import SearchableSelect from "@/components/SearchableSelect";
 
 export const dynamic = "force-dynamic";
 
-type SearchParams = Promise<{ projectId?: string; costType?: string; unitCode?: string }>;
+type SearchParams = Promise<{
+  projectId?: string;
+  costType?: string;
+  unitCode?: string;
+  deleted?: string;
+  updated?: string;
+}>;
 
 export default async function CostsPage({ searchParams }: { searchParams: SearchParams }) {
-  const { projectId, costType, unitCode } = await searchParams;
+  const { projectId, costType, unitCode, deleted, updated } = await searchParams;
+  // returnTo cho edit link — giữ nguyên filter hiện tại khi user vào edit rồi quay lại
+  const returnToParams = new URLSearchParams();
+  if (projectId) returnToParams.set("projectId", projectId);
+  if (costType) returnToParams.set("costType", costType);
+  if (unitCode) returnToParams.set("unitCode", unitCode);
+  const returnToQS = returnToParams.toString();
+  const returnTo = `/costs${returnToQS ? "?" + returnToQS : ""}`;
   const filterProjectId = projectId ? Number(projectId) : null;
   const filterUnitCode = unitCode?.trim().toLowerCase() || null;
 
@@ -155,6 +168,19 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
 
   return (
     <div className="space-y-4">
+      {(deleted || updated) && (
+        <div
+          className={`border rounded-lg p-3 text-sm ${
+            deleted
+              ? "bg-red-50 border-red-300 text-red-800"
+              : "bg-green-50 border-green-300 text-green-800"
+          }`}
+        >
+          {deleted
+            ? `Đã xóa đối chiếu #${deleted}.`
+            : `Đã cập nhật đối chiếu #${updated}.`}
+        </div>
+      )}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">Đối chiếu giá vốn</h1>
@@ -388,7 +414,9 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
                   </td>
                   <td className="p-2 text-right">
                     <Link
-                      href={`/costs/${r.id}/edit`}
+                      href={`/costs/${r.id}/edit${
+                        returnToQS ? `?returnTo=${encodeURIComponent(returnTo)}` : ""
+                      }`}
                       className="text-blue-600 hover:underline text-xs"
                     >
                       Sửa
