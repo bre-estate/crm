@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import MoneyInput from "@/components/MoneyInput";
+import { toast } from "sonner";
 
 type Payment = {
   id: number;
@@ -33,7 +34,7 @@ export default function PaymentsEditor({ payments, onUpdate, onDelete, onAdd }: 
         await fn();
       } catch (e) {
         if (isRedirect(e)) throw e;
-        alert(e instanceof Error ? e.message : "Lỗi");
+        toast.error(e instanceof Error ? e.message : "Lỗi");
       }
     });
 

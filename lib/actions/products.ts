@@ -15,47 +15,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { logActivity } from "@/lib/audit";
 
-function toNum(v: FormDataEntryValue | null): number {
-  if (v === null || v === undefined) return 0;
-  const s = String(v).trim();
-  if (!s) return 0;
-  // Heuristic phân biệt decimal vs thousand separator:
-  // - "104957611.61363636" (float từ JS) → decimal, giữ phần thập phân
-  // - "3.249.476.520" (Vietnamese thousand) → strip hết
-  // - "104,957,611" (US thousand) → strip hết
-  // Rule: nếu có ĐÚNG 1 dấu . và phần sau có ≥ 3 chữ số → decimal float
-  //       (Vietnamese thousand có exactly 3 digits between dots, so 4+ tail is unambiguous decimal)
-  const dots = (s.match(/\./g) || []).length;
-  if (dots === 1) {
-    const parts = s.split(".");
-    if (parts[1].length >= 4 || parts[1].length < 3) {
-      // Decimal float — strip commas as thousand sep, keep the dot
-      const n = Number(s.replace(/[,\s]/g, ""));
-      return isNaN(n) ? 0 : n;
-    }
-  }
-  // Strip both Vietnamese (`.` thousand) and US (`,` thousand) separators.
-  const n = Number(s.replace(/[.,\s]/g, ""));
-  return isNaN(n) ? 0 : n;
-}
-function toStr(v: FormDataEntryValue | null): string {
-  return v === null ? "" : String(v).trim();
-}
-function toStrOrNull(v: FormDataEntryValue | null): string | null {
-  const s = toStr(v);
-  return s === "" ? null : s;
-}
-// Form input raw percent (5.5 = 5.5%); DB stores decimal (0.055).
-// Chấp nhận "7", "7.5", "7,5", "7%", "7,5 %" (strip %, whitespace, đổi , → .)
-// NaN → throw để action fail, KHÔNG silent return 0 (đã sai bug căn 655).
-function toPct(v: FormDataEntryValue | null): number {
-  if (v === null || v === undefined) return 0;
-  const s = String(v).trim().replace(/[%\s]/g, "").replace(/,/g, ".");
-  if (!s) return 0;
-  const n = Number(s);
-  if (isNaN(n)) throw new Error(`Giá trị "${v}" không phải số hợp lệ`);
-  return n / 100;
-}
+import { toNum, toStr, toStrOrNull, toPct, safeReturnTo as safeReturnToShared } from "@/lib/parse";
 
 async function buildProductCode(projectId: number, unitCode: string): Promise<string> {
   const [pj] = await db
@@ -70,11 +30,7 @@ async function buildProductCode(projectId: number, unitCode: string): Promise<st
 // Only allow relative same-origin returnTo (e.g., /products?dept=1) — reject
 // absolute URLs, protocol-relative (//evil.com), or empty strings.
 function safeReturnTo(fd: FormData): string | null {
-  const raw = fd.get("__returnTo");
-  if (!raw) return null;
-  const s = String(raw).trim();
-  if (!s.startsWith("/") || s.startsWith("//")) return null;
-  return s;
+  return safeReturnToShared(fd.get("__returnTo"));
 }
 
 function buildProductData(fd: FormData) {

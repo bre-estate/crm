@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { BulkProductRow } from "@/lib/actions/products";
 import SearchableSelect from "@/components/SearchableSelect";
+import { toast } from "sonner";
 
 type ProjectOpt = {
   id: number;
@@ -77,23 +78,27 @@ export default function BulkProductForm({
         note: r.note || undefined,
       }));
     if (validRows.length === 0) {
-      alert("Chưa có dòng nào hợp lệ (cần chọn dự án + mã căn)");
+      toast.error("Chưa có dòng nào hợp lệ", {
+        description: "Cần chọn dự án + mã căn",
+      });
       return;
     }
     start(async () => {
       try {
         const res = await onSave(validRows);
         if (res.errors.length > 0) {
-          alert(
-            `Đã tạo ${res.ok} căn. ${res.errors.length} dòng lỗi:\n` +
-              res.errors.map((e) => `  Dòng ${e.index + 1}: ${e.message}`).join("\n"),
-          );
+          toast.error(`Đã tạo ${res.ok} căn, ${res.errors.length} lỗi`, {
+            description: res.errors
+              .slice(0, 5)
+              .map((e) => `Dòng ${e.index + 1}: ${e.message}`)
+              .join(" · "),
+          });
         } else {
-          alert(`✅ Đã tạo ${res.ok} căn`);
+          toast.success(`Đã tạo ${res.ok} căn`);
           router.push("/products");
         }
       } catch (e) {
-        alert(e instanceof Error ? e.message : "Lỗi");
+        toast.error(e instanceof Error ? e.message : "Lỗi");
       }
     });
   };

@@ -6,6 +6,7 @@ import type { RevenueReconciliation } from "@/lib/schema";
 import MoneyInput from "@/components/MoneyInput";
 import SearchableSelect from "@/components/SearchableSelect";
 import { fmtMoney, fmtPctTight } from "@/lib/format";
+import { toast } from "sonner";
 
 type ProductOption = {
   id: number;
@@ -175,7 +176,7 @@ export default function RevenueForm({
             await onSave(fd);
           } catch (e) {
             if (isRedirect(e)) throw e;
-            alert(e instanceof Error ? e.message : "Lỗi khi lưu");
+            toast.error(e instanceof Error ? e.message : "Lỗi khi lưu");
           }
         })
       }
@@ -479,7 +480,7 @@ export default function RevenueForm({
                     await onDelete();
                   } catch (e) {
                     if (isRedirect(e)) throw e;
-                    alert(e instanceof Error ? e.message : "Không xóa được");
+                    toast.error(e instanceof Error ? e.message : "Không xóa được");
                   }
                 });
               }

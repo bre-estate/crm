@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { fmtMoney, fmtPct } from "@/lib/format";
+import { toast } from "sonner";
 
 type ProductSnapshot = {
   id: number;
@@ -57,7 +58,7 @@ export default function AdjustmentDialog({
 
   const submit = () => {
     if (checked.size === 0) {
-      alert("Chọn ít nhất 1 trường muốn điều chỉnh");
+      toast.error("Chọn ít nhất 1 trường muốn điều chỉnh");
       return;
     }
     // Guard: ô check nhưng bỏ trống / gõ 0 → chặn (bug hôm nay 655: user
@@ -71,7 +72,9 @@ export default function AdjustmentDialog({
       const labels = empty
         .map((k) => FIELDS.find((f) => f.key === k)?.label ?? k)
         .join(", ");
-      alert(`Chưa nhập giá trị mới cho: ${labels}. Bỏ tick hoặc điền giá trị.`);
+      toast.error("Chưa nhập giá trị", {
+        description: `Bỏ tick hoặc điền: ${labels}`,
+      });
       return;
     }
     const fd = new FormData();
@@ -90,7 +93,7 @@ export default function AdjustmentDialog({
         setNote("");
         router.refresh();
       } catch (e) {
-        alert(e instanceof Error ? e.message : "Lỗi khi lưu");
+        toast.error(e instanceof Error ? e.message : "Lỗi khi lưu");
       }
     });
   };

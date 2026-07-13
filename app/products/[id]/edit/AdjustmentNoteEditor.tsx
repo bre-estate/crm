@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 type Props = {
   adjId: number;
@@ -57,7 +58,7 @@ export default function AdjustmentNoteEditor({ adjId: _adjId, initialNote, onSav
               setEditing(false);
               router.refresh();
             } catch (e) {
-              alert(e instanceof Error ? e.message : "Lỗi lưu");
+              toast.error(e instanceof Error ? e.message : "Lỗi lưu");
             }
           });
         }}

@@ -1,33 +1,5 @@
 import { describe, test, expect } from "vitest";
-
-// Helper import: parse functions inline duplicated ở nhiều actions.
-// Test bằng cách reproduce y hệt logic (khi refactor thì cùng update test).
-// Alternative: extract helpers ra `lib/parse.ts` — sẽ làm trong 1 commit tiếp theo.
-
-function toPct(v: string | null | undefined): number {
-  if (v === null || v === undefined) return 0;
-  const s = String(v).trim().replace(/[%\s]/g, "").replace(/,/g, ".");
-  if (!s) return 0;
-  const n = Number(s);
-  if (isNaN(n)) throw new Error(`Giá trị "${v}" không phải số hợp lệ`);
-  return n / 100;
-}
-
-function toNum(v: string | null | undefined): number {
-  if (v === null || v === undefined) return 0;
-  const s = String(v).trim();
-  if (!s) return 0;
-  const dots = (s.match(/\./g) || []).length;
-  if (dots === 1) {
-    const parts = s.split(".");
-    if (parts[1].length >= 4 || parts[1].length < 3) {
-      const n = Number(s.replace(/[,\s]/g, ""));
-      return isNaN(n) ? 0 : n;
-    }
-  }
-  const n = Number(s.replace(/[.,\s]/g, ""));
-  return isNaN(n) ? 0 : n;
-}
+import { toPct, toNum } from "@/lib/parse";
 
 describe("toPct — parse %rate từ form input", () => {
   test("số nguyên: '7' → 0.07", () => {

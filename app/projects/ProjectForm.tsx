@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Project, Partner } from "@/lib/schema";
 import MoneyInput from "@/components/MoneyInput";
+import { toast } from "sonner";
 
 type Props = {
   project?: Project;
@@ -36,7 +37,7 @@ export default function ProjectForm({ project, partners, onSave, onDelete }: Pro
             await onSave(fd);
           } catch (e) {
             if (e && typeof e === "object" && "digest" in e && String((e as { digest?: unknown }).digest ?? "").startsWith("NEXT_REDIRECT")) throw e;
-            alert(e instanceof Error ? e.message : "Lỗi khi lưu");
+            toast.error(e instanceof Error ? e.message : "Lỗi khi lưu");
           }
         });
       }}
@@ -249,7 +250,7 @@ export default function ProjectForm({ project, partners, onSave, onDelete }: Pro
                     await onDelete();
                   } catch (e) {
                     if (e && typeof e === "object" && "digest" in e && String((e as { digest?: unknown }).digest ?? "").startsWith("NEXT_REDIRECT")) throw e;
-                    alert(e instanceof Error ? e.message : "Không xóa được");
+                    toast.error(e instanceof Error ? e.message : "Không xóa được");
                   }
                 });
               }

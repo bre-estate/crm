@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { BulkRevenueRow } from "@/lib/actions/revenues";
 import SearchableSelect from "@/components/SearchableSelect";
+import { toast } from "sonner";
 
 type ProductOpt = {
   id: number;
@@ -179,7 +180,7 @@ export default function BulkForm({
 
   const applyPaste = () => {
     if (nRows === 0) {
-      alert("Cần paste ít nhất cột 'Mã căn'.");
+      toast.error("Cần paste ít nhất cột 'Mã căn'.");
       return;
     }
     const mismatch = rowCountMismatch();
@@ -220,9 +221,9 @@ export default function BulkForm({
     }
 
     if (newRows.length === 0) {
-      alert(
-        `Không tìm ra căn hợp lệ nào. Các mã không match:\n${missing.slice(0, 10).join(", ") || "(rỗng)"}`,
-      );
+      toast.error("Không tìm ra căn hợp lệ nào", {
+        description: `Các mã không match: ${missing.slice(0, 10).join(", ") || "(rỗng)"}`,
+      });
       return;
     }
     let msg = `Import ${newRows.length} dòng.`;
@@ -277,23 +278,27 @@ export default function BulkForm({
         note: r.note || undefined,
       }));
     if (validRows.length === 0) {
-      alert("Chưa có dòng nào hợp lệ (cần chọn căn + số tiền > 0)");
+      toast.error("Chưa có dòng nào hợp lệ", {
+        description: "Cần chọn căn + số tiền > 0",
+      });
       return;
     }
     start(async () => {
       try {
         const res = await onSave(validRows);
         if (res.errors.length > 0) {
-          alert(
-            `Đã tạo ${res.ok} dòng. ${res.errors.length} dòng lỗi:\n` +
-              res.errors.map((e) => `  Dòng ${e.index + 1}: ${e.message}`).join("\n"),
-          );
+          toast.error(`Đã tạo ${res.ok} dòng, ${res.errors.length} lỗi`, {
+            description: res.errors
+              .slice(0, 5)
+              .map((e) => `Dòng ${e.index + 1}: ${e.message}`)
+              .join(" · "),
+          });
         } else {
-          alert(`✅ Đã tạo ${res.ok} đợt đối chiếu`);
+          toast.success(`Đã tạo ${res.ok} đợt đối chiếu`);
           router.push("/revenues");
         }
       } catch (e) {
-        alert(e instanceof Error ? e.message : "Lỗi");
+        toast.error(e instanceof Error ? e.message : "Lỗi");
       }
     });
   };

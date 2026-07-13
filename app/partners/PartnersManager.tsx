@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { partnerTypeLabel } from "@/lib/format";
+import { toast } from "sonner";
 
 type Partner = {
   id: number;
@@ -46,7 +47,7 @@ export default function PartnersManager({ partners, onCreate, onUpdate, onDelete
         closeDialog();
         router.refresh();
       } catch (e) {
-        alert(e instanceof Error ? e.message : "Lỗi lưu");
+        toast.error(e instanceof Error ? e.message : "Lỗi lưu");
       }
     });
   };
@@ -58,7 +59,7 @@ export default function PartnersManager({ partners, onCreate, onUpdate, onDelete
         await onDelete(p.id);
         router.refresh();
       } catch (e) {
-        alert(e instanceof Error ? e.message : "Lỗi xóa");
+        toast.error(e instanceof Error ? e.message : "Lỗi xóa");
       }
     });
   };

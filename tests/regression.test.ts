@@ -1,17 +1,8 @@
 import { describe, test, expect } from "vitest";
+import { toPct } from "@/lib/parse";
 
 // Regression tests cho các bug đã fix — mỗi test reproduce điều kiện bug
 // rồi verify fix đúng. Nếu tương lai code regress, test sẽ fail.
-
-// Cùng logic parse với products.ts
-function toPct(v: string | null | undefined): number {
-  if (v === null || v === undefined) return 0;
-  const s = String(v).trim().replace(/[%\s]/g, "").replace(/,/g, ".");
-  if (!s) return 0;
-  const n = Number(s);
-  if (isNaN(n)) throw new Error(`Giá trị "${v}" không phải số hợp lệ`);
-  return n / 100;
-}
 
 describe("Regression: bugs căn 655 (BRE CRM 13/07/2026)", () => {
   test("Bug #1: type=number reject '7,5' → server nhận empty → toPct = 0", () => {

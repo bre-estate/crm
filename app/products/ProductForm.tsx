@@ -7,6 +7,7 @@ import MoneyInput from "@/components/MoneyInput";
 import SearchableSelect from "@/components/SearchableSelect";
 import { fmtMoney, fmtDate, fmtPctTight, toTitleCase } from "@/lib/format";
 import AdjustmentDialog from "./[id]/AdjustmentDialog";
+import { toast } from "sonner";
 
 type ProjectWithPartner = Project & {
   partnerName?: string | null;
@@ -153,7 +154,7 @@ export default function ProductForm({
             await onSave(fd);
           } catch (e) {
             if (e && typeof e === "object" && "digest" in e && String((e as { digest?: unknown }).digest ?? "").startsWith("NEXT_REDIRECT")) throw e;
-            alert(e instanceof Error ? e.message : "Lỗi khi lưu");
+            toast.error(e instanceof Error ? e.message : "Lỗi khi lưu");
           }
         })
       }
@@ -730,7 +731,9 @@ export default function ProductForm({
                   if (!isNaN(v)) fields.adminFee = v;
                 }
                 if (invalid.length > 0) {
-                  alert(`Nhập giá trị chưa hợp lệ:\n\n${invalid.join("\n")}`);
+                  toast.error("Nhập giá trị chưa hợp lệ", {
+                    description: invalid.join("; "),
+                  });
                   throw new Error(invalid.join("; "));
                 }
                 if (Object.keys(fields).length === 0) return;
@@ -755,7 +758,7 @@ export default function ProductForm({
                     await onDelete();
                   } catch (e) {
                     if (e && typeof e === "object" && "digest" in e && String((e as { digest?: unknown }).digest ?? "").startsWith("NEXT_REDIRECT")) throw e;
-                    alert(e instanceof Error ? e.message : "Không xóa được");
+                    toast.error(e instanceof Error ? e.message : "Không xóa được");
                   }
                 });
               }

@@ -3,6 +3,7 @@ import "./globals.css";
 import { createClient } from "@/lib/supabase/server";
 import SignOutButton from "./SignOutButton";
 import NavLinks from "./NavLinks";
+import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "BRE — Quản lý sàn giao dịch BĐS",
@@ -23,7 +24,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   if (!user) {
     return (
       <html lang="vi" className="h-full">
-        <body className="bg-slate-50 text-slate-900 min-h-screen antialiased">{children}</body>
+        <body className="bg-slate-50 text-slate-900 min-h-screen antialiased">
+          {children}
+          <Toaster position="top-right" richColors closeButton />
+        </body>
       </html>
     );
   }
@@ -52,6 +56,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <div className="max-w-7xl mx-auto p-6">{children}</div>
           </main>
         </div>
+        <Toaster position="top-right" richColors closeButton />
       </body>
     </html>
   );

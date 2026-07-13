@@ -5,27 +5,7 @@ import { projects, products } from "@/lib/schema";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-
-function toNum(v: FormDataEntryValue | null): number {
-  if (v === null || v === undefined) return 0;
-  const s = String(v).trim();
-  if (!s) return 0;
-  const n = Number(s.replace(/[.,\s]/g, ""));
-  return isNaN(n) ? 0 : n;
-}
-function toStr(v: FormDataEntryValue | null): string {
-  return v === null ? "" : String(v).trim();
-}
-// Form input is raw percent (5.5 = 5.5%); DB stores decimal (0.055).
-// Don't strip dots (they're decimal separators here, not thousand separators).
-function toPct(v: FormDataEntryValue | null): number {
-  if (v === null || v === undefined) return 0;
-  const s = String(v).trim().replace(/[%\s]/g, "").replace(/,/g, ".");
-  if (!s) return 0;
-  const n = Number(s);
-  if (isNaN(n)) throw new Error(`Giá trị "${v}" không phải số hợp lệ`);
-  return n / 100;
-}
+import { toNum, toStr, toPct } from "@/lib/parse";
 
 function buildProjectData(fd: FormData) {
   const code = toStr(fd.get("code"));

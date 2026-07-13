@@ -7,6 +7,7 @@ import MoneyInput from "@/components/MoneyInput";
 import SearchableSelect from "@/components/SearchableSelect";
 import { costTypeLabel, fmtMoney, fmtPct, fmtPctTight, fmtPctRaw } from "@/lib/format";
 import { computeLuyKe, type ProductConfig, type CostType } from "@/lib/costCalc";
+import { toast } from "sonner";
 
 type ProductOption = {
   id: number;
@@ -309,15 +310,15 @@ export default function CostForm({
       action={(fd) =>
         start(async () => {
           if (isOverLimit) {
-            alert(
-              `Không cho lưu — tổng đã ĐC (${(paidBefore + totalAmt).toLocaleString("vi-VN")}) vượt mức tối đa (${targetForType.toLocaleString("vi-VN")}).\n\nVui lòng giảm số tiền hoặc sửa mức tối đa ở /products/{id}/edit.`,
-            );
+            toast.error("Không cho lưu — vượt mức tối đa", {
+              description: `Tổng đã ĐC ${(paidBefore + totalAmt).toLocaleString("vi-VN")} vượt ${targetForType.toLocaleString("vi-VN")}. Giảm số tiền hoặc sửa mức tối đa.`,
+            });
             return;
           }
           if (isNRegression) {
-            alert(
-              `Không cho lưu — Tiến độ N nhập ${(progressNNum * 100).toFixed(0)}% nhỏ hơn N của đợt trước ${(maxPrevN * 100).toFixed(0)}%. Không thể lùi tiến độ.`,
-            );
+            toast.error("Không cho lưu — Tiến độ N lùi", {
+              description: `N nhập ${(progressNNum * 100).toFixed(0)}% nhỏ hơn N đợt trước ${(maxPrevN * 100).toFixed(0)}%.`,
+            });
             return;
           }
           try {
@@ -330,7 +331,7 @@ export default function CostForm({
               String((e as { digest?: unknown }).digest ?? "").startsWith("NEXT_REDIRECT")
             )
               throw e;
-            alert(e instanceof Error ? e.message : "Lỗi khi lưu");
+            toast.error(e instanceof Error ? e.message : "Lỗi khi lưu");
           }
         })
       }
@@ -781,7 +782,7 @@ export default function CostForm({
                       String((e as { digest?: unknown }).digest ?? "").startsWith("NEXT_REDIRECT")
                     )
                       throw e;
-                    alert(e instanceof Error ? e.message : "Không xóa được");
+                    toast.error(e instanceof Error ? e.message : "Không xóa được");
                   }
                 });
               }
