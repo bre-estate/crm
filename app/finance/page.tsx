@@ -1,7 +1,9 @@
 import { db } from "@/lib/db";
 import { companyInvestments, companyExpenses, companySettings } from "@/lib/schema";
 import { desc } from "drizzle-orm";
+import { notFound } from "next/navigation";
 import { fmtMoney, fmtDate, fmtPct } from "@/lib/format";
+import { getOwnerEmail } from "@/lib/auth";
 import InvestmentForm from "./InvestmentForm";
 import ExpenseForm from "./ExpenseForm";
 import SettingsForm from "./SettingsForm";
@@ -34,6 +36,11 @@ const EXP_CAT_LABEL: Record<string, string> = {
 };
 
 export default async function FinancePage() {
+  // Bảo vệ page — chỉ owner (trietnguyen308@gmail.com) mới thấy.
+  // Others → notFound (không leak sự tồn tại của trang).
+  const ownerEmail = await getOwnerEmail();
+  if (!ownerEmail) notFound();
+
   const [investments, expenses, settingsRows] = await Promise.all([
     db.select().from(companyInvestments).orderBy(desc(companyInvestments.investedAt)),
     db.select().from(companyExpenses).orderBy(desc(companyExpenses.expenseMonth)),

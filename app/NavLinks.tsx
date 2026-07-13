@@ -3,7 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const NAV = [
+type NavItem = {
+  href: string;
+  label: string;
+  ownerOnly?: boolean;
+};
+
+const NAV: NavItem[] = [
   { href: "/", label: "Tổng quan" },
   { href: "/partners", label: "Đối tác" },
   { href: "/projects", label: "Dự án" },
@@ -11,7 +17,7 @@ const NAV = [
   { href: "/revenues", label: "Doanh thu" },
   { href: "/costs", label: "Giá vốn" },
   { href: "/reports", label: "Báo cáo" },
-  { href: "/finance", label: "Tài chính công ty" },
+  { href: "/finance", label: "Tài chính công ty", ownerOnly: true },
 ];
 
 function isActive(pathname: string, href: string): boolean {
@@ -19,11 +25,12 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-export default function NavLinks() {
+export default function NavLinks({ isOwner = false }: { isOwner?: boolean }) {
   const pathname = usePathname();
+  const visible = NAV.filter((n) => !n.ownerOnly || isOwner);
   return (
     <nav className="flex-1 p-3 space-y-1">
-      {NAV.map((n) => {
+      {visible.map((n) => {
         const active = isActive(pathname, n.href);
         return (
           <Link

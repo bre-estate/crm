@@ -5,10 +5,12 @@ import { companyInvestments, companyExpenses, companySettings } from "@/lib/sche
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { toNum, toStr, toStrOrNull, toPct } from "@/lib/parse";
+import { requireOwner } from "@/lib/auth";
 
 // ============ INVESTMENTS ============
 
 export async function createInvestment(fd: FormData) {
+  await requireOwner();
   const data = {
     investedAt: toStr(fd.get("investedAt")),
     category: toStr(fd.get("category")) as
@@ -31,6 +33,7 @@ export async function createInvestment(fd: FormData) {
 }
 
 export async function updateInvestment(id: number, fd: FormData) {
+  await requireOwner();
   const data = {
     investedAt: toStr(fd.get("investedAt")),
     category: toStr(fd.get("category")) as
@@ -51,6 +54,7 @@ export async function updateInvestment(id: number, fd: FormData) {
 }
 
 export async function deleteInvestment(id: number) {
+  await requireOwner();
   await db.delete(companyInvestments).where(eq(companyInvestments.id, id));
   revalidatePath("/finance");
   revalidatePath("/reports");
@@ -59,6 +63,7 @@ export async function deleteInvestment(id: number) {
 // ============ EXPENSES ============
 
 export async function createExpense(fd: FormData) {
+  await requireOwner();
   const data = {
     expenseMonth: toStr(fd.get("expenseMonth")),
     category: toStr(fd.get("category")) as
@@ -80,6 +85,7 @@ export async function createExpense(fd: FormData) {
 }
 
 export async function updateExpense(id: number, fd: FormData) {
+  await requireOwner();
   const data = {
     expenseMonth: toStr(fd.get("expenseMonth")),
     category: toStr(fd.get("category")) as
@@ -100,6 +106,7 @@ export async function updateExpense(id: number, fd: FormData) {
 }
 
 export async function deleteExpense(id: number) {
+  await requireOwner();
   await db.delete(companyExpenses).where(eq(companyExpenses.id, id));
   revalidatePath("/finance");
   revalidatePath("/reports");
@@ -108,6 +115,7 @@ export async function deleteExpense(id: number) {
 // ============ SETTINGS ============
 
 export async function updateSettings(fd: FormData) {
+  await requireOwner();
   const taxRate = toPct(fd.get("taxRate"));
   const businessStartDate = toStrOrNull(fd.get("businessStartDate"));
   await db

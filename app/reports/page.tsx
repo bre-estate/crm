@@ -15,6 +15,7 @@ import {
 import { fmtMoney, fmtPctRaw, displayPartnerName, isSecondaryPartner } from "@/lib/format";
 import { eq } from "drizzle-orm";
 import Link from "next/link";
+import { getOwnerEmail } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -242,11 +243,15 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
     : "Tất cả thời gian";
 
   // ============ TÀI CHÍNH CÔNG TY: Lãi thuần + ROI + Payback ============
-  const [invRows, expRows, settingsRows] = await Promise.all([
-    db.select().from(companyInvestments),
-    db.select().from(companyExpenses),
-    db.select().from(companySettings),
-  ]);
+  // Chỉ owner mới thấy section này (data nhạy cảm: CP QL, thuế, ROI).
+  const showFinance = (await getOwnerEmail()) !== null;
+  const [invRows, expRows, settingsRows] = showFinance
+    ? await Promise.all([
+        db.select().from(companyInvestments),
+        db.select().from(companyExpenses),
+        db.select().from(companySettings),
+      ])
+    : [[], [], []];
   const settings = settingsRows[0] ?? {
     taxRate: 0.2,
     businessStartDate: null as string | null,
@@ -388,7 +393,8 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
         />
       </div>
 
-      {/* ============ Tài chính công ty: Lãi thuần / ROI ============ */}
+      {/* ============ Tài chính công ty: Lãi thuần / ROI (owner-only) ============ */}
+      {showFinance && (
       <div>
         <div className="flex items-baseline justify-between mb-3">
           <h2 className="text-lg font-semibold">
@@ -471,6 +477,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
           </div>
         )}
       </div>
+      )}
 
       {/* ============ Theo Phòng ============ */}
       {(() => {
