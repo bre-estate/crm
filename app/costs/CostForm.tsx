@@ -587,10 +587,8 @@ export default function CostForm({
           <Field label="Tiến độ PMG đã thu tiền (N)">
             <div className="relative">
               <input
-                type="number"
-                step="any"
-                min={maxPrevN * 100}
-                max={100}
+                type="text"
+                inputMode="decimal"
                 value={progressN}
                 onChange={(e) => {
                   // User chủ động sửa N → cho phép auto-sync totalAmt lại

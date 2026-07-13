@@ -308,10 +308,8 @@ export default function RevenueForm({
               <Field label="% PMG_LK đợt này">
                 <input
                   name="pmgCumulativePct"
-                  type="number"
-                  step="any"
-                  min="0"
-                  max="100"
+                  type="text"
+                  inputMode="decimal"
                   value={pmgLkDisplay}
                   onChange={(e) => setPmgLkDisplay(e.target.value)}
                   onBlur={() => isCommission && suggested > 0 && setAmount(suggested)}
@@ -325,10 +323,8 @@ export default function RevenueForm({
               <Field label="Tỷ lệ % thu PMG_LK đợt này">
                 <input
                   name="phasePctThisTime"
-                  type="number"
-                  step="any"
-                  min="0"
-                  max="100"
+                  type="text"
+                  inputMode="decimal"
                   value={phasePctDisplay}
                   onChange={(e) => setPhasePctDisplay(e.target.value)}
                   onBlur={() => isCommission && suggested > 0 && setAmount(suggested)}

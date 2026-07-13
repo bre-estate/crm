@@ -298,8 +298,8 @@ export default function ProductForm({ product, projects, departments = [], onSav
             <Field label="%PMG_LK (CĐT trả BRE)">
               <div className="relative">
                 <input
-                  type="number"
-                  step="any"
+                  type="text"
+                  inputMode="decimal"
                   name={lockCoreFields ? "_locked_pmgRate" : "pmgRate"}
                   defaultValue={product?.pmgRate ? Number((Number(product.pmgRate) * 100).toFixed(4)) : ""}
                   onChange={(e) => setPmgRateLive(Number(e.target.value.replace(/,/g, ".")) / 100)}
@@ -439,8 +439,8 @@ export default function ProductForm({ product, projects, departments = [], onSav
             <Field label="%PMG_LK_sale (base tính HH sale)">
               <input
                 name="pmgSaleRate"
-                type="number"
-                step="any"
+                type="text"
+                inputMode="decimal"
                 defaultValue={pctDisplay(product?.pmgSaleRate)}
                 className="input"
                 onChange={(e) => {
@@ -453,8 +453,8 @@ export default function ProductForm({ product, projects, departments = [], onSav
           <Field label="%HH sale (NVKD)">
             <input
               name="saleCommissionRate"
-              type="number"
-              step="any"
+              type="text"
+              inputMode="decimal"
               defaultValue={pctDisplay(product?.saleCommissionRate)}
               className="input"
               onChange={(e) => {
@@ -468,8 +468,8 @@ export default function ProductForm({ product, projects, departments = [], onSav
               <Field label="%KPI TPKD (Trưởng phòng)">
                 <input
                   name="kpiTpkdRate"
-                  type="number"
-                  step="any"
+                  type="text"
+                  inputMode="decimal"
                   defaultValue={pctDisplay(product?.kpiTpkdRate)}
                   className="input"
                   onChange={(e) => {
@@ -481,8 +481,8 @@ export default function ProductForm({ product, projects, departments = [], onSav
               <Field label="%KPI CEO">
                 <input
                   name="kpiCeoRate"
-                  type="number"
-                  step="any"
+                  type="text"
+                  inputMode="decimal"
                   defaultValue={pctDisplay(product?.kpiCeoRate)}
                   className="input"
                   onChange={(e) => {
@@ -494,8 +494,8 @@ export default function ProductForm({ product, projects, departments = [], onSav
               <Field label="%KPI Admin">
                 <input
                   name="kpiAdminRate"
-                  type="number"
-                  step="any"
+                  type="text"
+                  inputMode="decimal"
                   defaultValue={pctDisplay(product?.kpiAdminRate)}
                   className="input"
                   onChange={(e) => {

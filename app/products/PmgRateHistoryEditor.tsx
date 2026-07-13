@@ -109,11 +109,11 @@ export default function PmgRateHistoryEditor({
         {entries.map((e, i) => (
           <div key={i} className="grid grid-cols-12 gap-2 items-center mb-1">
             <input
-              type="number"
-              step="any"
+              type="text"
+              inputMode="decimal"
               value={e.rate}
               onChange={(ev) => update(i, { rate: ev.target.value })}
-              placeholder="6.75"
+              placeholder="6,75"
               className="input col-span-3 text-sm py-1"
             />
             <input
