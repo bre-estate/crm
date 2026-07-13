@@ -135,6 +135,7 @@ export default function ProductForm({ product, projects, departments = [], onSav
           }
         })
       }
+      autoComplete="off"
       className="space-y-6 bg-white border border-slate-200 rounded-xl p-6"
     >
       <Section title="Thông tin căn">

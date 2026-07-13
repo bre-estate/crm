@@ -91,6 +91,12 @@ export default function MoneyInput({
       required={required}
       disabled={disabled}
       readOnly={readOnly}
+      // Chặn browser autofill "Saved info" đè giá trị cũ vào field số tiền
+      // (Chrome nhớ số nhập trước, gợi ý lại → dễ chọn nhầm thành 222 tỷ).
+      autoComplete="off"
+      data-1p-ignore
+      data-lpignore="true"
+      data-form-type="other"
     />
   );
 }
