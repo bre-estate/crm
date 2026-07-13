@@ -20,10 +20,11 @@ function toStr(v: FormDataEntryValue | null): string {
 // Don't strip dots (they're decimal separators here, not thousand separators).
 function toPct(v: FormDataEntryValue | null): number {
   if (v === null || v === undefined) return 0;
-  const s = String(v).trim().replace(/,/g, ".").replace(/\s/g, "");
+  const s = String(v).trim().replace(/[%\s]/g, "").replace(/,/g, ".");
   if (!s) return 0;
   const n = Number(s);
-  return isNaN(n) ? 0 : n / 100;
+  if (isNaN(n)) throw new Error(`Giá trị "${v}" không phải số hợp lệ`);
+  return n / 100;
 }
 
 function buildProjectData(fd: FormData) {

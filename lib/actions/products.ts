@@ -46,13 +46,15 @@ function toStrOrNull(v: FormDataEntryValue | null): string | null {
   return s === "" ? null : s;
 }
 // Form input raw percent (5.5 = 5.5%); DB stores decimal (0.055).
-// Don't strip dots (they're decimal separators here).
+// Chấp nhận "7", "7.5", "7,5", "7%", "7,5 %" (strip %, whitespace, đổi , → .)
+// NaN → throw để action fail, KHÔNG silent return 0 (đã sai bug căn 655).
 function toPct(v: FormDataEntryValue | null): number {
   if (v === null || v === undefined) return 0;
-  const s = String(v).trim().replace(/,/g, ".").replace(/\s/g, "");
+  const s = String(v).trim().replace(/[%\s]/g, "").replace(/,/g, ".");
   if (!s) return 0;
   const n = Number(s);
-  return isNaN(n) ? 0 : n / 100;
+  if (isNaN(n)) throw new Error(`Giá trị "${v}" không phải số hợp lệ`);
+  return n / 100;
 }
 
 async function buildProductCode(projectId: number, unitCode: string): Promise<string> {

@@ -695,21 +695,44 @@ export default function ProductForm({
                 const note = String(fd.get("note") ?? "").trim() || null;
                 const fields: Record<string, number> = {};
                 const isChanged = (f: string) => fd.get(`change_${f}`) === "on";
-                const parseNum = (v: FormDataEntryValue | null) => {
-                  const s = String(v ?? "").trim();
-                  const n = Number(s.replace(/[.,\s]/g, ""));
-                  return isNaN(n) ? 0 : n;
-                };
-                const parsePct = (v: FormDataEntryValue | null) => {
-                  const s = String(v ?? "").trim().replace(/,/g, ".");
+                const invalid: string[] = [];
+                // Strip mọi ký tự lạ (%, đơn vị, khoảng trắng, dấu chấm/phẩy
+                // ngàn) → chỉ giữ số + dấu thập phân. Detect NaN → user gõ
+                // rác (VD "abc") → alert.
+                const parseMoney = (v: FormDataEntryValue | null, label: string) => {
+                  const s = String(v ?? "").trim().replace(/[.,\s]/g, "");
+                  if (!s) { invalid.push(`${label} rỗng`); return NaN; }
                   const n = Number(s);
-                  return isNaN(n) ? 0 : n / 100;
+                  if (isNaN(n)) invalid.push(`${label}: "${v}" không phải số`);
+                  return n;
                 };
-                if (isChanged("pmgBasePrice"))
-                  fields.pmgBasePrice = parseNum(fd.get("pmgBasePrice"));
-                if (isChanged("pmgRate")) fields.pmgRate = parsePct(fd.get("pmgRate"));
-                if (isChanged("adminFee"))
-                  fields.adminFee = parseNum(fd.get("adminFee"));
+                const parsePct = (v: FormDataEntryValue | null, label: string) => {
+                  // Cho phép "7", "7.5", "7,5", "7%", "7,5 %" — strip %, whitespace
+                  const s = String(v ?? "").trim().replace(/[%\s]/g, "").replace(/,/g, ".");
+                  if (!s) { invalid.push(`${label} rỗng`); return NaN; }
+                  const n = Number(s);
+                  if (isNaN(n)) {
+                    invalid.push(`${label}: "${v}" không phải số`);
+                    return NaN;
+                  }
+                  return n / 100;
+                };
+                if (isChanged("pmgBasePrice")) {
+                  const v = parseMoney(fd.get("pmgBasePrice"), "Giá tính PMG");
+                  if (!isNaN(v)) fields.pmgBasePrice = v;
+                }
+                if (isChanged("pmgRate")) {
+                  const v = parsePct(fd.get("pmgRate"), "%PMG_LK");
+                  if (!isNaN(v)) fields.pmgRate = v;
+                }
+                if (isChanged("adminFee")) {
+                  const v = parseMoney(fd.get("adminFee"), "Phí admin");
+                  if (!isNaN(v)) fields.adminFee = v;
+                }
+                if (invalid.length > 0) {
+                  alert(`Nhập giá trị chưa hợp lệ:\n\n${invalid.join("\n")}`);
+                  throw new Error(invalid.join("; "));
+                }
                 if (Object.keys(fields).length === 0) return;
                 setPendingAdjustments((prev) => [
                   ...prev,
