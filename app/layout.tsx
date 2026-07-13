@@ -7,6 +7,10 @@ import NavLinks from "./NavLinks";
 export const metadata: Metadata = {
   title: "BRE — Quản lý sàn giao dịch BĐS",
   description: "Hệ thống quản lý doanh thu, giá vốn, báo cáo",
+  icons: {
+    icon: "/favicon-bre.png",
+    apple: "/favicon-bre.png",
+  },
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
