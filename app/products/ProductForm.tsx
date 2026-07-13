@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { Product, Project, Partner, Department } from "@/lib/schema";
+import type { Product, Project, Partner, Department, ProductAdjustment } from "@/lib/schema";
 import MoneyInput from "@/components/MoneyInput";
 import SearchableSelect from "@/components/SearchableSelect";
-import { fmtMoney, toTitleCase } from "@/lib/format";
+import { fmtMoney, fmtDate, fmtPctTight, toTitleCase } from "@/lib/format";
+import AdjustmentDialog from "./[id]/AdjustmentDialog";
 
 type ProjectWithPartner = Project & {
   partnerName?: string | null;
@@ -21,15 +22,36 @@ type Props = {
   returnTo?: string | null;
   // Nếu true → khóa 3 field pmgBase / pmgRate / adminFee (dùng "Điều chỉnh thông tin căn" thay)
   lockCoreFields?: boolean;
+  // Existing adjustments từ DB (hiển thị trong block Điều chỉnh)
+  existingAdjustments?: ProductAdjustment[];
+};
+
+// Pending adjustment — user gõ trong dialog nhưng chưa save vào DB, chỉ giữ
+// trong state form. Save form → gửi kèm __pendingAdjustments JSON, server apply.
+type PendingAdjustment = {
+  effectiveDate: string;
+  note: string | null;
+  fields: Record<string, number>; // key = product field name, value = số đã parse
 };
 
 const pctDisplay = (v: number | null | undefined): string =>
   v == null ? "" : String(Number((Number(v) * 100).toFixed(4)));
 
-export default function ProductForm({ product, projects, departments = [], onSave, onDelete, returnTo, lockCoreFields = false }: Props) {
+export default function ProductForm({
+  product,
+  projects,
+  departments = [],
+  onSave,
+  onDelete,
+  returnTo,
+  lockCoreFields = false,
+  existingAdjustments = [],
+}: Props) {
   const [pending, start] = useTransition();
   const router = useRouter();
   const isEdit = !!product;
+  // Pending adjustments (state) — thêm qua dialog, chưa save; save khi Lưu form
+  const [pendingAdjustments, setPendingAdjustments] = useState<PendingAdjustment[]>([]);
   const [saleType, setSaleType] = useState<"primary" | "secondary">(
     (product?.saleType as "primary" | "secondary") ?? "primary",
   );
@@ -563,6 +585,141 @@ export default function ProductForm({ product, projects, departments = [], onSav
           <textarea name="note" defaultValue={product?.note ?? ""} className="input" rows={3} />
         </Field>
       </Section>
+
+      {isEdit && !isSecondary && (
+        <Section title="⚙️ Điều chỉnh thông tin căn">
+          <div className="text-xs text-slate-500 -mt-2">
+            Khi CĐT tăng %HH, sửa giá, hoặc đổi phí admin — dùng nút bên dưới. Điều
+            chỉnh được lưu cùng lúc với nút Lưu ở cuối form.
+          </div>
+          {/* Serialize pending vào FormData → server apply khi Lưu */}
+          <input
+            type="hidden"
+            name="__pendingAdjustments"
+            value={JSON.stringify(pendingAdjustments)}
+          />
+          <div className="border border-slate-200 rounded-lg overflow-hidden">
+            <table className="w-full text-xs">
+              <thead className="bg-slate-50 text-slate-600">
+                <tr>
+                  <th className="text-left p-2 whitespace-nowrap">Ngày</th>
+                  <th className="text-left p-2">Trường thay đổi</th>
+                  <th className="text-left p-2">Ghi chú</th>
+                  <th className="text-right p-2 whitespace-nowrap">Trạng thái</th>
+                </tr>
+              </thead>
+              <tbody>
+                {existingAdjustments.map((a) => {
+                  const changes: string[] = [];
+                  if (a.pmgBasePrice != null)
+                    changes.push(`Giá PMG = ${fmtMoney(a.pmgBasePrice)}`);
+                  if (a.pmgRate != null)
+                    changes.push(`%PMG_LK = ${fmtPctTight(a.pmgRate)}`);
+                  if (a.adminFee != null)
+                    changes.push(`Phí admin = ${fmtMoney(a.adminFee)}`);
+                  return (
+                    <tr key={a.id} className="border-t border-slate-100">
+                      <td className="p-2 whitespace-nowrap font-medium">
+                        {fmtDate(a.effectiveDate)}
+                      </td>
+                      <td className="p-2 text-slate-700">
+                        {changes.length > 0 ? changes.join(" · ") : "—"}
+                      </td>
+                      <td className="p-2 text-slate-500">{a.note ?? "—"}</td>
+                      <td className="p-2 text-right text-xs text-slate-400">Đã lưu</td>
+                    </tr>
+                  );
+                })}
+                {pendingAdjustments.map((a, i) => {
+                  const changes: string[] = [];
+                  if (a.fields.pmgBasePrice != null)
+                    changes.push(`Giá PMG = ${fmtMoney(a.fields.pmgBasePrice)}`);
+                  if (a.fields.pmgRate != null)
+                    changes.push(`%PMG_LK = ${fmtPctTight(a.fields.pmgRate)}`);
+                  if (a.fields.adminFee != null)
+                    changes.push(`Phí admin = ${fmtMoney(a.fields.adminFee)}`);
+                  return (
+                    <tr key={`pending-${i}`} className="border-t border-slate-100 bg-amber-50">
+                      <td className="p-2 whitespace-nowrap font-medium">
+                        {fmtDate(a.effectiveDate)}
+                      </td>
+                      <td className="p-2 text-slate-700">
+                        {changes.join(" · ")}
+                      </td>
+                      <td className="p-2 text-slate-500">{a.note ?? "—"}</td>
+                      <td className="p-2 text-right">
+                        <div className="flex items-center gap-2 justify-end">
+                          <span className="text-xs text-amber-700 font-medium">
+                            Chờ lưu
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPendingAdjustments((prev) =>
+                                prev.filter((_, j) => j !== i),
+                              )
+                            }
+                            className="text-xs text-red-600 hover:underline"
+                          >
+                            Xóa
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {existingAdjustments.length === 0 && pendingAdjustments.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={4}
+                      className="p-4 text-center text-slate-400 italic text-xs"
+                    >
+                      Chưa có điều chỉnh nào.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex justify-start">
+            <AdjustmentDialog
+              product={{
+                id: product?.id ?? 0,
+                pmgBasePrice: pmgBase,
+                pmgRate: pmgRateLive,
+                adminFee: adminFeeLive,
+              }}
+              action={async (fd) => {
+                // Fake action: chỉ append vào state, KHÔNG gọi server.
+                const effectiveDate = String(fd.get("effectiveDate") ?? "");
+                const note = String(fd.get("note") ?? "").trim() || null;
+                const fields: Record<string, number> = {};
+                const isChanged = (f: string) => fd.get(`change_${f}`) === "on";
+                const parseNum = (v: FormDataEntryValue | null) => {
+                  const s = String(v ?? "").trim();
+                  const n = Number(s.replace(/[.,\s]/g, ""));
+                  return isNaN(n) ? 0 : n;
+                };
+                const parsePct = (v: FormDataEntryValue | null) => {
+                  const s = String(v ?? "").trim().replace(/,/g, ".");
+                  const n = Number(s);
+                  return isNaN(n) ? 0 : n / 100;
+                };
+                if (isChanged("pmgBasePrice"))
+                  fields.pmgBasePrice = parseNum(fd.get("pmgBasePrice"));
+                if (isChanged("pmgRate")) fields.pmgRate = parsePct(fd.get("pmgRate"));
+                if (isChanged("adminFee"))
+                  fields.adminFee = parseNum(fd.get("adminFee"));
+                if (Object.keys(fields).length === 0) return;
+                setPendingAdjustments((prev) => [
+                  ...prev,
+                  { effectiveDate, note, fields },
+                ]);
+              }}
+            />
+          </div>
+        </Section>
+      )}
 
       <div className="flex justify-end gap-3 pt-2">
         {onDelete && (

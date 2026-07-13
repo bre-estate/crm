@@ -162,6 +162,30 @@ export async function updateProduct(id: number, fd: FormData) {
     after: { ...before, productCode, ...data } as unknown as Record<string, unknown>,
     summary: "Sửa cấu hình căn",
   });
+
+  // Batch xử lý pending adjustments (nếu có) — user gõ trong dialog nhưng
+  // chưa save trực tiếp, chỉ lưu vào state form. Save form → apply hết.
+  const pendingJson = toStr(fd.get("__pendingAdjustments"));
+  if (pendingJson) {
+    try {
+      const list = JSON.parse(pendingJson) as Array<{
+        effectiveDate: string;
+        note: string | null;
+        fields: Record<string, number>;
+      }>;
+      // Sort theo ngày để history đúng thứ tự
+      list.sort((a, b) => (a.effectiveDate ?? "").localeCompare(b.effectiveDate ?? ""));
+      for (const adj of list) {
+        if (!adj.effectiveDate || !adj.fields || Object.keys(adj.fields).length === 0) continue;
+        await insertAdjustmentAndApply(id, adj.effectiveDate, adj.note ?? null, adj.fields);
+      }
+    } catch (e) {
+      throw new Error(
+        `Lỗi parse pending adjustments: ${e instanceof Error ? e.message : String(e)}`,
+      );
+    }
+  }
+
   const returnTo = safeReturnTo(fd);
   revalidatePath("/products");
   revalidatePath(`/products/${id}`);
@@ -285,6 +309,45 @@ export async function deleteProduct(id: number) {
 }
 
 /**
+ * Insert product_adjustments record + update product config với value mới.
+ * Dùng chung cho createProductAdjustment (từ dialog trực tiếp) và updateProduct
+ * (batch pending adjustments cùng lúc với Lưu form).
+ */
+async function insertAdjustmentAndApply(
+  productId: number,
+  effectiveDate: string,
+  note: string | null,
+  adj: Record<string, number>,
+): Promise<number> {
+  const [before] = await db.select().from(products).where(eq(products.id, productId));
+  const [adjRec] = await db
+    .insert(productAdjustments)
+    .values({ productId, effectiveDate, note, ...adj })
+    .returning({ id: productAdjustments.id });
+  await db.update(products).set(adj).where(eq(products.id, productId));
+  await recomputeDerived(productId);
+
+  await logActivity({
+    entityType: "product_adjustment",
+    entityId: adjRec.id,
+    productId,
+    action: "create",
+    after: { effectiveDate, note, ...adj } as Record<string, unknown>,
+    summary: `Điều chỉnh ${Object.keys(adj).join(", ")} ngày ${effectiveDate}${note ? " · " + note : ""}`,
+  });
+  await logActivity({
+    entityType: "product",
+    entityId: productId,
+    productId,
+    action: "update",
+    before: before as unknown as Record<string, unknown>,
+    after: { ...before, ...adj } as unknown as Record<string, unknown>,
+    summary: `Áp dụng adjustment #${adjRec.id}`,
+  });
+  return adjRec.id;
+}
+
+/**
  * Tạo product adjustment: điều chỉnh 1 hoặc nhiều field trên product config.
  * Insert vào product_adjustments (giữ history) + update product với value mới.
  */
@@ -391,40 +454,7 @@ export async function createProductAdjustment(productId: number, fd: FormData) {
     throw new Error("Chọn ít nhất 1 trường muốn điều chỉnh");
   }
 
-  const [before] = await db.select().from(products).where(eq(products.id, productId));
-  const [adjRec] = await db
-    .insert(productAdjustments)
-    .values({
-      productId,
-      effectiveDate,
-      note,
-      ...adj,
-    })
-    .returning({ id: productAdjustments.id });
-  await db.update(products).set(productUpdate).where(eq(products.id, productId));
-
-  // Recompute derived fields (total_revenue, total_cost) từ config mới nhất
-  // để reports không dùng số cũ. Chỉ apply cho primary — secondary user nhập tay.
-  await recomputeDerived(productId);
-
-  // Log: cả adjustment record + change trên product
-  await logActivity({
-    entityType: "product_adjustment",
-    entityId: adjRec.id,
-    productId,
-    action: "create",
-    after: { effectiveDate, note, ...adj } as Record<string, unknown>,
-    summary: `Điều chỉnh ${Object.keys(adj).join(", ")} ngày ${effectiveDate}${note ? " · " + note : ""}`,
-  });
-  await logActivity({
-    entityType: "product",
-    entityId: productId,
-    productId,
-    action: "update",
-    before: before as unknown as Record<string, unknown>,
-    after: { ...before, ...productUpdate } as unknown as Record<string, unknown>,
-    summary: `Áp dụng adjustment #${adjRec.id}`,
-  });
+  await insertAdjustmentAndApply(productId, effectiveDate, note, adj);
 
   revalidatePath(`/products/${productId}`);
   revalidatePath("/products");

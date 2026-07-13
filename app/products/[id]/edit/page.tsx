@@ -9,20 +9,10 @@ import {
   costReconciliations,
 } from "@/lib/schema";
 import { asc, desc, eq, sql } from "drizzle-orm";
-// projects.default_sale_type mới thêm — 'primary' | 'secondary' | null.
-// Null = chưa phân loại, hiện ở cả 2 tab.
-import { fmtMoney, fmtDate, fmtPctTight } from "@/lib/format";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import ProductForm from "../../ProductForm";
-import AdjustmentDialog from "../AdjustmentDialog";
-import AdjustmentNoteEditor from "./AdjustmentNoteEditor";
-import {
-  updateProduct,
-  deleteProduct,
-  createProductAdjustment,
-  updateProductAdjustmentNote,
-} from "@/lib/actions/products";
+import { updateProduct, deleteProduct } from "@/lib/actions/products";
 
 export default async function EditProductPage({
   params,
@@ -91,8 +81,6 @@ export default async function EditProductPage({
     .where(eq(productAdjustments.productId, id))
     .orderBy(desc(productAdjustments.effectiveDate), desc(productAdjustments.id));
 
-  const isSecondary = product.saleType === "secondary";
-
   // Nếu căn đã có recon doanh thu hoặc giá vốn → khóa 3 field (pmgBase/pmgRate/adminFee)
   // và bắt buộc dùng "Điều chỉnh thông tin căn" để giữ lịch sử. Chưa có recon → edit trực tiếp.
   const [{ revC = 0 }] = await db
@@ -133,6 +121,7 @@ export default async function EditProductPage({
         departments={allDepts}
         returnTo={returnTo}
         lockCoreFields={hasRecons}
+        existingAdjustments={adjustments}
         onSave={async (fd) => {
           "use server";
           await updateProduct(id, fd);
@@ -142,80 +131,6 @@ export default async function EditProductPage({
           await deleteProduct(id);
         }}
       />
-
-      {!isSecondary && hasRecons && (
-        <div id="adjustments-block" className="bg-white border border-slate-200 rounded-xl p-5 scroll-mt-4">
-          <div className="flex justify-between items-start mb-3">
-            <div>
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                ⚙️ Điều chỉnh thông tin căn
-              </h2>
-              <div className="text-xs text-slate-500 mt-1">
-                Khi CĐT tăng %HH, sửa giá, hoặc đổi phí admin — dùng nút bên phải để giữ
-                lịch sử điều chỉnh. Đối chiếu cũ vẫn giữ nguyên; đối chiếu mới dùng giá trị mới nhất.
-              </div>
-            </div>
-            <AdjustmentDialog
-              product={{
-                id: product.id,
-                pmgBasePrice: Number(product.pmgBasePrice ?? 0),
-                pmgRate: Number(product.pmgRate ?? 0),
-                adminFee: Number(product.adminFee ?? 0),
-              }}
-              action={async (fd) => {
-                "use server";
-                await createProductAdjustment(product.id, fd);
-              }}
-            />
-          </div>
-
-          {adjustments.length === 0 ? (
-            <div className="text-sm text-slate-400 italic py-4 text-center border border-dashed border-slate-200 rounded-lg">
-              Chưa có lần điều chỉnh nào.
-            </div>
-          ) : (
-            <div className="border border-slate-200 rounded-lg overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead className="bg-slate-50 text-slate-600">
-                  <tr>
-                    <th className="text-left p-2 whitespace-nowrap">Ngày điều chỉnh</th>
-                    <th className="text-left p-2">Các trường thay đổi</th>
-                    <th className="text-left p-2">Ghi chú</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {adjustments.map((a) => {
-                    const changes: string[] = [];
-                    if (a.pmgBasePrice != null) changes.push(`Giá tính PMG = ${fmtMoney(a.pmgBasePrice)}`);
-                    if (a.pmgRate != null) changes.push(`%PMG_LK = ${fmtPctTight(a.pmgRate)}`);
-                    if (a.adminFee != null) changes.push(`Phí admin = ${fmtMoney(a.adminFee)}`);
-                    return (
-                      <tr key={a.id} className="border-t border-slate-100">
-                        <td className="p-2 whitespace-nowrap font-medium">
-                          {fmtDate(a.effectiveDate)}
-                        </td>
-                        <td className="p-2 text-slate-700">
-                          {changes.length > 0 ? changes.join(" · ") : "—"}
-                        </td>
-                        <td className="p-2 text-slate-500">
-                          <AdjustmentNoteEditor
-                            adjId={a.id}
-                            initialNote={a.note ?? ""}
-                            onSave={async (note) => {
-                              "use server";
-                              await updateProductAdjustmentNote(product.id, a.id, note);
-                            }}
-                          />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
