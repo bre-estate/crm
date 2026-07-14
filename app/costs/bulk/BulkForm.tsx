@@ -213,14 +213,14 @@ export default function BulkCostForm({
           return (
             <div
               key={idx}
-              className="bg-white border border-slate-200 rounded-xl overflow-hidden"
+              className="bg-white border border-slate-200 rounded-lg overflow-hidden"
             >
-              {/* Header: số dòng + căn + actions */}
-              <div className="bg-slate-50 border-b border-slate-200 px-3 py-2 flex items-center gap-2">
-                <span className="text-xs text-slate-500 font-medium w-6">
-                  #{idx + 1}
+              {/* Row 1: #idx + Căn (compact) + Info + × */}
+              <div className="flex items-stretch gap-2 p-2 border-b border-slate-100">
+                <span className="shrink-0 text-xs text-slate-400 font-mono flex items-center justify-center w-6">
+                  {idx + 1}
                 </span>
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 max-w-md">
                   <SearchableSelect
                     value={r.productId}
                     onChange={(v) => update(idx, { productId: v ? Number(v) : "" })}
@@ -229,11 +229,12 @@ export default function BulkCostForm({
                     options={productOptions}
                   />
                 </div>
+                <div className="flex-1" />
                 <button
                   type="button"
                   onClick={() => canExpand && toggleExpand(idx)}
                   disabled={!canExpand}
-                  className={`shrink-0 rounded-md px-2 h-8 flex items-center gap-1 border text-xs transition-colors ${
+                  className={`shrink-0 rounded-md px-2 h-9 flex items-center gap-1 border text-xs transition-colors ${
                     canExpand
                       ? isExpanded
                         ? "bg-blue-500 text-white border-blue-500 hover:bg-blue-600"
@@ -262,7 +263,7 @@ export default function BulkCostForm({
                 <button
                   type="button"
                   onClick={() => removeRow(idx)}
-                  className="shrink-0 rounded-md w-8 h-8 flex items-center justify-center text-lg leading-none text-red-500 border border-transparent hover:bg-red-50 hover:border-red-200"
+                  className="shrink-0 rounded-md w-9 h-9 flex items-center justify-center text-lg leading-none text-red-500 border border-transparent hover:bg-red-50 hover:border-red-200"
                   title="Xoá dòng"
                 >
                   ×
@@ -281,18 +282,15 @@ export default function BulkCostForm({
                 </div>
               )}
 
-              {/* Form fields — 3 hàng 3 cột, responsive */}
-              <div className="p-3 grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-[11px] text-slate-600 mb-1 font-medium">
-                    Loại chi phí
-                  </label>
+              {/* Row 2: tất cả fields inline, flex-wrap */}
+              <div className="flex flex-wrap items-start gap-2 p-2">
+                <FieldBox label="Loại" width="w-40">
                   <select
                     value={r.costType}
                     onChange={(e) =>
                       update(idx, { costType: e.target.value as (typeof COST_TYPES)[number] })
                     }
-                    className="input text-sm"
+                    className="input text-sm py-1.5"
                   >
                     {COST_TYPES.filter((ct) => {
                       if (!p) return true;
@@ -304,33 +302,24 @@ export default function BulkCostForm({
                       </option>
                     ))}
                   </select>
-                </div>
-                <div>
-                  <label className="block text-[11px] text-slate-600 mb-1 font-medium">
-                    Người nhận
-                  </label>
+                </FieldBox>
+                <FieldBox label="Người nhận" width="w-44">
                   <input
                     value={r.employeeName}
                     onChange={(e) => update(idx, { employeeName: e.target.value })}
                     placeholder="Tên NVKD/TPKD/Admin"
-                    className="input text-sm"
+                    className="input text-sm py-1.5"
                   />
-                </div>
-                <div>
-                  <label className="block text-[11px] text-slate-600 mb-1 font-medium">
-                    Ngày ĐC
-                  </label>
+                </FieldBox>
+                <FieldBox label="Ngày ĐC" width="w-36">
                   <input
                     type="date"
                     value={r.reconciliationDate}
                     onChange={(e) => update(idx, { reconciliationDate: e.target.value })}
-                    className="input text-sm"
+                    className="input text-sm py-1.5"
                   />
-                </div>
-                <div>
-                  <label className="block text-[11px] text-slate-600 mb-1 font-medium">
-                    Số tiền
-                  </label>
+                </FieldBox>
+                <FieldBox label="Số tiền" width="w-36">
                   <input
                     type="text"
                     inputMode="numeric"
@@ -341,29 +330,23 @@ export default function BulkCostForm({
                     }}
                     onFocus={(e) => e.currentTarget.select()}
                     placeholder="0"
-                    className={`input text-sm text-right tabular-nums ${overLimit ? "border-red-400 text-red-700" : ""}`}
+                    className={`input text-sm py-1.5 text-right tabular-nums ${overLimit ? "border-red-400 text-red-700" : ""}`}
                   />
                   {maxAmt > 0 && (
                     <div className={`text-[10px] mt-0.5 ${overLimit ? "text-red-600" : "text-slate-400"}`}>
                       Tối đa: {fmtMoney(maxAmt)}
                     </div>
                   )}
-                </div>
-                <div>
-                  <label className="block text-[11px] text-slate-600 mb-1 font-medium">
-                    Ngày trả
-                  </label>
+                </FieldBox>
+                <FieldBox label="Ngày trả" width="w-36">
                   <input
                     type="date"
                     value={r.paymentDate}
                     onChange={(e) => update(idx, { paymentDate: e.target.value })}
-                    className="input text-sm"
+                    className="input text-sm py-1.5"
                   />
-                </div>
-                <div>
-                  <label className="block text-[11px] text-slate-600 mb-1 font-medium">
-                    Đã trả
-                  </label>
+                </FieldBox>
+                <FieldBox label="Đã trả" width="w-36">
                   <input
                     type="text"
                     inputMode="numeric"
@@ -374,20 +357,17 @@ export default function BulkCostForm({
                     }}
                     onFocus={(e) => e.currentTarget.select()}
                     placeholder="= số tiền"
-                    className="input text-sm text-right tabular-nums"
+                    className="input text-sm py-1.5 text-right tabular-nums"
                   />
-                </div>
-                <div className="md:col-span-3">
-                  <label className="block text-[11px] text-slate-600 mb-1 font-medium">
-                    Ghi chú
-                  </label>
+                </FieldBox>
+                <FieldBox label="Ghi chú" width="flex-1 min-w-44">
                   <input
                     value={r.note}
                     onChange={(e) => update(idx, { note: e.target.value })}
                     placeholder="—"
-                    className="input text-sm"
+                    className="input text-sm py-1.5"
                   />
-                </div>
+                </FieldBox>
               </div>
             </div>
           );
@@ -422,6 +402,26 @@ export default function BulkCostForm({
           {pending ? "Đang lưu..." : "Lưu tất cả"}
         </button>
       </div>
+    </div>
+  );
+}
+
+// ============ FieldBox: label nhỏ + input, dùng trong flex-wrap layout ============
+function FieldBox({
+  label,
+  width,
+  children,
+}: {
+  label: string;
+  width: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={width}>
+      <label className="block text-[10px] uppercase tracking-wide text-slate-500 font-medium mb-0.5">
+        {label}
+      </label>
+      {children}
     </div>
   );
 }
