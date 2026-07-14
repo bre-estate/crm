@@ -245,7 +245,14 @@ export default function BulkCostForm({
                       }
                       className="input text-xs py-1"
                     >
-                      {COST_TYPES.map((ct) => (
+                      {COST_TYPES.filter((ct) => {
+                        // Chưa chọn căn → show tất cả. Đã chọn → chỉ show
+                        // loại có value > 0 trong config. Đồng thời luôn
+                        // giữ current selection để tránh dropdown "biến mất".
+                        if (!p) return true;
+                        if (ct === r.costType) return true;
+                        return targetForRow(p, ct) > 0;
+                      }).map((ct) => (
                         <option key={ct} value={ct}>
                           {costTypeLabel(ct)}
                         </option>
@@ -323,16 +330,30 @@ export default function BulkCostForm({
                         type="button"
                         onClick={() => canExpand && toggleExpand(idx)}
                         disabled={!canExpand}
-                        className={`rounded-md w-7 h-7 flex items-center justify-center text-base leading-none border ${
+                        className={`rounded-md w-8 h-8 flex items-center justify-center border transition-colors ${
                           canExpand
                             ? isExpanded
                               ? "bg-blue-500 text-white border-blue-500 hover:bg-blue-600"
-                              : "bg-white text-slate-600 border-slate-300 hover:bg-slate-50"
+                              : "bg-white text-slate-500 border-slate-300 hover:bg-slate-50 hover:text-slate-700"
                             : "bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed"
                         }`}
                         title={canExpand ? "Xem thông tin căn" : "Chọn căn trước"}
+                        aria-expanded={isExpanded}
                       >
-                        {isExpanded ? "▾" : "▸"}
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className={`transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                        >
+                          <polyline points="6 9 12 15 18 9" />
+                        </svg>
                       </button>
                       <button
                         type="button"
@@ -442,15 +463,31 @@ function InfoPanel({
   const isKpiAdmin = costType === "kpi_admin";
   const isKpi = isKpiCeo || isKpiTpkd || isKpiAdmin;
 
+  // Chỉ hiển thị stat card nếu có value > 0 — ẩn field trống cho gọn.
+  const group1Cards: React.ReactNode[] = [];
+  if (maxPmgPct > 0)
+    group1Cards.push(
+      <StatCard key="pmg" label="% PMG_LK đã thu đến ngày ĐC" value={fmtPctTight(maxPmgPct)} />,
+    );
+  if (config.saleCommissionRate > 0)
+    group1Cards.push(
+      <StatCard key="hh" label="% HH sale" value={fmtPctTight(config.saleCommissionRate)} />,
+    );
+  if (config.adminFeeSale > 0)
+    group1Cards.push(
+      <StatCard key="admin" label="Phí admin sale (gồm VAT)" value={fmtMoney(config.adminFeeSale)} />,
+    );
+  if (config.customerSupport > 0)
+    group1Cards.push(
+      <StatCard key="support" label="Hỗ trợ khách" value={fmtMoney(config.customerSupport)} />,
+    );
+
   return (
     <div className="space-y-3 rounded-lg bg-white border border-slate-200 p-4">
-      {/* Group 1 — Thông tin chung */}
-      <InfoSection title="Thông tin chung">
-        <StatCard label="% PMG_LK đã thu đến ngày ĐC" value={maxPmgPct > 0 ? fmtPctTight(maxPmgPct) : "—"} />
-        <StatCard label="% HH sale" value={config.saleCommissionRate > 0 ? fmtPctTight(config.saleCommissionRate) : "—"} />
-        <StatCard label="Phí admin sale (gồm VAT)" value={config.adminFeeSale > 0 ? fmtMoney(config.adminFeeSale) : "—"} />
-        <StatCard label="Hỗ trợ khách" value={config.customerSupport > 0 ? fmtMoney(config.customerSupport) : "—"} />
-      </InfoSection>
+      {/* Group 1 — Thông tin chung (chỉ hiện field có value) */}
+      {group1Cards.length > 0 && (
+        <InfoSection title="Thông tin chung">{group1Cards}</InfoSection>
+      )}
 
       {/* Group 2 — PMG lũy kế */}
       {(costType === "sale_commission" || isKpi) && (
