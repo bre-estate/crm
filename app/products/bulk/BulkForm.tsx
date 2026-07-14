@@ -80,14 +80,11 @@ export default function BulkProductForm({
   const [saleType, setSaleType] = useState<SaleType>("primary");
   const isSecondary = saleType === "secondary";
 
-  // Default áp cho tất cả (nếu cột riêng không paste)
-  const [defaultProjectId, setDefaultProjectId] = useState<string>("");
-  const [defaultPaymentMethod, setDefaultPaymentMethod] = useState<string>("");
-  const [defaultDepartmentId, setDefaultDepartmentId] = useState<string>("");
+  // 1 lần bulk = 1 dự án. Chọn ở dropdown, KHÔNG paste cột.
+  const [projectId, setProjectId] = useState<string>("");
   const [defaultDepositDate, setDefaultDepositDate] = useState<string>("");
 
-  // 15 cột paste
-  const [colProject, setColProject] = useState("");
+  // Cột paste (bỏ Dự án — dùng dropdown ở trên)
   const [colUnit, setColUnit] = useState("");
   const [colCustomer, setColCustomer] = useState("");
   const [colSales, setColSales] = useState("");
@@ -96,6 +93,7 @@ export default function BulkProductForm({
   const [colDeposit, setColDeposit] = useState("");
   const [colPmgBase, setColPmgBase] = useState("");
   const [colPmgRate, setColPmgRate] = useState("");
+  const [colPmgSaleRate, setColPmgSaleRate] = useState("");
   const [colAdmin, setColAdmin] = useState("");
   const [colCdtSale, setColCdtSale] = useState("");
   const [colCdtMgr, setColCdtMgr] = useState("");
@@ -105,15 +103,6 @@ export default function BulkProductForm({
   const [colNote, setColNote] = useState("");
 
   // ============ Lookup maps ============
-  const projectByKey = useMemo(() => {
-    const m = new Map<string, ProjectOpt>();
-    for (const p of projects) {
-      m.set(normalize(p.name), p);
-      m.set(normalize(p.code), p);
-    }
-    return m;
-  }, [projects]);
-
   const deptByKey = useMemo(() => {
     const m = new Map<string, DeptOpt>();
     for (const d of departments) {
@@ -125,7 +114,6 @@ export default function BulkProductForm({
 
   const cols = useMemo(
     () => ({
-      project: splitColumn(colProject),
       unit: splitColumn(colUnit),
       customer: splitColumn(colCustomer),
       sales: splitColumn(colSales),
@@ -134,6 +122,7 @@ export default function BulkProductForm({
       deposit: splitColumn(colDeposit),
       pmgBase: splitColumn(colPmgBase),
       pmgRate: splitColumn(colPmgRate),
+      pmgSaleRate: splitColumn(colPmgSaleRate),
       admin: splitColumn(colAdmin),
       cdtSale: splitColumn(colCdtSale),
       cdtMgr: splitColumn(colCdtMgr),
@@ -143,8 +132,8 @@ export default function BulkProductForm({
       note: splitColumn(colNote),
     }),
     [
-      colProject, colUnit, colCustomer, colSales, colDept, colPayMethod,
-      colDeposit, colPmgBase, colPmgRate, colAdmin, colCdtSale, colCdtMgr,
+      colUnit, colCustomer, colSales, colDept, colPayMethod,
+      colDeposit, colPmgBase, colPmgRate, colPmgSaleRate, colAdmin, colCdtSale, colCdtMgr,
       colHhSale, colCtySale, colCtyMgr, colNote,
     ],
   );
@@ -155,29 +144,16 @@ export default function BulkProductForm({
   const preview = useMemo(() => {
     const out: {
       row: BulkProductRow;
-      raw: {
-        project: string;
-        dept: string;
-      };
+      raw: { dept: string };
       warnings: string[];
     }[] = [];
+    const pid = projectId ? Number(projectId) : 0;
     for (let i = 0; i < nRows; i++) {
       const warnings: string[] = [];
       const unit = cols.unit[i];
       if (!unit) continue;
 
-      // Project: cột hoặc default
-      const projectRaw = cols.project[i] ?? "";
-      let projectId = 0;
-      if (projectRaw) {
-        const found = projectByKey.get(normalize(projectRaw));
-        if (found) projectId = found.id;
-        else warnings.push(`Không tìm thấy dự án "${projectRaw}"`);
-      } else if (defaultProjectId) {
-        projectId = Number(defaultProjectId);
-      } else {
-        warnings.push("Thiếu dự án");
-      }
+      if (!pid) warnings.push("Chưa chọn dự án");
 
       // Department: optional
       const deptRaw = cols.dept[i] ?? "";
@@ -186,21 +162,20 @@ export default function BulkProductForm({
         const found = deptByKey.get(normalize(deptRaw));
         if (found) departmentId = found.id;
         else warnings.push(`Không tìm thấy phòng "${deptRaw}"`);
-      } else if (defaultDepartmentId) {
-        departmentId = Number(defaultDepartmentId);
       }
 
       const row: BulkProductRow = {
-        projectId,
+        projectId: pid,
         unitCode: unit,
         saleType,
         customerName: cols.customer[i] || null,
         salesPerson: cols.sales[i] || null,
         departmentId,
-        paymentMethod: cols.payMethod[i] || defaultPaymentMethod || null,
+        paymentMethod: cols.payMethod[i] || null,
         depositDate: cols.deposit[i] ? parseDate(cols.deposit[i]) : defaultDepositDate || null,
         pmgBasePrice: cols.pmgBase[i] ? parseMoney(cols.pmgBase[i]) : 0,
         pmgRate: cols.pmgRate[i] ? parsePctDecimal(cols.pmgRate[i]) : 0,
+        pmgSaleRate: cols.pmgSaleRate[i] ? parsePctDecimal(cols.pmgSaleRate[i]) : 0,
         adminFee: cols.admin[i] ? parseMoney(cols.admin[i]) : 0,
         cdtBonusSale: cols.cdtSale[i] ? parseMoney(cols.cdtSale[i]) : 0,
         cdtBonusManager: cols.cdtMgr[i] ? parseMoney(cols.cdtMgr[i]) : 0,
@@ -211,12 +186,12 @@ export default function BulkProductForm({
       };
       out.push({
         row,
-        raw: { project: projectRaw, dept: deptRaw },
+        raw: { dept: deptRaw },
         warnings,
       });
     }
     return out;
-  }, [nRows, cols, projectByKey, deptByKey, defaultProjectId, defaultDepartmentId, defaultPaymentMethod, defaultDepositDate, saleType]);
+  }, [nRows, cols, projectId, deptByKey, defaultDepositDate, saleType]);
 
   const validCount = preview.filter((p) => p.warnings.length === 0 && p.row.projectId > 0).length;
   const totalWarnings = preview.reduce((s, p) => s + p.warnings.length, 0);
@@ -259,7 +234,6 @@ export default function BulkProductForm({
 
   const clearAll = () => {
     if (!confirm("Xóa hết dữ liệu đã paste?")) return;
-    setColProject("");
     setColUnit("");
     setColCustomer("");
     setColSales("");
@@ -268,6 +242,7 @@ export default function BulkProductForm({
     setColDeposit("");
     setColPmgBase("");
     setColPmgRate("");
+    setColPmgSaleRate("");
     setColAdmin("");
     setColCdtSale("");
     setColCdtMgr("");
@@ -321,57 +296,31 @@ export default function BulkProductForm({
             </div>
           </div>
 
-          {/* Defaults */}
-          <div className="bg-white border border-slate-200 rounded-xl p-4 grid grid-cols-1 md:grid-cols-4 gap-3">
+          {/* Dự án (bắt buộc, áp cho toàn bộ dòng paste) + Ngày cọc default */}
+          <div className="bg-white border border-slate-200 rounded-xl p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs text-slate-600 mb-1">
-                Dự án mặc định (nếu không paste cột Dự án)
+                Dự án <span className="text-red-600">*</span>
               </label>
               <select
-                value={defaultProjectId}
-                onChange={(e) => setDefaultProjectId(e.target.value)}
+                value={projectId}
+                onChange={(e) => setProjectId(e.target.value)}
                 className="input"
               >
-                <option value="">(Từ cột Dự án)</option>
+                <option value="">-- Chọn dự án --</option>
                 {projects.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.code} · {p.name}
                   </option>
                 ))}
               </select>
+              <div className="text-[10px] text-slate-500 mt-1">
+                1 lần bulk = 1 dự án. Muốn nhập nhiều dự án → chia nhiều lượt.
+              </div>
             </div>
             <div>
               <label className="block text-xs text-slate-600 mb-1">
-                Phòng mặc định
-              </label>
-              <select
-                value={defaultDepartmentId}
-                onChange={(e) => setDefaultDepartmentId(e.target.value)}
-                className="input"
-              >
-                <option value="">(Từ cột Phòng)</option>
-                {departments.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs text-slate-600 mb-1">
-                Phương thức TT mặc định
-              </label>
-              <input
-                type="text"
-                value={defaultPaymentMethod}
-                onChange={(e) => setDefaultPaymentMethod(e.target.value)}
-                placeholder="VD: Chuyển khoản CĐT"
-                className="input"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-slate-600 mb-1">
-                Ngày cọc mặc định
+                Ngày cọc mặc định (nếu không paste cột)
               </label>
               <input
                 type="date"
@@ -385,13 +334,6 @@ export default function BulkProductForm({
           {/* Paste columns */}
           <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-              <ColTextarea
-                label="Dự án"
-                value={colProject}
-                onChange={setColProject}
-                placeholder="Fenica Fenica ..."
-                hint="Tên hoặc mã dự án"
-              />
               <ColTextarea
                 label="Mã căn"
                 value={colUnit}
@@ -441,6 +383,14 @@ export default function BulkProductForm({
                 value={colPmgRate}
                 onChange={setColPmgRate}
                 placeholder="7% 7% ..."
+                hint="CĐT trả BRE"
+              />
+              <ColTextarea
+                label="%PMG_LK_Sale"
+                value={colPmgSaleRate}
+                onChange={setColPmgSaleRate}
+                placeholder="7% 7% ..."
+                hint="Base tính HH sale + KPI"
               />
               <ColTextarea
                 label="Phí admin"
@@ -510,7 +460,6 @@ export default function BulkProductForm({
                   <thead className="bg-slate-50 text-slate-600 sticky top-0">
                     <tr>
                       <th className="text-left p-2">#</th>
-                      <th className="text-left p-2 whitespace-nowrap">Dự án</th>
                       <th className="text-left p-2 whitespace-nowrap">Mã căn</th>
                       <th className="text-left p-2 whitespace-nowrap">Khách</th>
                       <th className="text-left p-2 whitespace-nowrap">NVKD</th>
@@ -519,6 +468,7 @@ export default function BulkProductForm({
                       <th className="text-left p-2 whitespace-nowrap">Ngày cọc</th>
                       <th className="text-right p-2 whitespace-nowrap">Giá PMG</th>
                       <th className="text-right p-2">%PMG</th>
+                      <th className="text-right p-2">%PMG Sale</th>
                       <th className="text-right p-2 whitespace-nowrap">Admin</th>
                       <th className="text-right p-2 whitespace-nowrap">CĐT sale</th>
                       <th className="text-right p-2 whitespace-nowrap">CĐT QL</th>
@@ -530,9 +480,6 @@ export default function BulkProductForm({
                   </thead>
                   <tbody>
                     {preview.map((p, i) => {
-                      const projName = p.row.projectId
-                        ? projects.find((pr) => pr.id === p.row.projectId)?.name
-                        : p.raw.project || "—";
                       const deptName = p.row.departmentId
                         ? departments.find((d) => d.id === p.row.departmentId)?.name
                         : p.raw.dept || "—";
@@ -543,7 +490,6 @@ export default function BulkProductForm({
                           className={`border-t border-slate-100 ${bad ? "bg-amber-50" : ""}`}
                         >
                           <td className="p-2 text-slate-400">{i + 1}</td>
-                          <td className="p-2 whitespace-nowrap">{projName ?? "—"}</td>
                           <td className="p-2 font-mono">{p.row.unitCode}</td>
                           <td className="p-2">{p.row.customerName ?? "—"}</td>
                           <td className="p-2">{p.row.salesPerson ?? "—"}</td>
@@ -560,6 +506,11 @@ export default function BulkProductForm({
                           <td className="p-2 text-right tabular-nums">
                             {p.row.pmgRate > 0
                               ? (p.row.pmgRate * 100).toFixed(2) + "%"
+                              : "—"}
+                          </td>
+                          <td className="p-2 text-right tabular-nums">
+                            {(p.row.pmgSaleRate ?? 0) > 0
+                              ? ((p.row.pmgSaleRate ?? 0) * 100).toFixed(2) + "%"
                               : "—"}
                           </td>
                           <td className="p-2 text-right tabular-nums">

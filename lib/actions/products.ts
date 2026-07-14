@@ -169,6 +169,7 @@ export type BulkProductRow = {
   adminFee: number;
   cdtBonusSale: number;
   cdtBonusManager: number;
+  pmgSaleRate?: number; // decimal 0..1, base tính HH sale (thường thấp hơn pmgRate)
   saleCommissionRate?: number; // decimal 0..1
   bonusSale?: number;
   bonusManager?: number;
@@ -199,6 +200,7 @@ export async function createProductBulk(rows: BulkProductRow[]) {
         adminFee: r.adminFee,
         cdtBonusSale: r.cdtBonusSale,
         cdtBonusManager: r.cdtBonusManager,
+        pmgSaleRate: r.pmgSaleRate ?? 0,
         saleCommissionRate: r.saleCommissionRate ?? 0,
         bonusSale: r.bonusSale ?? 0,
         bonusManager: r.bonusManager ?? 0,
