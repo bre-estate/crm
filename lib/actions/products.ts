@@ -290,6 +290,59 @@ export async function deleteProduct(id: number) {
 }
 
 /**
+ * Bulk xóa nhiều căn. KHÔNG redirect — trả về summary để UI báo cáo.
+ * Guard giống deleteProduct: căn có recon → skip + collect error.
+ * Chấp nhận partial success.
+ */
+export async function deleteProductBulk(ids: number[]) {
+  const errors: { id: number; unitCode: string; message: string }[] = [];
+  const deletedIds: number[] = [];
+  for (const id of ids) {
+    try {
+      const [before] = await db.select().from(products).where(eq(products.id, id));
+      if (!before) {
+        errors.push({ id, unitCode: `#${id}`, message: "Không tồn tại" });
+        continue;
+      }
+      const usedRev = await db
+        .select({ id: revenueReconciliations.id })
+        .from(revenueReconciliations)
+        .where(eq(revenueReconciliations.productId, id));
+      const usedCost = await db
+        .select({ id: costReconciliations.id })
+        .from(costReconciliations)
+        .where(eq(costReconciliations.productId, id));
+      if (usedRev.length > 0 || usedCost.length > 0) {
+        errors.push({
+          id,
+          unitCode: before.unitCode ?? `#${id}`,
+          message: `${usedRev.length} ĐC doanh thu, ${usedCost.length} ĐC giá vốn`,
+        });
+        continue;
+      }
+      await db.delete(products).where(eq(products.id, id));
+      await logActivity({
+        entityType: "product",
+        entityId: id,
+        productId: id,
+        action: "delete",
+        before: before as unknown as Record<string, unknown>,
+        summary: `Xóa căn ${before.unitCode ?? id} (bulk)`,
+      });
+      deletedIds.push(id);
+    } catch (e) {
+      errors.push({
+        id,
+        unitCode: `#${id}`,
+        message: e instanceof Error ? e.message : "Lỗi",
+      });
+    }
+  }
+  revalidatePath("/products");
+  return { ok: deletedIds.length, deletedIds, errors };
+}
+
+/**
  * Insert product_adjustments record + update product config với value mới.
  * Dùng chung cho createProductAdjustment (từ dialog trực tiếp) và updateProduct
  * (batch pending adjustments cùng lúc với Lưu form).

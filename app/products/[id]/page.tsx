@@ -16,6 +16,8 @@ import { fmtMoney, fmtDate, fmtPct, fmtPctTight, fmtPctRaw, costTypeLabel, toTit
 import { eq, desc } from "drizzle-orm";
 import { asc } from "drizzle-orm";
 import ActivityHistoryButton from "./ActivityHistoryButton";
+import DeleteProductButton from "./DeleteProductButton";
+import { deleteProduct } from "@/lib/actions/products";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 
@@ -303,12 +305,21 @@ export default async function ProductDetailPage({
             )}
           </div>
         </div>
-        <Link
-          href={editHref}
-          className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600 whitespace-nowrap"
-        >
-          Sửa giao dịch
-        </Link>
+        <div className="flex items-center gap-2 shrink-0">
+          <DeleteProductButton
+            unitCode={p.unitCode}
+            onDelete={async () => {
+              "use server";
+              await deleteProduct(id);
+            }}
+          />
+          <Link
+            href={editHref}
+            className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600 whitespace-nowrap"
+          >
+            Sửa giao dịch
+          </Link>
+        </div>
       </div>
 
       {/* Quick summary strip */}

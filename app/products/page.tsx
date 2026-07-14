@@ -11,6 +11,8 @@ import { fmtMoney, fmtDate, fmtPctTight, fmtPctRaw, displayPartnerName } from "@
 import { eq, asc, desc, and, gte, lte, ilike, inArray, type SQL } from "drizzle-orm";
 import Link from "next/link";
 import SearchableSelect from "@/components/SearchableSelect";
+import ProductsTable, { type ProductRow } from "./ProductsTable";
+import { deleteProductBulk } from "@/lib/actions/products";
 
 export const dynamic = "force-dynamic";
 
@@ -432,153 +434,51 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
         </form>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-xs text-slate-600">
-            <tr>
-              <th className="text-left p-2 whitespace-nowrap">Mã căn</th>
-              <th className="text-left p-2">Dự án / Đối tác</th>
-              <th className="text-left p-2 whitespace-nowrap">Phòng</th>
-              <th className="text-left p-2 whitespace-nowrap">NVKD</th>
-              <th className="text-left p-2 whitespace-nowrap">Cọc</th>
-              <th className="text-left p-2 whitespace-nowrap">Ghi nhận</th>
-              <th className="text-right p-2 whitespace-nowrap">Giá PMG</th>
-              <th className="text-right p-2 whitespace-nowrap">%PMG</th>
-              <th className="text-right p-2 whitespace-nowrap">Tổng DT</th>
-              <th className="text-center p-2 whitespace-nowrap">% thu</th>
-              <th className="text-center p-2 whitespace-nowrap">Lần</th>
-              <th className="text-center p-2 whitespace-nowrap">HĐ</th>
-              <th className="text-right p-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => {
-              const stats = statsByProduct.get(r.id) ?? {
-                expectedHH: 0,
-                expectedBonus: 0,
-                receivedHH: 0,
-                receivedBonus: 0,
-                paidHH: 0,
-                paidBonus: 0,
-                phaseCount: 0,
-                invoiceIds: new Set<number>(),
-              };
-              // % thu HH = receivedHH / expectedHH (đồng nhất với Section 4 detail —
-              // ưu tiên biên bản ĐC = "đã ghi nhận có thu"). Bank actual là detail phụ.
-              const pctPaid =
-                stats.expectedHH > 0 ? (stats.receivedHH / stats.expectedHH) * 100 : 0;
-              const fullyPaid = pctPaid >= 99.5 && pctPaid <= 100.5;
-              const overPaid = pctPaid > 100.5;
-              const noData = stats.expectedHH === 0 && stats.phaseCount === 0;
-              const isJustCreated = justCreatedIds.has(r.id);
-              return (
-                <tr
-                  key={r.id}
-                  className={`border-t border-slate-100 hover:bg-slate-50 ${
-                    isJustCreated ? "bg-yellow-50" : ""
-                  }`}
-                >
-                  <td className="p-2 font-mono text-xs">
-                    <Link href={`/products/${r.id}${detailQs}`} className="text-blue-600 hover:underline">
-                      {r.unitCode}
-                    </Link>
-                    {r.note && r.note.trim() && (
-                      <span
-                        className="ml-1 text-slate-400 cursor-help"
-                        title={r.note}
-                      >
-                        📝
-                      </span>
-                    )}
-                  </td>
-                  <td className="p-2">
-                    <div className="font-medium text-xs">{r.projectName}</div>
-                    <div className="text-xs text-slate-500">{displayPartnerName(r.partnerName)}</div>
-                  </td>
-                  <td className="p-2">
-                    {r.departmentName ? (
-                      <span
-                        className={`text-xs px-2 py-0.5 rounded whitespace-nowrap ${deptColor(
-                          r.deptName ?? r.departmentName,
-                        )}`}
-                      >
-                        {r.departmentName}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-slate-400">—</span>
-                    )}
-                  </td>
-                  <td className="p-2 text-xs">{r.salesPerson ?? "—"}</td>
-                  <td className="p-2 text-xs">{fmtDate(r.depositDate)}</td>
-                  <td className="p-2 text-xs font-mono">{r.recognitionMonth ?? "—"}</td>
-                  <td className="p-2 text-right tabular-nums">{fmtMoney(r.pmgBasePrice)}</td>
-                  <td className="p-2 text-right tabular-nums">{fmtPctTight(r.pmgRate)}</td>
-                  <td className="p-2 text-right tabular-nums">{fmtMoney(r.totalRevenue)}</td>
-                  <td className="p-2 text-center">
-                    {noData ? (
-                      <span className="text-xs text-slate-400">—</span>
-                    ) : (
-                      <span
-                        className={`text-xs font-semibold ${
-                          overPaid
-                            ? "text-purple-700"
-                            : fullyPaid
-                              ? "text-green-700"
-                              : pctPaid > 0
-                                ? "text-amber-700"
-                                : "text-red-600"
-                        }`}
-                        title={
-                          overPaid
-                            ? `Thu quá target (${fmtPctRaw(pctPaid, 1)}) — kiểm tra lại data`
-                            : fullyPaid
-                              ? "Đã thu đủ"
-                              : pctPaid > 0
-                                ? `Còn thiếu ${fmtPctRaw(100 - pctPaid, 1)}`
-                                : "Chưa thu"
-                        }
-                      >
-                        {pctPaid.toFixed(0)}%
-                      </span>
-                    )}
-                  </td>
-                  <td className="p-2 text-center text-xs">
-                    {stats.phaseCount > 0 ? (
-                      <span className="font-medium">{stats.phaseCount}</span>
-                    ) : (
-                      <span className="text-slate-400">—</span>
-                    )}
-                  </td>
-                  <td className="p-2 text-center text-xs">
-                    {stats.invoiceIds.size > 0 ? (
-                      <span
-                        className="px-2 py-0.5 rounded bg-green-100 text-green-700 font-medium"
-                        title={`${stats.invoiceIds.size} hóa đơn`}
-                      >
-                        ✓ {stats.invoiceIds.size}
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-500">—</span>
-                    )}
-                  </td>
-                  <td className="p-2 text-right">
-                    <Link href={`/products/${r.id}${detailQs}`} className="text-blue-600 hover:underline text-sm">
-                      Chi tiết
-                    </Link>
-                  </td>
-                </tr>
-              );
-            })}
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={13} className="p-6 text-center text-slate-500 text-sm">
-                  Không có giao dịch nào theo bộ lọc.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      {(() => {
+        const tableRows: ProductRow[] = rows.map((r) => {
+          const stats = statsByProduct.get(r.id) ?? {
+            expectedHH: 0,
+            expectedBonus: 0,
+            receivedHH: 0,
+            receivedBonus: 0,
+            paidHH: 0,
+            paidBonus: 0,
+            phaseCount: 0,
+            invoiceIds: new Set<number>(),
+          };
+          return {
+            id: r.id,
+            unitCode: r.unitCode,
+            projectName: r.projectName ?? null,
+            partnerName: r.partnerName ?? null,
+            departmentName: r.departmentName ?? null,
+            deptName: r.deptName ?? null,
+            salesPerson: r.salesPerson ?? null,
+            depositDate: r.depositDate ?? null,
+            recognitionMonth: r.recognitionMonth ?? null,
+            pmgBasePrice: Number(r.pmgBasePrice ?? 0),
+            pmgRate: Number(r.pmgRate ?? 0),
+            totalRevenue: Number(r.totalRevenue ?? 0),
+            note: r.note ?? null,
+            expectedHH: stats.expectedHH,
+            receivedHH: stats.receivedHH,
+            phaseCount: stats.phaseCount,
+            invoiceCount: stats.invoiceIds.size,
+          };
+        });
+        return (
+          <ProductsTable
+            rows={tableRows}
+            detailQs={detailQs}
+            justCreatedIds={justCreatedIds}
+            onBulkDelete={async (ids) => {
+              "use server";
+              return await deleteProductBulk(ids);
+            }}
+          />
+        );
+      })()}
+
     </div>
   );
 }
