@@ -488,7 +488,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
           totalCost: number;
         }>();
         for (const p of prodRows) {
-          const key = p.departmentName ?? "(Chưa phân phòng)";
+          const key = p.departmentName ?? "5. (Chưa phân phòng)";
           if (!byDept.has(key)) byDept.set(key, { name: key, numProducts: 0, totalRevenue: 0, totalCost: 0 });
           const agg = byDept.get(key)!;
           agg.numProducts++;
