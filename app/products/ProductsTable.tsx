@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -75,10 +75,6 @@ export default function ProductsTable({
   const [pending, start] = useTransition();
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
-  const allIds = useMemo(() => rows.map((r) => r.id), [rows]);
-  const allSelected = selected.size > 0 && selected.size === allIds.length;
-  const someSelected = selected.size > 0 && !allSelected;
-
   const toggleOne = (id: number) => {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -86,10 +82,6 @@ export default function ProductsTable({
       else next.add(id);
       return next;
     });
-  };
-  const toggleAll = () => {
-    if (allSelected) setSelected(new Set());
-    else setSelected(new Set(allIds));
   };
 
   const handleBulkDelete = () => {
@@ -148,17 +140,9 @@ export default function ProductsTable({
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-xs text-slate-600">
             <tr>
-              <th className="p-2 w-8">
-                <input
-                  type="checkbox"
-                  checked={allSelected}
-                  ref={(el) => {
-                    if (el) el.indeterminate = someSelected;
-                  }}
-                  onChange={toggleAll}
-                  className="cursor-pointer"
-                />
-              </th>
+              <th className="p-2 w-8" />
+              {/* Bỏ master checkbox — chặn thao tác 'chọn toàn bộ' vô ý.
+                  Muốn xóa nhiều căn thì tick từng cái. */}
               <th className="text-left p-2 whitespace-nowrap">Mã căn</th>
               <th className="text-left p-2">Dự án / Đối tác</th>
               <th className="text-left p-2 whitespace-nowrap">Phòng</th>
