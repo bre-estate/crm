@@ -19,7 +19,6 @@ export default async function ProjectsPage() {
       brokerageRate: projects.brokerageRate,
       brokerageRateSale: projects.brokerageRateSale,
       adminFee: projects.adminFee,
-      paymentPhases: projects.paymentPhases,
     })
     .from(projects)
     .leftJoin(partners, eq(projects.partnerId, partners.id))
@@ -52,7 +51,6 @@ export default async function ProjectsPage() {
               <th className="text-right p-3">%PMG_LK</th>
               <th className="text-right p-3">%PMG_sale</th>
               <th className="text-right p-3">Phí admin</th>
-              <th className="text-center p-3">Đợt TT</th>
               <th className="text-left p-3">Tình trạng</th>
               <th className="text-right p-3">Thao tác</th>
             </tr>
@@ -91,7 +89,6 @@ export default async function ProjectsPage() {
                 <td className="p-3 text-right tabular-nums">
                   {Number(p.adminFee ?? 0) > 0 ? fmtMoney(p.adminFee) : <span className="text-slate-300">—</span>}
                 </td>
-                <td className="p-3 text-center">{p.paymentPhases}</td>
                 <td className="p-3 text-xs">{contractStatusLabel(p.contractStatus ?? "")}</td>
                 <td className="p-3 text-right">
                   <Link href={`/projects/${p.id}`} className="text-blue-600 hover:underline text-sm">
