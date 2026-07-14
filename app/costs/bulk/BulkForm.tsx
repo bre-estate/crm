@@ -213,7 +213,7 @@ export default function BulkCostForm({
           return (
             <div
               key={idx}
-              className="bg-white border border-slate-200 rounded-lg overflow-hidden"
+              className="bg-white border border-slate-200 rounded-lg"
             >
               {/* Row 1: #idx + Căn (compact) + Info + × */}
               <div className="flex items-stretch gap-2 p-2 border-b border-slate-100">
