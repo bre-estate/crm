@@ -38,10 +38,9 @@ function buildProjectData(fd: FormData) {
     phaseRate3: isSecondary ? 0 : toPct(fd.get("phaseRate3")),
     phaseRate4: isSecondary ? 0 : toPct(fd.get("phaseRate4")),
     phaseRate5: isSecondary ? 0 : toPct(fd.get("phaseRate5")),
-    cdtBonusSale: isSecondary ? 0 : toNum(fd.get("cdtBonusSale")),
-    cdtBonusManager: isSecondary ? 0 : toNum(fd.get("cdtBonusManager")),
-    ctyBonusSale: isSecondary ? 0 : toNum(fd.get("ctyBonusSale")),
-    ctyBonusManager: isSecondary ? 0 : toNum(fd.get("ctyBonusManager")),
+    // cdt_bonus, cty_bonus đã bỏ khỏi Project form — nhập per-căn ở
+    // ProductForm. Khi update project cũ, KHÔNG include các field này
+    // vào patch → giữ nguyên value cũ trong DB (data migration sẽ dọn sau).
     paymentDocs: toStr(fd.get("paymentDocs")),
     note: toStr(fd.get("note")),
   };

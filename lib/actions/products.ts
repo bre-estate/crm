@@ -161,12 +161,17 @@ export type BulkProductRow = {
   saleType: "primary" | "secondary";
   customerName: string | null;
   salesPerson: string | null;
+  departmentId?: number | null;
+  paymentMethod?: string | null;
   depositDate: string | null;
   pmgBasePrice: number;
   pmgRate: number; // decimal 0.055 for 5.5%
   adminFee: number;
   cdtBonusSale: number;
   cdtBonusManager: number;
+  saleCommissionRate?: number; // decimal 0..1
+  bonusSale?: number;
+  bonusManager?: number;
   note?: string;
 };
 
@@ -186,12 +191,17 @@ export async function createProductBulk(rows: BulkProductRow[]) {
         saleType: r.saleType,
         customerName: r.customerName ? toTitleCase(r.customerName) : null,
         salesPerson: r.salesPerson ? toTitleCase(r.salesPerson) : null,
+        departmentId: r.departmentId ?? null,
+        paymentMethod: r.paymentMethod ?? null,
         depositDate: r.depositDate,
         pmgBasePrice: r.pmgBasePrice,
         pmgRate: r.pmgRate,
         adminFee: r.adminFee,
         cdtBonusSale: r.cdtBonusSale,
         cdtBonusManager: r.cdtBonusManager,
+        saleCommissionRate: r.saleCommissionRate ?? 0,
+        bonusSale: r.bonusSale ?? 0,
+        bonusManager: r.bonusManager ?? 0,
         note: r.note ?? null,
       });
       ok++;

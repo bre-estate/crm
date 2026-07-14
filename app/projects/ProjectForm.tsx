@@ -204,24 +204,8 @@ export default function ProjectForm({ project, partners, onSave, onDelete }: Pro
         </Section>
       )}
 
-      {!isSecondary && (
-        <Section title="Thưởng / Chi phí khác">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <Field label="CĐT thưởng sale (VND, gồm VAT)">
-              <MoneyInput name="cdtBonusSale" defaultValue={project?.cdtBonusSale ?? 0} className="input" />
-            </Field>
-            <Field label="CĐT thưởng quản lý">
-              <MoneyInput name="cdtBonusManager" defaultValue={project?.cdtBonusManager ?? 0} className="input" />
-            </Field>
-            <Field label="CTY thưởng sale">
-              <MoneyInput name="ctyBonusSale" defaultValue={project?.ctyBonusSale ?? 0} className="input" />
-            </Field>
-            <Field label="CTY thưởng quản lý">
-              <MoneyInput name="ctyBonusManager" defaultValue={project?.ctyBonusManager ?? 0} className="input" />
-            </Field>
-          </div>
-        </Section>
-      )}
+      {/* Thưởng CĐT / Cty đã bỏ khỏi Project — nhập trực tiếp per-căn ở
+          ProductForm để linh hoạt (mỗi căn có thể khác thưởng). */}
 
       <Section title="Hồ sơ & ghi chú">
         <div className="grid grid-cols-1 gap-4">
