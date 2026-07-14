@@ -178,41 +178,44 @@ export type BulkProductRow = {
 
 export async function createProductBulk(rows: BulkProductRow[]) {
   const errors: { index: number; message: string }[] = [];
-  let ok = 0;
+  const createdIds: number[] = [];
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
     try {
       if (!r.projectId) throw new Error("Thiếu dự án");
       if (!r.unitCode) throw new Error("Thiếu mã căn");
       const productCode = await buildProductCode(r.projectId, r.unitCode);
-      await db.insert(products).values({
-        productCode,
-        projectId: r.projectId,
-        unitCode: r.unitCode,
-        saleType: r.saleType,
-        customerName: r.customerName ? toTitleCase(r.customerName) : null,
-        salesPerson: r.salesPerson ? toTitleCase(r.salesPerson) : null,
-        departmentId: r.departmentId ?? null,
-        paymentMethod: r.paymentMethod ?? null,
-        depositDate: r.depositDate,
-        pmgBasePrice: r.pmgBasePrice,
-        pmgRate: r.pmgRate,
-        adminFee: r.adminFee,
-        cdtBonusSale: r.cdtBonusSale,
-        cdtBonusManager: r.cdtBonusManager,
-        pmgSaleRate: r.pmgSaleRate ?? 0,
-        saleCommissionRate: r.saleCommissionRate ?? 0,
-        bonusSale: r.bonusSale ?? 0,
-        bonusManager: r.bonusManager ?? 0,
-        note: r.note ?? null,
-      });
-      ok++;
+      const [ins] = await db
+        .insert(products)
+        .values({
+          productCode,
+          projectId: r.projectId,
+          unitCode: r.unitCode,
+          saleType: r.saleType,
+          customerName: r.customerName ? toTitleCase(r.customerName) : null,
+          salesPerson: r.salesPerson ? toTitleCase(r.salesPerson) : null,
+          departmentId: r.departmentId ?? null,
+          paymentMethod: r.paymentMethod ?? null,
+          depositDate: r.depositDate,
+          pmgBasePrice: r.pmgBasePrice,
+          pmgRate: r.pmgRate,
+          adminFee: r.adminFee,
+          cdtBonusSale: r.cdtBonusSale,
+          cdtBonusManager: r.cdtBonusManager,
+          pmgSaleRate: r.pmgSaleRate ?? 0,
+          saleCommissionRate: r.saleCommissionRate ?? 0,
+          bonusSale: r.bonusSale ?? 0,
+          bonusManager: r.bonusManager ?? 0,
+          note: r.note ?? null,
+        })
+        .returning({ id: products.id });
+      createdIds.push(ins.id);
     } catch (e) {
       errors.push({ index: i, message: e instanceof Error ? e.message : "Lỗi" });
     }
   }
   revalidatePath("/products");
-  return { ok, errors };
+  return { ok: createdIds.length, createdIds, errors };
 }
 
 export type BulkProductEditRow = {

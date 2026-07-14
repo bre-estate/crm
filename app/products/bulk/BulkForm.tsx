@@ -72,6 +72,7 @@ export default function BulkProductForm({
   departments: DeptOpt[];
   onSave: (rows: BulkProductRow[]) => Promise<{
     ok: number;
+    createdIds: number[];
     errors: { index: number; message: string }[];
   }>;
 }) {
@@ -225,7 +226,11 @@ export default function BulkProductForm({
           });
         } else {
           toast.success(`Đã tạo ${res.ok} căn`);
-          router.push("/products");
+          const qs =
+            res.createdIds.length > 0
+              ? `?justCreated=${res.createdIds.join(",")}`
+              : "";
+          router.push(`/products${qs}`);
         }
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Lỗi");

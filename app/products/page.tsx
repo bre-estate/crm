@@ -21,10 +21,18 @@ type SearchParams = Promise<{
   from?: string;
   to?: string;
   unitCode?: string;
+  justCreated?: string;
 }>;
 
 export default async function ProductsPage({ searchParams }: { searchParams: SearchParams }) {
-  const { projectId, departmentId, tab, from, to, unitCode } = await searchParams;
+  const { projectId, departmentId, tab, from, to, unitCode, justCreated } = await searchParams;
+  // Parse ids vừa tạo (comma-separated). Set để O(1) lookup.
+  const justCreatedIds = new Set<number>(
+    (justCreated ?? "")
+      .split(",")
+      .map((s) => Number(s.trim()))
+      .filter((n) => Number.isFinite(n) && n > 0),
+  );
   const filterProjectId = projectId ? Number(projectId) : null;
   const filterDeptId = departmentId ? Number(departmentId) : null;
   const activeTab: "primary" | "secondary" = tab === "secondary" ? "secondary" : "primary";
@@ -91,9 +99,20 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
     .leftJoin(partners, eq(projects.partnerId, partners.id))
     .leftJoin(departments, eq(products.departmentId, departments.id));
 
-  const rows = await baseQuery
+  const rowsRaw = await baseQuery
     .where(whereParts.length === 1 ? whereParts[0] : and(...whereParts))
-    .orderBy(desc(products.depositDate), desc(products.id));
+    .orderBy(desc(products.id));
+
+  // Ưu tiên: căn vừa tạo lên đầu (nếu ?justCreated=id1,id2), sau đó id DESC
+  // (căn mới nhất theo thứ tự tạo). Trước dùng depositDate DESC nhưng căn
+  // bulk chưa có depositDate → NULL xuống cuối → user không thấy được căn
+  // vừa tạo.
+  const rows = justCreatedIds.size > 0
+    ? [
+        ...rowsRaw.filter((r) => justCreatedIds.has(r.id)),
+        ...rowsRaw.filter((r) => !justCreatedIds.has(r.id)),
+      ]
+    : rowsRaw;
 
   // Đếm cho tab badge
   const allTypeRaw = await db
@@ -244,6 +263,20 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
 
   return (
     <div className="space-y-4">
+      {justCreatedIds.size > 0 && (
+        <div className="bg-green-50 border border-green-300 rounded-lg p-3 text-sm text-green-800 flex items-center justify-between">
+          <span>
+            <span className="font-semibold">Đã tạo {justCreatedIds.size} căn</span>{" "}
+            (đang highlight màu vàng ở đầu danh sách).
+          </span>
+          <Link
+            href="/products"
+            className="text-green-700 hover:underline text-xs"
+          >
+            Đóng ×
+          </Link>
+        </div>
+      )}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">Giao dịch (căn chốt)</h1>
@@ -437,8 +470,14 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
               const fullyPaid = pctPaid >= 99.5 && pctPaid <= 100.5;
               const overPaid = pctPaid > 100.5;
               const noData = stats.expectedHH === 0 && stats.phaseCount === 0;
+              const isJustCreated = justCreatedIds.has(r.id);
               return (
-                <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50">
+                <tr
+                  key={r.id}
+                  className={`border-t border-slate-100 hover:bg-slate-50 ${
+                    isJustCreated ? "bg-yellow-50" : ""
+                  }`}
+                >
                   <td className="p-2 font-mono text-xs">
                     <Link href={`/products/${r.id}${detailQs}`} className="text-blue-600 hover:underline">
                       {r.unitCode}
