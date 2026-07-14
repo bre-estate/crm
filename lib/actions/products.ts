@@ -93,6 +93,9 @@ export async function createProduct(fd: FormData) {
     .insert(products)
     .values({ productCode, ...data })
     .returning({ id: products.id });
+  // Compute total_revenue + total_cost từ config vừa nhập.
+  // Nếu skip → row hiện 0 trong list, user phải mở edit + save mới cập nhật.
+  await recomputeDerived(rec.id);
   await logActivity({
     entityType: "product",
     entityId: rec.id,
@@ -111,6 +114,9 @@ export async function updateProduct(id: number, fd: FormData) {
   const productCode = await buildProductCode(data.projectId, data.unitCode);
   const [before] = await db.select().from(products).where(eq(products.id, id));
   await db.update(products).set({ productCode, ...data }).where(eq(products.id, id));
+  // Recompute total_revenue + total_cost sau update (config có thể đổi
+  // pmg_base, pmg_rate, admin, thưởng → totals phải sync).
+  await recomputeDerived(id);
   await logActivity({
     entityType: "product",
     entityId: id,
@@ -209,6 +215,8 @@ export async function createProductBulk(rows: BulkProductRow[]) {
           note: r.note ?? null,
         })
         .returning({ id: products.id });
+      // Compute total_revenue + total_cost từ config vừa insert
+      await recomputeDerived(ins.id);
       createdIds.push(ins.id);
     } catch (e) {
       errors.push({ index: i, message: e instanceof Error ? e.message : "Lỗi" });
