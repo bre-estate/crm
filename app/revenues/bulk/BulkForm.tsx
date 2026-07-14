@@ -140,16 +140,18 @@ export default function BulkForm({
       row: BulkRevenueRow;
       product: ProductOpt | null;
       warnings: string[];
+      isRegression: boolean; // %thu đợt này < đã thu trước → block save
       // Reference columns
       pmgBase: number;
       pmgLk: number;
       phasePct: number;
-      grossThisTime: number;        // = pmgBase × pmgLk × phasePct
+      prevMaxPhasePct: number;       // % đã thu tại đợt trước (cumulative)
+      grossThisTime: number;         // = pmgBase × pmgLk × phasePct
       lkThisTime: number;            // = gross - admin (DT LK đợt này)
       lkPrev: number;                // DT đã ĐC lũy kế đợt trước
       receivable: number;            // DT phải thu đợt này = lkThisTime - lkPrev
       expectedTotal: number;         // DT full = pmgBase × pmgLk_final - admin
-      remaining: number;             // DT còn phải thu = expected - lkThisTime
+      remaining: number;             // DT còn phải thu (static, độc lập input đợt này) = expected - lkPrev
       totalReceivable: number;       // Tổng khoản phải thu đợt này (bao gồm bonus nếu có)
     }[] = [];
 
@@ -177,9 +179,21 @@ export default function BulkForm({
       const lkThisTime = Math.max(0, grossThisTime - admin);
       const prev = prevReconsByProduct[product?.id ?? -1];
       const lkPrev = prev?.cumulativeRevenue ?? 0;
+      const prevMaxPhasePct = prev?.maxPhasePct ?? 0;
       const receivable = Math.max(0, Math.round(lkThisTime - lkPrev));
       const expectedTotal = Math.max(0, pmgBase * pmgLk - admin);
-      const remaining = Math.max(0, Math.round(expectedTotal - lkThisTime));
+      // Còn phải thu = TỔNG − đã thu trước (STATIC, không phụ thuộc %thu đợt này).
+      // Sau khi save đợt này, số này sẽ giảm xuống ở lần bulk kế tiếp.
+      const remaining = Math.max(0, Math.round(expectedTotal - lkPrev));
+
+      // Regression check: %thu đợt này phải >= %thu đã có trước (cumulative)
+      const isRegression =
+        isCommission && phasePct > 0 && phasePct < prevMaxPhasePct - 1e-9;
+      if (isRegression) {
+        warnings.push(
+          `%thu ${(phasePct * 100).toFixed(2)}% < đã thu trước ${(prevMaxPhasePct * 100).toFixed(2)}%`,
+        );
+      }
 
       // Amount:
       //   Commission → auto = receivable (từ formula)
@@ -218,9 +232,11 @@ export default function BulkForm({
         row,
         product,
         warnings,
+        isRegression,
         pmgBase,
         pmgLk,
         phasePct,
+        prevMaxPhasePct,
         grossThisTime,
         lkThisTime,
         lkPrev,
@@ -233,12 +249,16 @@ export default function BulkForm({
     return out;
   }, [nRows, cols, productByUnitCode, prevReconsByProduct, isCommission, isBonusSale, isBonusMgr, reconType, defaultDate, projectId]);
 
-  const validCount = preview.filter((p) => p.warnings.length === 0 && p.row.productId > 0).length;
+  const validCount = preview.filter(
+    (p) => p.warnings.length === 0 && p.row.productId > 0 && p.row.amount > 0,
+  ).length;
   const totalWarnings = preview.reduce((s, p) => s + p.warnings.length, 0);
+  const regressionCount = preview.filter((p) => p.isRegression).length;
 
   const submit = () => {
+    // Regression rows BLOCK — không cho lưu (dù có ignore warnings).
     const validRows = preview
-      .filter((p) => p.row.productId > 0 && p.row.amount > 0)
+      .filter((p) => p.row.productId > 0 && p.row.amount > 0 && !p.isRegression)
       .map((p) => p.row);
     if (validRows.length === 0) {
       toast.error("Không có dòng hợp lệ", {
@@ -408,9 +428,20 @@ export default function BulkForm({
         <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="text-sm">
-              <b>{nRows}</b> dòng đã paste · <b>{validCount}</b> hợp lệ ·{" "}
+              <b>{nRows}</b> dòng đã paste · <b>{validCount}</b> hợp lệ
               {totalWarnings > 0 && (
-                <span className="text-amber-700">{totalWarnings} cảnh báo</span>
+                <>
+                  {" "}·{" "}
+                  <span className="text-amber-700">{totalWarnings} cảnh báo</span>
+                </>
+              )}
+              {regressionCount > 0 && (
+                <>
+                  {" "}·{" "}
+                  <span className="text-red-700 font-semibold">
+                    {regressionCount} dòng lùi %thu (bị chặn)
+                  </span>
+                </>
               )}
             </div>
             <button
@@ -421,6 +452,14 @@ export default function BulkForm({
               Xóa hết
             </button>
           </div>
+          {regressionCount > 0 && (
+            <div className="text-xs bg-red-50 border border-red-200 rounded p-2 text-red-800">
+              <b>Chặn lưu {regressionCount} dòng</b> vì %thu đợt này thấp hơn %thu
+              đã có trước. Nếu <b>Giá tính PMG</b> của căn đã thay đổi sau khi thu
+              đợt trước → xử lý qua <b>Điều chỉnh thông tin căn</b> (mở trang chi
+              tiết căn) trước, rồi bulk lại.
+            </div>
+          )}
           <div className="border border-slate-200 rounded-lg overflow-x-auto max-h-[500px] overflow-y-auto">
             <table className="w-full text-xs">
               <thead className="bg-slate-50 text-slate-600 sticky top-0">
@@ -429,8 +468,11 @@ export default function BulkForm({
                   <th className="text-left p-2 whitespace-nowrap">Mã căn</th>
                   {isCommission && (
                     <>
+                      <th className="text-right p-2 whitespace-nowrap bg-slate-100">
+                        % đã thu trước
+                      </th>
                       <th className="text-right p-2">%PMG</th>
-                      <th className="text-right p-2">%thu</th>
+                      <th className="text-right p-2">%thu đợt này</th>
                     </>
                   )}
                   <th className="text-right p-2 whitespace-nowrap bg-blue-50">
@@ -442,7 +484,10 @@ export default function BulkForm({
                   <th className="text-right p-2 whitespace-nowrap bg-blue-50">
                     Phải thu đợt này
                   </th>
-                  <th className="text-right p-2 whitespace-nowrap bg-blue-50">
+                  <th
+                    className="text-right p-2 whitespace-nowrap bg-blue-50"
+                    title="= Tổng phải thu − Đã ĐC trước (không phụ thuộc %thu đợt này)"
+                  >
                     Còn phải thu
                   </th>
                   <th className="text-right p-2 whitespace-nowrap bg-green-50">
@@ -457,10 +502,15 @@ export default function BulkForm({
               <tbody>
                 {preview.map((p, i) => {
                   const bad = p.warnings.length > 0;
+                  const rowBg = p.isRegression
+                    ? "bg-red-50"
+                    : bad
+                      ? "bg-amber-50"
+                      : "";
                   return (
                     <tr
                       key={i}
-                      className={`border-t border-slate-100 ${bad ? "bg-amber-50" : ""}`}
+                      className={`border-t border-slate-100 ${rowBg}`}
                     >
                       <td className="p-2 text-slate-400">{i + 1}</td>
                       <td className="p-2 font-mono">
@@ -473,10 +523,17 @@ export default function BulkForm({
                       </td>
                       {isCommission && (
                         <>
+                          <td className="p-2 text-right tabular-nums bg-slate-100/50 text-slate-600">
+                            {p.prevMaxPhasePct > 0
+                              ? (p.prevMaxPhasePct * 100).toFixed(2) + "%"
+                              : "—"}
+                          </td>
                           <td className="p-2 text-right tabular-nums">
                             {p.pmgLk > 0 ? (p.pmgLk * 100).toFixed(2) + "%" : "—"}
                           </td>
-                          <td className="p-2 text-right tabular-nums">
+                          <td
+                            className={`p-2 text-right tabular-nums ${p.isRegression ? "text-red-700 font-semibold" : ""}`}
+                          >
                             {p.phasePct > 0
                               ? (p.phasePct * 100).toFixed(2) + "%"
                               : "—"}
