@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import React, { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { BulkCostRow } from "@/lib/actions/costs";
 import SearchableSelect from "@/components/SearchableSelect";
-import { costTypeLabel, fmtMoney } from "@/lib/format";
+import { costTypeLabel, fmtMoney, fmtPctTight } from "@/lib/format";
+import { computeLuyKe, computeTargetFull, type ProductConfig, type CostType } from "@/lib/costCalc";
 import { toast } from "sonner";
 
 type ProductOpt = {
@@ -105,14 +106,28 @@ const suggestEmployee = (p: ProductOpt | undefined, ct: string): string => {
 
 export default function BulkCostForm({
   products,
+  paidByKey,
+  maxPmgPctByProduct,
   onSave,
 }: {
   products: ProductOpt[];
+  paidByKey: Record<string, number>;
+  maxPmgPctByProduct: Record<number, number>;
   onSave: (rows: BulkCostRow[]) => Promise<{ ok: number; errors: { index: number; message: string }[] }>;
 }) {
   const [pending, start] = useTransition();
   const router = useRouter();
   const [rows, setRows] = useState<Row[]>([emptyRow(), emptyRow(), emptyRow()]);
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+
+  const toggleExpand = (idx: number) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  };
 
   const productMap = new Map(products.map((p) => [p.id, p]));
 
@@ -208,8 +223,11 @@ export default function BulkCostForm({
               const p = r.productId ? productMap.get(Number(r.productId)) : undefined;
               const maxAmt = targetForRow(p, r.costType);
               const overLimit = maxAmt > 0 && r.amount > maxAmt + 1000;
+              const isExpanded = expanded.has(idx);
+              const canExpand = !!p;
               return (
-                <tr key={idx} className="border-t border-slate-100 align-top">
+              <React.Fragment key={idx}>
+                <tr className="border-t border-slate-100 align-top">
                   <td className="p-1">
                     <SearchableSelect
                       value={r.productId}
@@ -300,16 +318,46 @@ export default function BulkCostForm({
                     />
                   </td>
                   <td className="p-1 text-center">
-                    <button
-                      type="button"
-                      onClick={() => removeRow(idx)}
-                      className="text-red-500 hover:bg-red-50 rounded px-1"
-                      title="Xoá dòng"
-                    >
-                      ×
-                    </button>
+                    <div className="flex items-center justify-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => canExpand && toggleExpand(idx)}
+                        disabled={!canExpand}
+                        className={`rounded px-1.5 py-0.5 text-xs ${
+                          canExpand
+                            ? isExpanded
+                              ? "bg-blue-100 text-blue-700"
+                              : "text-slate-500 hover:bg-slate-100"
+                            : "text-slate-300 cursor-not-allowed"
+                        }`}
+                        title={canExpand ? "Xem thông tin căn" : "Chọn căn trước"}
+                      >
+                        {isExpanded ? "▴" : "▾"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeRow(idx)}
+                        className="text-red-500 hover:bg-red-50 rounded px-1"
+                        title="Xoá dòng"
+                      >
+                        ×
+                      </button>
+                    </div>
                   </td>
                 </tr>
+                {isExpanded && p && (
+                  <tr className="bg-blue-50/40 border-t border-blue-200">
+                    <td colSpan={9} className="p-3">
+                      <InfoPanel
+                        product={p}
+                        costType={r.costType}
+                        maxPmgPct={maxPmgPctByProduct[p.id] ?? 0}
+                        paidByKey={paidByKey}
+                      />
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
               );
             })}
           </tbody>
@@ -344,6 +392,160 @@ export default function BulkCostForm({
           {pending ? "Đang lưu..." : "Lưu tất cả"}
         </button>
       </div>
+    </div>
+  );
+}
+
+// ============ InfoPanel: hiển thị thông tin tham khảo cho căn + costType ============
+
+const COST_TYPE_LABEL_KPI: Record<string, string> = {
+  kpi_ceo: "KPI CEO",
+  kpi_tpkd: "KPI TPKD",
+  kpi_admin: "KPI Admin",
+};
+
+function InfoPanel({
+  product,
+  costType,
+  maxPmgPct,
+  paidByKey,
+}: {
+  product: ProductOpt;
+  costType: CostType;
+  maxPmgPct: number;
+  paidByKey: Record<string, number>;
+}) {
+  // Build ProductConfig for costCalc
+  const config: ProductConfig = {
+    pmgBasePrice: Number(product.pmgBasePrice ?? 0),
+    pmgSaleRate: Number(product.pmgSaleRate ?? 0),
+    adminFeeSale: Number(product.adminFeeSale ?? 0),
+    customerSupport: Number(product.customerSupport ?? 0),
+    saleCommissionRate: Number(product.saleCommissionRate ?? 0),
+    kpiCeoRate: Number(product.kpiCeoRate ?? 0),
+    kpiTpkdRate: Number(product.kpiTpkdRate ?? 0),
+    kpiAdminRate: Number(product.kpiAdminRate ?? 0),
+    bonusSale: Number(product.bonusSale ?? 0),
+    bonusManager: Number(product.bonusManager ?? 0),
+    cdtBonusSale: Number(product.cdtBonusSale ?? 0),
+    cdtBonusManager: Number(product.cdtBonusManager ?? 0),
+  };
+
+  const paidBefore = paidByKey[`${product.id}:${costType}`] ?? 0;
+  const luyKeThisTime = computeLuyKe(config, costType, maxPmgPct);
+  const targetFull = computeTargetFull(config, costType);
+  const receivable = Math.max(0, luyKeThisTime - paidBefore);
+  const remaining = Math.max(0, targetFull - luyKeThisTime);
+
+  const isKpiCeo = costType === "kpi_ceo";
+  const isKpiTpkd = costType === "kpi_tpkd";
+  const isKpiAdmin = costType === "kpi_admin";
+  const isKpi = isKpiCeo || isKpiTpkd || isKpiAdmin;
+
+  return (
+    <div className="space-y-3">
+      {/* Group 1 — Thông tin chung */}
+      <div>
+        <div className="text-[10px] uppercase text-slate-500 font-semibold tracking-wider mb-1.5">
+          Thông tin chung
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs">
+          <InfoRow label="% PMG_LK đã thu đến ngày ĐC" value={maxPmgPct > 0 ? fmtPctTight(maxPmgPct) : "—"} />
+          <InfoRow label="% HH sale" value={config.saleCommissionRate > 0 ? fmtPctTight(config.saleCommissionRate) : "—"} />
+          <InfoRow label="Phí admin sale (gồm VAT)" value={config.adminFeeSale > 0 ? fmtMoney(config.adminFeeSale) : "—"} />
+          <InfoRow label="Hỗ trợ khách" value={config.customerSupport > 0 ? fmtMoney(config.customerSupport) : "—"} />
+        </div>
+      </div>
+
+      {/* Group 2 — PMG lũy kế (chỉ khi costType có công thức PMG) */}
+      {(costType === "sale_commission" || isKpi) && (
+        <div>
+          <div className="text-[10px] uppercase text-slate-500 font-semibold tracking-wider mb-1.5">
+            PMG lũy kế
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs">
+            <InfoRow label="PMG đã đối chiếu LK" value={paidBefore > 0 ? fmtMoney(paidBefore) : "—"} />
+            <InfoRow label="PMG LK đợt này" value={luyKeThisTime > 0 ? fmtMoney(luyKeThisTime) : "—"} strong />
+            <InfoRow label="PMG phải trả đợt này (gross)" value={receivable > 0 ? fmtMoney(receivable) : "—"} strong color="orange" />
+            <InfoRow label="PMG còn phải trả đợt sau" value={remaining > 0 ? fmtMoney(remaining) : "—"} color="slate" />
+          </div>
+        </div>
+      )}
+
+      {/* Conditional KPI section */}
+      {isKpi && (
+        <div>
+          <div className="text-[10px] uppercase text-slate-500 font-semibold tracking-wider mb-1.5">
+            {COST_TYPE_LABEL_KPI[costType]}
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs">
+            {isKpiAdmin ? (
+              <>
+                <InfoRow label="Thưởng Admin" value={targetFull > 0 ? fmtMoney(targetFull) : "—"} />
+                <InfoRow label="Đã thanh toán" value={paidBefore > 0 ? fmtMoney(paidBefore) : "—"} />
+                <InfoRow
+                  label="Tổng phải trả đợt này"
+                  value={receivable > 0 ? fmtMoney(receivable) : "—"}
+                  strong
+                  color="orange"
+                />
+              </>
+            ) : (
+              <>
+                <InfoRow
+                  label={`Thưởng ${COST_TYPE_LABEL_KPI[costType]} lũy kế`}
+                  value={luyKeThisTime > 0 ? fmtMoney(luyKeThisTime) : "—"}
+                />
+                <InfoRow
+                  label={`Thưởng ${COST_TYPE_LABEL_KPI[costType]} đã thanh toán`}
+                  value={paidBefore > 0 ? fmtMoney(paidBefore) : "—"}
+                />
+                <InfoRow
+                  label={`Còn thanh toán đợt này`}
+                  value={receivable > 0 ? fmtMoney(receivable) : "—"}
+                  strong
+                  color="orange"
+                />
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="text-[10px] text-slate-400 italic">
+        {maxPmgPct === 0 && (
+          <>Chưa có %PMG_LK thu — cần vào Doanh thu tạo đợt trước để tính lũy kế.</>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function InfoRow({
+  label,
+  value,
+  strong,
+  color,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+  color?: "orange" | "slate";
+}) {
+  const valueColor =
+    color === "orange"
+      ? "text-orange-700"
+      : color === "slate"
+        ? "text-slate-500"
+        : "text-slate-800";
+  return (
+    <div className="flex justify-between items-baseline gap-2 py-0.5 border-b border-slate-100 last:border-b-0">
+      <span className="text-slate-500 truncate">{label}</span>
+      <span
+        className={`tabular-nums ${valueColor} ${strong ? "font-semibold" : ""}`}
+      >
+        {value}
+      </span>
     </div>
   );
 }

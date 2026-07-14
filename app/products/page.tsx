@@ -88,12 +88,18 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
     note: products.note,
   };
 
-  const whereParts: SQL[] = [eq(products.saleType, activeTab)];
-  if (filterProjectId) whereParts.push(eq(products.projectId, filterProjectId));
-  if (filterDeptId) whereParts.push(eq(products.departmentId, filterDeptId));
-  if (dateFrom) whereParts.push(gte(products.depositDate, dateFrom));
-  if (dateTo) whereParts.push(lte(products.depositDate, dateTo));
-  if (filterUnitCode) whereParts.push(ilike(products.unitCode, `%${filterUnitCode}%`));
+  // Nếu vừa từ bulk về (?justCreated) → bỏ HẾT filter để user thấy các
+  // căn mới, kể cả khác tab / dự án / phòng / dates. justCreated ids sẽ
+  // được float lên đầu + highlight.
+  const skipFilters = justCreatedIds.size > 0;
+  const whereParts: SQL[] = skipFilters ? [] : [eq(products.saleType, activeTab)];
+  if (!skipFilters) {
+    if (filterProjectId) whereParts.push(eq(products.projectId, filterProjectId));
+    if (filterDeptId) whereParts.push(eq(products.departmentId, filterDeptId));
+    if (dateFrom) whereParts.push(gte(products.depositDate, dateFrom));
+    if (dateTo) whereParts.push(lte(products.depositDate, dateTo));
+    if (filterUnitCode) whereParts.push(ilike(products.unitCode, `%${filterUnitCode}%`));
+  }
 
   const baseQuery = db
     .select(selectCols)
@@ -103,7 +109,13 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
     .leftJoin(departments, eq(products.departmentId, departments.id));
 
   const rowsRaw = await baseQuery
-    .where(whereParts.length === 1 ? whereParts[0] : and(...whereParts))
+    .where(
+      whereParts.length === 0
+        ? undefined
+        : whereParts.length === 1
+          ? whereParts[0]
+          : and(...whereParts),
+    )
     .orderBy(desc(products.id));
 
   // Ưu tiên: căn vừa tạo lên đầu (nếu ?justCreated=id1,id2), sau đó id DESC

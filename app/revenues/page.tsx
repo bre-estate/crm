@@ -80,9 +80,13 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
     projectId: projects.id,
   };
 
-  const whereParts: SQL[] = [eq(products.saleType, activeTab)];
-  if (filterProjectId) whereParts.push(eq(products.projectId, filterProjectId));
-  if (filterUnitCode) whereParts.push(ilike(products.unitCode, `%${filterUnitCode}%`));
+  // Nếu vừa từ bulk về → bỏ hết filter (kể cả tab primary/secondary)
+  const skipFilters = justCreatedIds.size > 0;
+  const whereParts: SQL[] = skipFilters ? [] : [eq(products.saleType, activeTab)];
+  if (!skipFilters) {
+    if (filterProjectId) whereParts.push(eq(products.projectId, filterProjectId));
+    if (filterUnitCode) whereParts.push(ilike(products.unitCode, `%${filterUnitCode}%`));
+  }
 
   const baseQuery = db
     .select(selectCols)
@@ -93,7 +97,13 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
     .leftJoin(invoices, eq(revenueReconciliations.invoiceId, invoices.id));
 
   const rowsRaw = await baseQuery
-    .where(whereParts.length === 1 ? whereParts[0] : and(...whereParts))
+    .where(
+      whereParts.length === 0
+        ? undefined
+        : whereParts.length === 1
+          ? whereParts[0]
+          : and(...whereParts),
+    )
     .orderBy(desc(revenueReconciliations.id));
 
   // Float justCreated rows lên đầu (nếu có ?justCreated=id1,id2)
@@ -139,7 +149,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
     else statusKey = "waiting_pay";
     return { r, paid, status: statusKey };
   });
-  const filteredRows = activeStatus === "all"
+  const filteredRows = skipFilters || activeStatus === "all"
     ? rowsWithStatus
     : rowsWithStatus.filter((x) => x.status === activeStatus);
   const rows2 = filteredRows.map((x) => x.r);
