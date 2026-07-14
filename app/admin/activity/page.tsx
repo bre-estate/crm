@@ -166,7 +166,7 @@ export default async function ActivityAdminPage({
   return (
     <div className="space-y-4 max-w-7xl">
       <div>
-        <h1 className="text-2xl font-bold">🕓 Nhật ký hệ thống</h1>
+        <h1 className="text-2xl font-bold">Lịch sử hoạt động</h1>
         <p className="text-sm text-slate-500 mt-1">
           Ghi lại mọi thao tác Tạo / Sửa / Xóa trên căn, đối chiếu, dự án. Chỉ
           owner truy cập được.
