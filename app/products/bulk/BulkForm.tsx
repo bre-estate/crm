@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { BulkProductRow } from "@/lib/actions/products";
+import SearchableSelect from "@/components/SearchableSelect";
 import { toast } from "sonner";
 
 type ProjectOpt = {
@@ -302,18 +303,16 @@ export default function BulkProductForm({
               <label className="block text-xs text-slate-600 mb-1">
                 Dự án <span className="text-red-600">*</span>
               </label>
-              <select
+              <SearchableSelect
                 value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
-                className="input"
-              >
-                <option value="">-- Chọn dự án --</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.code} · {p.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setProjectId(String(v))}
+                placeholder="Tìm tên dự án hoặc CĐT..."
+                options={projects.map((p) => ({
+                  value: p.id,
+                  label: p.partnerName ? `${p.name} — ${p.partnerName}` : p.name,
+                }))}
+                required
+              />
               <div className="text-[10px] text-slate-500 mt-1">
                 1 lần bulk = 1 dự án. Muốn nhập nhiều dự án → chia nhiều lượt.
               </div>
