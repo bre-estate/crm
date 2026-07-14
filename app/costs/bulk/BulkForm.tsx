@@ -203,8 +203,8 @@ export default function BulkCostForm({
         muốn ghi payment cùng lúc. Dòng rỗng sẽ tự bỏ qua khi lưu.
       </div>
 
-      <div className="bg-white">
-        <table className="w-full text-xs border-collapse">
+      <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
+        <table className="w-full text-xs border-collapse min-w-[1200px]">
           <thead className="bg-slate-50 text-slate-600 text-[11px]">
             <tr>
               <th className="text-left p-2 min-w-56">Căn</th>
