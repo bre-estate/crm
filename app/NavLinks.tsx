@@ -18,6 +18,7 @@ const NAV: NavItem[] = [
   { href: "/costs", label: "Giá vốn" },
   { href: "/reports", label: "Báo cáo" },
   { href: "/finance", label: "Tài chính công ty", ownerOnly: true },
+  { href: "/admin/activity", label: "🕓 Nhật ký hệ thống", ownerOnly: true },
 ];
 
 function isActive(pathname: string, href: string): boolean {
