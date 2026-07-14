@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useState, useTransition } from "react"; // React namespace needed for InfoSection children type
 import { useRouter } from "next/navigation";
 import type { BulkCostRow } from "@/lib/actions/costs";
 import SearchableSelect from "@/components/SearchableSelect";
@@ -203,186 +203,195 @@ export default function BulkCostForm({
         muốn ghi payment cùng lúc. Dòng rỗng sẽ tự bỏ qua khi lưu.
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
-        <table className="w-full text-xs border-collapse min-w-[1200px]">
-          <thead className="bg-slate-50 text-slate-600 text-[11px]">
-            <tr>
-              <th className="text-left p-2 min-w-56">Căn</th>
-              <th className="text-left p-2 min-w-44">Loại chi phí</th>
-              <th className="text-left p-2 min-w-40">Người nhận</th>
-              <th className="text-left p-2">Ngày ĐC</th>
-              <th className="text-right p-2 min-w-32">Số tiền</th>
-              <th className="text-left p-2">Ngày trả</th>
-              <th className="text-right p-2 min-w-32">Đã trả</th>
-              <th className="text-left p-2 min-w-32">Ghi chú</th>
-              <th className="text-center p-2 w-8"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, idx) => {
-              const p = r.productId ? productMap.get(Number(r.productId)) : undefined;
-              const maxAmt = targetForRow(p, r.costType);
-              const overLimit = maxAmt > 0 && r.amount > maxAmt + 1000;
-              const isExpanded = expanded.has(idx);
-              const canExpand = !!p;
-              return (
-              <React.Fragment key={idx}>
-                <tr className="border-t border-slate-100 align-top">
-                  <td className="p-1">
-                    <SearchableSelect
-                      value={r.productId}
-                      onChange={(v) => update(idx, { productId: v ? Number(v) : "" })}
-                      placeholder="Gõ mã căn..."
-                      emptyOption="— Chọn căn —"
-                      options={productOptions}
-                    />
-                  </td>
-                  <td className="p-1">
-                    <select
-                      value={r.costType}
-                      onChange={(e) =>
-                        update(idx, { costType: e.target.value as (typeof COST_TYPES)[number] })
-                      }
-                      className="input text-xs py-1"
-                    >
-                      {COST_TYPES.filter((ct) => {
-                        // Chưa chọn căn → show tất cả. Đã chọn → chỉ show
-                        // loại có value > 0 trong config. Đồng thời luôn
-                        // giữ current selection để tránh dropdown "biến mất".
-                        if (!p) return true;
-                        if (ct === r.costType) return true;
-                        return targetForRow(p, ct) > 0;
-                      }).map((ct) => (
-                        <option key={ct} value={ct}>
-                          {costTypeLabel(ct)}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="p-1">
-                    <input
-                      value={r.employeeName}
-                      onChange={(e) => update(idx, { employeeName: e.target.value })}
-                      placeholder="Tên NVKD/TPKD/Admin"
-                      className="input text-xs py-1"
-                    />
-                  </td>
-                  <td className="p-1">
-                    <input
-                      type="date"
-                      value={r.reconciliationDate}
-                      onChange={(e) => update(idx, { reconciliationDate: e.target.value })}
-                      className="input text-xs py-1"
-                    />
-                  </td>
-                  <td className="p-1">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={r.amount ? r.amount.toLocaleString("vi-VN") : ""}
-                      onChange={(e) => {
-                        const digits = e.target.value.replace(/\D/g, "");
-                        update(idx, { amount: digits ? Number(digits) : 0 });
-                      }}
-                      onFocus={(e) => e.currentTarget.select()}
-                      placeholder="0"
-                      className={`input text-xs py-1 text-right tabular-nums ${overLimit ? "border-red-400 text-red-700" : ""}`}
-                    />
-                    {maxAmt > 0 && (
-                      <div className={`text-[10px] mt-0.5 ${overLimit ? "text-red-600" : "text-slate-400"}`}>
-                        Tối đa: {fmtMoney(maxAmt)}
-                      </div>
-                    )}
-                  </td>
-                  <td className="p-1">
-                    <input
-                      type="date"
-                      value={r.paymentDate}
-                      onChange={(e) => update(idx, { paymentDate: e.target.value })}
-                      className="input text-xs py-1"
-                    />
-                  </td>
-                  <td className="p-1">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={r.paymentAmount ? r.paymentAmount.toLocaleString("vi-VN") : ""}
-                      onChange={(e) => {
-                        const digits = e.target.value.replace(/\D/g, "");
-                        update(idx, { paymentAmount: digits ? Number(digits) : 0 });
-                      }}
-                      onFocus={(e) => e.currentTarget.select()}
-                      placeholder="= số tiền"
-                      className="input text-xs py-1 text-right tabular-nums"
-                    />
-                  </td>
-                  <td className="p-1">
-                    <input
-                      value={r.note}
-                      onChange={(e) => update(idx, { note: e.target.value })}
-                      placeholder="—"
-                      className="input text-xs py-1"
-                    />
-                  </td>
-                  <td className="p-1 text-center">
-                    <div className="flex items-center justify-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => canExpand && toggleExpand(idx)}
-                        disabled={!canExpand}
-                        className={`rounded-md w-8 h-8 flex items-center justify-center border transition-colors ${
-                          canExpand
-                            ? isExpanded
-                              ? "bg-blue-500 text-white border-blue-500 hover:bg-blue-600"
-                              : "bg-white text-slate-500 border-slate-300 hover:bg-slate-50 hover:text-slate-700"
-                            : "bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed"
-                        }`}
-                        title={canExpand ? "Xem thông tin căn" : "Chọn căn trước"}
-                        aria-expanded={isExpanded}
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className={`transition-transform ${isExpanded ? "rotate-180" : ""}`}
-                        >
-                          <polyline points="6 9 12 15 18 9" />
-                        </svg>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => removeRow(idx)}
-                        className="rounded-md w-7 h-7 flex items-center justify-center text-lg leading-none text-red-500 border border-transparent hover:bg-red-50 hover:border-red-200"
-                        title="Xoá dòng"
-                      >
-                        ×
-                      </button>
+      <div className="space-y-3">
+        {rows.map((r, idx) => {
+          const p = r.productId ? productMap.get(Number(r.productId)) : undefined;
+          const maxAmt = targetForRow(p, r.costType);
+          const overLimit = maxAmt > 0 && r.amount > maxAmt + 1000;
+          const isExpanded = expanded.has(idx);
+          const canExpand = !!p;
+          return (
+            <div
+              key={idx}
+              className="bg-white border border-slate-200 rounded-xl overflow-hidden"
+            >
+              {/* Header: số dòng + căn + actions */}
+              <div className="bg-slate-50 border-b border-slate-200 px-3 py-2 flex items-center gap-2">
+                <span className="text-xs text-slate-500 font-medium w-6">
+                  #{idx + 1}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <SearchableSelect
+                    value={r.productId}
+                    onChange={(v) => update(idx, { productId: v ? Number(v) : "" })}
+                    placeholder="Gõ mã căn..."
+                    emptyOption="— Chọn căn —"
+                    options={productOptions}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => canExpand && toggleExpand(idx)}
+                  disabled={!canExpand}
+                  className={`shrink-0 rounded-md px-2 h-8 flex items-center gap-1 border text-xs transition-colors ${
+                    canExpand
+                      ? isExpanded
+                        ? "bg-blue-500 text-white border-blue-500 hover:bg-blue-600"
+                        : "bg-white text-slate-600 border-slate-300 hover:bg-slate-50"
+                      : "bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed"
+                  }`}
+                  title={canExpand ? "Xem thông tin căn" : "Chọn căn trước"}
+                  aria-expanded={isExpanded}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className={`transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                  <span>Info căn</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => removeRow(idx)}
+                  className="shrink-0 rounded-md w-8 h-8 flex items-center justify-center text-lg leading-none text-red-500 border border-transparent hover:bg-red-50 hover:border-red-200"
+                  title="Xoá dòng"
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Info panel (collapsible) */}
+              {isExpanded && p && (
+                <div className="bg-blue-50/40 border-b border-blue-200 p-3">
+                  <InfoPanel
+                    product={p}
+                    costType={r.costType}
+                    maxPmgPct={maxPmgPctByProduct[p.id] ?? 0}
+                    paidByKey={paidByKey}
+                  />
+                </div>
+              )}
+
+              {/* Form fields — 3 hàng 3 cột, responsive */}
+              <div className="p-3 grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[11px] text-slate-600 mb-1 font-medium">
+                    Loại chi phí
+                  </label>
+                  <select
+                    value={r.costType}
+                    onChange={(e) =>
+                      update(idx, { costType: e.target.value as (typeof COST_TYPES)[number] })
+                    }
+                    className="input text-sm"
+                  >
+                    {COST_TYPES.filter((ct) => {
+                      if (!p) return true;
+                      if (ct === r.costType) return true;
+                      return targetForRow(p, ct) > 0;
+                    }).map((ct) => (
+                      <option key={ct} value={ct}>
+                        {costTypeLabel(ct)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] text-slate-600 mb-1 font-medium">
+                    Người nhận
+                  </label>
+                  <input
+                    value={r.employeeName}
+                    onChange={(e) => update(idx, { employeeName: e.target.value })}
+                    placeholder="Tên NVKD/TPKD/Admin"
+                    className="input text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-slate-600 mb-1 font-medium">
+                    Ngày ĐC
+                  </label>
+                  <input
+                    type="date"
+                    value={r.reconciliationDate}
+                    onChange={(e) => update(idx, { reconciliationDate: e.target.value })}
+                    className="input text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-slate-600 mb-1 font-medium">
+                    Số tiền
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={r.amount ? r.amount.toLocaleString("vi-VN") : ""}
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/\D/g, "");
+                      update(idx, { amount: digits ? Number(digits) : 0 });
+                    }}
+                    onFocus={(e) => e.currentTarget.select()}
+                    placeholder="0"
+                    className={`input text-sm text-right tabular-nums ${overLimit ? "border-red-400 text-red-700" : ""}`}
+                  />
+                  {maxAmt > 0 && (
+                    <div className={`text-[10px] mt-0.5 ${overLimit ? "text-red-600" : "text-slate-400"}`}>
+                      Tối đa: {fmtMoney(maxAmt)}
                     </div>
-                  </td>
-                </tr>
-                {isExpanded && p && (
-                  <tr className="bg-blue-50/40 border-t border-blue-200">
-                    <td colSpan={9} className="p-3">
-                      <InfoPanel
-                        product={p}
-                        costType={r.costType}
-                        maxPmgPct={maxPmgPctByProduct[p.id] ?? 0}
-                        paidByKey={paidByKey}
-                      />
-                    </td>
-                  </tr>
-                )}
-              </React.Fragment>
-              );
-            })}
-          </tbody>
-        </table>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-[11px] text-slate-600 mb-1 font-medium">
+                    Ngày trả
+                  </label>
+                  <input
+                    type="date"
+                    value={r.paymentDate}
+                    onChange={(e) => update(idx, { paymentDate: e.target.value })}
+                    className="input text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-slate-600 mb-1 font-medium">
+                    Đã trả
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={r.paymentAmount ? r.paymentAmount.toLocaleString("vi-VN") : ""}
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/\D/g, "");
+                      update(idx, { paymentAmount: digits ? Number(digits) : 0 });
+                    }}
+                    onFocus={(e) => e.currentTarget.select()}
+                    placeholder="= số tiền"
+                    className="input text-sm text-right tabular-nums"
+                  />
+                </div>
+                <div className="md:col-span-3">
+                  <label className="block text-[11px] text-slate-600 mb-1 font-medium">
+                    Ghi chú
+                  </label>
+                  <input
+                    value={r.note}
+                    onChange={(e) => update(idx, { note: e.target.value })}
+                    placeholder="—"
+                    className="input text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       <div className="flex items-center gap-3 pt-2">
