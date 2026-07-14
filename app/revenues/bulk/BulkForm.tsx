@@ -4,12 +4,20 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { BulkRevenueRow } from "@/lib/actions/revenues";
 import { fmtMoney } from "@/lib/format";
+import SearchableSelect from "@/components/SearchableSelect";
 import { toast } from "sonner";
+
+type ProjectOpt = {
+  id: number;
+  name: string;
+  partnerName: string | null;
+};
 
 type ProductOpt = {
   id: number;
   productCode: string;
   unitCode: string;
+  projectId: number;
   projectName: string | null;
   partnerName: string | null;
   saleType: string | null;
@@ -66,10 +74,12 @@ function normalize(s: string): string {
 // ============ Component ============
 
 export default function BulkForm({
+  projects,
   products,
   prevReconsByProduct,
   onSave,
 }: {
+  projects: ProjectOpt[];
   products: ProductOpt[];
   prevReconsByProduct: Record<number, PrevRecon>;
   onSave: (rows: BulkRevenueRow[]) => Promise<{
@@ -81,6 +91,7 @@ export default function BulkForm({
   const router = useRouter();
 
   // Top defaults
+  const [projectId, setProjectId] = useState<string>("");
   const [reconType, setReconType] = useState<ReconType>("commission");
   const [defaultDate, setDefaultDate] = useState<string>("");
   const isCommission = reconType === "commission";
@@ -96,12 +107,17 @@ export default function BulkForm({
   const [colMinutes, setColMinutes] = useState("");
   const [colNote, setColNote] = useState("");
 
-  // Map unitCode → product (normalize để so)
+  // Filter products theo dự án đã chọn — 1 lần bulk = 1 dự án. Nếu chưa
+  // chọn dự án → không lookup được → warning "Chọn dự án ở trên".
   const productByUnitCode = useMemo(() => {
     const m = new Map<string, ProductOpt>();
-    for (const p of products) m.set(normalize(p.unitCode), p);
+    if (!projectId) return m;
+    const pid = Number(projectId);
+    for (const p of products) {
+      if (p.projectId === pid) m.set(normalize(p.unitCode), p);
+    }
     return m;
-  }, [products]);
+  }, [products, projectId]);
 
   const cols = useMemo(
     () => ({
@@ -143,7 +159,10 @@ export default function BulkForm({
       if (!unit) continue;
 
       const product = productByUnitCode.get(normalize(unit)) ?? null;
-      if (!product) warnings.push(`Không tìm thấy căn "${unit}"`);
+      if (!product) {
+        if (!projectId) warnings.push("Chưa chọn dự án ở trên");
+        else warnings.push(`Không tìm thấy căn "${unit}" trong dự án này`);
+      }
 
       const pmgBase = Number(product?.pmgBasePrice ?? 0);
       const admin = Number(product?.adminFee ?? 0);
@@ -212,7 +231,7 @@ export default function BulkForm({
       });
     }
     return out;
-  }, [nRows, cols, productByUnitCode, prevReconsByProduct, isCommission, isBonusSale, isBonusMgr, reconType, defaultDate]);
+  }, [nRows, cols, productByUnitCode, prevReconsByProduct, isCommission, isBonusSale, isBonusMgr, reconType, defaultDate, projectId]);
 
   const validCount = preview.filter((p) => p.warnings.length === 0 && p.row.productId > 0).length;
   const totalWarnings = preview.reduce((s, p) => s + p.warnings.length, 0);
@@ -266,8 +285,26 @@ export default function BulkForm({
 
   return (
     <div className="space-y-4">
-      {/* Top settings */}
-      <div className="bg-white border border-slate-200 rounded-xl p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+      {/* Top settings — Dự án + Loại đợt + Ngày ĐC */}
+      <div className="bg-white border border-slate-200 rounded-xl p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div>
+          <label className="block text-xs text-slate-600 mb-1">
+            Dự án <span className="text-red-600">*</span>
+          </label>
+          <SearchableSelect
+            value={projectId}
+            onChange={(v) => setProjectId(String(v))}
+            placeholder="Tìm tên dự án hoặc CĐT..."
+            options={projects.map((p) => ({
+              value: p.id,
+              label: p.partnerName ? `${p.name} — ${p.partnerName}` : p.name,
+            }))}
+            required
+          />
+          <div className="text-[10px] text-slate-500 mt-1">
+            1 lần bulk = 1 dự án. Muốn nhập nhiều dự án → chia nhiều lượt.
+          </div>
+        </div>
         <div>
           <label className="block text-xs text-slate-600 mb-1">
             Loại đợt <span className="text-red-600">*</span>
@@ -277,14 +314,14 @@ export default function BulkForm({
             onChange={(e) => setReconType(e.target.value as ReconType)}
             className="input"
           >
-            <option value="commission">Hoa hồng (auto tính số tiền từ %)</option>
+            <option value="commission">Hoa hồng (auto tính)</option>
             <option value="bonus_sale">Thưởng nóng cho sale</option>
             <option value="bonus_manager">Thưởng nóng cho QL</option>
           </select>
           <div className="text-[10px] text-slate-500 mt-1">
             {isCommission
-              ? "Số tiền sẽ tự tính từ %PMG_LK × %thu × Giá PMG − admin − đã ĐC trước."
-              : "Số tiền cần paste cụ thể (VD 22.000.000). Nếu không paste → dùng số cấu hình sẵn ở căn."}
+              ? "Số tiền tự tính từ %PMG × %thu × Giá PMG − admin − đã ĐC trước."
+              : "Số tiền cần paste cụ thể. Trống → dùng số cấu hình của căn."}
           </div>
         </div>
         <div>

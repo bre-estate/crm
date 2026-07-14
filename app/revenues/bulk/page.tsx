@@ -8,12 +8,22 @@ import { createRevenueBulk } from "@/lib/actions/revenues";
 export const dynamic = "force-dynamic";
 
 export default async function BulkRevenuePage() {
-  const [productOptions, existingRecons] = await Promise.all([
+  const [projectOptions, productOptions, existingRecons] = await Promise.all([
+    db
+      .select({
+        id: projects.id,
+        name: projects.name,
+        partnerName: partners.name,
+      })
+      .from(projects)
+      .leftJoin(partners, eq(projects.partnerId, partners.id))
+      .orderBy(asc(projects.name)),
     db
       .select({
         id: products.id,
         productCode: products.productCode,
         unitCode: products.unitCode,
+        projectId: products.projectId,
         projectName: projects.name,
         partnerName: partners.name,
         saleType: products.saleType,
@@ -64,6 +74,7 @@ export default async function BulkRevenuePage() {
       </div>
       <h1 className="text-2xl font-bold">Nhập hàng loạt đợt đối chiếu doanh thu</h1>
       <BulkForm
+        projects={projectOptions}
         products={productOptions}
         prevReconsByProduct={prevMap}
         onSave={async (rows) => {
