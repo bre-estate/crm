@@ -323,21 +323,21 @@ export default function BulkCostForm({
                         type="button"
                         onClick={() => canExpand && toggleExpand(idx)}
                         disabled={!canExpand}
-                        className={`rounded px-1.5 py-0.5 text-xs ${
+                        className={`rounded-md w-7 h-7 flex items-center justify-center text-base leading-none border ${
                           canExpand
                             ? isExpanded
-                              ? "bg-blue-100 text-blue-700"
-                              : "text-slate-500 hover:bg-slate-100"
-                            : "text-slate-300 cursor-not-allowed"
+                              ? "bg-blue-500 text-white border-blue-500 hover:bg-blue-600"
+                              : "bg-white text-slate-600 border-slate-300 hover:bg-slate-50"
+                            : "bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed"
                         }`}
                         title={canExpand ? "Xem thông tin căn" : "Chọn căn trước"}
                       >
-                        {isExpanded ? "▴" : "▾"}
+                        {isExpanded ? "▾" : "▸"}
                       </button>
                       <button
                         type="button"
                         onClick={() => removeRow(idx)}
-                        className="text-red-500 hover:bg-red-50 rounded px-1"
+                        className="rounded-md w-7 h-7 flex items-center justify-center text-lg leading-none text-red-500 border border-transparent hover:bg-red-50 hover:border-red-200"
                         title="Xoá dòng"
                       >
                         ×
@@ -443,109 +443,89 @@ function InfoPanel({
   const isKpi = isKpiCeo || isKpiTpkd || isKpiAdmin;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 rounded-lg bg-white border border-slate-200 p-4">
       {/* Group 1 — Thông tin chung */}
-      <div>
-        <div className="text-[10px] uppercase text-slate-500 font-semibold tracking-wider mb-1.5">
-          Thông tin chung
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs">
-          <InfoRow label="% PMG_LK đã thu đến ngày ĐC" value={maxPmgPct > 0 ? fmtPctTight(maxPmgPct) : "—"} />
-          <InfoRow label="% HH sale" value={config.saleCommissionRate > 0 ? fmtPctTight(config.saleCommissionRate) : "—"} />
-          <InfoRow label="Phí admin sale (gồm VAT)" value={config.adminFeeSale > 0 ? fmtMoney(config.adminFeeSale) : "—"} />
-          <InfoRow label="Hỗ trợ khách" value={config.customerSupport > 0 ? fmtMoney(config.customerSupport) : "—"} />
-        </div>
-      </div>
+      <InfoSection title="Thông tin chung">
+        <StatCard label="% PMG_LK đã thu đến ngày ĐC" value={maxPmgPct > 0 ? fmtPctTight(maxPmgPct) : "—"} />
+        <StatCard label="% HH sale" value={config.saleCommissionRate > 0 ? fmtPctTight(config.saleCommissionRate) : "—"} />
+        <StatCard label="Phí admin sale (gồm VAT)" value={config.adminFeeSale > 0 ? fmtMoney(config.adminFeeSale) : "—"} />
+        <StatCard label="Hỗ trợ khách" value={config.customerSupport > 0 ? fmtMoney(config.customerSupport) : "—"} />
+      </InfoSection>
 
-      {/* Group 2 — PMG lũy kế (chỉ khi costType có công thức PMG) */}
+      {/* Group 2 — PMG lũy kế */}
       {(costType === "sale_commission" || isKpi) && (
-        <div>
-          <div className="text-[10px] uppercase text-slate-500 font-semibold tracking-wider mb-1.5">
-            PMG lũy kế
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs">
-            <InfoRow label="PMG đã đối chiếu LK" value={paidBefore > 0 ? fmtMoney(paidBefore) : "—"} />
-            <InfoRow label="PMG LK đợt này" value={luyKeThisTime > 0 ? fmtMoney(luyKeThisTime) : "—"} strong />
-            <InfoRow label="PMG phải trả đợt này (gross)" value={receivable > 0 ? fmtMoney(receivable) : "—"} strong color="orange" />
-            <InfoRow label="PMG còn phải trả đợt sau" value={remaining > 0 ? fmtMoney(remaining) : "—"} color="slate" />
-          </div>
-        </div>
+        <InfoSection title="PMG lũy kế">
+          <StatCard label="Đã đối chiếu (trước)" value={paidBefore > 0 ? fmtMoney(paidBefore) : "—"} />
+          <StatCard label="LK đợt này" value={luyKeThisTime > 0 ? fmtMoney(luyKeThisTime) : "—"} tone="info" />
+          <StatCard label="Phải trả đợt này (gross)" value={receivable > 0 ? fmtMoney(receivable) : "—"} tone="highlight" />
+          <StatCard label="Còn phải trả đợt sau" value={remaining > 0 ? fmtMoney(remaining) : "—"} tone="muted" />
+        </InfoSection>
       )}
 
       {/* Conditional KPI section */}
       {isKpi && (
-        <div>
-          <div className="text-[10px] uppercase text-slate-500 font-semibold tracking-wider mb-1.5">
-            {COST_TYPE_LABEL_KPI[costType]}
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs">
-            {isKpiAdmin ? (
-              <>
-                <InfoRow label="Thưởng Admin" value={targetFull > 0 ? fmtMoney(targetFull) : "—"} />
-                <InfoRow label="Đã thanh toán" value={paidBefore > 0 ? fmtMoney(paidBefore) : "—"} />
-                <InfoRow
-                  label="Tổng phải trả đợt này"
-                  value={receivable > 0 ? fmtMoney(receivable) : "—"}
-                  strong
-                  color="orange"
-                />
-              </>
-            ) : (
-              <>
-                <InfoRow
-                  label={`Thưởng ${COST_TYPE_LABEL_KPI[costType]} lũy kế`}
-                  value={luyKeThisTime > 0 ? fmtMoney(luyKeThisTime) : "—"}
-                />
-                <InfoRow
-                  label={`Thưởng ${COST_TYPE_LABEL_KPI[costType]} đã thanh toán`}
-                  value={paidBefore > 0 ? fmtMoney(paidBefore) : "—"}
-                />
-                <InfoRow
-                  label={`Còn thanh toán đợt này`}
-                  value={receivable > 0 ? fmtMoney(receivable) : "—"}
-                  strong
-                  color="orange"
-                />
-              </>
-            )}
-          </div>
-        </div>
+        <InfoSection title={COST_TYPE_LABEL_KPI[costType]}>
+          {isKpiAdmin ? (
+            <>
+              <StatCard label="Thưởng Admin" value={targetFull > 0 ? fmtMoney(targetFull) : "—"} />
+              <StatCard label="Đã thanh toán" value={paidBefore > 0 ? fmtMoney(paidBefore) : "—"} />
+              <StatCard label="Tổng phải trả đợt này" value={receivable > 0 ? fmtMoney(receivable) : "—"} tone="highlight" />
+            </>
+          ) : (
+            <>
+              <StatCard label={`Lũy kế`} value={luyKeThisTime > 0 ? fmtMoney(luyKeThisTime) : "—"} />
+              <StatCard label={`Đã thanh toán`} value={paidBefore > 0 ? fmtMoney(paidBefore) : "—"} />
+              <StatCard label={`Còn thanh toán đợt này`} value={receivable > 0 ? fmtMoney(receivable) : "—"} tone="highlight" />
+            </>
+          )}
+        </InfoSection>
       )}
 
-      <div className="text-[10px] text-slate-400 italic">
-        {maxPmgPct === 0 && (
-          <>Chưa có %PMG_LK thu — cần vào Doanh thu tạo đợt trước để tính lũy kế.</>
-        )}
+      {maxPmgPct === 0 && (
+        <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2.5 py-1.5">
+          Chưa có %PMG_LK thu — cần vào Doanh thu tạo đợt trước để tính lũy kế.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InfoSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="text-[10px] uppercase text-slate-500 font-semibold tracking-wider mb-2 pl-1">
+        {title}
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        {children}
       </div>
     </div>
   );
 }
 
-function InfoRow({
+function StatCard({
   label,
   value,
-  strong,
-  color,
+  tone,
 }: {
   label: string;
   value: string;
-  strong?: boolean;
-  color?: "orange" | "slate";
+  tone?: "highlight" | "info" | "muted";
 }) {
-  const valueColor =
-    color === "orange"
-      ? "text-orange-700"
-      : color === "slate"
-        ? "text-slate-500"
-        : "text-slate-800";
+  const styles =
+    tone === "highlight"
+      ? "bg-orange-50 border-orange-200 text-orange-800"
+      : tone === "info"
+        ? "bg-blue-50 border-blue-200 text-blue-800"
+        : tone === "muted"
+          ? "bg-slate-50 border-slate-200 text-slate-500"
+          : "bg-white border-slate-200 text-slate-800";
   return (
-    <div className="flex justify-between items-baseline gap-2 py-0.5 border-b border-slate-100 last:border-b-0">
-      <span className="text-slate-500 truncate">{label}</span>
-      <span
-        className={`tabular-nums ${valueColor} ${strong ? "font-semibold" : ""}`}
-      >
-        {value}
-      </span>
+    <div className={`rounded-md border px-3 py-2 ${styles}`}>
+      <div className="text-[10px] uppercase tracking-wide opacity-70 mb-0.5 truncate" title={label}>
+        {label}
+      </div>
+      <div className="text-sm font-semibold tabular-nums">{value}</div>
     </div>
   );
 }
