@@ -169,11 +169,12 @@ export default function ProductsTable({
               const bg = isSelected
                 ? "bg-orange-50"
                 : isJustCreated
-                  ? "bg-yellow-50"
+                  ? "highlight-fade"
                   : "";
               return (
                 <tr
                   key={r.id}
+                  data-just-created={isJustCreated ? "1" : undefined}
                   className={`border-t border-slate-100 hover:bg-slate-50 ${bg}`}
                 >
                   <td className="p-2">

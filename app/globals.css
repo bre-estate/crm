@@ -45,3 +45,20 @@ button:disabled,
   background: rgb(248 250 252);
   color: rgb(71 85 105);
 }
+
+/* Row vừa tạo (bulk) — glow vàng đậm rồi fade về trong 3.5s, giúp mắt
+   focus. respect prefers-reduced-motion. */
+@keyframes highlight-fade {
+  0%   { background-color: rgb(254 240 138); } /* yellow-200 */
+  40%  { background-color: rgb(254 249 195); } /* yellow-100 */
+  100% { background-color: transparent; }
+}
+.highlight-fade {
+  animation: highlight-fade 3.5s ease-out forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .highlight-fade {
+    animation: none;
+    background-color: rgb(254 249 195); /* giữ nền vàng nhạt, không animate */
+  }
+}

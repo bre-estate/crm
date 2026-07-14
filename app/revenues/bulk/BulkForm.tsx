@@ -84,6 +84,7 @@ export default function BulkForm({
   prevReconsByProduct: Record<number, PrevRecon>;
   onSave: (rows: BulkRevenueRow[]) => Promise<{
     ok: number;
+    createdIds: number[];
     errors: { index: number; message: string }[];
   }>;
 }) {
@@ -284,7 +285,11 @@ export default function BulkForm({
           });
         } else {
           toast.success(`Đã tạo ${res.ok} đợt đối chiếu`);
-          router.push("/revenues");
+          const qs =
+            res.createdIds.length > 0
+              ? `?justCreated=${res.createdIds.join(",")}`
+              : "";
+          router.push(`/revenues${qs}`);
         }
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Lỗi");

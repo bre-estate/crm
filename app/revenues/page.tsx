@@ -11,10 +11,17 @@ import { fmtMoney, fmtDate, fmtPct, displayPartnerName } from "@/lib/format";
 import { eq, desc, sum, and, ilike, type SQL } from "drizzle-orm";
 import Link from "next/link";
 import SearchableSelect from "@/components/SearchableSelect";
+import HighlightManager from "../HighlightManager";
 
 export const dynamic = "force-dynamic";
 
-type SearchParams = Promise<{ projectId?: string; unitCode?: string; tab?: string; status?: string }>;
+type SearchParams = Promise<{
+  projectId?: string;
+  unitCode?: string;
+  tab?: string;
+  status?: string;
+  justCreated?: string;
+}>;
 
 const STATUS_OPTIONS = [
   { key: "all", label: "Tất cả", icon: "" },
@@ -25,11 +32,17 @@ const STATUS_OPTIONS = [
 ] as const;
 
 export default async function RevenuesPage({ searchParams }: { searchParams: SearchParams }) {
-  const { projectId, unitCode, tab, status } = await searchParams;
+  const { projectId, unitCode, tab, status, justCreated } = await searchParams;
   const filterProjectId = projectId ? Number(projectId) : null;
   const filterUnitCode = unitCode?.trim() || null;
   const activeTab: "primary" | "secondary" = tab === "secondary" ? "secondary" : "primary";
   const activeStatus = (STATUS_OPTIONS.find((s) => s.key === status)?.key ?? "all") as (typeof STATUS_OPTIONS)[number]["key"];
+  const justCreatedIds = new Set<number>(
+    (justCreated ?? "")
+      .split(",")
+      .map((s) => Number(s.trim()))
+      .filter((n) => Number.isFinite(n) && n > 0),
+  );
 
   const returnToParams = new URLSearchParams();
   if (projectId) returnToParams.set("projectId", String(projectId));
@@ -79,9 +92,17 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
     .leftJoin(partners, eq(projects.partnerId, partners.id))
     .leftJoin(invoices, eq(revenueReconciliations.invoiceId, invoices.id));
 
-  const rows = await baseQuery
+  const rowsRaw = await baseQuery
     .where(whereParts.length === 1 ? whereParts[0] : and(...whereParts))
-    .orderBy(desc(revenueReconciliations.reconciliationDate));
+    .orderBy(desc(revenueReconciliations.id));
+
+  // Float justCreated rows lên đầu (nếu có ?justCreated=id1,id2)
+  const rows = justCreatedIds.size > 0
+    ? [
+        ...rowsRaw.filter((r) => justCreatedIds.has(r.id)),
+        ...rowsRaw.filter((r) => !justCreatedIds.has(r.id)),
+      ]
+    : rowsRaw;
 
   // Count both tabs for badge
   const countByTypeRaw = await db
@@ -136,6 +157,21 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
 
   return (
     <div className="space-y-4">
+      <HighlightManager />
+      {justCreatedIds.size > 0 && (
+        <div className="bg-green-50 border border-green-300 rounded-lg p-3 text-sm text-green-800 flex items-center justify-between">
+          <span>
+            <span className="font-semibold">Đã tạo {justCreatedIds.size} đợt đối chiếu</span>{" "}
+            (đang highlight ở đầu danh sách, sẽ mờ sau 3s).
+          </span>
+          <Link
+            href="/revenues"
+            className="text-green-700 hover:underline text-xs"
+          >
+            Đóng ×
+          </Link>
+        </div>
+      )}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">Đối chiếu doanh thu</h1>
@@ -316,11 +352,17 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
               const cdtBonusSale = Number(r.cdtBonusSale ?? 0);
               const cdtBonusMgr = Number(r.cdtBonusManager ?? 0);
               const isBonus = revThis === 0 && (cdtBonusSale > 0 || cdtBonusMgr > 0);
+              const isJustCreated = justCreatedIds.has(r.id);
               return (
                 <tr
                   key={r.id}
+                  data-just-created={isJustCreated ? "1" : undefined}
                   className={`border-t border-slate-100 hover:bg-slate-50 ${
-                    isBonus ? "bg-amber-50/40" : ""
+                    isJustCreated
+                      ? "highlight-fade"
+                      : isBonus
+                        ? "bg-amber-50/40"
+                        : ""
                   }`}
                 >
                   <td className="p-2 text-xs">{fmtDate(r.date)}</td>

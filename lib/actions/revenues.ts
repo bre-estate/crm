@@ -232,7 +232,7 @@ export type BulkRevenueRow = {
 };
 
 export async function createRevenueBulk(rows: BulkRevenueRow[]) {
-  let ok = 0;
+  const createdIds: number[] = [];
   const errors: Array<{ index: number; message: string }> = [];
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
@@ -278,13 +278,13 @@ export async function createRevenueBulk(rows: BulkRevenueRow[]) {
           amount: r.paymentAmount,
         });
       }
-      ok++;
+      createdIds.push(inserted.id);
     } catch (e) {
       errors.push({ index: i, message: e instanceof Error ? e.message : "Lỗi" });
     }
   }
   revalidatePath("/revenues");
-  return { ok, errors };
+  return { ok: createdIds.length, createdIds, errors };
 }
 
 export async function updatePaymentIn(id: number, fd: FormData) {

@@ -13,6 +13,7 @@ import Link from "next/link";
 import SearchableSelect from "@/components/SearchableSelect";
 import ProductsTable, { type ProductRow } from "./ProductsTable";
 import { deleteProductBulk } from "@/lib/actions/products";
+import HighlightManager from "../HighlightManager";
 
 export const dynamic = "force-dynamic";
 
@@ -265,11 +266,12 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
 
   return (
     <div className="space-y-4">
+      <HighlightManager />
       {justCreatedIds.size > 0 && (
         <div className="bg-green-50 border border-green-300 rounded-lg p-3 text-sm text-green-800 flex items-center justify-between">
           <span>
             <span className="font-semibold">Đã tạo {justCreatedIds.size} căn</span>{" "}
-            (đang highlight màu vàng ở đầu danh sách).
+            (đang highlight ở đầu danh sách, sẽ mờ sau 3s).
           </span>
           <Link
             href="/products"
