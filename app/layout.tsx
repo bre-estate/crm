@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import SignOutButton from "./SignOutButton";
 import NavLinks from "./NavLinks";
 import { Toaster } from "sonner";
-import { getOwnerEmail } from "@/lib/auth";
+import { getOwnerEmail, hasReportsAccess } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "BRE — Quản lý sàn giao dịch BĐS",
@@ -35,6 +35,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const displayName =
     (user.user_metadata?.full_name as string | undefined) ?? user.email ?? "User";
   const isOwner = (await getOwnerEmail()) !== null;
+  const canSeeReports = await hasReportsAccess();
 
   return (
     <html lang="vi" className="h-full">
@@ -45,7 +46,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo.png" alt="BRE — Better Real Estate" className="h-14 w-auto" />
             </div>
-            <NavLinks isOwner={isOwner} />
+            <NavLinks isOwner={isOwner} canSeeReports={canSeeReports} />
             <div className="p-3 border-t border-slate-200 space-y-2">
               <div className="text-xs text-slate-600 truncate" title={displayName}>
                 {displayName}

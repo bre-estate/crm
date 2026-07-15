@@ -15,7 +15,8 @@ import {
 import { fmtMoney, fmtPctRaw, displayPartnerName, isSecondaryPartner } from "@/lib/format";
 import { eq } from "drizzle-orm";
 import Link from "next/link";
-import { getOwnerEmail } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { getOwnerEmail, hasReportsAccess } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -67,6 +68,9 @@ function inRange(
 }
 
 export default async function ReportsPage({ searchParams }: { searchParams: SearchParams }) {
+  if (!(await hasReportsAccess())) {
+    redirect("/");
+  }
   const sp = await searchParams;
   const year = sp.year && sp.year !== "all" ? Number(sp.year) : null;
   const range: RangeKey = (sp.range as RangeKey) in RANGE_MONTHS ? (sp.range as RangeKey) : "full";

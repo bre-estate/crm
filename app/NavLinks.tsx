@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 type NavItem = {
   href: string;
   label: string;
-  ownerOnly?: boolean;
+  gate?: "owner" | "reports";
 };
 
 const NAV: NavItem[] = [
@@ -17,10 +17,10 @@ const NAV: NavItem[] = [
   { href: "/revenues", label: "Doanh thu" },
   { href: "/costs", label: "Giá vốn" },
   { href: "/invoices", label: "Hóa đơn" },
-  { href: "/reports", label: "Báo cáo" },
-  { href: "/finance", label: "Tài chính", ownerOnly: true },
+  { href: "/reports", label: "Báo cáo", gate: "reports" },
+  { href: "/finance", label: "Tài chính", gate: "owner" },
   { href: "/employees", label: "Nhân viên" },
-  { href: "/admin/activity", label: "Lịch sử hoạt động", ownerOnly: true },
+  { href: "/admin/activity", label: "Lịch sử hoạt động", gate: "owner" },
 ];
 
 function isActive(pathname: string, href: string): boolean {
@@ -28,9 +28,20 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-export default function NavLinks({ isOwner = false }: { isOwner?: boolean }) {
+export default function NavLinks({
+  isOwner = false,
+  canSeeReports = false,
+}: {
+  isOwner?: boolean;
+  canSeeReports?: boolean;
+}) {
   const pathname = usePathname();
-  const visible = NAV.filter((n) => !n.ownerOnly || isOwner);
+  const visible = NAV.filter((n) => {
+    if (!n.gate) return true;
+    if (n.gate === "owner") return isOwner;
+    if (n.gate === "reports") return canSeeReports;
+    return false;
+  });
   return (
     <nav className="flex-1 p-3 space-y-1">
       {visible.map((n) => {
