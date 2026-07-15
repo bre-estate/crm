@@ -31,10 +31,14 @@ function buildProjectData(fd: FormData) {
     brokerageRateSale: toPct(fd.get("brokerageRateSale")),
     adminFee: toNum(fd.get("adminFee")),
     adminFeeSale: toNum(fd.get("adminFeeSale")),
-    // paymentPhases + phaseRate1-5 đã bỏ khỏi Project form — dead code,
-    // tracking đợt thực tế qua revenue_reconciliations.phase_number theo căn.
-    // cdt_bonus, cty_bonus cũng bỏ — nhập per-căn ở ProductForm.
-    // Data cũ trong DB giữ nguyên (không patch → không overwrite).
+    // Đợt TT + phase rates: reference-only từ HĐ, không lookup vào tính.
+    paymentPhases: isSecondary ? 1 : (toNum(fd.get("paymentPhases")) || 1),
+    phaseRate1: isSecondary ? 0 : toPct(fd.get("phaseRate1")),
+    phaseRate2: isSecondary ? 0 : toPct(fd.get("phaseRate2")),
+    phaseRate3: isSecondary ? 0 : toPct(fd.get("phaseRate3")),
+    phaseRate4: isSecondary ? 0 : toPct(fd.get("phaseRate4")),
+    phaseRate5: isSecondary ? 0 : toPct(fd.get("phaseRate5")),
+    // cdt_bonus, cty_bonus vẫn bỏ — nhập per-căn ở ProductForm.
     paymentDocs: toStr(fd.get("paymentDocs")),
     note: toStr(fd.get("note")),
   };

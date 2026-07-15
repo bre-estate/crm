@@ -174,9 +174,41 @@ export default function ProjectForm({ project, partners, onSave, onDelete }: Pro
         </div>
       </Section>
 
-      {/* Section "Đợt thanh toán & %PMG từng đợt" đã bỏ — dead code, tracking
-          đợt thực tế qua revenue_reconciliations.phase_number theo từng căn.
-          Section "Thưởng CĐT / Cty" cũng đã bỏ — nhập per-căn ở ProductForm. */}
+      {/* Thưởng CĐT/Cty đã bỏ — nhập per-căn ở ProductForm để linh hoạt. */}
+
+      {!isSecondary && (
+        <Section title="Đợt thanh toán & %PMG từng đợt (theo HĐ)">
+          <div className="text-xs text-slate-500 -mt-2 mb-2">
+            Data reference từ hợp đồng — lưu DB đầy đủ. Hiện chưa auto-lookup
+            khi tạo revenue recon (dùng phase_number trên từng recon).
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <Field label="Số đợt">
+              <input
+                name="paymentPhases"
+                type="number"
+                min="1"
+                max="5"
+                defaultValue={project?.paymentPhases ?? 1}
+                className="input"
+              />
+            </Field>
+            {[1, 2, 3, 4, 5].map((n) => (
+              <Field key={n} label={`%PMG đợt ${n}`}>
+                <input
+                  name={`phaseRate${n}`}
+                  type="text"
+                  inputMode="decimal"
+                  defaultValue={Number(
+                    (((project?.[`phaseRate${n}` as keyof Project] as number) ?? 0) * 100).toFixed(4),
+                  )}
+                  className="input"
+                />
+              </Field>
+            ))}
+          </div>
+        </Section>
+      )}
 
       <Section title="Hồ sơ & ghi chú">
         <div className="grid grid-cols-1 gap-4">
