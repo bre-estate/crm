@@ -1,11 +1,15 @@
 /**
  * Fresh import từ BAO CAO DOANH THU.xlsx.
- * WIPE + INSERT: products, revenue_reconciliations, cost_reconciliations,
- * payments_in, payments_out, invoices.
- * GIỮ NGUYÊN: partners, projects, departments, pmg_tiers.
  *
- * Run: npx tsx scripts/import-fresh.ts          # dry-run
- *      npx tsx scripts/import-fresh.ts --apply  # execute
+ * DEFAULT: WIPE + INSERT products/revenue/cost/payments/invoices; giữ partners/projects/departments/pmg_tiers.
+ * --full : WIPE luôn partners + projects + pmg_tiers + activity_logs + product_adjustments;
+ *          GIỮ departments (script lookup by name — nếu Excel có dept mới sẽ auto-create).
+ *          GIỮ users/profiles/company_settings/company_expenses/company_investments.
+ *
+ * Run: npx tsx scripts/import-fresh.ts                 # dry-run (partial wipe)
+ *      npx tsx scripts/import-fresh.ts --apply         # execute (partial wipe)
+ *      npx tsx scripts/import-fresh.ts --full          # dry-run (full wipe)
+ *      npx tsx scripts/import-fresh.ts --full --apply  # execute (full wipe)
  */
 import * as XLSX from "xlsx";
 import { drizzle } from "drizzle-orm/postgres-js";
@@ -17,6 +21,7 @@ dotenv.config({ path: ".env.local" });
 
 const XLSX_PATH = "/Users/trietnguyen/Documents/Company/BRE/App/CRM/BAO CAO DOANH THU.xlsx";
 const APPLY = process.argv.includes("--apply");
+const FULL_WIPE = process.argv.includes("--full");
 
 const client = postgres(process.env.DATABASE_URL!, { prepare: false });
 const db = drizzle(client, { schema });
@@ -128,15 +133,28 @@ async function main() {
   };
 
   // Phase 0: Wipe
+  console.log(`\n== ${APPLY ? "Wiping" : "(dry-run) Would wipe"} ${FULL_WIPE ? "FULL" : "partial"} ==`);
   if (APPLY) {
-    console.log("\n== Wiping ==");
     await db.delete(schema.paymentsOut);
     await db.delete(schema.paymentsIn);
     await db.delete(schema.costReconciliations);
     await db.delete(schema.revenueReconciliations);
     await db.delete(schema.invoices);
+    await db.delete(schema.productAdjustments);
     await db.delete(schema.products);
-    console.log("  ✅ Wiped 6 tables");
+    console.log("  ✅ Wiped 7 core tables");
+    if (FULL_WIPE) {
+      await db.delete(schema.pmgTiers);
+      await db.delete(schema.projects);
+      await db.delete(schema.partners);
+      await db.delete(schema.activityLogs);
+      console.log("  ✅ Wiped 4 config tables (partners, projects, pmg_tiers, activity_logs)");
+      // Sau khi wipe, reload các Map lookup rỗng
+      partnerByName.clear();
+      partnerCodes.clear();
+      projectByPair.clear();
+      projectFullCodes.clear();
+    }
   }
 
   // ================= Phase 1: PRODUCTS (Sheet 2.1) =================
