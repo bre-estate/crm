@@ -27,6 +27,7 @@ export default async function ReportsPartnersPage({ searchParams }: { searchPara
     // %HH averaging: weighted theo pmgBasePrice để phản ánh HH thật CĐT trả
     pmgBaseSum: number;
     pmgWeightedSum: number; // sum(pmgBase * pmgRate)
+    pmgSaleWeightedSum: number; // sum(pmgBase * pmgSaleRate)
     // Tốc độ trả: tổng ngày (payment date - recon date) trên các recon đã có payment
     daysToPaySum: number;
     daysToPayCount: number;
@@ -43,6 +44,7 @@ export default async function ReportsPartnersPage({ searchParams }: { searchPara
     reconWithPayment: 0,
     pmgBaseSum: 0,
     pmgWeightedSum: 0,
+    pmgSaleWeightedSum: 0,
     daysToPaySum: 0,
     daysToPayCount: 0,
   });
@@ -66,9 +68,12 @@ export default async function ReportsPartnersPage({ searchParams }: { searchPara
     if (!agg) continue;
     const base = Number(p.pmgBasePrice ?? 0);
     const rate = Number(p.pmgRate ?? 0);
+    const saleRate = Number(p.pmgSaleRate ?? 0);
     if (base > 0 && rate > 0) {
       agg.pmgBaseSum += base;
       agg.pmgWeightedSum += base * rate;
+      // Nếu có pmgSaleRate thì dùng, không thì fallback = rate (BRE không giữ chênh)
+      agg.pmgSaleWeightedSum += base * (saleRate > 0 ? saleRate : rate);
     }
   }
 
@@ -113,7 +118,10 @@ export default async function ReportsPartnersPage({ searchParams }: { searchPara
     const avgDaysToPay = p.daysToPayCount > 0 ? p.daysToPaySum / p.daysToPayCount : null;
     // Decimal (0.065 = 6.5%); render × 100 khi hiển thị.
     const avgPmgRate = p.pmgBaseSum > 0 ? p.pmgWeightedSum / p.pmgBaseSum : null;
-    return { ...p, rev, profit, margin, collectionRate, avgDaysToPay, avgPmgRate };
+    const avgPmgSaleRate = p.pmgBaseSum > 0 ? p.pmgSaleWeightedSum / p.pmgBaseSum : null;
+    const pmgSpread =
+      avgPmgRate !== null && avgPmgSaleRate !== null ? avgPmgRate - avgPmgSaleRate : null;
+    return { ...p, rev, profit, margin, collectionRate, avgDaysToPay, avgPmgRate, avgPmgSaleRate, pmgSpread };
   }).sort((a, b) => b.totalRevenue - a.totalRevenue);
 
   const maxRevenue = rows[0]?.totalRevenue ?? 1;
@@ -137,23 +145,26 @@ export default async function ReportsPartnersPage({ searchParams }: { searchPara
       <div>
         <h2 className="text-lg font-semibold mb-1">Xếp hạng đối tác (CĐT / F1)</h2>
         <p className="text-xs text-slate-500 mb-3">
-          Sắp xếp theo DT mang lại.
+          Sắp xếp theo DT mang lại. <b>%PMG_LK</b> = CĐT/F1 thực trả BRE (weighted TB theo Giá tính PMG).{" "}
+          <b>%PMG_LK_sale</b> = base BRE dùng tính HH sale + KPI. <b>Chênh</b> = %PMG_LK − %PMG_LK_sale, số dương = BRE giữ được (thưởng manager / cty), âm = cấu hình bất thường.
           {marketAvgPmg !== null && (
             <>
               {" "}TB %PMG_LK toàn thị trường (nội bộ) ={" "}
-              <b>{fmtPctRaw(marketAvgPmg * 100, 2)}</b> — cột %PMG_LK màu xanh = cao hơn TB, đỏ = thấp hơn.
+              <b>{fmtPctRaw(marketAvgPmg * 100, 2)}</b> — màu xanh = cao hơn TB, đỏ = thấp hơn.
             </>
           )}
         </p>
         <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
-          <table className="w-full text-sm min-w-[800px]">
+          <table className="w-full text-sm min-w-[950px]">
             <thead className="bg-slate-50 text-xs text-slate-600">
               <tr>
                 <th className="text-left p-2">Đối tác</th>
                 <th className="text-center p-2">DA</th>
                 <th className="text-center p-2">Căn</th>
-                <th className="text-right p-2 w-48">DT mang lại</th>
+                <th className="text-right p-2 w-40">DT mang lại</th>
                 <th className="text-right p-2">%PMG_LK</th>
+                <th className="text-right p-2">%PMG_LK_sale</th>
+                <th className="text-right p-2">Chênh (BRE giữ)</th>
                 <th className="text-right p-2">Biên LN</th>
                 <th className="text-right p-2">TB ngày trả</th>
               </tr>
@@ -170,6 +181,14 @@ export default async function ReportsPartnersPage({ searchParams }: { searchPara
                       : r.avgPmgRate < marketAvgPmg - 0.001
                         ? "text-red-700"
                         : "text-slate-700";
+                const spreadColor =
+                  r.pmgSpread === null
+                    ? "text-slate-400"
+                    : r.pmgSpread > 0.001
+                      ? "text-green-700 font-semibold"
+                      : r.pmgSpread < -0.001
+                        ? "text-red-700 font-semibold"
+                        : "text-slate-400";
                 const daysColor =
                   r.avgDaysToPay === null
                     ? "text-slate-400"
@@ -188,13 +207,28 @@ export default async function ReportsPartnersPage({ searchParams }: { searchPara
                         <div className="flex-1 h-3 bg-slate-100 rounded overflow-hidden">
                           <div className="h-full bg-blue-500" style={{ width: `${pct}%` }} />
                         </div>
-                        <div className="text-right tabular-nums text-xs font-medium w-28">
+                        <div className="text-right tabular-nums text-xs font-medium w-24">
                           {fmtMoney(r.totalRevenue)}
                         </div>
                       </div>
                     </td>
                     <td className={`p-2 text-right tabular-nums font-semibold ${pmgColor}`}>
                       {r.avgPmgRate !== null ? fmtPctRaw(r.avgPmgRate * 100, 2) : "—"}
+                    </td>
+                    <td className="p-2 text-right tabular-nums text-slate-600">
+                      {r.avgPmgSaleRate !== null ? fmtPctRaw(r.avgPmgSaleRate * 100, 2) : "—"}
+                    </td>
+                    <td
+                      className={`p-2 text-right tabular-nums text-xs ${spreadColor}`}
+                      title={
+                        r.pmgSpread !== null && r.pmgSpread < 0
+                          ? "Cảnh báo: %PMG_LK_sale > %PMG_LK — có thể data lỗi"
+                          : undefined
+                      }
+                    >
+                      {r.pmgSpread !== null && Math.abs(r.pmgSpread) > 0.001
+                        ? (r.pmgSpread > 0 ? "+" : "") + fmtPctRaw(r.pmgSpread * 100, 2)
+                        : "—"}
                     </td>
                     <td className={`p-2 text-right tabular-nums ${marginColor}`}>
                       {fmtPctRaw(r.margin, 1)}
@@ -207,7 +241,7 @@ export default async function ReportsPartnersPage({ searchParams }: { searchPara
               })}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="p-4 text-center text-slate-500">
+                  <td colSpan={9} className="p-4 text-center text-slate-500">
                     Không có dữ liệu trong khoảng đã chọn.
                   </td>
                 </tr>
