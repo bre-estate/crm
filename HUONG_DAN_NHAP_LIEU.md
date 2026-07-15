@@ -1,6 +1,6 @@
 # Hướng dẫn nhập liệu — BRE CRM
 
-Cập nhật: 2026-07-07
+Cập nhật: 2026-07-15
 
 Trang web: https://crm-azure-kappa-85.vercel.app
 
@@ -18,8 +18,9 @@ Tài liệu này hướng dẫn thứ tự nhập liệu, ý nghĩa từng trư�
 6. [Giao dịch — Thứ cấp](#6-giao-dịch--thứ-cấp)
 7. [Đối chiếu doanh thu (`/revenues`)](#7-đối-chiếu-doanh-thu-revenues)
 8. [Đối chiếu giá vốn (`/costs`)](#8-đối-chiếu-giá-vốn-costs)
-9. [Báo cáo (`/reports`)](#9-báo-cáo-reports)
-10. [Từ điển thuật ngữ](#10-từ-điển-thuật-ngữ)
+9. [Hóa đơn (`/invoices`)](#9-hóa-đơn-invoices)
+10. [Báo cáo (`/reports`)](#10-báo-cáo-reports)
+11. [Từ điển thuật ngữ](#11-từ-điển-thuật-ngữ)
 
 ---
 
@@ -124,11 +125,19 @@ Có 2 khái niệm khác nhau:
 
 ## 4. Dự án (`/projects`)
 
-### 4.1. Quy trình
+### 4.1. Danh sách
+
+Trang chia sẵn **2 tab**:
+- **Sơ cấp** — dự án ký HĐ với CĐT/F1 (đa số)
+- **Thứ cấp** — dự án mua bán lại (partner có thể trống hoặc "Chợ thứ cấp")
+
+Số bên cạnh tên tab = số dự án trong tab đó.
+
+### 4.2. Thêm mới
 
 Vào `/projects` → **+ Thêm dự án**.
 
-### 4.2. Các trường
+### 4.3. Các trường
 
 | Trường | Ý nghĩa | Ví dụ |
 |---|---|---|
@@ -141,10 +150,11 @@ Vào `/projects` → **+ Thêm dự án**.
 | **Phí admin** | Phí CĐT trừ trước khi chuyển BRE (BRE ko nhận) | `3.000.000` |
 | **Đợt TT** | Số đợt thanh toán trong hợp đồng | `3`, `5` |
 | **Tình trạng HĐ** | chưa ký / đang đàm phán / đã ký / ngừng | |
+| **Biểu PMG (ghi chú)** | Text mô tả biểu PMG theo mốc/điều kiện (tự giãn theo nội dung) | vd: `<50%: 4.5%, 50-90%: 5%, >90%: 5.5% (hồi tố)` |
 
-### 4.3. Với dự án thứ cấp
+### 4.4. Với dự án thứ cấp
 
-Chọn `Loại giao dịch = thứ cấp` KHI tạo **căn** — dự án vẫn tạo bình thường nhưng có thể để trống Đối tác nếu không có sàn nào đứng ra.
+Chọn `Loại giao dịch mặc định = thứ cấp` khi tạo dự án — có thể để trống Đối tác nếu không có sàn nào đứng ra.
 
 ---
 
@@ -206,6 +216,14 @@ Sau khi lưu, xem `/products/{id}` mục **3. Cơ cấu phân bổ tiền**:
 - Bước 4: Chi từ Pool B → thưởng TPKD/Manager (CTY)
 - Bước 5: **Lợi nhuận** = (Còn từ Pool A) + (Còn từ Pool B)
 
+### 5.5. Nhập hàng loạt
+
+Vào `/products/bulk` để paste dữ liệu nhiều căn từ Excel cùng lúc. Preview trước, sửa lỗi, rồi confirm để insert. Hữu ích khi dự án mở bán nhiều căn cùng đợt.
+
+### 5.6. Xóa hàng loạt
+
+Trong `/products` list, tick checkbox nhiều row → hiện thanh "Xóa N căn" ở top → confirm. Chỉ cho xóa nếu căn chưa có đợt đối chiếu doanh thu/giá vốn (để tránh mồ côi số liệu).
+
 ---
 
 ## 6. Giao dịch — Thứ cấp
@@ -262,19 +280,26 @@ Dùng khi CĐT chốt biên bản đối chiếu 1 đợt.
 | Trường | Ý nghĩa |
 |---|---|
 | Căn (sản phẩm) | Prefill nếu vào từ product detail. **Không sửa được khi Sửa đợt** |
-| Đợt số | 1-5 tùy hợp đồng |
 | Ngày ĐC | Ngày ký biên bản ĐC |
 | Số biên bản | Số BB ĐC |
-| Số HĐ / Ngày HĐ / Giá trị HĐ | Nếu trùng HĐ đã có, hệ thống tự link |
-| %PMG_LK lũy kế đến đợt | vd đợt 3 lũy kế 60% |
-| %thu PMG đợt này | Riêng đợt này (30%, 20%…) |
-| Giá tính PMG (chốt lúc tạo) | Snapshot, không sửa được khi vào Sửa |
-| DT theo tiến độ đợt này | Số CĐT phải chuyển đợt này |
-| Phí admin (đợt này) | Nếu có |
-| CĐT thưởng sale/QL (đợt này) | Nếu có |
-| Tổng phải thu đợt này | Số cuối cùng |
+| %PMG_LK đợt này | Thường trùng %PMG_LK của căn |
+| Tỷ lệ % thu PMG_LK đợt này | vd đợt 1 thường thu 30%, đợt 2 60%, đợt 3 100% |
+| Loại đợt | Hoa hồng / Thưởng nóng sale / Thưởng nóng quản lý |
+| Số tiền | Auto-suggest theo công thức, có thể sửa tay |
+| Mô tả/Ghi chú | Đợt cụ thể (Đợt 1, Đợt HĐMB, ...) hoặc note khác |
 
-### 7.3. Ghi nhận thu tiền
+### 7.3. Section "Hóa đơn"
+
+3 ô:
+- **Số HĐ** — số hóa đơn CĐT xuất
+- **Ngày HĐ** — ngày lập
+- **Giá trị HĐ tổng (gồm VAT)** — **KHÔNG nhập tay**, ô xám. Hệ thống **tự tính** = tổng "Tổng phải thu đợt này" của mọi đợt cùng (số HĐ + ngày HĐ).
+
+Ví dụ: HĐ số 29 có 3 đợt lẻ ĐC 9.35tr + 22tr + 19.8tr → Giá trị HĐ = 51.15tr. Sửa 1 đợt lên 23tr → HĐ tự nhảy thành 52.15tr sau khi lưu.
+
+Nếu để trống Số HĐ + Ngày HĐ → không tạo/link vào HĐ nào.
+
+### 7.4. Ghi nhận thu tiền
 
 Ở cuối form (**chỉ khi tạo mới**, sửa không thấy):
 - Ngày nhận tiền
@@ -282,7 +307,15 @@ Dùng khi CĐT chốt biên bản đối chiếu 1 đợt.
 
 → Hệ thống tạo 1 dòng payment_in liên kết. Nếu chưa nhận cứ để trống.
 
-### 7.4. Trang list
+### 7.5. Nhập hàng loạt
+
+`/revenues/bulk` — paste danh sách nhiều đợt cùng lúc, preview lỗi, rồi confirm.
+
+### 7.6. Xóa hàng loạt
+
+`/revenues` list — tick checkbox → thanh "Xóa N đợt" ở top.
+
+### 7.7. Trang list
 
 Cột **Đã thu** hiện `Chưa thu` (xám) nếu chưa có payment_in record → dò lại với admin.
 
@@ -337,13 +370,53 @@ Section "Thưởng" (khi cost_type = bonus_*):
 
 → Tạo 1 dòng payment_out liên kết.
 
+### 8.5. Nhập hàng loạt
+
+`/costs/bulk` — paste từ Excel, có card preview + info căn expand để đối chiếu số. Confirm xong mới insert.
+
+### 8.6. Xóa hàng loạt
+
+`/costs` list — tick checkbox → "Xóa N dòng".
+
 ---
 
-## 9. Báo cáo (`/reports`)
+## 9. Hóa đơn (`/invoices`)
+
+Trang **read-only** để tra HĐ đã lập và tình trạng thu tiền. HĐ **không tạo/xóa từ đây** — tự sinh khi ĐC doanh thu điền Số HĐ + Ngày HĐ.
+
+### 9.1. Danh sách
+
+Cột:
+
+| Cột | Ý nghĩa |
+|---|---|
+| Số HĐ | Số hóa đơn |
+| Ngày HĐ | Ngày lập |
+| Số căn ĐC | Số lượng đợt đối chiếu link vào HĐ này |
+| Giá trị HĐ | Tự tính = tổng "Tổng phải thu đợt này" của các đợt link vào |
+| Đã thu | Sum tiền đã thực nhận qua các đợt |
+| Còn nợ | Giá trị HĐ − Đã thu. Xanh "Đã thu đủ" / cam "thu 1 phần" / đỏ "chưa thu" |
+
+Có **2 ô filter riêng** ở đầu trang: **Số HĐ** và **Ngày HĐ** (gõ `2026-07` để lọc theo tháng, gõ đầy đủ ngày để lọc chính xác). Nút **Xoá lọc** hiện khi có filter.
+
+### 9.2. Detail
+
+Click **Xem** để mở trang chi tiết:
+- 3 card tổng: Giá trị HĐ / Đã thu / Còn nợ
+- Bảng **Các đợt đối chiếu** — mỗi dòng 1 đợt, có nút **Sửa** đưa về form recon (sửa xong quay lại)
+- Bảng **Lịch sử thanh toán** — mỗi payment kèm link ĐC gốc
+
+### 9.3. Đổi số HĐ / ngày HĐ
+
+Vào form recon tương ứng (click "Sửa" ở detail hoặc từ `/revenues`), đổi 2 ô Số HĐ + Ngày HĐ. Hệ thống tự merge/tách HĐ theo cặp (số + ngày).
+
+---
+
+## 10. Báo cáo (`/reports`)
 
 Trang tổng hợp theo thời gian + phòng/NVKD.
 
-### 9.1. Filter thời gian
+### 10.1. Filter thời gian
 
 - **Năm**: chọn từ dropdown (chỉ hiện năm có data)
 - **Khoảng**:
@@ -353,11 +426,11 @@ Trang tổng hợp theo thời gian + phòng/NVKD.
 
 Filter apply xuyên suốt: KPI cards, theo phòng, top NVKD, chi tiết dự án.
 
-### 9.2. Cơ sở filter
+### 10.2. Cơ sở filter
 
 Dựa vào **`products.recognitionMonth`** (tháng ghi nhận DT). Vd căn ghi nhận T3/2025 → thuộc Q1 2025.
 
-### 9.3. Các bảng
+### 10.3. Các bảng
 
 - **KPI cards**: DT dự kiến, GV dự kiến, lãi gộp, biên LN, DT/GV đã ĐC, công nợ thuần
 - **Theo phòng**: bán tốt nhất phòng nào
@@ -367,7 +440,7 @@ Dựa vào **`products.recognitionMonth`** (tháng ghi nhận DT). Vd căn ghi n
 
 ---
 
-## 10. Từ điển thuật ngữ
+## 11. Từ điển thuật ngữ
 
 | Viết tắt | Nghĩa |
 |---|---|
@@ -392,9 +465,4 @@ Dựa vào **`products.recognitionMonth`** (tháng ghi nhận DT). Vd căn ghi n
 
 ---
 
-## Ghi chú vận hành
-
-- **Session Supabase auto-pause sau 7 ngày idle** → nếu login mà 504 timeout → cty vào Supabase console restore lại
-- **UptimeRobot ping /api/keep-alive mỗi 5 phút** để chống pause
-- **Repo**: `bre-estate/crm` (KHÔNG phải artt-platform)
-- Có bug/thắc mắc → screenshot + note trong file này hoặc báo dev
+Có bug/thắc mắc → screenshot + note lại rồi báo admin.

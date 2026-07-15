@@ -15,30 +15,59 @@ export type InvoiceRow = {
 };
 
 export default function InvoicesTable({ rows }: { rows: InvoiceRow[] }) {
-  const [q, setQ] = useState("");
+  const [qNumber, setQNumber] = useState("");
+  const [qDate, setQDate] = useState("");
 
   const filtered = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    if (!s) return rows;
-    // Split thành nhiều từ khóa — mỗi từ phải match ở đâu đó (số HĐ hoặc ngày)
-    const terms = s.split(/\s+/).filter(Boolean);
+    const n = qNumber.trim().toLowerCase();
+    const d = qDate.trim().toLowerCase();
+    if (!n && !d) return rows;
     return rows.filter((r) => {
-      const hay = `${r.number} ${r.date ?? ""}`.toLowerCase();
-      return terms.every((t) => hay.includes(t));
+      if (n && !r.number.toLowerCase().includes(n)) return false;
+      if (d && !(r.date ?? "").toLowerCase().includes(d)) return false;
+      return true;
     });
-  }, [rows, q]);
+  }, [rows, qNumber, qDate]);
+
+  const clearAll = () => {
+    setQNumber("");
+    setQDate("");
+  };
+  const hasFilter = qNumber || qDate;
 
   return (
     <>
-      <div className="flex items-center gap-3">
-        <input
-          type="search"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Tìm theo số HĐ hoặc ngày (vd: 29, 2026-07, 30 07)"
-          className="input max-w-sm"
-        />
-        <div className="text-xs text-slate-500">
+      <div className="flex items-end gap-3 flex-wrap">
+        <div>
+          <label className="block text-xs text-slate-600 mb-1">Số HĐ</label>
+          <input
+            type="search"
+            value={qNumber}
+            onChange={(e) => setQNumber(e.target.value)}
+            placeholder="vd: 29"
+            className="input w-40"
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-slate-600 mb-1">Ngày HĐ</label>
+          <input
+            type="search"
+            value={qDate}
+            onChange={(e) => setQDate(e.target.value)}
+            placeholder="vd: 2026-07 hoặc 2026-07-15"
+            className="input w-64"
+          />
+        </div>
+        {hasFilter && (
+          <button
+            type="button"
+            onClick={clearAll}
+            className="px-3 py-2 text-xs text-blue-600 hover:underline"
+          >
+            Xoá lọc
+          </button>
+        )}
+        <div className="text-xs text-slate-500 ml-auto">
           {filtered.length}/{rows.length} hóa đơn
         </div>
       </div>
@@ -120,7 +149,7 @@ export default function InvoicesTable({ rows }: { rows: InvoiceRow[] }) {
                 <td colSpan={7} className="p-6 text-center text-slate-500 text-sm">
                   {rows.length === 0
                     ? "Chưa có hóa đơn nào. HĐ tự sinh khi tạo ĐC doanh thu có số HĐ."
-                    : `Không tìm thấy hóa đơn khớp "${q}".`}
+                    : "Không tìm thấy hóa đơn khớp bộ lọc."}
                 </td>
               </tr>
             )}
