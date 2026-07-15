@@ -2,12 +2,12 @@ import Link from "next/link";
 import type { ReportFilters } from "@/lib/reports";
 import { RANGE_LABEL, RANGE_MONTHS } from "@/lib/reports";
 
-const TABS: { href: string; label: string }[] = [
-  { href: "/reports/overview", label: "Tổng hợp" },
-  { href: "/reports/projects", label: "Theo dự án" },
-  { href: "/reports/people", label: "Theo nhân sự" },
-  { href: "/reports/time", label: "Theo thời gian" },
-];
+const PAGE_TITLE: Record<string, string> = {
+  "/reports/overview": "Tổng hợp",
+  "/reports/projects": "Theo dự án",
+  "/reports/people": "Theo nhân sự",
+  "/reports/time": "Theo thời gian",
+};
 
 export function ReportsHeader({
   activePath,
@@ -23,37 +23,16 @@ export function ReportsHeader({
   totalProducts: number;
 }) {
   const { year, range } = filters;
+  const subtitle = PAGE_TITLE[activePath] ?? "";
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold">Báo cáo</h1>
+        <h1 className="text-2xl font-bold">
+          Báo cáo{subtitle && <span className="text-slate-400 font-normal"> · {subtitle}</span>}
+        </h1>
         <p className="text-sm text-slate-500 mt-1">
           Lọc chung theo năm + khoảng thời gian dựa trên tháng ghi nhận DT.
         </p>
-      </div>
-
-      {/* Tabs */}
-      <div className="border-b border-slate-200 flex gap-1 flex-wrap">
-        {TABS.map((t) => {
-          const active = activePath === t.href;
-          const qs = new URLSearchParams();
-          if (year) qs.set("year", String(year));
-          if (range !== "full") qs.set("range", range);
-          const href = qs.toString() ? `${t.href}?${qs.toString()}` : t.href;
-          return (
-            <Link
-              key={t.href}
-              href={href}
-              className={
-                active
-                  ? "px-4 py-2 text-sm border-b-2 -mb-px border-orange-500 text-orange-600 font-semibold"
-                  : "px-4 py-2 text-sm border-b-2 -mb-px border-transparent text-slate-500 hover:text-slate-700"
-              }
-            >
-              {t.label}
-            </Link>
-          );
-        })}
       </div>
 
       {/* Filter */}
