@@ -335,13 +335,7 @@ export default function ProductForm({
               {lockCoreFields && (
                 <input type="hidden" name="pmgRate" value={product?.pmgRate ? Number((Number(product.pmgRate) * 100).toFixed(4)) : ""} />
               )}
-              {lockCoreFields ? (
-                <LockedFieldHint />
-              ) : (
-                <div className="text-[10px] text-slate-500 mt-1">
-                  Muốn track lịch sử → dùng &quot;Điều chỉnh thông tin căn&quot;
-                </div>
-              )}
+              {lockCoreFields && <LockedFieldHint />}
             </Field>
             <Field label="Phí admin (CĐT trừ khỏi PMG)">
               {lockCoreFields ? (
@@ -587,7 +581,7 @@ export default function ProductForm({
         </Field>
       </Section>
 
-      {isEdit && !isSecondary && (
+      {isEdit && !isSecondary && lockCoreFields && (
         <Section title="⚙️ Điều chỉnh thông tin căn">
           <div className="text-xs text-slate-500 -mt-2">
             Khi CĐT tăng %HH, sửa giá, hoặc đổi phí admin — dùng nút bên dưới. Điều
