@@ -1,0 +1,51 @@
+name: Weekly DB Backup
+
+# Chạy 09:00 sáng thứ Hai giờ VN (= 02:00 UTC Monday).
+# Cũng cho phép trigger tay từ Actions tab.
+on:
+  schedule:
+    - cron: "0 2 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write   # cần để tạo GitHub Release
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Compute snapshot date
+        id: date
+        run: echo "date=$(date -u +'%Y-%m-%d')" >> "$GITHUB_OUTPUT"
+
+      - name: Dump DB snapshot
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npx tsx scripts/backup-tables.ts ${{ steps.date.outputs.date }}
+
+      - name: Compress snapshot
+        run: gzip backups/bre-crm-snapshot-${{ steps.date.outputs.date }}.json
+
+      - name: Publish as GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: backup-${{ steps.date.outputs.date }}
+          name: DB Snapshot ${{ steps.date.outputs.date }}
+          body: |
+            Automatic weekly snapshot of BRE CRM Supabase DB.
+
+            Restore: download `.json.gz`, gunzip, then re-insert via a fresh
+            import script (see `scripts/import-fresh.ts` for pattern).
+          files: backups/bre-crm-snapshot-${{ steps.date.outputs.date }}.json.gz
+          prerelease: true
