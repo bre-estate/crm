@@ -333,89 +333,138 @@ export default async function ReportsCashflowPage({ searchParams }: { searchPara
         <AgingTable title="🟠 Aging TRẢ (BRE nợ nội bộ)" aging={apAging} />
       </div>
 
-      {/* ============ Aging per partner ============ */}
+      {/* ============ Aging per partner (expandable) ============ */}
       <div>
-        <h2 className="text-lg font-semibold mb-1">🚨 Aging THU theo CĐT/F1 — soi ai chây lì</h2>
+        <h2 className="text-lg font-semibold mb-1">Aging thu theo đối tác</h2>
         <p className="text-xs text-slate-500 mb-3">
-          Chỉ liệt kê partner còn nợ. Sort: đợt quá hạn ({">"}30 ngày) trước. Cột đỏ = cảnh báo.
+          Mỗi CĐT/F1 chia theo bucket tuổi nợ (0-30 / 31-60 / 61-90 / {">"}90 ngày kể từ ngày ĐC). Sort: partner có nhiều tiền quá hạn ({">"}30 ngày) lên trước. <b>Bấm ▶ để xem danh sách căn cụ thể</b>.
         </p>
-        <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
-          <table className="w-full text-sm min-w-[800px]">
-            <thead className="bg-slate-50 text-xs text-slate-600">
-              <tr>
-                <th className="text-left p-2">Đối tác</th>
-                <th className="text-center p-2">Đợt còn nợ</th>
-                <th className="text-right p-2">0-30 ngày</th>
-                <th className="text-right p-2">31-60 ngày</th>
-                <th className="text-right p-2">61-90 ngày</th>
-                <th className="text-right p-2">{">"} 90 ngày</th>
-                <th className="text-right p-2">Tổng</th>
-                <th className="text-right p-2">Đợt lâu nhất</th>
-              </tr>
-            </thead>
-            <tbody>
-              {partnerAgingRows.map((r) => {
-                const overdue = r.b30 + r.b60 + r.b90;
-                const overduePct = r.total > 0 ? (overdue / r.total) * 100 : 0;
-                const maxColor =
-                  r.maxDays > 90 ? "text-red-700 font-semibold"
-                    : r.maxDays > 60 ? "text-orange-700"
-                    : r.maxDays > 30 ? "text-amber-600"
-                    : "text-slate-500";
-                return (
-                  <tr key={r.name} className="border-t border-slate-100">
-                    <td className="p-2 font-medium">{r.name}</td>
-                    <td className="p-2 text-center tabular-nums">{r.count}</td>
-                    <td className="p-2 text-right tabular-nums text-xs text-slate-700">
-                      {r.b0 > 0 ? fmtMoney(r.b0) : "—"}
-                    </td>
-                    <td className="p-2 text-right tabular-nums text-xs text-amber-700 font-medium">
-                      {r.b30 > 0 ? fmtMoney(r.b30) : "—"}
-                    </td>
-                    <td className="p-2 text-right tabular-nums text-xs text-orange-700 font-medium">
-                      {r.b60 > 0 ? fmtMoney(r.b60) : "—"}
-                    </td>
-                    <td className="p-2 text-right tabular-nums text-xs text-red-700 font-bold">
-                      {r.b90 > 0 ? fmtMoney(r.b90) : "—"}
-                    </td>
-                    <td className="p-2 text-right tabular-nums font-semibold">
+        <div className="space-y-2">
+          {partnerAgingRows.map((r) => {
+            const overdue = r.b30 + r.b60 + r.b90;
+            const overduePct = r.total > 0 ? (overdue / r.total) * 100 : 0;
+            const maxColor =
+              r.maxDays > 90 ? "text-red-700 font-semibold"
+                : r.maxDays > 60 ? "text-orange-700"
+                : r.maxDays > 30 ? "text-amber-600"
+                : "text-slate-500";
+            const partnerRecons = arRecons
+              .filter((rc) => (rc.partnerName ?? "(chưa gán)") === r.name)
+              .sort((a, b) => b.days - a.days);
+            return (
+              <details
+                key={r.name}
+                className="bg-white border border-slate-200 rounded-xl overflow-hidden"
+              >
+                <summary className="cursor-pointer list-none p-3 hover:bg-slate-50">
+                  <div className="grid grid-cols-12 gap-3 items-center text-sm">
+                    <div className="col-span-3 font-medium">
+                      <span className="mr-2 text-slate-400 inline-block transition-transform group-open:rotate-90">▶</span>
+                      {r.name}
+                    </div>
+                    <div className="col-span-1 text-center tabular-nums text-xs text-slate-500">
+                      {r.count} đợt
+                    </div>
+                    <div className="col-span-1 text-right tabular-nums text-xs text-slate-700">
+                      {r.b0 > 0 ? fmtMoney(r.b0) : ""}
+                    </div>
+                    <div className="col-span-1 text-right tabular-nums text-xs text-amber-700 font-medium">
+                      {r.b30 > 0 ? fmtMoney(r.b30) : ""}
+                    </div>
+                    <div className="col-span-1 text-right tabular-nums text-xs text-orange-700 font-medium">
+                      {r.b60 > 0 ? fmtMoney(r.b60) : ""}
+                    </div>
+                    <div className="col-span-1 text-right tabular-nums text-xs text-red-700 font-bold">
+                      {r.b90 > 0 ? fmtMoney(r.b90) : ""}
+                    </div>
+                    <div className="col-span-2 text-right tabular-nums font-semibold">
                       {fmtMoney(r.total)}
                       {overduePct > 0 && (
                         <div className="text-[10px] text-orange-600 font-normal">
                           {fmtPctRaw(overduePct, 0)} quá hạn
                         </div>
                       )}
-                    </td>
-                    <td className={`p-2 text-right tabular-nums text-xs ${maxColor}`}>
-                      {r.maxDays} ngày
-                    </td>
-                  </tr>
-                );
-              })}
-              {partnerAgingRows.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="p-6 text-center text-slate-500 text-sm">
-                    Không có công nợ nào — tất cả CĐT/F1 đã thanh toán đủ.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                    </div>
+                    <div className={`col-span-2 text-right tabular-nums text-xs ${maxColor}`}>
+                      Đợt lâu nhất: {r.maxDays} ngày
+                    </div>
+                  </div>
+                </summary>
+                <div className="border-t border-slate-100 bg-slate-50 p-3">
+                  <table className="w-full text-sm">
+                    <thead className="text-xs text-slate-500">
+                      <tr>
+                        <th className="text-left p-1">Căn</th>
+                        <th className="text-left p-1">Dự án</th>
+                        <th className="text-left p-1">Ngày ĐC</th>
+                        <th className="text-right p-1">Số ngày</th>
+                        <th className="text-right p-1">Số tiền còn nợ</th>
+                        <th className="text-right p-1"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {partnerRecons.map((rc) => {
+                        const dayColor =
+                          rc.days > 90 ? "text-red-700 font-bold"
+                            : rc.days > 60 ? "text-orange-700 font-medium"
+                            : rc.days > 30 ? "text-amber-700"
+                            : "text-slate-500";
+                        return (
+                          <tr key={rc.id} className="border-t border-slate-200">
+                            <td className="p-1 font-mono text-xs">{rc.productCode}</td>
+                            <td className="p-1 text-xs text-slate-600">{rc.projectName}</td>
+                            <td className="p-1 text-xs text-slate-500">{rc.reconDate ?? "—"}</td>
+                            <td className={`p-1 text-right tabular-nums text-xs ${dayColor}`}>
+                              {rc.days} ngày
+                            </td>
+                            <td className="p-1 text-right tabular-nums text-xs font-medium">
+                              {fmtMoney(rc.outstanding)}
+                            </td>
+                            <td className="p-1 text-right">
+                              <a
+                                href={`/revenues/${rc.id}/edit`}
+                                className="text-blue-600 hover:underline text-xs"
+                              >
+                                Sửa
+                              </a>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+            );
+          })}
+          {partnerAgingRows.length === 0 && (
+            <div className="bg-white border border-slate-200 rounded-xl p-6 text-center text-slate-500 text-sm">
+              Không có công nợ nào — tất cả CĐT/F1 đã thanh toán đủ.
+            </div>
+          )}
         </div>
       </div>
 
-      {/* ============ Forecast: theo tháng ĐC ============ */}
+      {/* ============ Chi tiết đợt sắp thu / sắp trả ============ */}
       <div>
-        <h2 className="text-lg font-semibold mb-3">Sắp thu / sắp trả theo tháng ĐC</h2>
+        <h2 className="text-lg font-semibold mb-1">Đợt còn nợ — chi tiết</h2>
         <p className="text-xs text-slate-500 mb-3">
-          Nhóm số outstanding theo tháng của biên bản đối chiếu — ước lượng dòng tiền tương lai gần.
+          <b>Sắp thu</b> = đợt đối chiếu doanh thu đã chốt nhưng CĐT/F1 chưa chuyển tiền vào TK BRE.{" "}
+          <b>Sắp trả</b> = đợt đối chiếu giá vốn đã chốt nhưng BRE chưa chuyển cho NVKD/CTV/quản lý.
         </p>
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+
+        {/* Monthly aggregate view */}
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden mb-4">
+          <div className="p-2 bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600">
+            Nhóm theo tháng ký biên bản ĐC
+          </div>
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs text-slate-600">
               <tr>
                 <th className="text-left p-2">Tháng ĐC</th>
+                <th className="text-center p-2">Đợt thu</th>
                 <th className="text-right p-2">Sắp thu</th>
+                <th className="text-center p-2">Đợt trả</th>
                 <th className="text-right p-2">Sắp trả</th>
                 <th className="text-right p-2">Ròng</th>
               </tr>
@@ -425,11 +474,23 @@ export default async function ReportsCashflowPage({ searchParams }: { searchPara
                 const inflow = nextInflowByMonth.get(m) ?? 0;
                 const outflow = nextOutflowByMonth.get(m) ?? 0;
                 const net = inflow - outflow;
+                const nIn = arRecons.filter((r) => (r.reconDate?.slice(0, 7) ?? "(N/A)") === m).length;
+                const nOut = apRecons.filter((r) => (r.reconDate?.slice(0, 7) ?? "(N/A)") === m).length;
                 return (
                   <tr key={m} className="border-t border-slate-100">
                     <td className="p-2 font-mono text-sm">{m}</td>
-                    <td className="p-2 text-right tabular-nums text-blue-700">{fmtMoney(inflow)}</td>
-                    <td className="p-2 text-right tabular-nums text-orange-700">{fmtMoney(outflow)}</td>
+                    <td className="p-2 text-center tabular-nums text-xs text-slate-500">
+                      {nIn > 0 ? nIn : "—"}
+                    </td>
+                    <td className="p-2 text-right tabular-nums text-blue-700">
+                      {inflow > 0 ? fmtMoney(inflow) : "—"}
+                    </td>
+                    <td className="p-2 text-center tabular-nums text-xs text-slate-500">
+                      {nOut > 0 ? nOut : "—"}
+                    </td>
+                    <td className="p-2 text-right tabular-nums text-orange-700">
+                      {outflow > 0 ? fmtMoney(outflow) : "—"}
+                    </td>
                     <td
                       className={`p-2 text-right tabular-nums font-semibold ${
                         net >= 0 ? "text-green-700" : "text-red-700"
@@ -442,7 +503,7 @@ export default async function ReportsCashflowPage({ searchParams }: { searchPara
               })}
               {cashflowMonths.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="p-6 text-center text-slate-500 text-sm">
+                  <td colSpan={6} className="p-6 text-center text-slate-500 text-sm">
                     Không có khoản chưa thu/trả nào.
                   </td>
                 </tr>
@@ -450,86 +511,123 @@ export default async function ReportsCashflowPage({ searchParams }: { searchPara
             </tbody>
           </table>
         </div>
-      </div>
 
-      {/* ============ Top khoản còn nợ ============ */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <h3 className="text-base font-semibold mb-2">Top 10 khoản CĐT/F1 nợ lâu nhất</h3>
-          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-xs text-slate-600">
-                <tr>
-                  <th className="text-left p-2">Căn / dự án</th>
-                  <th className="text-right p-2">Số tiền</th>
-                  <th className="text-right p-2">Ngày</th>
-                </tr>
-              </thead>
-              <tbody>
-                {arRecons
-                  .slice()
-                  .sort((a, b) => b.days - a.days)
-                  .slice(0, 10)
-                  .map((r) => (
-                    <tr key={r.id} className="border-t border-slate-100">
-                      <td className="p-2">
-                        <div className="font-mono text-xs">{r.productCode}</div>
-                        <div className="text-xs text-slate-500">{r.projectName}</div>
-                      </td>
-                      <td className="p-2 text-right tabular-nums font-medium">{fmtMoney(r.outstanding)}</td>
-                      <td className="p-2 text-right text-xs">
-                        <span className={r.days > 90 ? "text-red-700 font-semibold" : r.days > 60 ? "text-orange-700" : "text-slate-500"}>
-                          {r.days} ngày
-                        </span>
+        {/* Detail lists side-by-side */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <h3 className="text-base font-semibold mb-2 text-blue-700">
+              🔵 Đợt CĐT/F1 chưa chuyển tiền ({arRecons.length})
+            </h3>
+            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-xs text-slate-600">
+                  <tr>
+                    <th className="text-left p-2">Căn / dự án</th>
+                    <th className="text-left p-2">Đối tác</th>
+                    <th className="text-right p-2">Số tiền</th>
+                    <th className="text-right p-2">Ngày</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {arRecons
+                    .slice()
+                    .sort((a, b) => b.days - a.days)
+                    .map((r) => (
+                      <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50">
+                        <td className="p-2">
+                          <a
+                            href={`/revenues/${r.id}/edit`}
+                            className="font-mono text-xs text-blue-700 hover:underline"
+                          >
+                            {r.productCode}
+                          </a>
+                          <div className="text-xs text-slate-500">{r.projectName}</div>
+                        </td>
+                        <td className="p-2 text-xs text-slate-600">{r.partnerName ?? "—"}</td>
+                        <td className="p-2 text-right tabular-nums font-medium">
+                          {fmtMoney(r.outstanding)}
+                        </td>
+                        <td className="p-2 text-right text-xs">
+                          <span
+                            className={
+                              r.days > 90 ? "text-red-700 font-semibold"
+                                : r.days > 60 ? "text-orange-700"
+                                : r.days > 30 ? "text-amber-700"
+                                : "text-slate-500"
+                            }
+                          >
+                            {r.days} ngày
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  {arRecons.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="p-4 text-center text-slate-500 text-xs">
+                        Không có.
                       </td>
                     </tr>
-                  ))}
-                {arRecons.length === 0 && (
-                  <tr>
-                    <td colSpan={3} className="p-4 text-center text-slate-500 text-xs">Không có.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-        <div>
-          <h3 className="text-base font-semibold mb-2">Top 10 khoản BRE nợ NV lâu nhất</h3>
-          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-xs text-slate-600">
-                <tr>
-                  <th className="text-left p-2">Người / căn</th>
-                  <th className="text-right p-2">Số tiền</th>
-                  <th className="text-right p-2">Ngày</th>
-                </tr>
-              </thead>
-              <tbody>
-                {apRecons
-                  .slice()
-                  .sort((a, b) => b.days - a.days)
-                  .slice(0, 10)
-                  .map((r) => (
-                    <tr key={r.id} className="border-t border-slate-100">
-                      <td className="p-2">
-                        <div className="text-xs font-medium">{r.employeeName}</div>
-                        <div className="text-xs text-slate-500 font-mono">{r.productCode}</div>
-                      </td>
-                      <td className="p-2 text-right tabular-nums font-medium">{fmtMoney(r.outstanding)}</td>
-                      <td className="p-2 text-right text-xs">
-                        <span className={r.days > 90 ? "text-red-700 font-semibold" : r.days > 60 ? "text-orange-700" : "text-slate-500"}>
-                          {r.days} ngày
-                        </span>
+          <div>
+            <h3 className="text-base font-semibold mb-2 text-orange-700">
+              🟠 Đợt BRE chưa trả NV/CTV ({apRecons.length})
+            </h3>
+            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-xs text-slate-600">
+                  <tr>
+                    <th className="text-left p-2">Người nhận</th>
+                    <th className="text-left p-2">Căn</th>
+                    <th className="text-right p-2">Số tiền</th>
+                    <th className="text-right p-2">Ngày</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {apRecons
+                    .slice()
+                    .sort((a, b) => b.days - a.days)
+                    .map((r) => (
+                      <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50">
+                        <td className="p-2 text-xs font-medium">{r.employeeName}</td>
+                        <td className="p-2">
+                          <a
+                            href={`/costs/${r.id}/edit`}
+                            className="font-mono text-xs text-blue-700 hover:underline"
+                          >
+                            {r.productCode}
+                          </a>
+                        </td>
+                        <td className="p-2 text-right tabular-nums font-medium">
+                          {fmtMoney(r.outstanding)}
+                        </td>
+                        <td className="p-2 text-right text-xs">
+                          <span
+                            className={
+                              r.days > 90 ? "text-red-700 font-semibold"
+                                : r.days > 60 ? "text-orange-700"
+                                : r.days > 30 ? "text-amber-700"
+                                : "text-slate-500"
+                            }
+                          >
+                            {r.days} ngày
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  {apRecons.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="p-4 text-center text-slate-500 text-xs">
+                        Không có.
                       </td>
                     </tr>
-                  ))}
-                {apRecons.length === 0 && (
-                  <tr>
-                    <td colSpan={3} className="p-4 text-center text-slate-500 text-xs">Không có.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
