@@ -265,6 +265,10 @@ export default async function ReportsCashflowPage({ searchParams }: { searchPara
         <h2 className="text-lg font-semibold mb-1">⏱️ Tốc độ CĐT chuyển tiền (tất cả các năm)</h2>
         <p className="text-xs text-slate-500 mb-3">
           Số ngày từ ngày ký biên bản đối chiếu → CĐT thực chuyển tiền vào TK BRE. Tính trên các đợt đã thu đủ.
+          <br />
+          <span className="text-slate-400">
+            Số âm = CĐT chuyển tiền TRƯỚC ngày ký BB (tạm ứng theo tiến độ, ký BB chốt sau) — nghiệp vụ hợp lệ, không phải sai dữ liệu.
+          </span>
         </p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
           <Card
