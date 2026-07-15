@@ -13,7 +13,7 @@ export default async function ReportsPartnersPage({ searchParams }: { searchPara
   const sp = await searchParams;
   const filters = parseFilters(sp);
   const data = await loadReportData(filters);
-  const { grandTotals, aggregatedProjects, revReconsAll, filterLabel, yearOptions } = data;
+  const { grandTotals, aggregatedProjects, revReconsAll, prodRows, filterLabel, yearOptions } = data;
 
   // Gộp theo partner (dùng partnerName vì aggregatedProjects đã có sẵn)
   type PartnerAgg = {
@@ -24,26 +24,32 @@ export default async function ReportsPartnersPage({ searchParams }: { searchPara
     totalCost: number;
     numRecons: number;
     reconWithPayment: number;
-    totalDaysToPay: number;
-    reconWithPaymentCount: number;
+    // %HH averaging: weighted theo pmgBasePrice để phản ánh HH thật CĐT trả
+    pmgBaseSum: number;
+    pmgWeightedSum: number; // sum(pmgBase * pmgRate)
+    // Tốc độ trả: tổng ngày (payment date - recon date) trên các recon đã có payment
+    daysToPaySum: number;
+    daysToPayCount: number;
   };
   const byPartner = new Map<string, PartnerAgg>();
 
+  const initAgg = (key: string): PartnerAgg => ({
+    name: key,
+    numProjects: 0,
+    numProducts: 0,
+    totalRevenue: 0,
+    totalCost: 0,
+    numRecons: 0,
+    reconWithPayment: 0,
+    pmgBaseSum: 0,
+    pmgWeightedSum: 0,
+    daysToPaySum: 0,
+    daysToPayCount: 0,
+  });
+
   for (const p of aggregatedProjects) {
     const key = p.partnerName ?? "(chưa gán)";
-    if (!byPartner.has(key)) {
-      byPartner.set(key, {
-        name: key,
-        numProjects: 0,
-        numProducts: 0,
-        totalRevenue: 0,
-        totalCost: 0,
-        numRecons: 0,
-        reconWithPayment: 0,
-        totalDaysToPay: 0,
-        reconWithPaymentCount: 0,
-      });
-    }
+    if (!byPartner.has(key)) byPartner.set(key, initAgg(key));
     const agg = byPartner.get(key)!;
     agg.numProjects++;
     agg.numProducts += p.numProducts;
@@ -51,9 +57,22 @@ export default async function ReportsPartnersPage({ searchParams }: { searchPara
     agg.totalCost += p.totalCostExpected;
   }
 
-  // Compute payment speed: with revReconsAll, tính (paymentDate − reconDate) TB.
-  // Không có paymentDate riêng cho từng payment; xài heuristic: recon nào paid full → tính từ reconDate → hôm nay (upper bound).
-  // Better: cần join thêm payments_in. Skip cho MVP, chỉ hiển thị "% đã thu" thay thế.
+  // %PMG_LK TB per partner: weighted theo pmgBasePrice (căn có giá tính PMG lớn → ảnh hưởng nhiều hơn).
+  for (const p of prodRows) {
+    const proj = aggregatedProjects.find((ap) => ap.id === p.projectId);
+    if (!proj) continue;
+    const key = proj.partnerName ?? "(chưa gán)";
+    const agg = byPartner.get(key);
+    if (!agg) continue;
+    const base = Number(p.pmgBasePrice ?? 0);
+    const rate = Number(p.pmgRate ?? 0);
+    if (base > 0 && rate > 0) {
+      agg.pmgBaseSum += base;
+      agg.pmgWeightedSum += base * rate;
+    }
+  }
+
+  // Tốc độ trả: tính từ revReconsAll firstPaidDate - reconDate cho recon đã full paid.
   for (const r of revReconsAll) {
     const key = r.partnerName ?? "(chưa gán)";
     const agg = byPartner.get(key);
@@ -61,7 +80,29 @@ export default async function ReportsPartnersPage({ searchParams }: { searchPara
     agg.numRecons++;
     if (r.paid >= r.receivable - 0.5 && r.receivable > 0) {
       agg.reconWithPayment++;
+      if (r.firstPaidDate && r.reconDate) {
+        const d = Math.floor(
+          (new Date(r.firstPaidDate).getTime() - new Date(r.reconDate).getTime()) /
+            (24 * 3600 * 1000),
+        );
+        if (Number.isFinite(d) && d >= -30 && d <= 365 * 2) {
+          agg.daysToPaySum += d;
+          agg.daysToPayCount++;
+        }
+      }
     }
+  }
+
+  // %PMG_LK TB per partner — weighted theo pmgBasePrice
+  for (const p of prodRows) {
+    const proj = aggregatedProjects.find((ap) => ap.id === p.projectId);
+    if (!proj) continue;
+    const key = proj.partnerName ?? "(chưa gán)";
+    const agg = byPartner.get(key);
+    if (!agg) continue;
+    // pmgBasePrice + pmgRate không có trong prodRows hiện tại — dùng heuristic:
+    // totalRevenue / 1.1 (không VAT) ≈ pmgBase × pmgRate ≈ Q trước admin
+    // → không chính xác. Skip trong file này.
   }
 
   const rows = [...byPartner.values()].map((p) => {
@@ -69,10 +110,18 @@ export default async function ReportsPartnersPage({ searchParams }: { searchPara
     const profit = rev - p.totalCost;
     const margin = rev > 0 ? (profit / rev) * 100 : 0;
     const collectionRate = p.numRecons > 0 ? (p.reconWithPayment / p.numRecons) * 100 : 0;
-    return { ...p, rev, profit, margin, collectionRate };
+    const avgDaysToPay = p.daysToPayCount > 0 ? p.daysToPaySum / p.daysToPayCount : null;
+    const avgPmgRate = p.pmgBaseSum > 0 ? (p.pmgWeightedSum / p.pmgBaseSum) * 100 : null;
+    return { ...p, rev, profit, margin, collectionRate, avgDaysToPay, avgPmgRate };
   }).sort((a, b) => b.totalRevenue - a.totalRevenue);
 
   const maxRevenue = rows[0]?.totalRevenue ?? 1;
+  // Market average để so sánh: unweighted mean của các partner có data.
+  const partnersWithPmg = rows.filter((r) => r.avgPmgRate !== null);
+  const marketAvgPmg =
+    partnersWithPmg.length > 0
+      ? partnersWithPmg.reduce((s, r) => s + (r.avgPmgRate ?? 0), 0) / partnersWithPmg.length
+      : null;
 
   return (
     <div className="space-y-6">
@@ -87,20 +136,27 @@ export default async function ReportsPartnersPage({ searchParams }: { searchPara
       <div>
         <h2 className="text-lg font-semibold mb-1">Xếp hạng đối tác (CĐT / F1)</h2>
         <p className="text-xs text-slate-500 mb-3">
-          Sắp xếp theo doanh thu mang lại. Biên LN cho biết partner nào ăn dày; % đã thu = số đợt đã thu đủ / tổng đợt ĐC.
+          Sắp xếp theo DT mang lại.
+          {marketAvgPmg !== null && (
+            <>
+              {" "}TB %PMG_LK toàn thị trường (nội bộ) ={" "}
+              <b>{fmtPctRaw(marketAvgPmg, 2)}</b> — cột %PMG_LK màu xanh = cao hơn TB, đỏ = thấp hơn.
+            </>
+          )}
         </p>
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
+          <table className="w-full text-sm min-w-[900px]">
             <thead className="bg-slate-50 text-xs text-slate-600">
               <tr>
                 <th className="text-left p-2">Đối tác</th>
                 <th className="text-center p-2">DA</th>
                 <th className="text-center p-2">Căn</th>
-                <th className="text-right p-2 w-56">DT mang lại</th>
-                <th className="text-right p-2">Lãi gộp</th>
-                <th className="text-right p-2">Biên</th>
+                <th className="text-right p-2 w-48">DT mang lại</th>
+                <th className="text-right p-2">%PMG_LK</th>
+                <th className="text-right p-2">Biên LN</th>
                 <th className="text-right p-2">Đợt ĐC</th>
-                <th className="text-right p-2">% đã thu đủ</th>
+                <th className="text-right p-2">% thu đủ</th>
+                <th className="text-right p-2">TB ngày trả</th>
               </tr>
             </thead>
             <tbody>
@@ -108,6 +164,22 @@ export default async function ReportsPartnersPage({ searchParams }: { searchPara
                 const pct = maxRevenue > 0 ? (r.totalRevenue / maxRevenue) * 100 : 0;
                 const marginColor = r.margin >= 15 ? "text-green-700" : r.margin >= 5 ? "text-slate-700" : "text-red-700";
                 const collColor = r.collectionRate >= 80 ? "text-green-700" : r.collectionRate >= 50 ? "text-orange-700" : "text-red-700";
+                const pmgColor =
+                  r.avgPmgRate === null || marketAvgPmg === null
+                    ? "text-slate-700"
+                    : r.avgPmgRate * 100 > marketAvgPmg + 0.1
+                      ? "text-green-700"
+                      : r.avgPmgRate * 100 < marketAvgPmg - 0.1
+                        ? "text-red-700"
+                        : "text-slate-700";
+                const daysColor =
+                  r.avgDaysToPay === null
+                    ? "text-slate-400"
+                    : r.avgDaysToPay <= 30
+                      ? "text-green-700"
+                      : r.avgDaysToPay <= 60
+                        ? "text-orange-700"
+                        : "text-red-700";
                 return (
                   <tr key={r.name} className="border-t border-slate-100">
                     <td className="p-2 font-medium">{r.name}</td>
@@ -118,31 +190,30 @@ export default async function ReportsPartnersPage({ searchParams }: { searchPara
                         <div className="flex-1 h-3 bg-slate-100 rounded overflow-hidden">
                           <div className="h-full bg-blue-500" style={{ width: `${pct}%` }} />
                         </div>
-                        <div className="text-right tabular-nums text-xs font-medium w-32">
+                        <div className="text-right tabular-nums text-xs font-medium w-28">
                           {fmtMoney(r.totalRevenue)}
                         </div>
                       </div>
                     </td>
-                    <td
-                      className={`p-2 text-right tabular-nums text-xs font-medium ${
-                        r.profit >= 0 ? "text-green-700" : "text-red-700"
-                      }`}
-                    >
-                      {fmtMoney(r.profit)}
+                    <td className={`p-2 text-right tabular-nums font-semibold ${pmgColor}`}>
+                      {r.avgPmgRate !== null ? fmtPctRaw(r.avgPmgRate * 100, 2) : "—"}
                     </td>
-                    <td className={`p-2 text-right tabular-nums font-semibold ${marginColor}`}>
+                    <td className={`p-2 text-right tabular-nums ${marginColor}`}>
                       {fmtPctRaw(r.margin, 1)}
                     </td>
                     <td className="p-2 text-right tabular-nums text-xs">{r.numRecons}</td>
                     <td className={`p-2 text-right tabular-nums font-medium ${collColor}`}>
                       {r.numRecons > 0 ? fmtPctRaw(r.collectionRate, 0) : "—"}
                     </td>
+                    <td className={`p-2 text-right tabular-nums text-xs ${daysColor}`}>
+                      {r.avgDaysToPay !== null ? `${Math.round(r.avgDaysToPay)} ngày` : "—"}
+                    </td>
                   </tr>
                 );
               })}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="p-4 text-center text-slate-500">
+                  <td colSpan={9} className="p-4 text-center text-slate-500">
                     Không có dữ liệu trong khoảng đã chọn.
                   </td>
                 </tr>

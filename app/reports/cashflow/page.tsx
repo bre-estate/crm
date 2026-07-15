@@ -50,6 +50,49 @@ export default async function ReportsCashflowPage({ searchParams }: { searchPara
   }
   const arTotal = arAging.b0 + arAging.b30 + arAging.b60 + arAging.b90;
 
+  // Tốc độ trả CĐT: TB ngày (payment date - recon date) trên các recon đã thu đủ.
+  const paidReconsWithDate = revReconsAll.filter(
+    (r) => r.paid >= r.receivable - 0.5 && r.receivable > 0 && r.firstPaidDate && r.reconDate,
+  );
+  const daysDiffs = paidReconsWithDate
+    .map((r) =>
+      Math.floor(
+        (new Date(r.firstPaidDate!).getTime() - new Date(r.reconDate!).getTime()) /
+          (24 * 3600 * 1000),
+      ),
+    )
+    .filter((d) => Number.isFinite(d) && d >= -30 && d <= 365 * 2);
+  const avgDaysAll =
+    daysDiffs.length > 0 ? daysDiffs.reduce((s, x) => s + x, 0) / daysDiffs.length : null;
+  const medianDaysAll = (() => {
+    if (daysDiffs.length === 0) return null;
+    const sorted = [...daysDiffs].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+  })();
+
+  // TB ngày trả per partner
+  type PartnerPaySpeed = { name: string; count: number; avgDays: number; maxDays: number };
+  const speedByPartner = new Map<string, { days: number[] }>();
+  for (const r of paidReconsWithDate) {
+    const key = r.partnerName ?? "(chưa gán)";
+    if (!speedByPartner.has(key)) speedByPartner.set(key, { days: [] });
+    const d = Math.floor(
+      (new Date(r.firstPaidDate!).getTime() - new Date(r.reconDate!).getTime()) /
+        (24 * 3600 * 1000),
+    );
+    if (Number.isFinite(d) && d >= -30 && d <= 365 * 2) speedByPartner.get(key)!.days.push(d);
+  }
+  const partnerSpeeds: PartnerPaySpeed[] = [...speedByPartner.entries()]
+    .filter(([, v]) => v.days.length >= 2) // cần ít nhất 2 data point
+    .map(([name, v]) => ({
+      name,
+      count: v.days.length,
+      avgDays: v.days.reduce((s, x) => s + x, 0) / v.days.length,
+      maxDays: Math.max(...v.days),
+    }))
+    .sort((a, b) => a.avgDays - b.avgDays);
+
   // Công nợ TRẢ (BRE nợ NVKD/KPI/thưởng)
   const apAging = emptyAging();
   let apCount = 0;
@@ -172,6 +215,73 @@ export default async function ReportsCashflowPage({ searchParams }: { searchPara
             highlight={arAging.b90 + apAging.b90 <= 0}
           />
         </div>
+      </div>
+
+      {/* ============ Tốc độ trả CĐT ============ */}
+      <div>
+        <h2 className="text-lg font-semibold mb-1">⏱️ Tốc độ CĐT chuyển tiền (cross-year)</h2>
+        <p className="text-xs text-slate-500 mb-3">
+          Số ngày từ ngày ký biên bản ĐC → CĐT thực chuyển tiền vào TK BRE. Trên các đợt đã thu đủ.
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+          <Card
+            label="Trung bình (tất cả)"
+            value={avgDaysAll !== null ? `${Math.round(avgDaysAll)} ngày` : "—"}
+            sub={`${daysDiffs.length} đợt đã thu đủ có ngày`}
+            highlight={avgDaysAll !== null && avgDaysAll <= 30}
+          />
+          <Card
+            label="Trung vị"
+            value={medianDaysAll !== null ? `${Math.round(medianDaysAll)} ngày` : "—"}
+            sub="ít bị outlier hơn TB"
+          />
+          <Card
+            label="Nhanh nhất"
+            value={daysDiffs.length > 0 ? `${Math.min(...daysDiffs)} ngày` : "—"}
+          />
+          <Card
+            label="Chậm nhất"
+            value={daysDiffs.length > 0 ? `${Math.max(...daysDiffs)} ngày` : "—"}
+            warn
+          />
+        </div>
+        {partnerSpeeds.length > 0 && (
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-xs text-slate-600">
+                <tr>
+                  <th className="text-left p-2">Đối tác</th>
+                  <th className="text-center p-2">Số đợt (thu đủ)</th>
+                  <th className="text-right p-2">TB ngày trả</th>
+                  <th className="text-right p-2">Lâu nhất</th>
+                </tr>
+              </thead>
+              <tbody>
+                {partnerSpeeds.map((p) => {
+                  const avgColor =
+                    p.avgDays <= 30 ? "text-green-700" : p.avgDays <= 60 ? "text-orange-700" : "text-red-700";
+                  return (
+                    <tr key={p.name} className="border-t border-slate-100">
+                      <td className="p-2 font-medium">{p.name}</td>
+                      <td className="p-2 text-center tabular-nums">{p.count}</td>
+                      <td className={`p-2 text-right tabular-nums font-semibold ${avgColor}`}>
+                        {Math.round(p.avgDays)} ngày
+                      </td>
+                      <td className="p-2 text-right tabular-nums text-xs text-slate-500">
+                        {p.maxDays} ngày
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {partnerSpeeds.length === 0 && (
+          <div className="text-xs text-slate-500 italic">
+            Chưa đủ data payment thực tế (cần ≥2 đợt thu đủ per partner) để tính tốc độ.
+          </div>
+        )}
       </div>
 
       {/* ============ Aging tables ============ */}

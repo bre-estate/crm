@@ -15,14 +15,21 @@ export default async function ReportsTimePage({ searchParams }: { searchParams: 
   const data = await loadReportData(filters);
   const { grandTotals, prodRows, prodRowsAll, filterLabel, yearOptions } = data;
 
-  // Theo tháng ghi nhận
-  const byMonth = new Map<string, { month: string; numProducts: number; totalRevenue: number }>();
+  // Theo tháng ghi nhận: dùng effectiveYM (ưu tiên recognition_month, fallback deposit_date)
+  const byMonth = new Map<
+    string,
+    { month: string; numProducts: number; totalRevenue: number; fromDeposit: number }
+  >();
   for (const p of prodRows) {
-    const key = p.recognitionMonth?.trim() || "(Chưa có tháng)";
-    if (!byMonth.has(key)) byMonth.set(key, { month: key, numProducts: 0, totalRevenue: 0 });
+    const ym = effectiveYM(p.recognitionMonth, p.depositDate);
+    const key = ym ? `${ym.y}-${String(ym.mo).padStart(2, "0")}` : "(chưa có dữ liệu)";
+    const fromDeposit = ym && !p.recognitionMonth?.trim() ? 1 : 0;
+    if (!byMonth.has(key))
+      byMonth.set(key, { month: key, numProducts: 0, totalRevenue: 0, fromDeposit: 0 });
     const agg = byMonth.get(key)!;
     agg.numProducts++;
     agg.totalRevenue += Number(p.totalRevenue ?? 0);
+    agg.fromDeposit += fromDeposit;
   }
   const monthSorted = Array.from(byMonth.values()).sort((a, b) => b.month.localeCompare(a.month));
 
@@ -49,7 +56,10 @@ export default async function ReportsTimePage({ searchParams }: { searchParams: 
       />
 
       <div>
-        <h2 className="text-lg font-semibold mb-3">Ghi nhận DT theo tháng — {filterLabel}</h2>
+        <h2 className="text-lg font-semibold mb-1">Ghi nhận DT theo tháng — {filterLabel}</h2>
+        <p className="text-xs text-slate-500 mb-3">
+          Ưu tiên tháng ghi nhận DT; căn chưa nhập → fallback tháng ngày cọc (số căn từ ngày cọc ghi ở cột "Nguồn").
+        </p>
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs text-slate-600">
@@ -57,6 +67,7 @@ export default async function ReportsTimePage({ searchParams }: { searchParams: 
                 <th className="text-left p-2">Tháng</th>
                 <th className="text-center p-2">Số căn</th>
                 <th className="text-right p-2">Tổng DT</th>
+                <th className="text-right p-2">Nguồn</th>
               </tr>
             </thead>
             <tbody>
@@ -65,11 +76,18 @@ export default async function ReportsTimePage({ searchParams }: { searchParams: 
                   <td className="p-2 font-mono text-sm">{m.month}</td>
                   <td className="p-2 text-center">{m.numProducts}</td>
                   <td className="p-2 text-right tabular-nums">{fmtMoney(m.totalRevenue)}</td>
+                  <td className="p-2 text-right text-xs">
+                    {m.fromDeposit > 0 && (
+                      <span className="text-orange-600" title="Số căn fallback từ ngày cọc do chưa có tháng ghi nhận DT">
+                        {m.fromDeposit} từ ngày cọc
+                      </span>
+                    )}
+                  </td>
                 </tr>
               ))}
               {monthSorted.length === 0 && (
                 <tr>
-                  <td colSpan={3} className="p-4 text-center text-slate-500">
+                  <td colSpan={4} className="p-4 text-center text-slate-500">
                     Không có dữ liệu trong khoảng đã chọn.
                   </td>
                 </tr>

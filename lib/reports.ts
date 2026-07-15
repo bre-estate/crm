@@ -108,6 +108,8 @@ export type ProductRow = {
   recognitionMonth: string | null;
   depositDate: string | null;
   saleType: string | null;
+  pmgBasePrice: number | null;
+  pmgRate: number | null;
 };
 
 export type RevReconRow = {
@@ -121,6 +123,7 @@ export type RevReconRow = {
   reconDate: string | null;
   receivable: number;
   paid: number;
+  firstPaidDate: string | null; // ngày payment sớm nhất (nếu có)
   employeeName: string | null;
 };
 
@@ -206,6 +209,8 @@ export async function loadReportData(filters: ReportFilters): Promise<ReportData
       recognitionMonth: products.recognitionMonth,
       depositDate: products.depositDate,
       saleType: products.saleType,
+      pmgBasePrice: products.pmgBasePrice,
+      pmgRate: products.pmgRate,
     })
     .from(products)
     .leftJoin(departments, eq(products.departmentId, departments.id));
@@ -224,6 +229,8 @@ export async function loadReportData(filters: ReportFilters): Promise<ReportData
     recognitionMonth: p.recognitionMonth,
     depositDate: p.depositDate,
     saleType: p.saleType,
+    pmgBasePrice: p.pmgBasePrice,
+    pmgRate: p.pmgRate,
   }));
 
   const yearSet = new Set<number>();
@@ -257,16 +264,25 @@ export async function loadReportData(filters: ReportFilters): Promise<ReportData
   const costRows = costRowsAll.filter((r) => filteredProductIds.has(r.productId));
 
   const paymentInRows = await db
-    .select({ recId: paymentsIn.reconciliationId, amount: paymentsIn.amount })
+    .select({
+      recId: paymentsIn.reconciliationId,
+      amount: paymentsIn.amount,
+      paymentDate: paymentsIn.paymentDate,
+    })
     .from(paymentsIn);
   const paymentOutRows = await db
     .select({ recId: paymentsOut.costReconciliationId, amount: paymentsOut.amount })
     .from(paymentsOut);
 
   const revRecPayMap = new Map<number, number>();
+  const revRecFirstPayDate = new Map<number, string>();
   for (const p of paymentInRows) {
     if (p.recId === null) continue;
     revRecPayMap.set(p.recId, (revRecPayMap.get(p.recId) ?? 0) + Number(p.amount ?? 0));
+    if (p.paymentDate) {
+      const cur = revRecFirstPayDate.get(p.recId);
+      if (!cur || p.paymentDate < cur) revRecFirstPayDate.set(p.recId, p.paymentDate);
+    }
   }
   const costRecPayMap = new Map<number, number>();
   for (const p of paymentOutRows) {
@@ -380,6 +396,7 @@ export async function loadReportData(filters: ReportFilters): Promise<ReportData
       reconDate: r.reconDate,
       receivable: Number(r.receivable ?? 0),
       paid: revRecPayMap.get(r.id) ?? 0,
+      firstPaidDate: revRecFirstPayDate.get(r.id) ?? null,
       employeeName: meta?.salesPerson ?? null,
     };
   });
