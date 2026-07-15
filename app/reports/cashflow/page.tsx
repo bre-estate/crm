@@ -226,11 +226,11 @@ export default async function ReportsCashflowPage({ searchParams }: { searchPara
         totalProducts={grandTotals.products}
       />
 
-      {/* ============ Aging cards ============ */}
+      {/* ============ Overview cards ============ */}
       <div>
-        <h2 className="text-lg font-semibold mb-3">Công nợ tổng quan (cross-year)</h2>
+        <h2 className="text-lg font-semibold mb-3">Công nợ tổng quan (tất cả các năm)</h2>
         <p className="text-xs text-slate-500 mb-3">
-          Tổng khoản chưa thu/chưa trả trên tất cả đợt đối chiếu, không phụ thuộc filter năm.
+          Tổng khoản chưa thu/chưa trả trên tất cả đợt đối chiếu, không phụ thuộc bộ lọc năm.
         </p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Card
@@ -260,15 +260,15 @@ export default async function ReportsCashflowPage({ searchParams }: { searchPara
         </div>
       </div>
 
-      {/* ============ Tốc độ trả CĐT ============ */}
+      {/* ============ Tốc độ CĐT chuyển tiền ============ */}
       <div>
-        <h2 className="text-lg font-semibold mb-1">⏱️ Tốc độ CĐT chuyển tiền (cross-year)</h2>
+        <h2 className="text-lg font-semibold mb-1">⏱️ Tốc độ CĐT chuyển tiền (tất cả các năm)</h2>
         <p className="text-xs text-slate-500 mb-3">
-          Số ngày từ ngày ký biên bản ĐC → CĐT thực chuyển tiền vào TK BRE. Trên các đợt đã thu đủ.
+          Số ngày từ ngày ký biên bản đối chiếu → CĐT thực chuyển tiền vào TK BRE. Tính trên các đợt đã thu đủ.
         </p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
           <Card
-            label="Trung bình (tất cả)"
+            label="Trung bình"
             value={avgDaysAll !== null ? `${Math.round(avgDaysAll)} ngày` : "—"}
             sub={`${daysDiffs.length} đợt đã thu đủ có ngày`}
             highlight={avgDaysAll !== null && avgDaysAll <= 30}
@@ -276,7 +276,7 @@ export default async function ReportsCashflowPage({ searchParams }: { searchPara
           <Card
             label="Trung vị"
             value={medianDaysAll !== null ? `${Math.round(medianDaysAll)} ngày` : "—"}
-            sub="ít bị outlier hơn TB"
+            sub="ít bị ảnh hưởng bởi giá trị cá biệt"
           />
           <Card
             label="Nhanh nhất"
@@ -294,7 +294,7 @@ export default async function ReportsCashflowPage({ searchParams }: { searchPara
               <thead className="bg-slate-50 text-xs text-slate-600">
                 <tr>
                   <th className="text-left p-2">Đối tác</th>
-                  <th className="text-center p-2">Số đợt (thu đủ)</th>
+                  <th className="text-center p-2">Số đợt (đã thu đủ)</th>
                   <th className="text-right p-2">TB ngày trả</th>
                   <th className="text-right p-2">Lâu nhất</th>
                 </tr>
@@ -322,22 +322,19 @@ export default async function ReportsCashflowPage({ searchParams }: { searchPara
         )}
         {partnerSpeeds.length === 0 && (
           <div className="text-xs text-slate-500 italic">
-            Chưa đủ data payment thực tế (cần ≥2 đợt thu đủ per partner) để tính tốc độ.
+            Chưa đủ dữ liệu thanh toán thực tế (cần ≥2 đợt đã thu đủ / đối tác) để tính tốc độ.
           </div>
         )}
       </div>
 
-      {/* ============ Aging tables ============ */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <AgingTable title="🔵 Aging THU (CĐT/F1 nợ BRE)" aging={arAging} />
-        <AgingTable title="🟠 Aging TRẢ (BRE nợ nội bộ)" aging={apAging} />
-      </div>
+      {/* ============ Tuổi nợ tổng ============ */}
+      <AgingTable title="Tuổi nợ tổng — CĐT/F1 nợ BRE" aging={arAging} />
 
-      {/* ============ Aging per partner (expandable) ============ */}
+      {/* ============ Tuổi nợ theo đối tác ============ */}
       <div>
-        <h2 className="text-lg font-semibold mb-1">Aging thu theo đối tác</h2>
+        <h2 className="text-lg font-semibold mb-1">Tuổi nợ theo đối tác</h2>
         <p className="text-xs text-slate-500 mb-3">
-          Mỗi CĐT/F1 chia theo bucket tuổi nợ (0-30 / 31-60 / 61-90 / {">"}90 ngày kể từ ngày ĐC). Sort: partner có nhiều tiền quá hạn ({">"}30 ngày) lên trước. <b>Bấm ▶ để xem danh sách căn cụ thể</b>.
+          Mỗi CĐT/F1 chia theo nhóm tuổi nợ (0-30 / 31-60 / 61-90 / {">"}90 ngày kể từ ngày đối chiếu). Xếp: đối tác có nhiều tiền quá hạn ({">"}30 ngày) lên trước. <b>Bấm ▶ để xem danh sách căn cụ thể</b>.
         </p>
         <div className="space-y-2">
           {partnerAgingRows.map((r) => {
@@ -445,23 +442,19 @@ export default async function ReportsCashflowPage({ searchParams }: { searchPara
         </div>
       </div>
 
-      {/* ============ Chi tiết đợt sắp thu / sắp trả ============ */}
+      {/* ============ Dự báo dòng tiền theo tháng ============ */}
       <div>
-        <h2 className="text-lg font-semibold mb-1">Đợt còn nợ — chi tiết</h2>
+        <h2 className="text-lg font-semibold mb-1">Dự báo dòng tiền theo tháng</h2>
         <p className="text-xs text-slate-500 mb-3">
+          Gom số outstanding theo tháng ký biên bản đối chiếu.{" "}
           <b>Sắp thu</b> = đợt đối chiếu doanh thu đã chốt nhưng CĐT/F1 chưa chuyển tiền vào TK BRE.{" "}
           <b>Sắp trả</b> = đợt đối chiếu giá vốn đã chốt nhưng BRE chưa chuyển cho NVKD/CTV/quản lý.
         </p>
-
-        {/* Monthly aggregate view */}
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden mb-4">
-          <div className="p-2 bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600">
-            Nhóm theo tháng ký biên bản ĐC
-          </div>
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs text-slate-600">
               <tr>
-                <th className="text-left p-2">Tháng ĐC</th>
+                <th className="text-left p-2">Tháng đối chiếu</th>
                 <th className="text-center p-2">Đợt thu</th>
                 <th className="text-right p-2">Sắp thu</th>
                 <th className="text-center p-2">Đợt trả</th>
@@ -510,125 +503,6 @@ export default async function ReportsCashflowPage({ searchParams }: { searchPara
               )}
             </tbody>
           </table>
-        </div>
-
-        {/* Detail lists side-by-side */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <h3 className="text-base font-semibold mb-2 text-blue-700">
-              🔵 Đợt CĐT/F1 chưa chuyển tiền ({arRecons.length})
-            </h3>
-            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50 text-xs text-slate-600">
-                  <tr>
-                    <th className="text-left p-2">Căn / dự án</th>
-                    <th className="text-left p-2">Đối tác</th>
-                    <th className="text-right p-2">Số tiền</th>
-                    <th className="text-right p-2">Ngày</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {arRecons
-                    .slice()
-                    .sort((a, b) => b.days - a.days)
-                    .map((r) => (
-                      <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50">
-                        <td className="p-2">
-                          <a
-                            href={`/revenues/${r.id}/edit`}
-                            className="font-mono text-xs text-blue-700 hover:underline"
-                          >
-                            {r.productCode}
-                          </a>
-                          <div className="text-xs text-slate-500">{r.projectName}</div>
-                        </td>
-                        <td className="p-2 text-xs text-slate-600">{r.partnerName ?? "—"}</td>
-                        <td className="p-2 text-right tabular-nums font-medium">
-                          {fmtMoney(r.outstanding)}
-                        </td>
-                        <td className="p-2 text-right text-xs">
-                          <span
-                            className={
-                              r.days > 90 ? "text-red-700 font-semibold"
-                                : r.days > 60 ? "text-orange-700"
-                                : r.days > 30 ? "text-amber-700"
-                                : "text-slate-500"
-                            }
-                          >
-                            {r.days} ngày
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  {arRecons.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="p-4 text-center text-slate-500 text-xs">
-                        Không có.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-          <div>
-            <h3 className="text-base font-semibold mb-2 text-orange-700">
-              🟠 Đợt BRE chưa trả NV/CTV ({apRecons.length})
-            </h3>
-            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50 text-xs text-slate-600">
-                  <tr>
-                    <th className="text-left p-2">Người nhận</th>
-                    <th className="text-left p-2">Căn</th>
-                    <th className="text-right p-2">Số tiền</th>
-                    <th className="text-right p-2">Ngày</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {apRecons
-                    .slice()
-                    .sort((a, b) => b.days - a.days)
-                    .map((r) => (
-                      <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50">
-                        <td className="p-2 text-xs font-medium">{r.employeeName}</td>
-                        <td className="p-2">
-                          <a
-                            href={`/costs/${r.id}/edit`}
-                            className="font-mono text-xs text-blue-700 hover:underline"
-                          >
-                            {r.productCode}
-                          </a>
-                        </td>
-                        <td className="p-2 text-right tabular-nums font-medium">
-                          {fmtMoney(r.outstanding)}
-                        </td>
-                        <td className="p-2 text-right text-xs">
-                          <span
-                            className={
-                              r.days > 90 ? "text-red-700 font-semibold"
-                                : r.days > 60 ? "text-orange-700"
-                                : r.days > 30 ? "text-amber-700"
-                                : "text-slate-500"
-                            }
-                          >
-                            {r.days} ngày
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  {apRecons.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="p-4 text-center text-slate-500 text-xs">
-                        Không có.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
         </div>
       </div>
 
