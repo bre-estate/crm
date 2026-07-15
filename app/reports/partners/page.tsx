@@ -111,12 +111,13 @@ export default async function ReportsPartnersPage({ searchParams }: { searchPara
     const margin = rev > 0 ? (profit / rev) * 100 : 0;
     const collectionRate = p.numRecons > 0 ? (p.reconWithPayment / p.numRecons) * 100 : 0;
     const avgDaysToPay = p.daysToPayCount > 0 ? p.daysToPaySum / p.daysToPayCount : null;
-    const avgPmgRate = p.pmgBaseSum > 0 ? (p.pmgWeightedSum / p.pmgBaseSum) * 100 : null;
+    // Decimal (0.065 = 6.5%); render × 100 khi hiển thị.
+    const avgPmgRate = p.pmgBaseSum > 0 ? p.pmgWeightedSum / p.pmgBaseSum : null;
     return { ...p, rev, profit, margin, collectionRate, avgDaysToPay, avgPmgRate };
   }).sort((a, b) => b.totalRevenue - a.totalRevenue);
 
   const maxRevenue = rows[0]?.totalRevenue ?? 1;
-  // Market average để so sánh: unweighted mean của các partner có data.
+  // Market average (unweighted mean of decimals).
   const partnersWithPmg = rows.filter((r) => r.avgPmgRate !== null);
   const marketAvgPmg =
     partnersWithPmg.length > 0
@@ -140,12 +141,12 @@ export default async function ReportsPartnersPage({ searchParams }: { searchPara
           {marketAvgPmg !== null && (
             <>
               {" "}TB %PMG_LK toàn thị trường (nội bộ) ={" "}
-              <b>{fmtPctRaw(marketAvgPmg, 2)}</b> — cột %PMG_LK màu xanh = cao hơn TB, đỏ = thấp hơn.
+              <b>{fmtPctRaw(marketAvgPmg * 100, 2)}</b> — cột %PMG_LK màu xanh = cao hơn TB, đỏ = thấp hơn.
             </>
           )}
         </p>
         <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
-          <table className="w-full text-sm min-w-[900px]">
+          <table className="w-full text-sm min-w-[800px]">
             <thead className="bg-slate-50 text-xs text-slate-600">
               <tr>
                 <th className="text-left p-2">Đối tác</th>
@@ -154,8 +155,6 @@ export default async function ReportsPartnersPage({ searchParams }: { searchPara
                 <th className="text-right p-2 w-48">DT mang lại</th>
                 <th className="text-right p-2">%PMG_LK</th>
                 <th className="text-right p-2">Biên LN</th>
-                <th className="text-right p-2">Đợt ĐC</th>
-                <th className="text-right p-2">% thu đủ</th>
                 <th className="text-right p-2">TB ngày trả</th>
               </tr>
             </thead>
@@ -163,13 +162,12 @@ export default async function ReportsPartnersPage({ searchParams }: { searchPara
               {rows.map((r) => {
                 const pct = maxRevenue > 0 ? (r.totalRevenue / maxRevenue) * 100 : 0;
                 const marginColor = r.margin >= 15 ? "text-green-700" : r.margin >= 5 ? "text-slate-700" : "text-red-700";
-                const collColor = r.collectionRate >= 80 ? "text-green-700" : r.collectionRate >= 50 ? "text-orange-700" : "text-red-700";
                 const pmgColor =
                   r.avgPmgRate === null || marketAvgPmg === null
                     ? "text-slate-700"
-                    : r.avgPmgRate * 100 > marketAvgPmg + 0.1
+                    : r.avgPmgRate > marketAvgPmg + 0.001
                       ? "text-green-700"
-                      : r.avgPmgRate * 100 < marketAvgPmg - 0.1
+                      : r.avgPmgRate < marketAvgPmg - 0.001
                         ? "text-red-700"
                         : "text-slate-700";
                 const daysColor =
@@ -201,10 +199,6 @@ export default async function ReportsPartnersPage({ searchParams }: { searchPara
                     <td className={`p-2 text-right tabular-nums ${marginColor}`}>
                       {fmtPctRaw(r.margin, 1)}
                     </td>
-                    <td className="p-2 text-right tabular-nums text-xs">{r.numRecons}</td>
-                    <td className={`p-2 text-right tabular-nums font-medium ${collColor}`}>
-                      {r.numRecons > 0 ? fmtPctRaw(r.collectionRate, 0) : "—"}
-                    </td>
                     <td className={`p-2 text-right tabular-nums text-xs ${daysColor}`}>
                       {r.avgDaysToPay !== null ? `${Math.round(r.avgDaysToPay)} ngày` : "—"}
                     </td>
@@ -213,7 +207,7 @@ export default async function ReportsPartnersPage({ searchParams }: { searchPara
               })}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="p-4 text-center text-slate-500">
+                  <td colSpan={7} className="p-4 text-center text-slate-500">
                     Không có dữ liệu trong khoảng đã chọn.
                   </td>
                 </tr>
