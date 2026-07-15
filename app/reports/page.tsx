@@ -642,6 +642,264 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
         );
       })()}
 
+      {/* ============ Phân tích chuyên sâu (Beta) ============ */}
+      <div className="border-t border-slate-300 pt-6 space-y-6">
+        <div>
+          <h2 className="text-xl font-bold">📊 Phân tích chuyên sâu</h2>
+          <p className="text-sm text-slate-500 mt-1">
+            Hiểu thị trường dựa trên các căn đã bán — tốc độ hấp thụ, biên LN so sánh, mùa vụ.
+          </p>
+        </div>
+
+        {/* ---- Chart C: Tốc độ hấp thụ ---- */}
+        {(() => {
+          type Absorption = {
+            projectId: number;
+            code: string;
+            name: string;
+            partnerName: string | null;
+            units: number;
+            firstMonth: string | null;
+            lastMonth: string | null;
+            monthsActive: number;
+            perMonth: number;
+          };
+          const byProj = new Map<number, { units: number; months: Set<string> }>();
+          for (const p of prodRows) {
+            const ym = effectiveYM(p.recognitionMonth, p.depositDate);
+            if (!ym) continue;
+            const key = p.projectId;
+            if (!byProj.has(key)) byProj.set(key, { units: 0, months: new Set() });
+            const a = byProj.get(key)!;
+            a.units++;
+            a.months.add(`${ym.y}-${String(ym.mo).padStart(2, "0")}`);
+          }
+          const rows: Absorption[] = [];
+          for (const [pjId, data] of byProj) {
+            const proj = allProjects.find((p) => p.id === pjId);
+            if (!proj) continue;
+            const sortedMonths = [...data.months].sort();
+            const first = sortedMonths[0];
+            const last = sortedMonths[sortedMonths.length - 1];
+            // Months span: distance from first to last + 1 (both inclusive)
+            const [fy, fm] = first.split("-").map(Number);
+            const [ly, lm] = last.split("-").map(Number);
+            const span = (ly - fy) * 12 + (lm - fm) + 1;
+            rows.push({
+              projectId: pjId,
+              code: proj.code,
+              name: proj.name,
+              partnerName: proj.partnerName,
+              units: data.units,
+              firstMonth: first,
+              lastMonth: last,
+              monthsActive: span,
+              perMonth: span > 0 ? data.units / span : data.units,
+            });
+          }
+          rows.sort((a, b) => b.perMonth - a.perMonth);
+          const maxPerMonth = rows[0]?.perMonth ?? 1;
+
+          return (
+            <div>
+              <h3 className="text-base font-semibold mb-2">Tốc độ hấp thụ (căn / tháng)</h3>
+              <p className="text-xs text-slate-500 mb-3">
+                Số căn bán được / tháng, tính từ tháng đầu → tháng cuối có căn của dự án đó. Xếp cao xuống thấp trong khoảng đã chọn.
+              </p>
+              <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 text-xs text-slate-600">
+                    <tr>
+                      <th className="text-left p-2">Dự án</th>
+                      <th className="text-center p-2">Từ → Đến</th>
+                      <th className="text-center p-2">Số căn</th>
+                      <th className="text-center p-2">Số tháng</th>
+                      <th className="text-right p-2 w-64">Căn / tháng</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((r) => {
+                      const pct = maxPerMonth > 0 ? (r.perMonth / maxPerMonth) * 100 : 0;
+                      return (
+                        <tr key={r.projectId} className="border-t border-slate-100">
+                          <td className="p-2">
+                            <div className="font-medium text-xs">{r.name}</div>
+                            <div className="text-xs text-slate-500">{displayPartnerName(r.partnerName)}</div>
+                          </td>
+                          <td className="p-2 text-center text-xs font-mono">
+                            {r.firstMonth} → {r.lastMonth}
+                          </td>
+                          <td className="p-2 text-center tabular-nums">{r.units}</td>
+                          <td className="p-2 text-center tabular-nums">{r.monthsActive}</td>
+                          <td className="p-2">
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 h-3 bg-slate-100 rounded overflow-hidden">
+                                <div
+                                  className="h-full bg-blue-500"
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                              <div className="text-right tabular-nums font-semibold w-16">
+                                {r.perMonth.toFixed(2)}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {rows.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="p-4 text-center text-slate-500">
+                          Không có dữ liệu.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ---- Chart E: Biên LN so sánh dự án ---- */}
+        {(() => {
+          const rows = aggregatedProjects
+            .map((p) => {
+              const rev = p.totalRevenueExpected / 1.1;
+              const profit = rev - p.totalCostExpected;
+              const margin = rev > 0 ? (profit / rev) * 100 : 0;
+              return { ...p, profit, margin };
+            })
+            .sort((a, b) => b.margin - a.margin);
+          const maxAbs = Math.max(...rows.map((r) => Math.abs(r.margin)), 1);
+
+          return (
+            <div>
+              <h3 className="text-base font-semibold mb-2">Biên lợi nhuận so sánh giữa dự án</h3>
+              <p className="text-xs text-slate-500 mb-3">
+                Lãi gộp (không VAT) / Doanh thu không VAT. Cao là ăn dày, thấp/âm là ăn mỏng hoặc lỗ.
+              </p>
+              <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 text-xs text-slate-600">
+                    <tr>
+                      <th className="text-left p-2">Dự án</th>
+                      <th className="text-center p-2">Số căn</th>
+                      <th className="text-right p-2">DT (không VAT)</th>
+                      <th className="text-right p-2">Lãi gộp</th>
+                      <th className="text-right p-2 w-64">Biên</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((r) => {
+                      const rev = r.totalRevenueExpected / 1.1;
+                      const pct = Math.abs(r.margin) / maxAbs * 100;
+                      const positive = r.margin >= 0;
+                      return (
+                        <tr key={r.id} className="border-t border-slate-100">
+                          <td className="p-2">
+                            <div className="font-medium text-xs">{r.name}</div>
+                            <div className="text-xs text-slate-500">{displayPartnerName(r.partnerName)}</div>
+                          </td>
+                          <td className="p-2 text-center tabular-nums">{r.numProducts}</td>
+                          <td className="p-2 text-right tabular-nums text-xs">{fmtMoney(rev)}</td>
+                          <td
+                            className={`p-2 text-right tabular-nums font-medium text-xs ${
+                              positive ? "text-green-700" : "text-red-700"
+                            }`}
+                          >
+                            {fmtMoney(r.profit)}
+                          </td>
+                          <td className="p-2">
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 h-3 bg-slate-100 rounded overflow-hidden">
+                                <div
+                                  className={`h-full ${positive ? "bg-green-500" : "bg-red-500"}`}
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                              <div
+                                className={`text-right tabular-nums font-semibold w-16 ${
+                                  positive ? "text-green-700" : "text-red-700"
+                                }`}
+                              >
+                                {fmtPctRaw(r.margin, 1)}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {rows.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="p-4 text-center text-slate-500">
+                          Không có dữ liệu.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ---- Chart F: Seasonal (căn bán theo tháng-của-năm, cross-year) ---- */}
+        {(() => {
+          const monthNames = ["T1","T2","T3","T4","T5","T6","T7","T8","T9","T10","T11","T12"];
+          const buckets = Array.from({ length: 12 }, () => ({ units: 0, revenue: 0 }));
+          for (const p of prodRowsAll) {
+            const ym = effectiveYM(p.recognitionMonth, p.depositDate);
+            if (!ym) continue;
+            buckets[ym.mo - 1].units++;
+            buckets[ym.mo - 1].revenue += Number(p.totalRevenue ?? 0);
+          }
+          const maxUnits = Math.max(...buckets.map((b) => b.units), 1);
+          const totalUnits = buckets.reduce((s, b) => s + b.units, 0);
+
+          return (
+            <div>
+              <h3 className="text-base font-semibold mb-2">Mùa vụ — căn bán theo tháng (gộp mọi năm)</h3>
+              <p className="text-xs text-slate-500 mb-3">
+                Gộp tất cả năm để thấy pattern theo mùa. Không bị filter năm/quý ảnh hưởng.
+              </p>
+              <div className="bg-white border border-slate-200 rounded-xl p-4">
+                <div className="space-y-2">
+                  {buckets.map((b, i) => {
+                    const pct = maxUnits > 0 ? (b.units / maxUnits) * 100 : 0;
+                    const share = totalUnits > 0 ? (b.units / totalUnits) * 100 : 0;
+                    return (
+                      <div key={i} className="flex items-center gap-3 text-sm">
+                        <div className="w-10 text-xs text-slate-600 font-medium">
+                          {monthNames[i]}
+                        </div>
+                        <div className="flex-1 h-6 bg-slate-100 rounded overflow-hidden">
+                          <div
+                            className="h-full bg-purple-500 flex items-center justify-end pr-2 text-white text-xs font-medium"
+                            style={{ width: `${Math.max(pct, 4)}%` }}
+                          >
+                            {b.units > 0 && b.units}
+                          </div>
+                        </div>
+                        <div className="w-16 text-right text-xs text-slate-500 tabular-nums">
+                          {share.toFixed(1)}%
+                        </div>
+                        <div className="w-32 text-right text-xs text-slate-500 tabular-nums">
+                          {fmtMoney(b.revenue)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {totalUnits === 0 && (
+                  <div className="p-4 text-center text-slate-500 text-sm">Không có dữ liệu.</div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+
       <div>
         <h2 className="text-lg font-semibold mb-3">Chi tiết theo dự án — {filterLabel}</h2>
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">

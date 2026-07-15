@@ -35,11 +35,11 @@ const POSITION_LABEL: Record<string, string> = {
 };
 
 const POSITION_COLOR: Record<string, string> = {
-  ceo: "bg-purple-100 text-purple-700",
-  tpkd: "bg-green-100 text-green-700",
+  ceo: "bg-red-100 text-red-700",
+  tpkd: "bg-orange-100 text-orange-700",
   nvkd: "bg-blue-100 text-blue-700",
-  admin: "bg-teal-100 text-teal-700",
-  ctv: "bg-amber-100 text-amber-700",
+  admin: "bg-yellow-100 text-yellow-700",
+  ctv: "bg-purple-100 text-purple-700",
 };
 
 export default function EmployeesManager({
@@ -54,18 +54,24 @@ export default function EmployeesManager({
   const [editing, setEditing] = useState<Employee | null>(null);
   const [creating, setCreating] = useState(false);
   const [q, setQ] = useState("");
+  const [deptFilter, setDeptFilter] = useState<string>("");
   const [showInactive, setShowInactive] = useState(false);
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
     return employees.filter((e) => {
       if (!showInactive && !e.active) return false;
+      if (deptFilter === "__none__") {
+        if (e.departmentId != null) return false;
+      } else if (deptFilter) {
+        if (String(e.departmentId ?? "") !== deptFilter) return false;
+      }
       if (!s) return true;
       const hay =
-        `${e.name} ${e.email ?? ""} ${e.phone ?? ""} ${POSITION_LABEL[e.position] ?? e.position} ${e.departmentName ?? ""}`.toLowerCase();
+        `${e.name} ${e.email ?? ""} ${e.phone ?? ""} ${POSITION_LABEL[e.position] ?? e.position}`.toLowerCase();
       return hay.includes(s);
     });
-  }, [employees, q, showInactive]);
+  }, [employees, q, deptFilter, showInactive]);
 
   const isOpen = editing !== null || creating;
   const close = () => {
@@ -119,15 +125,34 @@ export default function EmployeesManager({
         </button>
       </div>
 
-      <div className="flex items-center gap-4 flex-wrap">
-        <input
-          type="search"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Tìm theo tên / email / SĐT / phòng..."
-          className="input max-w-sm"
-        />
-        <label className="flex items-center gap-2 text-sm text-slate-600">
+      <div className="flex items-end gap-3 flex-wrap">
+        <div>
+          <label className="block text-xs text-slate-600 mb-1">Tìm</label>
+          <input
+            type="search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Tên / email / SĐT..."
+            className="input w-64"
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-slate-600 mb-1">Phòng KD</label>
+          <select
+            value={deptFilter}
+            onChange={(e) => setDeptFilter(e.target.value)}
+            className="input w-52"
+          >
+            <option value="">Tất cả phòng</option>
+            {departments.map((d) => (
+              <option key={d.id} value={String(d.id)}>
+                {d.name}
+              </option>
+            ))}
+            <option value="__none__">(chưa phân phòng)</option>
+          </select>
+        </div>
+        <label className="flex items-center gap-2 text-sm text-slate-600 pb-2">
           <input
             type="checkbox"
             checked={showInactive}
@@ -135,7 +160,7 @@ export default function EmployeesManager({
           />
           Hiện cả nhân viên đã nghỉ
         </label>
-        <div className="text-xs text-slate-500 ml-auto">
+        <div className="text-xs text-slate-500 ml-auto pb-2">
           {filtered.length}/{employees.length} người
         </div>
       </div>
