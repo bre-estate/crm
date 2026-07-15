@@ -38,7 +38,7 @@ const POSITION_COLOR: Record<string, string> = {
   ceo: "bg-purple-100 text-purple-700",
   tpkd: "bg-green-100 text-green-700",
   nvkd: "bg-blue-100 text-blue-700",
-  admin: "bg-slate-100 text-slate-700",
+  admin: "bg-teal-100 text-teal-700",
   ctv: "bg-amber-100 text-amber-700",
 };
 
@@ -133,7 +133,7 @@ export default function EmployeesManager({
             checked={showInactive}
             onChange={(e) => setShowInactive(e.target.checked)}
           />
-          Hiện cả inactive
+          Hiện cả nhân viên đã nghỉ
         </label>
         <div className="text-xs text-slate-500 ml-auto">
           {filtered.length}/{employees.length} người
@@ -149,7 +149,7 @@ export default function EmployeesManager({
               <th className="text-left p-3">Phòng</th>
               <th className="text-left p-3">Email</th>
               <th className="text-left p-3">SĐT</th>
-              <th className="text-center p-3">Active</th>
+              <th className="text-center p-3">Trạng thái</th>
               <th className="text-right p-3">Thao tác</th>
             </tr>
           </thead>
@@ -172,9 +172,13 @@ export default function EmployeesManager({
                 <td className="p-3 text-xs">{e.phone ?? "—"}</td>
                 <td className="p-3 text-center">
                   {e.active ? (
-                    <span className="text-green-600">●</span>
+                    <span className="text-xs px-2 py-1 rounded-md bg-green-100 text-green-700">
+                      Đang làm việc
+                    </span>
                   ) : (
-                    <span className="text-slate-300">●</span>
+                    <span className="text-xs px-2 py-1 rounded-md bg-slate-100 text-slate-500">
+                      Đã nghỉ việc
+                    </span>
                   )}
                 </td>
                 <td className="p-3 text-right space-x-3 whitespace-nowrap">
@@ -270,6 +274,19 @@ export default function EmployeesManager({
                     className="input"
                   />
                 </Field>
+                <Field label="Trạng thái" required>
+                  <select
+                    name="active"
+                    defaultValue={editing ? (editing.active ? "true" : "false") : "true"}
+                    className="input"
+                  >
+                    <option value="true">Đang làm việc</option>
+                    <option value="false">Đã nghỉ việc</option>
+                  </select>
+                  <div className="text-[10px] text-slate-500 mt-1">
+                    Đã nghỉ việc → ẩn khỏi dropdown ở form giao dịch/giá vốn.
+                  </div>
+                </Field>
                 <Field label="Ghi chú" full>
                   <textarea
                     name="note"
@@ -278,14 +295,6 @@ export default function EmployeesManager({
                     rows={2}
                   />
                 </Field>
-                <label className="flex items-center gap-2 text-sm col-span-full">
-                  <input
-                    type="checkbox"
-                    name="active"
-                    defaultChecked={editing?.active ?? true}
-                  />
-                  Đang làm việc (uncheck để ẩn khỏi dropdown)
-                </label>
               </div>
 
               <div className="flex justify-end gap-3 pt-3 border-t border-slate-100 mt-3">
