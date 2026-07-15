@@ -197,6 +197,43 @@ export async function deleteRevenue(id: number) {
   redirect("/revenues");
 }
 
+/**
+ * Bulk xóa nhiều ĐC doanh thu. Không redirect — trả về summary.
+ * KHÔNG guard payment (khác products): recon có payment vẫn cho xóa (payments_in
+ * là detail phụ của recon; xóa recon = xóa payment gắn kèm).
+ */
+export async function deleteRevenueBulk(ids: number[]) {
+  const errors: { id: number; message: string }[] = [];
+  const deletedIds: number[] = [];
+  for (const id of ids) {
+    try {
+      const [before] = await db
+        .select()
+        .from(revenueReconciliations)
+        .where(eq(revenueReconciliations.id, id));
+      if (!before) {
+        errors.push({ id, message: "Không tồn tại" });
+        continue;
+      }
+      await db.delete(paymentsIn).where(eq(paymentsIn.reconciliationId, id));
+      await db.delete(revenueReconciliations).where(eq(revenueReconciliations.id, id));
+      await logActivity({
+        entityType: "revenue_reconciliation",
+        entityId: id,
+        productId: before.productId,
+        action: "delete",
+        before: before as unknown as Record<string, unknown>,
+        summary: `Xóa ĐC doanh thu #${id} (bulk)`,
+      });
+      deletedIds.push(id);
+    } catch (e) {
+      errors.push({ id, message: e instanceof Error ? e.message : "Lỗi" });
+    }
+  }
+  revalidatePath("/revenues");
+  return { ok: deletedIds.length, deletedIds, errors };
+}
+
 export async function addPaymentIn(reconciliationId: number, fd: FormData) {
   const paymentDate = toStrOrNull(fd.get("paymentDate"));
   const amount = toNum(fd.get("amount"));

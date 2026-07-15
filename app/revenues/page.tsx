@@ -12,6 +12,8 @@ import { eq, desc, sum, and, ilike, type SQL } from "drizzle-orm";
 import Link from "next/link";
 import SearchableSelect from "@/components/SearchableSelect";
 import HighlightManager from "../HighlightManager";
+import BulkDeleteBar from "../BulkDeleteBar";
+import { deleteRevenueBulk } from "@/lib/actions/revenues";
 
 export const dynamic = "force-dynamic";
 
@@ -330,10 +332,19 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
         </div>
       </div>
 
+      <BulkDeleteBar
+        entityLabel="đợt đối chiếu"
+        onDelete={async (ids) => {
+          "use server";
+          return await deleteRevenueBulk(ids);
+        }}
+      />
+
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-xs text-slate-600">
             <tr>
+              <th className="p-2 w-8"></th>
               <th className="text-left p-2">Ngày ĐC</th>
               <th className="text-left p-2">Dự án / Đối tác</th>
               <th className="text-left p-2">Mã căn</th>
@@ -367,6 +378,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
                 <tr
                   key={r.id}
                   data-just-created={isJustCreated ? "1" : undefined}
+                  data-bulk-row-id={r.id}
                   className={`border-t border-slate-100 hover:bg-slate-50 ${
                     isJustCreated
                       ? "highlight-fade"
@@ -375,6 +387,13 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
                         : ""
                   }`}
                 >
+                  <td className="p-2 text-center">
+                    <input
+                      type="checkbox"
+                      className="js-bulk-check cursor-pointer"
+                      data-bulk-id={r.id}
+                    />
+                  </td>
                   <td className="p-2 text-xs">{fmtDate(r.date)}</td>
                   <td className="p-2">
                     <div className="text-xs font-medium">{r.projectName}</div>
@@ -473,7 +492,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
             })}
             {rows2.length === 0 && (
               <tr>
-                <td colSpan={activeTab === "primary" ? 13 : 10} className="p-6 text-center text-slate-500">
+                <td colSpan={activeTab === "primary" ? 14 : 11} className="p-6 text-center text-slate-500">
                   Chưa có đợt đối chiếu nào.
                 </td>
               </tr>

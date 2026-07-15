@@ -160,6 +160,41 @@ export async function deleteCost(id: number, returnTo?: string | null) {
   redirect(buildReturnUrl(returnTo, "deleted", id));
 }
 
+/**
+ * Bulk xóa nhiều ĐC giá vốn. Xóa luôn payments_out gắn kèm mỗi recon.
+ */
+export async function deleteCostBulk(ids: number[]) {
+  const errors: { id: number; message: string }[] = [];
+  const deletedIds: number[] = [];
+  for (const id of ids) {
+    try {
+      const [before] = await db
+        .select()
+        .from(costReconciliations)
+        .where(eq(costReconciliations.id, id));
+      if (!before) {
+        errors.push({ id, message: "Không tồn tại" });
+        continue;
+      }
+      await db.delete(paymentsOut).where(eq(paymentsOut.costReconciliationId, id));
+      await db.delete(costReconciliations).where(eq(costReconciliations.id, id));
+      await logActivity({
+        entityType: "cost_reconciliation",
+        entityId: id,
+        productId: before.productId,
+        action: "delete",
+        before: before as unknown as Record<string, unknown>,
+        summary: `Xóa ĐC giá vốn #${id} (bulk)`,
+      });
+      deletedIds.push(id);
+    } catch (e) {
+      errors.push({ id, message: e instanceof Error ? e.message : "Lỗi" });
+    }
+  }
+  revalidatePath("/costs");
+  return { ok: deletedIds.length, deletedIds, errors };
+}
+
 export async function addPaymentOut(costReconciliationId: number, fd: FormData) {
   const paymentDate = toStrOrNull(fd.get("paymentDate"));
   const amount = toNum(fd.get("amount"));

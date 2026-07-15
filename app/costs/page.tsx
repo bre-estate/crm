@@ -11,6 +11,8 @@ import { computeLuyKe } from "@/lib/costCalc";
 import { eq, desc, sum } from "drizzle-orm";
 import Link from "next/link";
 import SearchableSelect from "@/components/SearchableSelect";
+import BulkDeleteBar from "../BulkDeleteBar";
+import { deleteCostBulk } from "@/lib/actions/costs";
 
 export const dynamic = "force-dynamic";
 
@@ -281,10 +283,19 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
         </div>
       </div>
 
+      <BulkDeleteBar
+        entityLabel="đối chiếu giá vốn"
+        onDelete={async (ids) => {
+          "use server";
+          return await deleteCostBulk(ids);
+        }}
+      />
+
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-xs text-slate-600">
             <tr>
+              <th className="p-2 w-8"></th>
               <th className="text-left p-2">Ngày ĐC</th>
               <th className="text-left p-2">Người</th>
               <th className="text-left p-2">Loại</th>
@@ -317,7 +328,7 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
                           key={`hdr-${r.costType}`}
                           className="bg-slate-50 border-t-2 border-slate-300"
                         >
-                          <td colSpan={11} className="p-2 text-xs">
+                          <td colSpan={12} className="p-2 text-xs">
                             <div className="flex items-center gap-3 flex-wrap">
                               <span className="font-semibold text-slate-700">
                                 {costTypeLabel(r.costType)}
@@ -364,7 +375,18 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
                       );
                     })()
                 ) : null,
-                  <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50">
+                  <tr
+                    key={r.id}
+                    data-bulk-row-id={r.id}
+                    className="border-t border-slate-100 hover:bg-slate-50"
+                  >
+                  <td className="p-2 text-center">
+                    <input
+                      type="checkbox"
+                      className="js-bulk-check cursor-pointer"
+                      data-bulk-id={r.id}
+                    />
+                  </td>
                   <td className="p-2 text-xs">{fmtDate(r.date)}</td>
                   <td className="p-2 text-xs">{toTitleCase(r.employee)}</td>
                   <td className="p-2">
@@ -427,7 +449,7 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={11} className="p-6 text-center text-slate-500">
+                <td colSpan={12} className="p-6 text-center text-slate-500">
                   Chưa có dòng giá vốn nào.
                 </td>
               </tr>
