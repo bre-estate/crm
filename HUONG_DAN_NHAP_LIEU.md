@@ -1,6 +1,6 @@
 # Hướng dẫn nhập liệu — BRE CRM
 
-Cập nhật: 2026-07-15
+Cập nhật: 2026-07-16
 
 Trang web: https://crm-azure-kappa-85.vercel.app
 
@@ -94,6 +94,16 @@ Có 2 khái niệm khác nhau:
 ```
 
 Đi sai thứ tự → hệ thống không cho lưu vì thiếu FK.
+
+### Cấu trúc menu
+
+Sidebar gom các mục nghiệp vụ 1 căn vào nhóm **Giao dịch**:
+- Danh sách căn (/products)
+- Doanh thu (/revenues)
+- Giá vốn (/costs)
+- Hóa đơn (/invoices)
+
+Nhóm **Báo cáo** có 4 tab con: Tổng hợp / Theo dự án / Theo nhân sự / Theo thời gian.
 
 ---
 
@@ -414,29 +424,28 @@ Vào form recon tương ứng (click "Sửa" ở detail hoặc từ `/revenues`)
 
 ## 10. Báo cáo (`/reports`)
 
-Trang tổng hợp theo thời gian + phòng/NVKD.
+Chia **4 sub-page**, filter năm + khoảng thời gian dùng chung:
+
+| Sub-page | URL | Nội dung |
+|---|---|---|
+| **Tổng hợp** | `/reports/overview` | 8 KPI cards (DT/GV dự kiến, lãi gộp, biên LN, đã ĐC, công nợ) + Lãi thuần/ROI (owner) |
+| **Theo dự án** | `/reports/projects` | Bảng chi tiết dự án + Tốc độ hấp thụ (căn/tháng) + Biên LN so sánh |
+| **Theo nhân sự** | `/reports/people` | Theo phòng + Top 15 NVKD |
+| **Theo thời gian** | `/reports/time` | Ghi nhận DT theo tháng + Mùa vụ (cross-year seasonal) |
+
+Bấm tab ở đầu trang để chuyển. Filter năm/khoảng giữ nguyên khi chuyển tab.
 
 ### 10.1. Filter thời gian
 
 - **Năm**: chọn từ dropdown (chỉ hiện năm có data)
-- **Khoảng**:
-  - Cả năm
-  - Q1 (T1-T3), Q2 (T4-T6), Q3 (T7-T9), Q4 (T10-T12)
-  - Nửa đầu năm (T1-T6), Nửa cuối năm (T7-T12)
+- **Khoảng**: Cả năm / Q1-Q4 / Nửa đầu / Nửa cuối
+- **Cơ sở filter**: `products.recognitionMonth` (tháng ghi nhận DT), fallback `depositDate` nếu chưa nhập
 
-Filter apply xuyên suốt: KPI cards, theo phòng, top NVKD, chi tiết dự án.
+### 10.2. Chart phân tích chuyên sâu (Beta)
 
-### 10.2. Cơ sở filter
-
-Dựa vào **`products.recognitionMonth`** (tháng ghi nhận DT). Vd căn ghi nhận T3/2025 → thuộc Q1 2025.
-
-### 10.3. Các bảng
-
-- **KPI cards**: DT dự kiến, GV dự kiến, lãi gộp, biên LN, DT/GV đã ĐC, công nợ thuần
-- **Theo phòng**: bán tốt nhất phòng nào
-- **Top NVKD**: top 15 doanh thu
-- **Ghi nhận DT theo tháng**: dòng thời gian
-- **Chi tiết dự án**: từng dự án + vai trò (F1/F2/Thứ cấp)
+- **Tốc độ hấp thụ**: căn/tháng theo dự án — dự án nào bán nóng
+- **Biên LN so sánh dự án**: dự án nào ăn dày (%), có thanh chart 2 màu xanh/đỏ
+- **Mùa vụ**: căn bán theo tháng 1-12 gộp mọi năm — thấy pattern seasonal, **không bị filter năm ảnh hưởng**
 
 ---
 
