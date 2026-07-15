@@ -6,8 +6,13 @@ import { eq, asc } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
-export default async function ProjectsPage() {
-  const rows = await db
+type SearchParams = Promise<{ type?: string }>;
+
+export default async function ProjectsPage({ searchParams }: { searchParams: SearchParams }) {
+  const sp = await searchParams;
+  const activeTab: "primary" | "secondary" = sp.type === "secondary" ? "secondary" : "primary";
+
+  const allRows = await db
     .select({
       id: projects.id,
       code: projects.code,
@@ -19,10 +24,19 @@ export default async function ProjectsPage() {
       brokerageRate: projects.brokerageRate,
       brokerageRateSale: projects.brokerageRateSale,
       adminFee: projects.adminFee,
+      defaultSaleType: projects.defaultSaleType,
     })
     .from(projects)
     .leftJoin(partners, eq(projects.partnerId, partners.id))
-    .orderBy(asc(projects.name))
+    .orderBy(asc(projects.name));
+
+  // Ưu tiên defaultSaleType, fallback theo partner name (đối tác trống/Chợ thứ cấp).
+  const isSecondaryRow = (r: (typeof allRows)[number]) =>
+    r.defaultSaleType === "secondary" || isSecondaryPartner(r.partnerName);
+  const primary = allRows.filter((r) => !isSecondaryRow(r));
+  const secondary = allRows.filter(isSecondaryRow);
+  const rows = activeTab === "secondary" ? secondary : primary;
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -38,6 +52,15 @@ export default async function ProjectsPage() {
         >
           + Thêm dự án
         </Link>
+      </div>
+
+      <div className="border-b border-slate-200 flex gap-1">
+        <TabLink href="/projects?type=primary" active={activeTab === "primary"}>
+          Sơ cấp <span className="text-xs text-slate-400 ml-1">({primary.length})</span>
+        </TabLink>
+        <TabLink href="/projects?type=secondary" active={activeTab === "secondary"}>
+          Thứ cấp <span className="text-xs text-slate-400 ml-1">({secondary.length})</span>
+        </TabLink>
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
@@ -64,7 +87,7 @@ export default async function ProjectsPage() {
                   {displayPartnerName(p.partnerName) || <span className="text-slate-300">—</span>}
                 </td>
                 <td className="p-3">
-                  {isSecondaryPartner(p.partnerName) ? (
+                  {isSecondaryRow(p) ? (
                     <span className="text-xs px-2 py-1 rounded-md bg-orange-100 text-orange-700">
                       Thứ cấp
                     </span>
@@ -100,7 +123,7 @@ export default async function ProjectsPage() {
             {rows.length === 0 && (
               <tr>
                 <td colSpan={10} className="p-6 text-center text-slate-500 text-sm">
-                  Chưa có dự án nào.
+                  Chưa có dự án {activeTab === "secondary" ? "thứ cấp" : "sơ cấp"} nào.
                 </td>
               </tr>
             )}
@@ -108,5 +131,28 @@ export default async function ProjectsPage() {
         </table>
       </div>
     </div>
+  );
+}
+
+function TabLink({
+  href,
+  active,
+  children,
+}: {
+  href: string;
+  active: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`px-4 py-2 text-sm border-b-2 -mb-px ${
+        active
+          ? "border-orange-500 text-orange-600 font-semibold"
+          : "border-transparent text-slate-500 hover:text-slate-700"
+      }`}
+    >
+      {children}
+    </Link>
   );
 }

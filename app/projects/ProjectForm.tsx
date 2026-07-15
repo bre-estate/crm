@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Project, Partner } from "@/lib/schema";
 import MoneyInput from "@/components/MoneyInput";
@@ -163,11 +163,11 @@ export default function ProjectForm({ project, partners, onSave, onDelete }: Pro
             <MoneyInput name="adminFeeSale" defaultValue={project?.adminFeeSale ?? 0} className="input" />
           </Field>
           <Field label="Biểu PMG (text - ghi chú)" full>
-            <textarea
+            <AutoGrowTextarea
               name="contractDocs"
               defaultValue={project?.contractDocs ?? ""}
+              minRows={3}
               className="input"
-              rows={3}
               placeholder="VD: + Y<50%: 4.5%  + 50%-90%: 5%  + >90%: 5.5% (hồi tố)"
             />
           </Field>
@@ -297,5 +297,42 @@ function Field({
       </label>
       {children}
     </div>
+  );
+}
+
+function AutoGrowTextarea({
+  name,
+  defaultValue,
+  minRows = 3,
+  className,
+  placeholder,
+}: {
+  name: string;
+  defaultValue?: string;
+  minRows?: number;
+  className?: string;
+  placeholder?: string;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const resize = () => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  };
+  useEffect(() => {
+    resize();
+  }, []);
+  return (
+    <textarea
+      ref={ref}
+      name={name}
+      defaultValue={defaultValue}
+      rows={minRows}
+      onInput={resize}
+      className={className}
+      placeholder={placeholder}
+      style={{ overflow: "hidden", resize: "vertical" }}
+    />
   );
 }
