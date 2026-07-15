@@ -115,7 +115,7 @@ export default async function ReportsCashflowPage({ searchParams }: { searchPara
   })();
 
   // TB ngày trả per partner
-  type PartnerPaySpeed = { name: string; count: number; avgDays: number; maxDays: number };
+  type PartnerPaySpeed = { name: string; count: number; avgDays: number; minDays: number; maxDays: number };
   const speedByPartner = new Map<string, { days: number[] }>();
   for (const r of paidReconsWithDate) {
     const key = r.partnerName ?? "(chưa gán)";
@@ -132,9 +132,18 @@ export default async function ReportsCashflowPage({ searchParams }: { searchPara
       name,
       count: v.days.length,
       avgDays: v.days.reduce((s, x) => s + x, 0) / v.days.length,
+      minDays: Math.min(...v.days),
       maxDays: Math.max(...v.days),
     }))
     .sort((a, b) => a.avgDays - b.avgDays);
+
+  // Partner có đợt nhanh nhất / chậm nhất (để show trong sub của KPI card)
+  const fastestPartner = partnerSpeeds.length > 0
+    ? partnerSpeeds.reduce((best, p) => (p.minDays < best.minDays ? p : best))
+    : null;
+  const slowestPartner = partnerSpeeds.length > 0
+    ? partnerSpeeds.reduce((worst, p) => (p.maxDays > worst.maxDays ? p : worst))
+    : null;
 
   // Công nợ TRẢ (BRE nợ NVKD/KPI/thưởng)
   const apAging = emptyAging();
@@ -285,10 +294,12 @@ export default async function ReportsCashflowPage({ searchParams }: { searchPara
           <Card
             label="Nhanh nhất"
             value={daysDiffs.length > 0 ? `${Math.min(...daysDiffs)} ngày` : "—"}
+            sub={fastestPartner ? `${fastestPartner.name}` : undefined}
           />
           <Card
             label="Chậm nhất"
             value={daysDiffs.length > 0 ? `${Math.max(...daysDiffs)} ngày` : "—"}
+            sub={slowestPartner ? `${slowestPartner.name}` : undefined}
             warn
           />
         </div>
@@ -300,6 +311,7 @@ export default async function ReportsCashflowPage({ searchParams }: { searchPara
                   <th className="text-left p-2">Đối tác</th>
                   <th className="text-center p-2">Số đợt (đã thu đủ)</th>
                   <th className="text-right p-2">TB ngày trả</th>
+                  <th className="text-right p-2">Nhanh nhất</th>
                   <th className="text-right p-2">Lâu nhất</th>
                 </tr>
               </thead>
@@ -307,12 +319,16 @@ export default async function ReportsCashflowPage({ searchParams }: { searchPara
                 {partnerSpeeds.map((p) => {
                   const avgColor =
                     p.avgDays <= 30 ? "text-green-700" : p.avgDays <= 60 ? "text-orange-700" : "text-red-700";
+                  const minColor = p.minDays < 0 ? "text-green-700 font-medium" : "text-slate-500";
                   return (
                     <tr key={p.name} className="border-t border-slate-100">
                       <td className="p-2 font-medium">{p.name}</td>
                       <td className="p-2 text-center tabular-nums">{p.count}</td>
                       <td className={`p-2 text-right tabular-nums font-semibold ${avgColor}`}>
                         {Math.round(p.avgDays)} ngày
+                      </td>
+                      <td className={`p-2 text-right tabular-nums text-xs ${minColor}`}>
+                        {p.minDays} ngày
                       </td>
                       <td className="p-2 text-right tabular-nums text-xs text-slate-500">
                         {p.maxDays} ngày
