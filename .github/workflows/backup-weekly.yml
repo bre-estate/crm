@@ -52,3 +52,20 @@ jobs:
             import script (see `scripts/import-fresh.ts` for pattern).
           files: backups/bre-crm-snapshot-${{ steps.date.outputs.date }}.json.gz
           prerelease: true
+
+      - name: Cleanup releases cũ > 3 tháng
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cutoff=$(date -u -d '3 months ago' +'%Y-%m-%d')
+          echo "Cutoff date: $cutoff — xóa mọi backup-YYYY-MM-DD < cutoff"
+          gh release list --repo "${{ github.repository }}" --limit 500 --json tagName \
+            | jq -r '.[].tagName' \
+            | grep -E '^backup-[0-9]{4}-[0-9]{2}-[0-9]{2}$' \
+            | while read tag; do
+                d="${tag#backup-}"
+                if [[ "$d" < "$cutoff" ]]; then
+                  echo "  🗑  $tag (ngày $d < cutoff $cutoff)"
+                  gh release delete "$tag" --repo "${{ github.repository }}" --cleanup-tag --yes
+                fi
+              done
