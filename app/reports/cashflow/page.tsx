@@ -50,6 +50,49 @@ export default async function ReportsCashflowPage({ searchParams }: { searchPara
   }
   const arTotal = arAging.b0 + arAging.b30 + arAging.b60 + arAging.b90;
 
+  // Aging per partner — thấy CĐT nào chây lì
+  type PartnerAging = {
+    name: string;
+    b0: number;
+    b30: number;
+    b60: number;
+    b90: number;
+    total: number;
+    count: number;
+    maxDays: number;
+  };
+  const agingByPartner = new Map<string, PartnerAging>();
+  for (const r of arRecons) {
+    const key = r.partnerName ?? "(chưa gán)";
+    if (!agingByPartner.has(key)) {
+      agingByPartner.set(key, {
+        name: key,
+        b0: 0,
+        b30: 0,
+        b60: 0,
+        b90: 0,
+        total: 0,
+        count: 0,
+        maxDays: 0,
+      });
+    }
+    const a = agingByPartner.get(key)!;
+    if (r.days <= 30) a.b0 += r.outstanding;
+    else if (r.days <= 60) a.b30 += r.outstanding;
+    else if (r.days <= 90) a.b60 += r.outstanding;
+    else a.b90 += r.outstanding;
+    a.total += r.outstanding;
+    a.count++;
+    if (r.days > a.maxDays) a.maxDays = r.days;
+  }
+  // Sort: partner nào có nhiều tiền chậm (>30 ngày) trước, rồi theo tổng
+  const partnerAgingRows = [...agingByPartner.values()].sort((a, b) => {
+    const aOverdue = a.b30 + a.b60 + a.b90;
+    const bOverdue = b.b30 + b.b60 + b.b90;
+    if (bOverdue !== aOverdue) return bOverdue - aOverdue;
+    return b.total - a.total;
+  });
+
   // Tốc độ trả CĐT: TB ngày (payment date - recon date) trên các recon đã thu đủ.
   const paidReconsWithDate = revReconsAll.filter(
     (r) => r.paid >= r.receivable - 0.5 && r.receivable > 0 && r.firstPaidDate && r.reconDate,
@@ -288,6 +331,77 @@ export default async function ReportsCashflowPage({ searchParams }: { searchPara
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <AgingTable title="🔵 Aging THU (CĐT/F1 nợ BRE)" aging={arAging} />
         <AgingTable title="🟠 Aging TRẢ (BRE nợ nội bộ)" aging={apAging} />
+      </div>
+
+      {/* ============ Aging per partner ============ */}
+      <div>
+        <h2 className="text-lg font-semibold mb-1">🚨 Aging THU theo CĐT/F1 — soi ai chây lì</h2>
+        <p className="text-xs text-slate-500 mb-3">
+          Chỉ liệt kê partner còn nợ. Sort: đợt quá hạn ({">"}30 ngày) trước. Cột đỏ = cảnh báo.
+        </p>
+        <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
+          <table className="w-full text-sm min-w-[800px]">
+            <thead className="bg-slate-50 text-xs text-slate-600">
+              <tr>
+                <th className="text-left p-2">Đối tác</th>
+                <th className="text-center p-2">Đợt còn nợ</th>
+                <th className="text-right p-2">0-30 ngày</th>
+                <th className="text-right p-2">31-60 ngày</th>
+                <th className="text-right p-2">61-90 ngày</th>
+                <th className="text-right p-2">{">"} 90 ngày</th>
+                <th className="text-right p-2">Tổng</th>
+                <th className="text-right p-2">Đợt lâu nhất</th>
+              </tr>
+            </thead>
+            <tbody>
+              {partnerAgingRows.map((r) => {
+                const overdue = r.b30 + r.b60 + r.b90;
+                const overduePct = r.total > 0 ? (overdue / r.total) * 100 : 0;
+                const maxColor =
+                  r.maxDays > 90 ? "text-red-700 font-semibold"
+                    : r.maxDays > 60 ? "text-orange-700"
+                    : r.maxDays > 30 ? "text-amber-600"
+                    : "text-slate-500";
+                return (
+                  <tr key={r.name} className="border-t border-slate-100">
+                    <td className="p-2 font-medium">{r.name}</td>
+                    <td className="p-2 text-center tabular-nums">{r.count}</td>
+                    <td className="p-2 text-right tabular-nums text-xs text-slate-700">
+                      {r.b0 > 0 ? fmtMoney(r.b0) : "—"}
+                    </td>
+                    <td className="p-2 text-right tabular-nums text-xs text-amber-700 font-medium">
+                      {r.b30 > 0 ? fmtMoney(r.b30) : "—"}
+                    </td>
+                    <td className="p-2 text-right tabular-nums text-xs text-orange-700 font-medium">
+                      {r.b60 > 0 ? fmtMoney(r.b60) : "—"}
+                    </td>
+                    <td className="p-2 text-right tabular-nums text-xs text-red-700 font-bold">
+                      {r.b90 > 0 ? fmtMoney(r.b90) : "—"}
+                    </td>
+                    <td className="p-2 text-right tabular-nums font-semibold">
+                      {fmtMoney(r.total)}
+                      {overduePct > 0 && (
+                        <div className="text-[10px] text-orange-600 font-normal">
+                          {fmtPctRaw(overduePct, 0)} quá hạn
+                        </div>
+                      )}
+                    </td>
+                    <td className={`p-2 text-right tabular-nums text-xs ${maxColor}`}>
+                      {r.maxDays} ngày
+                    </td>
+                  </tr>
+                );
+              })}
+              {partnerAgingRows.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="p-6 text-center text-slate-500 text-sm">
+                    Không có công nợ nào — tất cả CĐT/F1 đã thanh toán đủ.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* ============ Forecast: theo tháng ĐC ============ */}
