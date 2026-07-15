@@ -8,6 +8,13 @@ import SearchableSelect from "@/components/SearchableSelect";
 import { fmtMoney, fmtPctTight } from "@/lib/format";
 import { toast } from "sonner";
 
+type InvoiceReconRef = {
+  id: number;
+  invoiceNumber: string;
+  invoiceDate: string | null;
+  totalReceivableThisTime: number;
+};
+
 type ProductOption = {
   id: number;
   productCode: string;
@@ -51,6 +58,7 @@ type Props = {
   products: ProductOption[];
   defaultProductId?: number;
   prevRecons?: PrevRecon[];
+  invoiceRecons?: InvoiceReconRef[];
   onSave: (fd: FormData) => Promise<void>;
   onDelete?: () => Promise<void>;
   returnTo?: string | null;
@@ -72,6 +80,7 @@ export default function RevenueForm({
   products,
   defaultProductId,
   prevRecons = [],
+  invoiceRecons = [],
   onSave,
   onDelete,
   returnTo,
@@ -148,6 +157,37 @@ export default function RevenueForm({
       ),
     [prevCommissions],
   );
+
+  // ===== Hóa đơn state (auto-compute total) =====
+  const [invoiceNumber, setInvoiceNumber] = useState<string>(invoiceInit?.number ?? "");
+  const [invoiceDate, setInvoiceDate] = useState<string>(invoiceInit?.date ?? "");
+
+  // Tổng HĐ = sum(totalReceivable của các recon khác cùng số HĐ + ngày HĐ) + amount đang nhập
+  const invoiceTotalComputed = useMemo(() => {
+    const num = invoiceNumber.trim();
+    if (!num && !invoiceDate) return 0;
+    const otherSum = invoiceRecons
+      .filter(
+        (r) =>
+          r.id !== recon?.id &&
+          r.invoiceNumber === (num || "(chưa có số)") &&
+          (r.invoiceDate ?? "") === (invoiceDate || ""),
+      )
+      .reduce((s, r) => s + Number(r.totalReceivableThisTime ?? 0), 0);
+    return otherSum + amount;
+  }, [invoiceRecons, invoiceNumber, invoiceDate, amount, recon?.id]);
+
+  // Số recon khác đang chia sẻ HĐ này (để hint cho user)
+  const otherReconsInInvoice = useMemo(() => {
+    const num = invoiceNumber.trim();
+    if (!num && !invoiceDate) return [];
+    return invoiceRecons.filter(
+      (r) =>
+        r.id !== recon?.id &&
+        r.invoiceNumber === (num || "(chưa có số)") &&
+        (r.invoiceDate ?? "") === (invoiceDate || ""),
+    );
+  }, [invoiceRecons, invoiceNumber, invoiceDate, recon?.id]);
 
   // Suggest amount dựa loại đợt + product config
   // Commission theo Excel col 20 = (pmgBase × %PMG_LK × %thu − admin_fee) − sum(prev col 20)
@@ -443,7 +483,8 @@ export default function RevenueForm({
           <Field label="Số hóa đơn">
             <input
               name="invoiceNumber"
-              defaultValue={invoiceInit?.number ?? ""}
+              value={invoiceNumber}
+              onChange={(e) => setInvoiceNumber(e.target.value)}
               className="input"
               placeholder="Để trống nếu chưa lập"
             />
@@ -452,20 +493,31 @@ export default function RevenueForm({
             <input
               type="date"
               name="invoiceDate"
-              defaultValue={invoiceInit?.date ?? ""}
+              value={invoiceDate}
+              onChange={(e) => setInvoiceDate(e.target.value)}
               className="input"
             />
           </Field>
           <Field label="Giá trị HĐ tổng (gồm VAT)">
-            <MoneyInput
-              name="invoiceTotalVat"
-              defaultValue={invoiceInit?.totalAmountVat ?? 0}
-              className="input"
-            />
+            <div className="input bg-slate-50 text-slate-700 tabular-nums cursor-not-allowed">
+              {invoiceTotalComputed > 0
+                ? invoiceTotalComputed.toLocaleString("vi-VN")
+                : "—"}
+            </div>
+            <div className="text-[10px] text-slate-500 mt-1">
+              Tự tính = tổng các đợt cùng số HĐ.
+              {otherReconsInInvoice.length > 0 &&
+                ` Đang gộp ${otherReconsInInvoice.length} đợt khác (${fmtMoney(
+                  otherReconsInInvoice.reduce(
+                    (s, r) => s + Number(r.totalReceivableThisTime ?? 0),
+                    0,
+                  ),
+                )}) + đợt này.`}
+            </div>
           </Field>
         </div>
         <div className="text-xs text-slate-500">
-          Số HĐ + ngày HĐ trùng HĐ đã có → hệ thống tự link.
+          Số HĐ + ngày HĐ trùng HĐ đã có → hệ thống tự link + cộng dồn giá trị.
         </div>
       </Section>
 

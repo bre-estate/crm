@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
-import { products, projects, partners, revenueReconciliations } from "@/lib/schema";
-import { asc, eq } from "drizzle-orm";
+import { products, projects, partners, revenueReconciliations, invoices } from "@/lib/schema";
+import { asc, eq, isNotNull } from "drizzle-orm";
 import Link from "next/link";
 import RevenueForm from "../RevenueForm";
 import { createRevenue } from "@/lib/actions/revenues";
@@ -54,6 +54,24 @@ export default async function NewRevenuePage({ searchParams }: { searchParams: S
     })
     .from(revenueReconciliations);
 
+  // Recon đã gắn với invoice — cho form auto-compute Giá trị HĐ tổng
+  const invoiceReconsRaw = await db
+    .select({
+      id: revenueReconciliations.id,
+      invoiceNumber: invoices.invoiceNumber,
+      invoiceDate: invoices.invoiceDate,
+      totalReceivableThisTime: revenueReconciliations.totalReceivableThisTime,
+    })
+    .from(revenueReconciliations)
+    .innerJoin(invoices, eq(revenueReconciliations.invoiceId, invoices.id))
+    .where(isNotNull(revenueReconciliations.invoiceId));
+  const invoiceRecons = invoiceReconsRaw.map((r) => ({
+    id: r.id,
+    invoiceNumber: r.invoiceNumber,
+    invoiceDate: r.invoiceDate,
+    totalReceivableThisTime: Number(r.totalReceivableThisTime ?? 0),
+  }));
+
   const backHref = defaultProductId ? `/products/${defaultProductId}` : "/revenues";
   const backLabel = defaultProductId ? "← Về căn" : "← Doanh thu";
 
@@ -71,6 +89,7 @@ export default async function NewRevenuePage({ searchParams }: { searchParams: S
         products={productOptions}
         defaultProductId={defaultProductId}
         prevRecons={prevRecons}
+        invoiceRecons={invoiceRecons}
         onSave={createRevenue}
       />
     </div>

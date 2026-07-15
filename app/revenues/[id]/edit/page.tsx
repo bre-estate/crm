@@ -7,7 +7,7 @@ import {
   projects,
   partners,
 } from "@/lib/schema";
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, isNotNull } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import RevenueForm from "../../RevenueForm";
@@ -102,6 +102,24 @@ export default async function EditRevenuePage({
     })
     .from(revenueReconciliations);
 
+  // Recon đã gắn với invoice — cho form auto-compute Giá trị HĐ tổng
+  const invoiceReconsRaw = await db
+    .select({
+      id: revenueReconciliations.id,
+      invoiceNumber: invoices.invoiceNumber,
+      invoiceDate: invoices.invoiceDate,
+      totalReceivableThisTime: revenueReconciliations.totalReceivableThisTime,
+    })
+    .from(revenueReconciliations)
+    .innerJoin(invoices, eq(revenueReconciliations.invoiceId, invoices.id))
+    .where(isNotNull(revenueReconciliations.invoiceId));
+  const invoiceRecons = invoiceReconsRaw.map((r) => ({
+    id: r.id,
+    invoiceNumber: r.invoiceNumber,
+    invoiceDate: r.invoiceDate,
+    totalReceivableThisTime: Number(r.totalReceivableThisTime ?? 0),
+  }));
+
   return (
     <div className="space-y-4 max-w-4xl">
       <div className="flex items-center gap-2 text-sm">
@@ -118,6 +136,7 @@ export default async function EditRevenuePage({
         invoiceInit={invoiceInit}
         products={productOptions}
         prevRecons={prevRecons}
+        invoiceRecons={invoiceRecons}
         returnTo={returnTo}
         onSave={async (fd) => {
           "use server";

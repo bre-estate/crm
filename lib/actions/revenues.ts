@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { revenueReconciliations, invoices, paymentsIn, products } from "@/lib/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { logActivity } from "@/lib/audit";
@@ -11,7 +11,6 @@ import { toNum, toStr, toStrOrNull, toPct } from "@/lib/parse";
 async function findOrCreateInvoice(
   number: string,
   date: string | null,
-  totalVat: number,
 ): Promise<number | null> {
   if (!number && !date) return null;
   const safeNumber = number || "(chưa có số)";
@@ -30,10 +29,26 @@ async function findOrCreateInvoice(
     .values({
       invoiceNumber: safeNumber,
       invoiceDate: date,
-      totalAmountVat: totalVat,
+      totalAmountVat: 0,
     })
     .returning({ id: invoices.id });
   return inv.id;
+}
+
+/**
+ * totalAmountVat của invoice = sum(totalReceivableThisTime) từ mọi recon liên kết.
+ * User không tự nhập được — luôn auto tính sau mỗi lần recon thay đổi.
+ */
+async function recomputeInvoiceTotal(invoiceId: number | null): Promise<void> {
+  if (!invoiceId) return;
+  const [row] = await db
+    .select({
+      total: sql<string>`COALESCE(SUM(${revenueReconciliations.totalReceivableThisTime}), 0)`,
+    })
+    .from(revenueReconciliations)
+    .where(eq(revenueReconciliations.invoiceId, invoiceId));
+  const total = Number(row?.total ?? 0);
+  await db.update(invoices).set({ totalAmountVat: total }).where(eq(invoices.id, invoiceId));
 }
 
 function buildRevenueData(fd: FormData) {
@@ -102,13 +117,14 @@ export async function createRevenue(fd: FormData) {
 
   const invoiceNumber = toStr(fd.get("invoiceNumber"));
   const invoiceDate = toStrOrNull(fd.get("invoiceDate"));
-  const invoiceTotalVat = toNum(fd.get("invoiceTotalVat"));
-  const invoiceId = await findOrCreateInvoice(invoiceNumber, invoiceDate, invoiceTotalVat);
+  const invoiceId = await findOrCreateInvoice(invoiceNumber, invoiceDate);
 
   const [rec] = await db
     .insert(revenueReconciliations)
     .values({ ...data, invoiceId })
     .returning({ id: revenueReconciliations.id });
+
+  await recomputeInvoiceTotal(invoiceId);
 
   await applyConfigToProduct(fd, data.productId, data.pmgCumulativePct);
 
@@ -149,8 +165,7 @@ export async function updateRevenue(id: number, fd: FormData) {
 
   const invoiceNumber = toStr(fd.get("invoiceNumber"));
   const invoiceDate = toStrOrNull(fd.get("invoiceDate"));
-  const invoiceTotalVat = toNum(fd.get("invoiceTotalVat"));
-  const invoiceId = await findOrCreateInvoice(invoiceNumber, invoiceDate, invoiceTotalVat);
+  const invoiceId = await findOrCreateInvoice(invoiceNumber, invoiceDate);
 
   const [before] = await db
     .select()
@@ -160,6 +175,12 @@ export async function updateRevenue(id: number, fd: FormData) {
     .update(revenueReconciliations)
     .set({ ...data, invoiceId })
     .where(eq(revenueReconciliations.id, id));
+
+  // Recompute invoice cũ (nếu bị bỏ) + invoice mới (nếu vừa gắn)
+  if (before?.invoiceId && before.invoiceId !== invoiceId) {
+    await recomputeInvoiceTotal(before.invoiceId);
+  }
+  await recomputeInvoiceTotal(invoiceId);
   await logActivity({
     entityType: "revenue_reconciliation",
     entityId: id,
@@ -185,6 +206,7 @@ export async function deleteRevenue(id: number) {
     .where(eq(revenueReconciliations.id, id));
   await db.delete(paymentsIn).where(eq(paymentsIn.reconciliationId, id));
   await db.delete(revenueReconciliations).where(eq(revenueReconciliations.id, id));
+  if (before?.invoiceId) await recomputeInvoiceTotal(before.invoiceId);
   await logActivity({
     entityType: "revenue_reconciliation",
     entityId: id,
@@ -205,6 +227,7 @@ export async function deleteRevenue(id: number) {
 export async function deleteRevenueBulk(ids: number[]) {
   const errors: { id: number; message: string }[] = [];
   const deletedIds: number[] = [];
+  const affectedInvoices = new Set<number>();
   for (const id of ids) {
     try {
       const [before] = await db
@@ -217,6 +240,7 @@ export async function deleteRevenueBulk(ids: number[]) {
       }
       await db.delete(paymentsIn).where(eq(paymentsIn.reconciliationId, id));
       await db.delete(revenueReconciliations).where(eq(revenueReconciliations.id, id));
+      if (before.invoiceId) affectedInvoices.add(before.invoiceId);
       await logActivity({
         entityType: "revenue_reconciliation",
         entityId: id,
@@ -230,6 +254,7 @@ export async function deleteRevenueBulk(ids: number[]) {
       errors.push({ id, message: e instanceof Error ? e.message : "Lỗi" });
     }
   }
+  for (const invId of affectedInvoices) await recomputeInvoiceTotal(invId);
   revalidatePath("/revenues");
   return { ok: deletedIds.length, deletedIds, errors };
 }
@@ -262,7 +287,6 @@ export type BulkRevenueRow = {
   pmgCumulativePct?: number; // display value 0-100 (%PMG lũy kế)
   invoiceNumber?: string;
   invoiceDate?: string | null;
-  invoiceTotalVat?: number;
   paymentDate?: string | null;
   paymentAmount?: number;
   note?: string;
@@ -271,6 +295,7 @@ export type BulkRevenueRow = {
 export async function createRevenueBulk(rows: BulkRevenueRow[]) {
   const createdIds: number[] = [];
   const errors: Array<{ index: number; message: string }> = [];
+  const affectedInvoices = new Set<number>();
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
     try {
@@ -283,11 +308,7 @@ export async function createRevenueBulk(rows: BulkRevenueRow[]) {
 
       let invoiceId: number | null = null;
       if (r.invoiceNumber) {
-        invoiceId = await findOrCreateInvoice(
-          r.invoiceNumber,
-          r.invoiceDate ?? null,
-          r.invoiceTotalVat ?? 0,
-        );
+        invoiceId = await findOrCreateInvoice(r.invoiceNumber, r.invoiceDate ?? null);
       }
       const [inserted] = await db
         .insert(revenueReconciliations)
@@ -307,6 +328,8 @@ export async function createRevenueBulk(rows: BulkRevenueRow[]) {
         })
         .returning({ id: revenueReconciliations.id });
 
+      if (invoiceId) affectedInvoices.add(invoiceId);
+
       // Nếu có thông tin thanh toán → insert payments_in.
       if (r.paymentAmount && r.paymentAmount > 0 && inserted) {
         await db.insert(paymentsIn).values({
@@ -320,6 +343,7 @@ export async function createRevenueBulk(rows: BulkRevenueRow[]) {
       errors.push({ index: i, message: e instanceof Error ? e.message : "Lỗi" });
     }
   }
+  for (const invId of affectedInvoices) await recomputeInvoiceTotal(invId);
   revalidatePath("/revenues");
   return { ok: createdIds.length, createdIds, errors };
 }
