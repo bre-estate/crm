@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { projects, partners, departments } from "@/lib/schema";
+import { projects, partners, departments, employees } from "@/lib/schema";
 import { asc, eq } from "drizzle-orm";
 import Link from "next/link";
 import ProductForm from "../ProductForm";
@@ -47,6 +47,16 @@ export default async function NewProductPage() {
 
   const allPartners = await db.select().from(partners).orderBy(asc(partners.name));
   const allDepts = await db.select().from(departments).orderBy(asc(departments.name));
+  const allEmployees = await db
+    .select({
+      id: employees.id,
+      name: employees.name,
+      position: employees.position,
+      departmentId: employees.departmentId,
+    })
+    .from(employees)
+    .where(eq(employees.active, true))
+    .orderBy(asc(employees.name));
 
   return (
     <div className="space-y-4 max-w-4xl">
@@ -62,6 +72,7 @@ export default async function NewProductPage() {
         projects={allProjects}
         partners={allPartners}
         departments={allDepts}
+        employees={allEmployees}
         onSave={createProduct}
       />
     </div>

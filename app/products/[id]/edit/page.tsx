@@ -4,6 +4,7 @@ import {
   projects,
   partners,
   departments,
+  employees,
   productAdjustments,
   revenueReconciliations,
   costReconciliations,
@@ -74,6 +75,16 @@ export default async function EditProductPage({
 
   const allPartners = await db.select().from(partners).orderBy(asc(partners.name));
   const allDepts = await db.select().from(departments).orderBy(asc(departments.name));
+  const allEmployees = await db
+    .select({
+      id: employees.id,
+      name: employees.name,
+      position: employees.position,
+      departmentId: employees.departmentId,
+    })
+    .from(employees)
+    .where(eq(employees.active, true))
+    .orderBy(asc(employees.name));
 
   const adjustments = await db
     .select()
@@ -119,6 +130,7 @@ export default async function EditProductPage({
         projects={allProjects}
         partners={allPartners}
         departments={allDepts}
+        employees={allEmployees}
         returnTo={returnTo}
         lockCoreFields={hasRecons}
         existingAdjustments={adjustments}

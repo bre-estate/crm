@@ -1,5 +1,12 @@
 import { db } from "@/lib/db";
-import { costReconciliations, paymentsOut, products, projects, partners } from "@/lib/schema";
+import {
+  costReconciliations,
+  paymentsOut,
+  products,
+  projects,
+  partners,
+  employees,
+} from "@/lib/schema";
 import { and, asc, eq, ne } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -84,6 +91,16 @@ export default async function EditCostPage({
     )
     .orderBy(asc(costReconciliations.reconciliationDate));
 
+  const allEmployees = await db
+    .select({
+      id: employees.id,
+      name: employees.name,
+      position: employees.position,
+    })
+    .from(employees)
+    .where(eq(employees.active, true))
+    .orderBy(asc(employees.name));
+
   return (
     <div className="space-y-4 max-w-4xl">
       <div className="flex items-center gap-2 text-sm">
@@ -128,6 +145,7 @@ export default async function EditCostPage({
         recon={recon}
         products={productOptions}
         previousRecons={previousRecons}
+        employees={allEmployees}
         onSave={async (fd) => {
           "use server";
           await updateCost(id, fd, returnTo);

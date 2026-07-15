@@ -17,6 +17,7 @@ const NAV: NavItem[] = [
   { href: "/revenues", label: "Doanh thu" },
   { href: "/costs", label: "Giá vốn" },
   { href: "/invoices", label: "Hóa đơn" },
+  { href: "/employees", label: "Nhân viên" },
   { href: "/reports", label: "Báo cáo" },
   { href: "/finance", label: "Tài chính công ty", ownerOnly: true },
   { href: "/admin/activity", label: "Lịch sử hoạt động", ownerOnly: true },

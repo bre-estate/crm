@@ -337,7 +337,25 @@ export const companySettings = pgTable("company_settings", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-// ===================== 11. ACTIVITY LOGS =====================
+// ===================== 11. EMPLOYEES =====================
+// Danh sách nhân viên/CTV cty. Dùng cho dropdown ở product form (NVKD) +
+// cost form (người được đối chiếu). Text field cũ (salesPerson,
+// deptLeaderName, employeeName) vẫn giữ để backward compat.
+export const employees = pgTable("employees", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email"),
+  phone: text("phone"),
+  position: text("position", { enum: ["ceo", "tpkd", "nvkd", "admin", "ctv"] })
+    .notNull()
+    .default("nvkd"),
+  departmentId: integer("department_id").references(() => departments.id),
+  active: boolean("active").default(true),
+  note: text("note"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ===================== 12. ACTIVITY LOGS =====================
 // Audit trail cho mọi thay đổi cấu hình. Ghi ai / khi nào / thay đổi gì.
 // productId: nếu activity gắn với 1 căn cụ thể (dù entity type là recon
 // hay adjustment) → set để filter timeline theo căn dễ dàng.
@@ -380,6 +398,11 @@ export const productsRelations = relations(products, ({ one, many }) => ({
 
 export const departmentsRelations = relations(departments, ({ many }) => ({
   products: many(products),
+  employees: many(employees),
+}));
+
+export const employeesRelations = relations(employees, ({ one }) => ({
+  department: one(departments, { fields: [employees.departmentId], references: [departments.id] }),
 }));
 
 export const invoicesRelations = relations(invoices, ({ one, many }) => ({
@@ -442,6 +465,8 @@ export type NewCompanyInvestment = typeof companyInvestments.$inferInsert;
 export type CompanyExpense = typeof companyExpenses.$inferSelect;
 export type NewCompanyExpense = typeof companyExpenses.$inferInsert;
 export type CompanySettings = typeof companySettings.$inferSelect;
+export type Employee = typeof employees.$inferSelect;
+export type NewEmployee = typeof employees.$inferInsert;
 
 // Used in raw SQL for profile auto-create trigger
 export const _sql = sql;

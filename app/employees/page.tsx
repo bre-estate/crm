@@ -1,0 +1,51 @@
+import { db } from "@/lib/db";
+import { employees, departments } from "@/lib/schema";
+import { asc, eq } from "drizzle-orm";
+import {
+  createEmployeeNoRedirect,
+  updateEmployeeNoRedirect,
+  deleteEmployeeNoRedirect,
+} from "@/lib/actions/employees";
+import EmployeesManager from "./EmployeesManager";
+
+export const dynamic = "force-dynamic";
+
+export default async function EmployeesPage() {
+  const [rows, depts] = await Promise.all([
+    db
+      .select({
+        id: employees.id,
+        name: employees.name,
+        email: employees.email,
+        phone: employees.phone,
+        position: employees.position,
+        departmentId: employees.departmentId,
+        active: employees.active,
+        note: employees.note,
+        departmentName: departments.name,
+      })
+      .from(employees)
+      .leftJoin(departments, eq(employees.departmentId, departments.id))
+      .orderBy(asc(employees.position), asc(employees.name)),
+    db.select().from(departments).orderBy(asc(departments.name)),
+  ]);
+
+  return (
+    <EmployeesManager
+      employees={rows}
+      departments={depts}
+      onCreate={async (fd) => {
+        "use server";
+        await createEmployeeNoRedirect(fd);
+      }}
+      onUpdate={async (id, fd) => {
+        "use server";
+        await updateEmployeeNoRedirect(id, fd);
+      }}
+      onDelete={async (id) => {
+        "use server";
+        await deleteEmployeeNoRedirect(id);
+      }}
+    />
+  );
+}

@@ -51,6 +51,12 @@ export type AllReconRow = {
   note: string | null;
 };
 
+export type EmployeeOption = {
+  id: number;
+  name: string;
+  position: string;
+};
+
 type Props = {
   recon?: CostReconciliation;
   paymentInit?: { paymentDate: string | null; amount: number } | null;
@@ -58,6 +64,7 @@ type Props = {
   defaultProductId?: number;
   previousRecons?: PreviousRecon[];
   allRecons?: AllReconRow[]; // Nếu có, dùng để tự filter previous theo productId+costType (client-side)
+  employees?: EmployeeOption[];
   onSave: (fd: FormData) => Promise<void>;
   onDelete?: () => Promise<void>;
 };
@@ -84,6 +91,7 @@ export default function CostForm({
   defaultProductId,
   previousRecons: previousReconsProp = [],
   allRecons,
+  employees = [],
   onSave,
   onDelete,
 }: Props) {
@@ -97,6 +105,20 @@ export default function CostForm({
   );
   const product = useMemo(() => products.find((p) => p.id === productId), [products, productId]);
   const isEdit = !!recon;
+
+  // NVKD dropdown: default lấy từ recon → nếu không thì fallback salesPerson của product.
+  const [employeeName, setEmployeeName] = useState<string>(
+    recon?.employeeName ?? product?.salesPerson ?? "",
+  );
+  // Auto-suggest employeeName khi đổi product/costType (chỉ khi CHƯA có employeeName)
+  useEffect(() => {
+    if (isEdit) return;
+    if (employeeName) return;
+    if (product?.salesPerson && costType === "sale_commission") {
+      setEmployeeName(product.salesPerson);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productId, costType]);
 
   // previousRecons: nếu edit → dùng prop từ server. Nếu new (có allRecons) → filter client-side.
   const previousRecons = useMemo<PreviousRecon[]>(() => {
@@ -383,12 +405,23 @@ export default function CostForm({
             </select>
           </Field>
           <Field label="Tên người được đối chiếu" required>
-            <input
-              name="employeeName"
-              defaultValue={recon?.employeeName ?? product?.salesPerson ?? ""}
-              className="input"
-              required
+            <SearchableSelect
+              value={employeeName}
+              onChange={setEmployeeName}
+              placeholder="Gõ tên..."
+              options={employees.map((e) => ({
+                value: e.name,
+                label: e.name,
+                sublabel: e.position.toUpperCase(),
+              }))}
             />
+            <input type="hidden" name="employeeName" value={employeeName} required />
+            <div className="text-[10px] text-slate-500 mt-1">
+              <a href="/employees" className="text-blue-600 hover:underline">
+                Thêm NV mới
+              </a>{" "}
+              nếu không có trong danh sách.
+            </div>
           </Field>
           <Field label="Ngày đối chiếu">
             <input

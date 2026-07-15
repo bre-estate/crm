@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { products, projects, partners, costReconciliations } from "@/lib/schema";
+import { products, projects, partners, costReconciliations, employees } from "@/lib/schema";
 import { asc, eq } from "drizzle-orm";
 import Link from "next/link";
 import CostForm from "../CostForm";
@@ -54,6 +54,16 @@ export default async function NewCostPage({ searchParams }: { searchParams: Sear
     .from(costReconciliations)
     .orderBy(asc(costReconciliations.reconciliationDate));
 
+  const allEmployees = await db
+    .select({
+      id: employees.id,
+      name: employees.name,
+      position: employees.position,
+    })
+    .from(employees)
+    .where(eq(employees.active, true))
+    .orderBy(asc(employees.name));
+
   const backHref = defaultProductId ? `/products/${defaultProductId}` : "/costs";
   const backLabel = defaultProductId ? "← Về căn" : "← Giá vốn";
 
@@ -71,6 +81,7 @@ export default async function NewCostPage({ searchParams }: { searchParams: Sear
         products={productOptions}
         defaultProductId={defaultProductId}
         allRecons={allRecons}
+        employees={allEmployees}
         onSave={createCost}
       />
     </div>

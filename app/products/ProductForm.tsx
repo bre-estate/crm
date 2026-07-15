@@ -13,11 +13,19 @@ type ProjectWithPartner = Project & {
   partnerName?: string | null;
 };
 
+type EmployeeOption = {
+  id: number;
+  name: string;
+  position: string;
+  departmentId: number | null;
+};
+
 type Props = {
   product?: Product;
   projects: ProjectWithPartner[];
   partners: Partner[];
   departments?: Department[];
+  employees?: EmployeeOption[];
   onSave: (fd: FormData) => Promise<void>;
   onDelete?: () => Promise<void>;
   returnTo?: string | null;
@@ -42,6 +50,7 @@ export default function ProductForm({
   product,
   projects,
   departments = [],
+  employees = [],
   onSave,
   onDelete,
   returnTo,
@@ -69,6 +78,27 @@ export default function ProductForm({
   const [projectId, setProjectId] = useState<string>(
     String(product?.projectId ?? filteredProjects[0]?.id ?? ""),
   );
+
+  // NVKD dropdown state — value = employee.name (text). Chọn xong auto-fill dept.
+  const [salesPersonName, setSalesPersonName] = useState<string>(product?.salesPerson ?? "");
+  const [departmentIdState, setDepartmentIdState] = useState<string>(
+    String(product?.departmentId ?? ""),
+  );
+  const employeeOptions = useMemo(
+    () =>
+      employees.map((e) => ({
+        value: e.name,
+        label: e.name,
+        sublabel:
+          `${e.position.toUpperCase()}${e.departmentId ? " · " + (departments.find((d) => d.id === e.departmentId)?.name ?? "") : ""}`.trim(),
+      })),
+    [employees, departments],
+  );
+  const handleSalesPersonChange = (v: string) => {
+    setSalesPersonName(v);
+    const emp = employees.find((e) => e.name === v);
+    if (emp?.departmentId) setDepartmentIdState(String(emp.departmentId));
+  };
   // Nếu switch saleType → project hiện tại không còn trong list → reset về option đầu
   useEffect(() => {
     if (!projectId) return;
@@ -233,12 +263,25 @@ export default function ProductForm({
             />
           </Field>
           <Field label="NVKD">
-            <input name="salesPerson" defaultValue={product?.salesPerson ?? ""} className="input" />
+            <SearchableSelect
+              value={salesPersonName}
+              onChange={handleSalesPersonChange}
+              emptyOption="— Chưa gán —"
+              placeholder="Gõ tên NVKD..."
+              options={employeeOptions}
+            />
+            <input type="hidden" name="salesPerson" value={salesPersonName} />
+            <div className="text-[10px] text-slate-500 mt-1">
+              Chọn xong tự điền Phòng.{" "}
+              <a href="/employees" className="text-blue-600 hover:underline">
+                Thêm NV mới
+              </a>
+            </div>
           </Field>
           <Field label="Phòng kinh doanh">
             <SearchableSelect
-              name="departmentId"
-              defaultValue={product?.departmentId ?? ""}
+              value={departmentIdState}
+              onChange={setDepartmentIdState}
               emptyOption="— Chưa phân phòng —"
               placeholder="Gõ tên phòng..."
               options={departments.map((d) => ({
@@ -247,6 +290,7 @@ export default function ProductForm({
                 sublabel: d.leaderName ? `Leader: ${d.leaderName}` : undefined,
               }))}
             />
+            <input type="hidden" name="departmentId" value={departmentIdState} />
             <input type="hidden" name="deptName" defaultValue={product?.deptName ?? ""} />
           </Field>
           <Field label="Tháng ghi nhận DT (YYYY-MM)">
