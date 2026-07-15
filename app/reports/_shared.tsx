@@ -5,8 +5,10 @@ import { RANGE_LABEL, RANGE_MONTHS } from "@/lib/reports";
 const PAGE_TITLE: Record<string, string> = {
   "/reports/overview": "Tổng hợp",
   "/reports/projects": "Theo dự án",
+  "/reports/partners": "Đối tác",
   "/reports/people": "Theo nhân sự",
   "/reports/time": "Theo thời gian",
+  "/reports/cashflow": "Dòng tiền",
 };
 
 export function ReportsHeader({

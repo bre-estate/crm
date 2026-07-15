@@ -433,7 +433,7 @@ Chia **6 sub-page**, filter năm + khoảng thời gian dùng chung:
 | **Đối tác** | `/reports/partners` | Xếp hạng CĐT/F1: số DA, số căn, DT mang lại, biên LN, % thu đủ |
 | **Theo nhân sự** | `/reports/people` | Theo phòng + KPI cá nhân NVKD (căn, DT, HH đã nhận, thưởng) |
 | **Theo thời gian** | `/reports/time` | Ghi nhận DT theo tháng + Mùa vụ (cross-year seasonal) |
-| **Dòng tiền & Rủi ro** ⓤ | `/reports/cashflow` | Aging công nợ 4 bucket + dự báo dòng tiền + top khoản chậm + concentration risk |
+| **Dòng tiền** ⓤ | `/reports/cashflow` | Aging công nợ 4 bucket (theo partner + theo đợt) + tốc độ CĐT trả + dự báo dòng tiền + concentration risk |
 
 ⓤ = chỉ owner thấy.
 
