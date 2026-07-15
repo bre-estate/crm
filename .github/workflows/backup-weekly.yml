@@ -23,7 +23,10 @@ jobs:
           node-version: "22"
 
       - name: Install deps
-        run: npm ci
+        # Chỉ cần các dep chạy backup-tables.ts (drizzle + postgres + tsx + dotenv).
+        # Cài trực tiếp thay vì npm ci để tránh block khi lock file lệch package.json
+        # (lỗi này không ảnh hưởng deploy vì Vercel resolve khác).
+        run: npm install --no-audit --no-fund --no-save drizzle-orm postgres tsx dotenv
 
       - name: Compute snapshot date
         id: date
