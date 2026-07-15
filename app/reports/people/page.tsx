@@ -13,7 +13,7 @@ export default async function ReportsPeoplePage({ searchParams }: { searchParams
   const sp = await searchParams;
   const filters = parseFilters(sp);
   const data = await loadReportData(filters);
-  const { grandTotals, prodRows, filterLabel, yearOptions } = data;
+  const { grandTotals, prodRows, filterLabel, yearOptions, costReconsAll } = data;
 
   // Theo phòng
   const byDept = new Map<string, { name: string; numProducts: number; totalRevenue: number; totalCost: number }>();
@@ -28,18 +28,56 @@ export default async function ReportsPeoplePage({ searchParams }: { searchParams
   }
   const deptSorted = Array.from(byDept.values()).sort((a, b) => b.totalRevenue - a.totalRevenue);
 
-  // Top NVKD
-  const byNvkd = new Map<string, { name: string; numProducts: number; totalRevenue: number }>();
+  // KPI cá nhân NVKD (gộp DT căn + HH đã ĐC + dept)
+  const byNvkd = new Map<
+    string,
+    {
+      name: string;
+      numProducts: number;
+      totalRevenue: number;
+      departments: Set<string>;
+      hhReceived: number;
+      hhBonusReceived: number;
+    }
+  >();
+  const getOrInit = (key: string) => {
+    if (!byNvkd.has(key)) {
+      byNvkd.set(key, {
+        name: key,
+        numProducts: 0,
+        totalRevenue: 0,
+        departments: new Set(),
+        hhReceived: 0,
+        hhBonusReceived: 0,
+      });
+    }
+    return byNvkd.get(key)!;
+  };
+  const productIdSet = new Set(prodRows.map((p) => p.id));
   for (const p of prodRows) {
     const key = p.salesPerson?.trim() || "(Chưa có NVKD)";
-    if (!byNvkd.has(key)) byNvkd.set(key, { name: key, numProducts: 0, totalRevenue: 0 });
-    const agg = byNvkd.get(key)!;
+    const agg = getOrInit(key);
     agg.numProducts++;
     agg.totalRevenue += Number(p.totalRevenue ?? 0);
+    if (p.departmentName) agg.departments.add(p.departmentName);
   }
+  // Cost recons gắn với NVKD (theo employeeName text) — HH sale + thưởng
+  for (const c of costReconsAll) {
+    if (!productIdSet.has(c.productId)) continue;
+    const key = c.employeeName?.trim() || "";
+    if (!key) continue;
+    if (!byNvkd.has(key)) continue; // chỉ tính người đã có căn trong period
+    const agg = byNvkd.get(key)!;
+    if (c.costType === "sale_commission") agg.hhReceived += c.paid;
+    else if (c.costType === "cdt_bonus_sale" || c.costType === "bonus_sale")
+      agg.hhBonusReceived += c.paid;
+  }
+
   const nvkdSorted = Array.from(byNvkd.values())
-    .sort((a, b) => b.totalRevenue - a.totalRevenue)
-    .slice(0, 15);
+    .filter((n) => n.name !== "(Chưa có NVKD)")
+    .sort((a, b) => b.totalRevenue - a.totalRevenue);
+  const maxRev = nvkdSorted[0]?.totalRevenue ?? 1;
+  const unassigned = byNvkd.get("(Chưa có NVKD)");
 
   return (
     <div className="space-y-6">
@@ -99,30 +137,68 @@ export default async function ReportsPeoplePage({ searchParams }: { searchParams
       </div>
 
       <div>
-        <h2 className="text-lg font-semibold mb-3">Top NVKD theo doanh thu — {filterLabel}</h2>
+        <h2 className="text-lg font-semibold mb-1">KPI cá nhân NVKD — {filterLabel}</h2>
+        <p className="text-xs text-slate-500 mb-3">
+          Xếp hạng theo doanh thu mang lại; hoa hồng thực nhận đã tính từ payment thực (không tính dự kiến).
+        </p>
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs text-slate-600">
               <tr>
-                <th className="text-left p-2">Hạng</th>
+                <th className="text-left p-2">#</th>
                 <th className="text-left p-2">NVKD</th>
-                <th className="text-center p-2">Số căn</th>
-                <th className="text-right p-2">Tổng DT (gồm VAT)</th>
+                <th className="text-left p-2">Phòng</th>
+                <th className="text-center p-2">Căn</th>
+                <th className="text-right p-2 w-48">Tổng DT (gồm VAT)</th>
+                <th className="text-right p-2">HH đã nhận</th>
+                <th className="text-right p-2">Thưởng đã nhận</th>
               </tr>
             </thead>
             <tbody>
-              {nvkdSorted.map((n, i) => (
-                <tr key={n.name} className="border-t border-slate-100">
-                  <td className="p-2 text-xs">#{i + 1}</td>
-                  <td className="p-2 font-medium">{n.name}</td>
-                  <td className="p-2 text-center">{n.numProducts}</td>
-                  <td className="p-2 text-right tabular-nums">{fmtMoney(n.totalRevenue)}</td>
-                </tr>
-              ))}
+              {nvkdSorted.map((n, i) => {
+                const pct = maxRev > 0 ? (n.totalRevenue / maxRev) * 100 : 0;
+                return (
+                  <tr key={n.name} className="border-t border-slate-100">
+                    <td className="p-2 text-xs text-slate-500">#{i + 1}</td>
+                    <td className="p-2 font-medium">{n.name}</td>
+                    <td className="p-2 text-xs text-slate-500">
+                      {[...n.departments].join(", ") || "—"}
+                    </td>
+                    <td className="p-2 text-center tabular-nums">{n.numProducts}</td>
+                    <td className="p-2">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-2 bg-slate-100 rounded overflow-hidden">
+                          <div className="h-full bg-blue-500" style={{ width: `${pct}%` }} />
+                        </div>
+                        <div className="text-right tabular-nums text-xs w-28">
+                          {fmtMoney(n.totalRevenue)}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-2 text-right tabular-nums text-xs text-green-700">
+                      {n.hhReceived > 0 ? fmtMoney(n.hhReceived) : "—"}
+                    </td>
+                    <td className="p-2 text-right tabular-nums text-xs text-amber-700">
+                      {n.hhBonusReceived > 0 ? fmtMoney(n.hhBonusReceived) : "—"}
+                    </td>
+                  </tr>
+                );
+              })}
               {nvkdSorted.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="p-4 text-center text-slate-500">
+                  <td colSpan={7} className="p-4 text-center text-slate-500">
                     Không có dữ liệu trong khoảng đã chọn.
+                  </td>
+                </tr>
+              )}
+              {unassigned && unassigned.numProducts > 0 && (
+                <tr className="border-t border-slate-200 bg-amber-50">
+                  <td className="p-2 text-xs" colSpan={3}>
+                    ⚠️ Chưa gán NVKD — cần bổ sung
+                  </td>
+                  <td className="p-2 text-center tabular-nums">{unassigned.numProducts}</td>
+                  <td className="p-2 text-right tabular-nums text-xs" colSpan={3}>
+                    {fmtMoney(unassigned.totalRevenue)}
                   </td>
                 </tr>
               )}

@@ -1,0 +1,435 @@
+import { redirect } from "next/navigation";
+import { fmtMoney, fmtPctRaw, displayPartnerName } from "@/lib/format";
+import { hasReportsAccess } from "@/lib/auth";
+import { getOwnerEmail } from "@/lib/auth";
+import { loadReportData, parseFilters } from "@/lib/reports";
+import { Card, ReportsHeader } from "../_shared";
+
+export const dynamic = "force-dynamic";
+
+type SearchParams = Promise<{ year?: string; range?: string }>;
+
+// Chỉ owner mới xem được page này vì có info nhạy cảm (công nợ, risk).
+export default async function ReportsCashflowPage({ searchParams }: { searchParams: SearchParams }) {
+  if (!(await hasReportsAccess())) redirect("/");
+  if (!(await getOwnerEmail())) redirect("/reports/overview");
+
+  const sp = await searchParams;
+  const filters = parseFilters(sp);
+  const data = await loadReportData(filters);
+  const { grandTotals, filterLabel, yearOptions, revReconsAll, costReconsAll, prodRowsAll, partnerNames } = data;
+
+  const TODAY = new Date();
+  const daysBetween = (d: string | null): number => {
+    if (!d) return 0;
+    const t = new Date(d);
+    if (isNaN(t.getTime())) return 0;
+    return Math.floor((TODAY.getTime() - t.getTime()) / (24 * 3600 * 1000));
+  };
+
+  // ===== Aging: outstanding recon (chưa thu / chưa trả) =====
+  type Aging = { b0: number; b30: number; b60: number; b90: number };
+  const emptyAging = (): Aging => ({ b0: 0, b30: 0, b60: 0, b90: 0 });
+  const bucketAdd = (a: Aging, amount: number, days: number) => {
+    if (days <= 30) a.b0 += amount;
+    else if (days <= 60) a.b30 += amount;
+    else if (days <= 90) a.b60 += amount;
+    else a.b90 += amount;
+  };
+
+  // Công nợ THU (CĐT/F1 nợ BRE)
+  const arAging = emptyAging();
+  let arCount = 0;
+  const arRecons = revReconsAll
+    .filter((r) => r.receivable - r.paid > 0.5)
+    .map((r) => ({ ...r, outstanding: r.receivable - r.paid, days: daysBetween(r.reconDate) }))
+    .sort((a, b) => b.outstanding - a.outstanding);
+  for (const r of arRecons) {
+    bucketAdd(arAging, r.outstanding, r.days);
+    arCount++;
+  }
+  const arTotal = arAging.b0 + arAging.b30 + arAging.b60 + arAging.b90;
+
+  // Công nợ TRẢ (BRE nợ NVKD/KPI/thưởng)
+  const apAging = emptyAging();
+  let apCount = 0;
+  const apRecons = costReconsAll
+    .filter((r) => r.payable - r.paid > 0.5)
+    .map((r) => ({ ...r, outstanding: r.payable - r.paid, days: daysBetween(r.reconDate) }))
+    .sort((a, b) => b.outstanding - a.outstanding);
+  for (const r of apRecons) {
+    bucketAdd(apAging, r.outstanding, r.days);
+    apCount++;
+  }
+  const apTotal = apAging.b0 + apAging.b30 + apAging.b60 + apAging.b90;
+
+  // ===== Dự báo dòng tiền: sắp thu / sắp trả theo tháng ĐC =====
+  const nextInflowByMonth = new Map<string, number>();
+  for (const r of arRecons) {
+    const m = r.reconDate?.slice(0, 7) ?? "(N/A)";
+    nextInflowByMonth.set(m, (nextInflowByMonth.get(m) ?? 0) + r.outstanding);
+  }
+  const nextOutflowByMonth = new Map<string, number>();
+  for (const r of apRecons) {
+    const m = r.reconDate?.slice(0, 7) ?? "(N/A)";
+    nextOutflowByMonth.set(m, (nextOutflowByMonth.get(m) ?? 0) + r.outstanding);
+  }
+  const allMonths = new Set([...nextInflowByMonth.keys(), ...nextOutflowByMonth.keys()]);
+  const cashflowMonths = [...allMonths].sort().reverse();
+
+  // ===== Concentration risk =====
+  const projShare = new Map<number, { name: string; partner: string | null; revenue: number }>();
+  const partnerShare = new Map<number, { name: string; revenue: number }>();
+  const nvkdShare = new Map<string, { revenue: number; units: number }>();
+  let totalRevAll = 0;
+  for (const p of prodRowsAll) {
+    const rev = Number(p.totalRevenue ?? 0);
+    totalRevAll += rev;
+    // Project share
+    const pjProj = data.aggregatedProjects.find((ap) => ap.id === p.projectId);
+    const projName = pjProj?.name ?? String(p.projectId);
+    const partnerName = pjProj?.partnerName ?? null;
+    if (!projShare.has(p.projectId))
+      projShare.set(p.projectId, { name: projName, partner: partnerName, revenue: 0 });
+    projShare.get(p.projectId)!.revenue += rev;
+    // Partner share
+    if (partnerName) {
+      // Reverse lookup: partnerId? use aggregate name-key
+      const key = pjProj?.partnerName ? -1 : -1;
+      void key;
+    }
+  }
+  // Partner share from partnerNames map:
+  for (const [pid, pname] of partnerNames) {
+    const rev = data.aggregatedProjects
+      .filter((ap) => ap.partnerName === pname)
+      .reduce((s, ap) => s + ap.totalRevenueExpected, 0);
+    if (rev > 0) partnerShare.set(pid, { name: pname, revenue: rev });
+  }
+  // NVKD share (theo salesPerson text)
+  for (const p of prodRowsAll) {
+    const key = p.salesPerson?.trim() || "(chưa gán)";
+    if (!nvkdShare.has(key)) nvkdShare.set(key, { revenue: 0, units: 0 });
+    const agg = nvkdShare.get(key)!;
+    agg.revenue += Number(p.totalRevenue ?? 0);
+    agg.units++;
+  }
+
+  const topProj = [...projShare.values()].sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+  const topPartner = [...partnerShare.values()].sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+  const topNvkd = [...nvkdShare.entries()]
+    .map(([name, v]) => ({ name, ...v }))
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 5);
+
+  const share = (n: number) => (totalRevAll > 0 ? (n / totalRevAll) * 100 : 0);
+  const riskLevel = (pct: number) =>
+    pct >= 40 ? "critical" : pct >= 25 ? "warning" : "ok";
+  const riskColor = (lvl: string) =>
+    lvl === "critical" ? "text-red-700 bg-red-50 border-red-300"
+      : lvl === "warning" ? "text-orange-700 bg-orange-50 border-orange-300"
+      : "text-green-700 bg-green-50 border-green-300";
+
+  return (
+    <div className="space-y-6">
+      <ReportsHeader
+        activePath="/reports/cashflow"
+        filters={filters}
+        yearOptions={yearOptions}
+        filterLabel={filterLabel}
+        totalProducts={grandTotals.products}
+      />
+
+      {/* ============ Aging cards ============ */}
+      <div>
+        <h2 className="text-lg font-semibold mb-3">Công nợ tổng quan (cross-year)</h2>
+        <p className="text-xs text-slate-500 mb-3">
+          Tổng khoản chưa thu/chưa trả trên tất cả đợt đối chiếu, không phụ thuộc filter năm.
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Card
+            label={`Đang thu (CĐT/F1 nợ BRE)`}
+            value={fmtMoney(arTotal)}
+            sub={`${arCount} đợt chưa thu đủ`}
+            warn
+          />
+          <Card
+            label={`Đang trả (BRE nợ NV/CTV)`}
+            value={fmtMoney(apTotal)}
+            sub={`${apCount} đợt chưa trả đủ`}
+            warn
+          />
+          <Card
+            label="Thu − Trả (chênh ròng)"
+            value={fmtMoney(arTotal - apTotal)}
+            highlight={arTotal - apTotal >= 0}
+            sub="Dương = BRE đang nắm giữ, âm = phải bù"
+          />
+          <Card
+            label="Quá hạn > 90 ngày"
+            value={fmtMoney(arAging.b90 + apAging.b90)}
+            sub={`Thu: ${fmtMoney(arAging.b90)} · Trả: ${fmtMoney(apAging.b90)}`}
+            highlight={arAging.b90 + apAging.b90 <= 0}
+          />
+        </div>
+      </div>
+
+      {/* ============ Aging tables ============ */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <AgingTable title="🔵 Aging THU (CĐT/F1 nợ BRE)" aging={arAging} />
+        <AgingTable title="🟠 Aging TRẢ (BRE nợ nội bộ)" aging={apAging} />
+      </div>
+
+      {/* ============ Forecast: theo tháng ĐC ============ */}
+      <div>
+        <h2 className="text-lg font-semibold mb-3">Sắp thu / sắp trả theo tháng ĐC</h2>
+        <p className="text-xs text-slate-500 mb-3">
+          Nhóm số outstanding theo tháng của biên bản đối chiếu — ước lượng dòng tiền tương lai gần.
+        </p>
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-xs text-slate-600">
+              <tr>
+                <th className="text-left p-2">Tháng ĐC</th>
+                <th className="text-right p-2">Sắp thu</th>
+                <th className="text-right p-2">Sắp trả</th>
+                <th className="text-right p-2">Ròng</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cashflowMonths.map((m) => {
+                const inflow = nextInflowByMonth.get(m) ?? 0;
+                const outflow = nextOutflowByMonth.get(m) ?? 0;
+                const net = inflow - outflow;
+                return (
+                  <tr key={m} className="border-t border-slate-100">
+                    <td className="p-2 font-mono text-sm">{m}</td>
+                    <td className="p-2 text-right tabular-nums text-blue-700">{fmtMoney(inflow)}</td>
+                    <td className="p-2 text-right tabular-nums text-orange-700">{fmtMoney(outflow)}</td>
+                    <td
+                      className={`p-2 text-right tabular-nums font-semibold ${
+                        net >= 0 ? "text-green-700" : "text-red-700"
+                      }`}
+                    >
+                      {fmtMoney(net)}
+                    </td>
+                  </tr>
+                );
+              })}
+              {cashflowMonths.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="p-6 text-center text-slate-500 text-sm">
+                    Không có khoản chưa thu/trả nào.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ============ Top khoản còn nợ ============ */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <h3 className="text-base font-semibold mb-2">Top 10 khoản CĐT/F1 nợ lâu nhất</h3>
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-xs text-slate-600">
+                <tr>
+                  <th className="text-left p-2">Căn / dự án</th>
+                  <th className="text-right p-2">Số tiền</th>
+                  <th className="text-right p-2">Ngày</th>
+                </tr>
+              </thead>
+              <tbody>
+                {arRecons
+                  .slice()
+                  .sort((a, b) => b.days - a.days)
+                  .slice(0, 10)
+                  .map((r) => (
+                    <tr key={r.id} className="border-t border-slate-100">
+                      <td className="p-2">
+                        <div className="font-mono text-xs">{r.productCode}</div>
+                        <div className="text-xs text-slate-500">{r.projectName}</div>
+                      </td>
+                      <td className="p-2 text-right tabular-nums font-medium">{fmtMoney(r.outstanding)}</td>
+                      <td className="p-2 text-right text-xs">
+                        <span className={r.days > 90 ? "text-red-700 font-semibold" : r.days > 60 ? "text-orange-700" : "text-slate-500"}>
+                          {r.days} ngày
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                {arRecons.length === 0 && (
+                  <tr>
+                    <td colSpan={3} className="p-4 text-center text-slate-500 text-xs">Không có.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div>
+          <h3 className="text-base font-semibold mb-2">Top 10 khoản BRE nợ NV lâu nhất</h3>
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-xs text-slate-600">
+                <tr>
+                  <th className="text-left p-2">Người / căn</th>
+                  <th className="text-right p-2">Số tiền</th>
+                  <th className="text-right p-2">Ngày</th>
+                </tr>
+              </thead>
+              <tbody>
+                {apRecons
+                  .slice()
+                  .sort((a, b) => b.days - a.days)
+                  .slice(0, 10)
+                  .map((r) => (
+                    <tr key={r.id} className="border-t border-slate-100">
+                      <td className="p-2">
+                        <div className="text-xs font-medium">{r.employeeName}</div>
+                        <div className="text-xs text-slate-500 font-mono">{r.productCode}</div>
+                      </td>
+                      <td className="p-2 text-right tabular-nums font-medium">{fmtMoney(r.outstanding)}</td>
+                      <td className="p-2 text-right text-xs">
+                        <span className={r.days > 90 ? "text-red-700 font-semibold" : r.days > 60 ? "text-orange-700" : "text-slate-500"}>
+                          {r.days} ngày
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                {apRecons.length === 0 && (
+                  <tr>
+                    <td colSpan={3} className="p-4 text-center text-slate-500 text-xs">Không có.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* ============ Concentration risk ============ */}
+      <div className="border-t border-slate-300 pt-6">
+        <h2 className="text-lg font-semibold mb-1">🎯 Rủi ro tập trung</h2>
+        <p className="text-xs text-slate-500 mb-3">
+          % doanh thu phụ thuộc top nguồn (dự án / CĐT / NVKD). Cảnh báo khi 1 nguồn ≥ 40% (đỏ) hoặc ≥ 25% (cam).
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <RiskCard
+            title="Top dự án"
+            rows={topProj.map((r) => ({
+              name: r.name,
+              sub: displayPartnerName(r.partner),
+              pct: share(r.revenue),
+              amount: r.revenue,
+            }))}
+            riskLevel={riskLevel}
+            riskColor={riskColor}
+          />
+          <RiskCard
+            title="Top CĐT / F1"
+            rows={topPartner.map((r) => ({
+              name: r.name,
+              sub: null,
+              pct: share(r.revenue),
+              amount: r.revenue,
+            }))}
+            riskLevel={riskLevel}
+            riskColor={riskColor}
+          />
+          <RiskCard
+            title="Top NVKD"
+            rows={topNvkd.map((r) => ({
+              name: r.name,
+              sub: `${r.units} căn`,
+              pct: share(r.revenue),
+              amount: r.revenue,
+            }))}
+            riskLevel={riskLevel}
+            riskColor={riskColor}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AgingTable({ title, aging }: { title: string; aging: { b0: number; b30: number; b60: number; b90: number } }) {
+  const total = aging.b0 + aging.b30 + aging.b60 + aging.b90;
+  const rows = [
+    { label: "0-30 ngày", val: aging.b0, cls: "text-slate-700" },
+    { label: "31-60 ngày", val: aging.b30, cls: "text-slate-700" },
+    { label: "61-90 ngày", val: aging.b60, cls: "text-orange-700" },
+    { label: "> 90 ngày", val: aging.b90, cls: "text-red-700 font-semibold" },
+  ];
+  return (
+    <div>
+      <h3 className="text-sm font-semibold mb-2">{title}</h3>
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <table className="w-full text-sm">
+          <tbody>
+            {rows.map((r) => {
+              const pct = total > 0 ? (r.val / total) * 100 : 0;
+              return (
+                <tr key={r.label} className="border-b border-slate-100 last:border-0">
+                  <td className="p-2 text-xs">{r.label}</td>
+                  <td className={`p-2 text-right tabular-nums text-sm ${r.cls}`}>{fmtMoney(r.val)}</td>
+                  <td className="p-2 text-right text-xs text-slate-500 tabular-nums w-16">{fmtPctRaw(pct, 1)}</td>
+                </tr>
+              );
+            })}
+            <tr className="bg-slate-50 font-semibold">
+              <td className="p-2 text-xs">Tổng</td>
+              <td className="p-2 text-right tabular-nums">{fmtMoney(total)}</td>
+              <td className="p-2 text-right text-xs">100%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function RiskCard({
+  title,
+  rows,
+  riskLevel,
+  riskColor,
+}: {
+  title: string;
+  rows: { name: string; sub: string | null; pct: number; amount: number }[];
+  riskLevel: (pct: number) => string;
+  riskColor: (lvl: string) => string;
+}) {
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <div className="p-3 bg-slate-50 border-b border-slate-200 text-sm font-semibold">
+        {title}
+      </div>
+      <div className="p-3 space-y-2">
+        {rows.map((r, i) => {
+          const lvl = riskLevel(r.pct);
+          return (
+            <div key={i} className={`rounded-lg p-2 border ${riskColor(lvl)}`}>
+              <div className="flex justify-between items-baseline gap-2">
+                <div className="text-xs font-medium truncate">{r.name}</div>
+                <div className="text-sm font-bold tabular-nums whitespace-nowrap">
+                  {fmtPctRaw(r.pct, 1)}
+                </div>
+              </div>
+              <div className="text-[10px] text-slate-500 flex justify-between mt-0.5">
+                {r.sub && <span>{r.sub}</span>}
+                <span className="tabular-nums ml-auto">{fmtMoney(r.amount)}</span>
+              </div>
+            </div>
+          );
+        })}
+        {rows.length === 0 && (
+          <div className="text-xs text-slate-400 text-center py-2">Không có dữ liệu.</div>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -40,8 +40,10 @@ const NAV: NavEntry[] = [
     children: [
       { href: "/reports/overview", label: "Tổng hợp" },
       { href: "/reports/projects", label: "Theo dự án" },
+      { href: "/reports/partners", label: "Đối tác" },
       { href: "/reports/people", label: "Theo nhân sự" },
       { href: "/reports/time", label: "Theo thời gian" },
+      { href: "/reports/cashflow", label: "Dòng tiền & Rủi ro", gate: "owner" },
     ],
   },
   { href: "/finance", label: "Tài chính", gate: "owner" },

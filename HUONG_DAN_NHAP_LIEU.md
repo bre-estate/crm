@@ -424,16 +424,20 @@ Vào form recon tương ứng (click "Sửa" ở detail hoặc từ `/revenues`)
 
 ## 10. Báo cáo (`/reports`)
 
-Chia **4 sub-page**, filter năm + khoảng thời gian dùng chung:
+Chia **6 sub-page**, filter năm + khoảng thời gian dùng chung:
 
 | Sub-page | URL | Nội dung |
 |---|---|---|
 | **Tổng hợp** | `/reports/overview` | 8 KPI cards (DT/GV dự kiến, lãi gộp, biên LN, đã ĐC, công nợ) + Lãi thuần/ROI (owner) |
 | **Theo dự án** | `/reports/projects` | Bảng chi tiết dự án + Tốc độ hấp thụ (căn/tháng) + Biên LN so sánh |
-| **Theo nhân sự** | `/reports/people` | Theo phòng + Top 15 NVKD |
+| **Đối tác** | `/reports/partners` | Xếp hạng CĐT/F1: số DA, số căn, DT mang lại, biên LN, % thu đủ |
+| **Theo nhân sự** | `/reports/people` | Theo phòng + KPI cá nhân NVKD (căn, DT, HH đã nhận, thưởng) |
 | **Theo thời gian** | `/reports/time` | Ghi nhận DT theo tháng + Mùa vụ (cross-year seasonal) |
+| **Dòng tiền & Rủi ro** ⓤ | `/reports/cashflow` | Aging công nợ 4 bucket + dự báo dòng tiền + top khoản chậm + concentration risk |
 
-Bấm tab ở đầu trang để chuyển. Filter năm/khoảng giữ nguyên khi chuyển tab.
+ⓤ = chỉ owner thấy.
+
+Chuyển giữa sub-page bằng sidebar. Filter năm/khoảng giữ nguyên khi chuyển.
 
 ### 10.1. Filter thời gian
 

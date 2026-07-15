@@ -110,6 +110,32 @@ export type ProductRow = {
   saleType: string | null;
 };
 
+export type RevReconRow = {
+  id: number;
+  productId: number;
+  projectId: number;
+  partnerId: number | null;
+  partnerName: string | null;
+  productCode: string;
+  projectName: string | null;
+  reconDate: string | null;
+  receivable: number;
+  paid: number;
+  employeeName: string | null;
+};
+
+export type CostReconRow = {
+  id: number;
+  productId: number;
+  projectId: number;
+  productCode: string;
+  reconDate: string | null;
+  costType: string;
+  employeeName: string;
+  payable: number;
+  paid: number;
+};
+
 export type ReportData = {
   filters: ReportFilters;
   filterLabel: string;
@@ -117,6 +143,9 @@ export type ReportData = {
   prodRows: ProductRow[];
   prodRowsAll: ProductRow[];
   aggregatedProjects: ProjectAgg[];
+  revReconsAll: RevReconRow[]; // cross-year for cashflow
+  costReconsAll: CostReconRow[]; // cross-year for cashflow
+  partnerNames: Map<number, string>; // partnerId → name
   grandTotals: {
     products: number;
     sellPrice: number;
@@ -297,6 +326,90 @@ export async function loadReportData(filters: ReportFilters): Promise<ReportData
 
   const aggregatedProjects = Array.from(projMap.values()).filter((p) => p.numProducts > 0);
 
+  // ===== Cross-year data cho cashflow/partners/staff (không bị filter period ảnh hưởng) =====
+  const partnerNames = new Map<number, string>();
+  const allPartnersRaw = await db.select({ id: partners.id, name: partners.name }).from(partners);
+  for (const p of allPartnersRaw) partnerNames.set(p.id, p.name);
+
+  // Product → (projectId, partnerId, productCode, projectName)
+  const productMeta = new Map<
+    number,
+    { projectId: number; partnerId: number | null; productCode: string; projectName: string | null; salesPerson: string | null }
+  >();
+  const productMetaRaw = await db
+    .select({
+      id: products.id,
+      projectId: products.projectId,
+      partnerId: projects.partnerId,
+      productCode: products.productCode,
+      projectName: projects.name,
+      salesPerson: products.salesPerson,
+    })
+    .from(products)
+    .leftJoin(projects, eq(products.projectId, projects.id));
+  for (const p of productMetaRaw) {
+    productMeta.set(p.id, {
+      projectId: p.projectId,
+      partnerId: p.partnerId,
+      productCode: p.productCode,
+      projectName: p.projectName,
+      salesPerson: p.salesPerson,
+    });
+  }
+
+  // Revenue recons full with dates + paid — cross-year
+  const revReconsRaw = await db
+    .select({
+      id: revenueReconciliations.id,
+      productId: revenueReconciliations.productId,
+      reconDate: revenueReconciliations.reconciliationDate,
+      receivable: revenueReconciliations.totalReceivableThisTime,
+    })
+    .from(revenueReconciliations);
+
+  const revReconsAll: RevReconRow[] = revReconsRaw.map((r) => {
+    const meta = productMeta.get(r.productId);
+    return {
+      id: r.id,
+      productId: r.productId,
+      projectId: meta?.projectId ?? 0,
+      partnerId: meta?.partnerId ?? null,
+      partnerName: meta?.partnerId ? partnerNames.get(meta.partnerId) ?? null : null,
+      productCode: meta?.productCode ?? "",
+      projectName: meta?.projectName ?? null,
+      reconDate: r.reconDate,
+      receivable: Number(r.receivable ?? 0),
+      paid: revRecPayMap.get(r.id) ?? 0,
+      employeeName: meta?.salesPerson ?? null,
+    };
+  });
+
+  const costReconsRaw = await db
+    .select({
+      id: costReconciliations.id,
+      productId: costReconciliations.productId,
+      reconDate: costReconciliations.reconciliationDate,
+      costType: costReconciliations.costType,
+      employeeName: costReconciliations.employeeName,
+      payable: costReconciliations.amountPayableThisTime,
+    })
+    .from(costReconciliations);
+
+  const costReconsAll: CostReconRow[] = costReconsRaw.map((r) => {
+    const meta = productMeta.get(r.productId);
+    return {
+      id: r.id,
+      productId: r.productId,
+      projectId: meta?.projectId ?? 0,
+      productCode: meta?.productCode ?? "",
+      reconDate: r.reconDate,
+      costType: r.costType,
+      employeeName: r.employeeName,
+      payable: Number(r.payable ?? 0),
+      paid: costRecPayMap.get(r.id) ?? 0,
+    };
+  });
+
   const grandTotals = aggregatedProjects.reduce(
     (s, p) => ({
       products: s.products + p.numProducts,
@@ -397,6 +510,9 @@ export async function loadReportData(filters: ReportFilters): Promise<ReportData
     prodRows,
     prodRowsAll,
     aggregatedProjects,
+    revReconsAll,
+    costReconsAll,
+    partnerNames,
     grandTotals,
     profitExpected,
     profitRealized,
