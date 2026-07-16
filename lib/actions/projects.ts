@@ -41,6 +41,19 @@ function buildProjectData(fd: FormData) {
     // cdt_bonus, cty_bonus vẫn bỏ — nhập per-căn ở ProductForm.
     paymentDocs: toStr(fd.get("paymentDocs")),
     note: toStr(fd.get("note")),
+
+    // Project Deep Dive (Phase 2)
+    totalUnits: toNum(fd.get("totalUnits")) || null,
+    priceRangeMin: toNum(fd.get("priceRangeMin")) || null,
+    priceRangeMax: toNum(fd.get("priceRangeMax")) || null,
+    handoverExpected: toStr(fd.get("handoverExpected")) || null,
+    developerWebsite: toStr(fd.get("developerWebsite")) || null,
+    batdongsanUrl: toStr(fd.get("batdongsanUrl")) || null,
+    cafelandUrl: toStr(fd.get("cafelandUrl")) || null,
+    district: toStr(fd.get("district")) || null,
+    city: toStr(fd.get("city")) || null,
+    dataSourceNote: toStr(fd.get("dataSourceNote")) || null,
+    dataUpdatedAt: new Date(),
   };
 }
 

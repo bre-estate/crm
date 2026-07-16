@@ -1,8 +1,8 @@
 import { db } from "@/lib/db";
-import { projects, partners } from "@/lib/schema";
-import { contractStatusLabel, fmtMoney, fmtPct, displayPartnerName, isSecondaryPartner } from "@/lib/format";
+import { projects, partners, products } from "@/lib/schema";
+import { contractStatusLabel, fmtMoney, fmtPct, fmtPctRaw, displayPartnerName, isSecondaryPartner } from "@/lib/format";
 import Link from "next/link";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, count } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
@@ -25,10 +25,20 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Sea
       brokerageRateSale: projects.brokerageRateSale,
       adminFee: projects.adminFee,
       defaultSaleType: projects.defaultSaleType,
+      totalUnits: projects.totalUnits,
+      district: projects.district,
+      city: projects.city,
     })
     .from(projects)
     .leftJoin(partners, eq(projects.partnerId, partners.id))
     .orderBy(asc(projects.name));
+
+  // Đếm số căn BRE bán per project
+  const breCountRaw = await db
+    .select({ projectId: products.projectId, c: count() })
+    .from(products)
+    .groupBy(products.projectId);
+  const breCountMap = new Map(breCountRaw.map((r) => [r.projectId, Number(r.c)]));
 
   // Ưu tiên defaultSaleType, fallback theo partner name (đối tác trống/Chợ thứ cấp).
   const isSecondaryRow = (r: (typeof allRows)[number]) =>
@@ -74,6 +84,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Sea
               <th className="text-right p-3">%PMG_LK</th>
               <th className="text-right p-3">%PMG_sale</th>
               <th className="text-right p-3">Phí admin</th>
+              <th className="text-right p-3">BRE bán / Tổng</th>
               <th className="text-left p-3">Tình trạng</th>
               <th className="text-right p-3">Thao tác</th>
             </tr>
@@ -112,6 +123,19 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Sea
                 <td className="p-3 text-right tabular-nums">
                   {Number(p.adminFee ?? 0) > 0 ? fmtMoney(p.adminFee) : <span className="text-slate-300">—</span>}
                 </td>
+                <td className="p-3 text-right tabular-nums text-xs">
+                  {(() => {
+                    const bre = breCountMap.get(p.id) ?? 0;
+                    const total = p.totalUnits ?? 0;
+                    if (total > 0) {
+                      const share = (bre / total) * 100;
+                      const color = share >= 20 ? "text-green-700 font-medium" : share >= 5 ? "text-slate-700" : "text-slate-500";
+                      return <span className={color}>{bre} / {total} <span className="text-slate-400">({fmtPctRaw(share, 1)})</span></span>;
+                    }
+                    if (bre > 0) return <span className="text-slate-500">{bre} / <span className="text-slate-300">?</span></span>;
+                    return <span className="text-slate-300">—</span>;
+                  })()}
+                </td>
                 <td className="p-3 text-xs">{contractStatusLabel(p.contractStatus ?? "")}</td>
                 <td className="p-3 text-right">
                   <Link href={`/projects/${p.id}`} className="text-blue-600 hover:underline text-sm">
@@ -122,7 +146,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Sea
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={10} className="p-6 text-center text-slate-500 text-sm">
+                <td colSpan={11} className="p-6 text-center text-slate-500 text-sm">
                   Chưa có dự án {activeTab === "secondary" ? "thứ cấp" : "sơ cấp"} nào.
                 </td>
               </tr>

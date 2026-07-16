@@ -210,6 +210,113 @@ export default function ProjectForm({ project, partners, onSave, onDelete }: Pro
         </Section>
       )}
 
+      <Section title="📊 Thông tin thị trường (dự án tổng)">
+        <div className="text-xs text-slate-500 -mt-2 mb-3">
+          Info về toàn dự án (không chỉ căn BRE bán) để so sánh market share. Nhập tay từ website CĐT / Batdongsan / Sở XD.
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <Field label="Tổng căn dự án">
+            <input
+              type="number"
+              name="totalUnits"
+              defaultValue={project?.totalUnits ?? ""}
+              className="input"
+              placeholder="vd: 800"
+              min="0"
+            />
+          </Field>
+          <Field label="Giá TB tối thiểu (VND)">
+            <input
+              type="number"
+              name="priceRangeMin"
+              defaultValue={project?.priceRangeMin ?? ""}
+              className="input"
+              placeholder="vd: 2000000000"
+              min="0"
+              step="1000000"
+            />
+          </Field>
+          <Field label="Giá TB tối đa (VND)">
+            <input
+              type="number"
+              name="priceRangeMax"
+              defaultValue={project?.priceRangeMax ?? ""}
+              className="input"
+              placeholder="vd: 8000000000"
+              min="0"
+              step="1000000"
+            />
+          </Field>
+          <Field label="Bàn giao dự kiến">
+            <input
+              name="handoverExpected"
+              defaultValue={project?.handoverExpected ?? ""}
+              className="input"
+              placeholder="vd: 2027-06 hoặc Q2 2027"
+            />
+          </Field>
+          <Field label="Quận / Huyện">
+            <input
+              name="district"
+              defaultValue={project?.district ?? ""}
+              className="input"
+              placeholder="vd: Dĩ An"
+            />
+          </Field>
+          <Field label="Thành phố / Tỉnh">
+            <input
+              name="city"
+              defaultValue={project?.city ?? ""}
+              className="input"
+              placeholder="vd: Bình Dương (nay TP.HCM)"
+            />
+          </Field>
+        </div>
+      </Section>
+
+      <Section title="🔗 Nguồn tham chiếu">
+        <div className="text-xs text-slate-500 -mt-2 mb-3">
+          Link để tra cứu lại sau. Khi có URL, phase 2b sẽ auto-fill info từ trang tương ứng.
+        </div>
+        <div className="grid grid-cols-1 gap-4">
+          <Field label="Website CĐT (trang dự án)">
+            <input
+              type="url"
+              name="developerWebsite"
+              defaultValue={project?.developerWebsite ?? ""}
+              className="input"
+              placeholder="https://novaland.com.vn/aqua-city..."
+            />
+          </Field>
+          <Field label="Batdongsan.com.vn URL dự án">
+            <input
+              type="url"
+              name="batdongsanUrl"
+              defaultValue={project?.batdongsanUrl ?? ""}
+              className="input"
+              placeholder="https://batdongsan.com.vn/du-an/..."
+            />
+          </Field>
+          <Field label="CafeLand URL dự án">
+            <input
+              type="url"
+              name="cafelandUrl"
+              defaultValue={project?.cafelandUrl ?? ""}
+              className="input"
+              placeholder="https://cafeland.vn/du-an/..."
+            />
+          </Field>
+          <Field label="Nguồn data (mô tả ngắn)">
+            <input
+              name="dataSourceNote"
+              defaultValue={project?.dataSourceNote ?? ""}
+              className="input"
+              placeholder="vd: CĐT gửi report T7/2026 + Sở XD Q2"
+            />
+          </Field>
+        </div>
+      </Section>
+
       <Section title="Hồ sơ & ghi chú">
         <div className="grid grid-cols-1 gap-4">
           <Field label="Hồ sơ ĐNTT (text)">

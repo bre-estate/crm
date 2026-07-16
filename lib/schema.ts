@@ -91,6 +91,23 @@ export const projects = pgTable("projects", {
 
   paymentDocs: text("payment_docs"),
   note: text("note"),
+
+  // ===== Project Deep Dive (Phase 2 — market intelligence) =====
+  totalUnits: integer("total_units"), // Tổng căn dự án theo giấy phép
+  launchPhases: jsonb("launch_phases").$type<
+    Array<{ phase: string; units: number; launchDate?: string | null; soldPct?: number | null; note?: string | null }>
+  >(), // Array các đợt mở bán
+  priceRangeMin: doublePrecision("price_range_min"),
+  priceRangeMax: doublePrecision("price_range_max"),
+  handoverExpected: text("handover_expected"), // YYYY-MM hoặc "Q2 2027"
+  developerWebsite: text("developer_website"),
+  batdongsanUrl: text("batdongsan_url"),
+  cafelandUrl: text("cafeland_url"),
+  district: text("district"),
+  city: text("city"),
+  dataSourceNote: text("data_source_note"),
+  dataUpdatedAt: timestamp("data_updated_at", { withTimezone: true }),
+
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
