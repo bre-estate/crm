@@ -14,6 +14,7 @@ type Employee = {
   active: boolean | null;
   note: string | null;
   departmentName: string | null;
+  aliasOfId: number | null;
 };
 
 type Department = { id: number; name: string; code: string };
@@ -179,12 +180,26 @@ export default function EmployeesManager({
             </tr>
           </thead>
           <tbody>
-            {filtered.map((e) => (
+            {filtered.map((e) => {
+              const ownerOfAlias = e.aliasOfId
+                ? employees.find((x) => x.id === e.aliasOfId)
+                : null;
+              return (
               <tr
                 key={e.id}
                 className={`border-t border-slate-100 hover:bg-slate-50 ${e.active ? "" : "opacity-50"}`}
               >
-                <td className="p-3 font-medium">{e.name}</td>
+                <td className="p-3 font-medium">
+                  {e.name}
+                  {ownerOfAlias && (
+                    <span
+                      className="ml-2 text-[10px] px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200"
+                      title={`Doanh số quy về ${ownerOfAlias.name} trong báo cáo`}
+                    >
+                      → {ownerOfAlias.name}
+                    </span>
+                  )}
+                </td>
                 <td className="p-3">
                   <span
                     className={`text-xs px-2 py-1 rounded-md ${POSITION_COLOR[e.position] ?? "bg-slate-100 text-slate-700"}`}
@@ -225,7 +240,8 @@ export default function EmployeesManager({
                   </button>
                 </td>
               </tr>
-            ))}
+              );
+            })}
             {filtered.length === 0 && (
               <tr>
                 <td colSpan={7} className="p-6 text-center text-slate-500 text-sm">
@@ -298,6 +314,26 @@ export default function EmployeesManager({
                     defaultValue={editing?.email ?? ""}
                     className="input"
                   />
+                </Field>
+                <Field label="Alias của" full>
+                  <select
+                    name="aliasOfId"
+                    defaultValue={editing?.aliasOfId ?? ""}
+                    className="input"
+                  >
+                    <option value="">— Không phải alias —</option>
+                    {employees
+                      .filter((x) => x.id !== editing?.id && !x.aliasOfId)
+                      .map((x) => (
+                        <option key={x.id} value={x.id}>
+                          {x.name} ({POSITION_LABEL[x.position] ?? x.position})
+                        </option>
+                      ))}
+                  </select>
+                  <div className="text-[10px] text-slate-500 mt-1">
+                    Nếu NV này chỉ đứng tên trên chứng từ (VD người nhà) → chọn owner thật.
+                    Report sẽ gộp doanh số về owner.
+                  </div>
                 </Field>
                 <Field label="Trạng thái" required>
                   <select

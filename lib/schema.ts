@@ -373,6 +373,8 @@ export const employees = pgTable("employees", {
   departmentId: integer("department_id").references(() => departments.id),
   active: boolean("active").default(true),
   note: text("note"),
+  // Nếu set → NV này chỉ đứng tên trên chứng từ, doanh số thực về owner.
+  aliasOfId: integer("alias_of_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

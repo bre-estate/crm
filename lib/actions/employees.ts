@@ -12,6 +12,7 @@ const EmployeeSchema = z.object({
   phone: z.string().trim().optional().nullable(),
   position: z.enum(["ceo", "tpkd", "nvkd", "admin", "ctv"]),
   departmentId: z.coerce.number().int().nullable().optional(),
+  aliasOfId: z.coerce.number().int().nullable().optional(),
   active: z.boolean().optional(),
   note: z.string().trim().optional().nullable(),
 });
@@ -21,6 +22,7 @@ function formToObject(fd: FormData): Record<string, unknown> {
   for (const [k, v] of fd.entries()) obj[k] = typeof v === "string" ? v : "";
   // Convert empty deptId → null
   if (obj.departmentId === "" || obj.departmentId === "0") obj.departmentId = null;
+  if (obj.aliasOfId === "" || obj.aliasOfId === "0") obj.aliasOfId = null;
   obj.active = fd.get("active") === "on" || fd.get("active") === "true";
   return obj;
 }
@@ -49,6 +51,7 @@ export async function updateEmployeeNoRedirect(id: number, fd: FormData) {
       email: data.email || null,
       phone: data.phone || null,
       departmentId: data.departmentId ?? null,
+      aliasOfId: data.aliasOfId ?? null,
       active: data.active ?? true,
       note: data.note || null,
     })

@@ -23,6 +23,7 @@ export default async function EmployeesPage() {
         active: employees.active,
         note: employees.note,
         departmentName: departments.name,
+        aliasOfId: employees.aliasOfId,
       })
       .from(employees)
       .leftJoin(departments, eq(employees.departmentId, departments.id))

@@ -3,6 +3,8 @@ import { fmtMoney, fmtPctRaw } from "@/lib/format";
 import { hasReportsAccess } from "@/lib/auth";
 import { loadReportData, parseFilters } from "@/lib/reports";
 import { ReportsHeader } from "../_shared";
+import { db } from "@/lib/db";
+import { employees } from "@/lib/schema";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +16,34 @@ export default async function ReportsPeoplePage({ searchParams }: { searchParams
   const filters = parseFilters(sp);
   const data = await loadReportData(filters);
   const { grandTotals, prodRows, filterLabel, yearOptions, costReconsAll } = data;
+
+  // Alias resolution: name → ownerName (nếu là alias)
+  const allEmps = await db.select({ id: employees.id, name: employees.name, aliasOfId: employees.aliasOfId }).from(employees);
+  const empById = new Map(allEmps.map((e) => [e.id, e]));
+  const aliasMap = new Map<string, { ownerName: string; aliases: string[] }>();
+  for (const e of allEmps) {
+    if (e.aliasOfId) {
+      const owner = empById.get(e.aliasOfId);
+      if (owner) aliasMap.set(e.name.toLowerCase(), { ownerName: owner.name, aliases: [] });
+    }
+  }
+  // Build reverse: owner → list aliases để show tooltip
+  const ownerToAliases = new Map<string, string[]>();
+  for (const e of allEmps) {
+    if (e.aliasOfId) {
+      const owner = empById.get(e.aliasOfId);
+      if (owner) {
+        if (!ownerToAliases.has(owner.name)) ownerToAliases.set(owner.name, []);
+        ownerToAliases.get(owner.name)!.push(e.name);
+      }
+    }
+  }
+  const resolveName = (raw: string | null | undefined): string => {
+    if (!raw) return "";
+    const key = raw.trim().toLowerCase();
+    const mapped = aliasMap.get(key);
+    return mapped ? mapped.ownerName : raw.trim();
+  };
 
   // Theo phòng
   const byDept = new Map<string, { name: string; numProducts: number; totalRevenue: number; totalCost: number }>();
@@ -55,7 +85,8 @@ export default async function ReportsPeoplePage({ searchParams }: { searchParams
   };
   const productIdSet = new Set(prodRows.map((p) => p.id));
   for (const p of prodRows) {
-    const key = p.salesPerson?.trim() || "(Chưa có NVKD)";
+    const rawName = p.salesPerson?.trim() || "";
+    const key = rawName ? resolveName(rawName) : "(Chưa có NVKD)";
     const agg = getOrInit(key);
     agg.numProducts++;
     agg.totalRevenue += Number(p.totalRevenue ?? 0);
@@ -64,8 +95,9 @@ export default async function ReportsPeoplePage({ searchParams }: { searchParams
   // Cost recons gắn với NVKD (theo employeeName text) — HH sale + thưởng
   for (const c of costReconsAll) {
     if (!productIdSet.has(c.productId)) continue;
-    const key = c.employeeName?.trim() || "";
-    if (!key) continue;
+    const raw = c.employeeName?.trim();
+    if (!raw) continue;
+    const key = resolveName(raw);
     if (!byNvkd.has(key)) continue; // chỉ tính người đã có căn trong period
     const agg = byNvkd.get(key)!;
     if (c.costType === "sale_commission") agg.hhReceived += c.paid;
@@ -140,6 +172,18 @@ export default async function ReportsPeoplePage({ searchParams }: { searchParams
         <h2 className="text-lg font-semibold mb-1">KPI cá nhân NVKD — {filterLabel}</h2>
         <p className="text-xs text-slate-500 mb-3">
           Xếp hạng theo doanh thu mang lại; hoa hồng thực nhận đã tính từ payment thực (không tính dự kiến).
+          {ownerToAliases.size > 0 && (
+            <>
+              {" "}Doanh số của{" "}
+              {[...ownerToAliases.entries()].map(([owner, aliases], i, arr) => (
+                <span key={owner}>
+                  <b>{aliases.join(" + ")}</b> đã gộp về <b>{owner}</b>
+                  {i < arr.length - 1 ? "; " : ""}
+                </span>
+              ))}
+              .
+            </>
+          )}
         </p>
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
           <table className="w-full text-sm">
@@ -157,10 +201,21 @@ export default async function ReportsPeoplePage({ searchParams }: { searchParams
             <tbody>
               {nvkdSorted.map((n, i) => {
                 const pct = maxRev > 0 ? (n.totalRevenue / maxRev) * 100 : 0;
+                const aliases = ownerToAliases.get(n.name) ?? [];
                 return (
                   <tr key={n.name} className="border-t border-slate-100">
                     <td className="p-2 text-xs text-slate-500">#{i + 1}</td>
-                    <td className="p-2 font-medium">{n.name}</td>
+                    <td className="p-2 font-medium">
+                      {n.name}
+                      {aliases.length > 0 && (
+                        <span
+                          className="ml-2 text-[10px] px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200"
+                          title={`Đã gộp doanh số của: ${aliases.join(", ")}`}
+                        >
+                          +{aliases.length} alias
+                        </span>
+                      )}
+                    </td>
                     <td className="p-2 text-xs text-slate-500">
                       {[...n.departments].join(", ") || "—"}
                     </td>
