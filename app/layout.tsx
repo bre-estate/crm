@@ -3,6 +3,7 @@ import "./globals.css";
 import { createClient } from "@/lib/supabase/server";
 import SignOutButton from "./SignOutButton";
 import NavLinks from "./NavLinks";
+import AppShell from "./AppShell";
 import { Toaster } from "sonner";
 import { getOwnerEmail, hasReportsAccess, hasSegmentsAccess } from "@/lib/auth";
 
@@ -12,6 +13,13 @@ export const metadata: Metadata = {
   // Favicon: dùng Next.js file-convention → `app/icon.png` được auto-detect
   // + generate <link rel="icon"> với hash cache-busting. Không cần config
   // metadata.icons — nếu set sẽ conflict với auto-detect.
+};
+
+// Viewport riêng theo Next 15 convention (thay vì trong metadata).
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -38,31 +46,32 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const canSeeReports = await hasReportsAccess();
   const canSeeSegments = await hasSegmentsAccess();
 
+  const sidebar = (
+    <>
+      <div className="p-5 flex items-center justify-center">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.png" alt="BRE — Better Real Estate" className="h-14 w-auto" />
+      </div>
+      <NavLinks
+        isOwner={isOwner}
+        canSeeReports={canSeeReports}
+        canSeeSegments={canSeeSegments}
+      />
+      <div className="p-3 border-t border-slate-200 space-y-2">
+        <div className="text-xs text-slate-600 truncate" title={displayName}>
+          {displayName}
+        </div>
+        <SignOutButton />
+      </div>
+    </>
+  );
+
   return (
     <html lang="vi" className="h-full">
       <body className="bg-slate-50 text-slate-900 min-h-screen antialiased">
-        <div className="flex min-h-screen">
-          <aside className="w-60 bg-white border-r border-slate-200 flex flex-col">
-            <div className="p-5 flex items-center justify-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.png" alt="BRE — Better Real Estate" className="h-14 w-auto" />
-            </div>
-            <NavLinks
-              isOwner={isOwner}
-              canSeeReports={canSeeReports}
-              canSeeSegments={canSeeSegments}
-            />
-            <div className="p-3 border-t border-slate-200 space-y-2">
-              <div className="text-xs text-slate-600 truncate" title={displayName}>
-                {displayName}
-              </div>
-              <SignOutButton />
-            </div>
-          </aside>
-          <main className="flex-1 overflow-auto">
-            <div className="max-w-7xl mx-auto p-6">{children}</div>
-          </main>
-        </div>
+        <AppShell sidebar={sidebar} userName={displayName}>
+          {children}
+        </AppShell>
         <Toaster position="top-right" richColors closeButton />
       </body>
     </html>

@@ -37,6 +37,16 @@ button:disabled,
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
+/* iOS auto-zoom fix — Safari zoom in nếu input font-size < 16px khi focus.
+   Chỉ apply cho mobile (<640px) để giữ desktop compact. */
+@media (max-width: 640px) {
+  .input,
+  input[type="text"], input[type="number"], input[type="email"],
+  input[type="password"], input[type="search"], input[type="url"],
+  input[type="tel"], input[type="date"], textarea, select {
+    font-size: 16px;
+  }
+}
 .input:focus {
   border-color: rgb(59 130 246);
   box-shadow: 0 0 0 2px rgb(59 130 246 / 0.2);
