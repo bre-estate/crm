@@ -210,9 +210,9 @@ export default async function ReportsPeoplePage({ searchParams }: { searchParams
                       {aliases.length > 0 && (
                         <span
                           className="ml-2 text-[10px] px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200"
-                          title={`Đã gộp doanh số của: ${aliases.join(", ")}`}
+                          title={`Đã gộp doanh số của: ${aliases.join(", ")} (đứng tên cho ${n.name})`}
                         >
-                          +{aliases.length} alias
+                          +{aliases.length} người đứng tên
                         </span>
                       )}
                     </td>

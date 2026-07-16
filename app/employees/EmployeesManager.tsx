@@ -194,9 +194,9 @@ export default function EmployeesManager({
                   {ownerOfAlias && (
                     <span
                       className="ml-2 text-[10px] px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200"
-                      title={`Doanh số quy về ${ownerOfAlias.name} trong báo cáo`}
+                      title={`Đứng tên cho ${ownerOfAlias.name} — doanh số quy về người này trong báo cáo`}
                     >
-                      → {ownerOfAlias.name}
+                      Đứng tên cho {ownerOfAlias.name}
                     </span>
                   )}
                 </td>
@@ -315,13 +315,13 @@ export default function EmployeesManager({
                     className="input"
                   />
                 </Field>
-                <Field label="Alias của" full>
+                <Field label="Đứng tên cho" full>
                   <select
                     name="aliasOfId"
                     defaultValue={editing?.aliasOfId ?? ""}
                     className="input"
                   >
-                    <option value="">— Không phải alias —</option>
+                    <option value="">— Không đứng tên cho ai —</option>
                     {employees
                       .filter((x) => x.id !== editing?.id && !x.aliasOfId)
                       .map((x) => (
@@ -331,8 +331,8 @@ export default function EmployeesManager({
                       ))}
                   </select>
                   <div className="text-[10px] text-slate-500 mt-1">
-                    Nếu NV này chỉ đứng tên trên chứng từ (VD người nhà) → chọn owner thật.
-                    Report sẽ gộp doanh số về owner.
+                    Nếu NV này chỉ đứng tên trên chứng từ (VD người nhà) → chọn người bán thật.
+                    Báo cáo sẽ gộp doanh số về người bán thật.
                   </div>
                 </Field>
                 <Field label="Trạng thái" required>
