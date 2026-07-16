@@ -122,13 +122,16 @@ export default function NavLinks({
               {n.label}
             </div>
             <div className="space-y-0.5">
-              {sectionsOrder.map((sec) => (
-                <div key={sec ?? "_none"}>
-                  {hasSections && sec && (
-                    <div className="px-6 pt-1.5 pb-0.5 text-[9px] font-medium uppercase tracking-wide text-slate-400/70">
-                      {sec}
-                    </div>
-                  )}
+              {sectionsOrder.map((sec, sectionIdx) => (
+                <div
+                  key={sec ?? "_none"}
+                  className={
+                    hasSections && sectionIdx > 0
+                      ? "mt-1.5 pt-1.5 border-t border-slate-100"
+                      : ""
+                  }
+                  title={sec ?? undefined}
+                >
                   {bySection.get(sec)!.map((c) => {
                     const active = isActive(pathname, c.href);
                     return (
