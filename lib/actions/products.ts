@@ -43,11 +43,15 @@ function buildProductData(fd: FormData) {
       ? toTitleCase(toStr(fd.get("customerName")))
       : null,
     unitDescription: toStrOrNull(fd.get("unitDescription")),
-    bedrooms: (() => {
-      const raw = toStr(fd.get("bedrooms"));
-      if (!raw) return null;
+    ...(() => {
+      // Combined dropdown value: "" | "0"..."4" | "penthouse" | "shophouse"
+      const raw = toStr(fd.get("unitTypeCombined"));
+      if (raw === "penthouse") return { unitType: "penthouse" as const, bedrooms: null };
+      if (raw === "shophouse") return { unitType: "shophouse" as const, bedrooms: null };
+      if (!raw) return { unitType: "apartment" as const, bedrooms: null };
       const n = Number(raw);
-      return Number.isFinite(n) && n >= 0 && n <= 9 ? n : null;
+      const beds = Number.isFinite(n) && n >= 0 && n <= 4 ? n : null;
+      return { unitType: "apartment" as const, bedrooms: beds };
     })(),
     hasBonusRoom: fd.get("hasBonusRoom") === "on",
     areaM2Net: (() => {

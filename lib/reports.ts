@@ -111,6 +111,7 @@ export type ProductRow = {
   pmgBasePrice: number | null;
   pmgRate: number | null;
   pmgSaleRate: number | null;
+  unitType: string | null;
   bedrooms: number | null;
   hasBonusRoom: boolean | null;
   areaM2Net: number | null;
@@ -218,6 +219,7 @@ export async function loadReportData(filters: ReportFilters): Promise<ReportData
       pmgBasePrice: products.pmgBasePrice,
       pmgRate: products.pmgRate,
       pmgSaleRate: products.pmgSaleRate,
+      unitType: products.unitType,
       bedrooms: products.bedrooms,
       hasBonusRoom: products.hasBonusRoom,
       areaM2Net: products.areaM2Net,
@@ -244,6 +246,7 @@ export async function loadReportData(filters: ReportFilters): Promise<ReportData
     pmgBasePrice: p.pmgBasePrice,
     pmgRate: p.pmgRate,
     pmgSaleRate: p.pmgSaleRate,
+    unitType: p.unitType,
     bedrooms: p.bedrooms,
     hasBonusRoom: p.hasBonusRoom,
     areaM2Net: p.areaM2Net,

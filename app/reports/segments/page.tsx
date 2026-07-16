@@ -15,7 +15,8 @@ const BEDROOM_LABEL: Record<string, string> = {
   "2": "2 PN",
   "3": "3 PN",
   "4": "4 PN",
-  "5": "5+ PN",
+  penthouse: "Penthouse",
+  shophouse: "Shophouse",
 };
 
 const PRICE_BUCKETS: { label: string; min: number; max: number }[] = [
@@ -42,13 +43,19 @@ export default async function ReportsSegmentsPage({
   const data = await loadReportData(filters);
   const { grandTotals, prodRows, filterLabel, yearOptions } = data;
 
-  // ===== Group by bedrooms + bonus room flag =====
+  // ===== Group by unit_type + bedrooms + bonus room flag =====
   type BedroomAgg = { key: string; label: string; units: number; revenue: number; areaSum: number; areaCount: number };
   const bedroomMap = new Map<string, BedroomAgg>();
   for (const p of prodRows) {
     let key: string;
     let label: string;
-    if (p.bedrooms == null) {
+    if (p.unitType === "penthouse") {
+      key = "penthouse";
+      label = "Penthouse";
+    } else if (p.unitType === "shophouse") {
+      key = "shophouse";
+      label = "Shophouse";
+    } else if (p.bedrooms == null) {
       key = "unknown";
       label = "Chưa xác định";
     } else {
@@ -62,7 +69,6 @@ export default async function ReportsSegmentsPage({
     const agg = bedroomMap.get(key)!;
     agg.units++;
     agg.revenue += Number(p.totalRevenue ?? 0);
-    // Ưu tiên thông thủy (chuẩn pháp lý)
     const area = p.areaM2Net ?? p.areaM2Gross;
     if (area && area > 0) {
       agg.areaSum += area;
@@ -101,11 +107,15 @@ export default async function ReportsSegmentsPage({
     byBedroom: Record<string, number>;
   };
   const bedroomKeyOf = (p: typeof prodRows[number]): string => {
+    if (p.unitType === "penthouse") return "penthouse";
+    if (p.unitType === "shophouse") return "shophouse";
     if (p.bedrooms == null) return "unknown";
     return `${p.bedrooms}${p.hasBonusRoom ? "+" : ""}`;
   };
   const bedroomLabelOf = (key: string): string => {
     if (key === "unknown") return "Chưa xđ";
+    if (key === "penthouse") return "Penthouse";
+    if (key === "shophouse") return "Shophouse";
     const [base, plus] = [key.replace("+", ""), key.endsWith("+")];
     const b = BEDROOM_LABEL[base] ?? `${base}PN`;
     return plus ? `${b}+` : b;
@@ -123,13 +133,15 @@ export default async function ReportsSegmentsPage({
   }
   const projRows = [...byProject.values()].sort((a, b) => b.total - a.total);
   const bedroomKeys = [...new Set(prodRows.map(bedroomKeyOf))].sort((a, b) => {
-    if (a === "unknown") return 1;
-    if (b === "unknown") return -1;
-    // Sort: 0 < 0+ < 1 < 1+ < 2 < 2+ ...
-    const [an, ap] = [Number(a.replace("+", "")), a.endsWith("+")];
-    const [bn, bp] = [Number(b.replace("+", "")), b.endsWith("+")];
-    if (an !== bn) return an - bn;
-    return ap === bp ? 0 : ap ? 1 : -1;
+    // Order: 0 < 0+ < 1 < 1+ < 2 < 2+ ... < penthouse < shophouse < unknown
+    const rank = (k: string): number => {
+      if (k === "unknown") return 9999;
+      if (k === "shophouse") return 900;
+      if (k === "penthouse") return 800;
+      const n = Number(k.replace("+", ""));
+      return n * 10 + (k.endsWith("+") ? 1 : 0);
+    };
+    return rank(a) - rank(b);
   });
 
   // ===== Danh sách căn cần review (parse_note != null) =====

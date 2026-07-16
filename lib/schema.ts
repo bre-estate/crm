@@ -131,7 +131,8 @@ export const products = pgTable("products", {
   unitCode: text("unit_code").notNull(),
   unitDescription: text("unit_description"),
   // Phân khúc — parse từ unit_description hoặc nhập tay
-  bedrooms: integer("bedrooms"), // 0=studio, 1=1PN, 2=2PN, null=chưa
+  unitType: text("unit_type", { enum: ["apartment", "penthouse", "shophouse"] }).default("apartment"),
+  bedrooms: integer("bedrooms"), // 0=studio, 1=1PN, 2=2PN,... null cho penthouse/shophouse
   hasBonusRoom: boolean("has_bonus_room").default(false), // "+PN" — phòng phụ đa năng
   areaM2Net: doublePrecision("area_m2_net"), // Diện tích thông thủy (chuẩn pháp lý)
   areaM2Gross: doublePrecision("area_m2_gross"), // Diện tích tim tường (marketing)

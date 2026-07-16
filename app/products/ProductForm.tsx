@@ -255,11 +255,15 @@ export default function ProductForm({
               placeholder="vd: 2 PN"
             />
           </Field>
-          <Field label="Số phòng ngủ">
+          <Field label="Loại căn">
             <div className="flex gap-2 items-center">
               <select
-                name="bedrooms"
-                defaultValue={product?.bedrooms == null ? "" : String(product.bedrooms)}
+                name="unitTypeCombined"
+                defaultValue={(() => {
+                  if (product?.unitType === "penthouse") return "penthouse";
+                  if (product?.unitType === "shophouse") return "shophouse";
+                  return product?.bedrooms == null ? "" : String(product.bedrooms);
+                })()}
                 className="input flex-1"
               >
                 <option value="">— chưa xác định —</option>
@@ -268,9 +272,10 @@ export default function ProductForm({
                 <option value="2">2 PN</option>
                 <option value="3">3 PN</option>
                 <option value="4">4 PN</option>
-                <option value="5">5+ PN</option>
+                <option value="penthouse">Penthouse</option>
+                <option value="shophouse">Shophouse</option>
               </select>
-              <label className="flex items-center gap-1 text-xs whitespace-nowrap" title="Có phòng phụ đa năng (VD 1PN+, 2PN+)">
+              <label className="flex items-center gap-1 text-xs whitespace-nowrap" title="Có phòng phụ đa năng (VD 1PN+, 2PN+). Chỉ áp dụng cho căn hộ 1-4 PN.">
                 <input
                   type="checkbox"
                   name="hasBonusRoom"
