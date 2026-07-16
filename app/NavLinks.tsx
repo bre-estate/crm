@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-type Gate = "owner" | "reports";
+type Gate = "owner" | "reports" | "segments";
 
 type NavLeaf = {
   href: string;
@@ -36,14 +36,15 @@ const NAV: NavEntry[] = [
   },
   {
     label: "Báo cáo",
-    gate: "reports",
+    // Parent không set gate — child gate quyết định visible (segments-only user
+    // vẫn thấy parent nếu Phân khúc visible).
     children: [
-      { href: "/reports/overview", label: "Tổng hợp" },
-      { href: "/reports/projects", label: "Theo dự án" },
-      { href: "/reports/segments", label: "Phân khúc" },
-      { href: "/reports/partners", label: "Đối tác" },
-      { href: "/reports/people", label: "Theo nhân sự" },
-      { href: "/reports/time", label: "Theo thời gian" },
+      { href: "/reports/overview", label: "Tổng hợp", gate: "reports" },
+      { href: "/reports/projects", label: "Theo dự án", gate: "reports" },
+      { href: "/reports/segments", label: "Phân khúc", gate: "segments" },
+      { href: "/reports/partners", label: "Đối tác", gate: "reports" },
+      { href: "/reports/people", label: "Theo nhân sự", gate: "reports" },
+      { href: "/reports/time", label: "Theo thời gian", gate: "reports" },
       { href: "/reports/cashflow", label: "Dòng tiền", gate: "owner" },
     ],
   },
@@ -57,26 +58,29 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-function canSee(gate: Gate | undefined, isOwner: boolean, canSeeReports: boolean): boolean {
-  if (!gate) return true;
-  if (gate === "owner") return isOwner;
-  if (gate === "reports") return canSeeReports;
-  return false;
-}
-
 export default function NavLinks({
   isOwner = false,
   canSeeReports = false,
+  canSeeSegments = false,
 }: {
   isOwner?: boolean;
   canSeeReports?: boolean;
+  canSeeSegments?: boolean;
 }) {
   const pathname = usePathname();
+
+  const canSee = (gate: Gate | undefined): boolean => {
+    if (!gate) return true;
+    if (gate === "owner") return isOwner;
+    if (gate === "reports") return canSeeReports;
+    if (gate === "segments") return canSeeSegments;
+    return false;
+  };
 
   return (
     <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
       {NAV.map((n) => {
-        if (!canSee(n.gate, isOwner, canSeeReports)) return null;
+        if (!canSee(n.gate)) return null;
 
         if (!isGroup(n)) {
           const active = isActive(pathname, n.href);
@@ -95,9 +99,7 @@ export default function NavLinks({
           );
         }
 
-        const visibleChildren = n.children.filter((c) =>
-          canSee(c.gate, isOwner, canSeeReports),
-        );
+        const visibleChildren = n.children.filter((c) => canSee(c.gate));
         if (visibleChildren.length === 0) return null;
 
         return (

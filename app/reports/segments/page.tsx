@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { fmtMoney, fmtPctRaw } from "@/lib/format";
-import { hasReportsAccess } from "@/lib/auth";
+import { hasSegmentsAccess } from "@/lib/auth";
 import { loadReportData, parseFilters } from "@/lib/reports";
 import { ReportsHeader } from "../_shared";
 
@@ -36,7 +36,7 @@ export default async function ReportsSegmentsPage({
 }: {
   searchParams: SearchParams;
 }) {
-  if (!(await hasReportsAccess())) redirect("/");
+  if (!(await hasSegmentsAccess())) redirect("/");
   const sp = await searchParams;
   const filters = parseFilters(sp);
   const data = await loadReportData(filters);

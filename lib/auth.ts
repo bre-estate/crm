@@ -6,9 +6,12 @@ import { createClient } from "@/lib/supabase/server";
 // Sau này extend theo team → thêm vào array.
 const OWNER_EMAILS = ["trietnguyen308@gmail.com"];
 
-// Email được phép truy cập trang /reports (thêm ngoài owner).
-// TODO: xác nhận email đầy đủ của bach.khdt và sửa lại nếu khác.
+// Email được phép truy cập MỌI trang /reports (thêm ngoài owner).
 const REPORTS_EMAILS = ["trietnguyen308@gmail.com", "bach.khdt@gmail.com"];
+
+// Email chỉ được vào /reports/segments (nhập bổ sung số PN + diện tích căn),
+// không thấy các báo cáo khác (tránh lộ DT/biên LN nội bộ).
+const SEGMENTS_ONLY_EMAILS = ["lanvienho@gmail.com"];
 
 /**
  * Kiểm tra user hiện tại có nằm trong danh sách owner không.
@@ -40,7 +43,7 @@ export async function requireOwner(): Promise<string> {
 }
 
 /**
- * Check user có được phép xem /reports không (owner + whitelist bổ sung).
+ * Check user có được phép xem MỌI trang /reports không.
  */
 export async function hasReportsAccess(): Promise<boolean> {
   try {
@@ -50,6 +53,23 @@ export async function hasReportsAccess(): Promise<boolean> {
     } = await supabase.auth.getUser();
     if (!user?.email) return false;
     return REPORTS_EMAILS.includes(user.email);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Check user có được vào /reports/segments không (whitelist chuyên bổ sung
+ * thông tin căn — bao gồm cả full reports users).
+ */
+export async function hasSegmentsAccess(): Promise<boolean> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user?.email) return false;
+    return REPORTS_EMAILS.includes(user.email) || SEGMENTS_ONLY_EMAILS.includes(user.email);
   } catch {
     return false;
   }
