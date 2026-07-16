@@ -4,6 +4,8 @@ import { hasReportsAccess } from "@/lib/auth";
 import { getOwnerEmail } from "@/lib/auth";
 import { loadReportData, parseFilters } from "@/lib/reports";
 import { Card, ReportsHeader } from "../_shared";
+import { db } from "@/lib/db";
+import { employees } from "@/lib/schema";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +20,24 @@ export default async function ReportsCashflowPage({ searchParams }: { searchPara
   const filters = parseFilters(sp);
   const data = await loadReportData(filters);
   const { grandTotals, filterLabel, yearOptions, revReconsAll, costReconsAll, prodRowsAll, partnerNames } = data;
+
+  // Alias resolver: name → owner name
+  const allEmps = await db
+    .select({ id: employees.id, name: employees.name, aliasOfId: employees.aliasOfId })
+    .from(employees);
+  const empById = new Map(allEmps.map((e) => [e.id, e]));
+  const aliasMap = new Map<string, string>(); // key = alias name lowercase, value = owner name
+  for (const e of allEmps) {
+    if (e.aliasOfId) {
+      const owner = empById.get(e.aliasOfId);
+      if (owner) aliasMap.set(e.name.toLowerCase(), owner.name);
+    }
+  }
+  const resolveEmployeeName = (raw: string | null | undefined): string => {
+    if (!raw) return "(chưa gán)";
+    const key = raw.trim().toLowerCase();
+    return aliasMap.get(key) ?? raw.trim();
+  };
 
   const TODAY = new Date();
   const daysBetween = (d: string | null): number => {
@@ -201,9 +221,9 @@ export default async function ReportsCashflowPage({ searchParams }: { searchPara
       .reduce((s, ap) => s + ap.totalRevenueExpected, 0);
     if (rev > 0) partnerShare.set(pid, { name: pname, revenue: rev });
   }
-  // NVKD share (theo salesPerson text)
+  // NVKD share (theo salesPerson text) — resolve alias → owner
   for (const p of prodRowsAll) {
-    const key = p.salesPerson?.trim() || "(chưa gán)";
+    const key = resolveEmployeeName(p.salesPerson);
     if (!nvkdShare.has(key)) nvkdShare.set(key, { revenue: 0, units: 0 });
     const agg = nvkdShare.get(key)!;
     agg.revenue += Number(p.totalRevenue ?? 0);
