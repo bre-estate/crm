@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import SearchableSelect from "@/components/SearchableSelect";
 
 type Employee = {
   id: number;
@@ -316,20 +317,19 @@ export default function EmployeesManager({
                   />
                 </Field>
                 <Field label="Đứng tên cho" full>
-                  <select
+                  <SearchableSelect
                     name="aliasOfId"
                     defaultValue={editing?.aliasOfId ?? ""}
-                    className="input"
-                  >
-                    <option value="">— Không đứng tên cho ai —</option>
-                    {employees
+                    emptyOption="— Không đứng tên cho ai —"
+                    placeholder="Gõ tên người bán thật..."
+                    options={employees
                       .filter((x) => x.id !== editing?.id && !x.aliasOfId)
-                      .map((x) => (
-                        <option key={x.id} value={x.id}>
-                          {x.name} ({POSITION_LABEL[x.position] ?? x.position})
-                        </option>
-                      ))}
-                  </select>
+                      .map((x) => ({
+                        value: x.id,
+                        label: x.name,
+                        sublabel: `${POSITION_LABEL[x.position] ?? x.position}${x.departmentName ? " · " + x.departmentName : ""}`,
+                      }))}
+                  />
                   <div className="text-[10px] text-slate-500 mt-1">
                     Nếu NV này chỉ đứng tên trên chứng từ (VD người nhà) → chọn người bán thật.
                     Báo cáo sẽ gộp doanh số về người bán thật.
