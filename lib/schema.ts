@@ -113,6 +113,10 @@ export const products = pgTable("products", {
   projectId: integer("project_id").notNull().references(() => projects.id),
   unitCode: text("unit_code").notNull(),
   unitDescription: text("unit_description"),
+  // Phân khúc — parse từ unit_description hoặc nhập tay
+  bedrooms: integer("bedrooms"), // 0=studio, 1=1PN, 2=2PN, null=chưa
+  areaM2: doublePrecision("area_m2"),
+  parseNote: text("parse_note"), // ghi chú khi parse không chắc — cần user review
 
   customerName: text("customer_name"),
   salesPerson: text("sales_person"),

@@ -252,6 +252,38 @@ export default function ProductForm({
               name="unitDescription"
               defaultValue={product?.unitDescription ?? ""}
               className="input"
+              placeholder="vd: 2 PN"
+            />
+          </Field>
+          <Field label="Số phòng ngủ">
+            <select
+              name="bedrooms"
+              defaultValue={product?.bedrooms == null ? "" : String(product.bedrooms)}
+              className="input"
+            >
+              <option value="">— chưa xác định —</option>
+              <option value="0">Studio</option>
+              <option value="1">1 PN</option>
+              <option value="2">2 PN</option>
+              <option value="3">3 PN</option>
+              <option value="4">4 PN</option>
+              <option value="5">5+ PN</option>
+            </select>
+            {product?.parseNote && (
+              <div className="text-[10px] text-amber-600 mt-1">
+                ⚠️ {product.parseNote}
+              </div>
+            )}
+          </Field>
+          <Field label="Diện tích (m²)">
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              name="areaM2"
+              defaultValue={product?.areaM2 ?? ""}
+              className="input"
+              placeholder="vd: 65.5"
             />
           </Field>
           <Field label="Ngày cọc">

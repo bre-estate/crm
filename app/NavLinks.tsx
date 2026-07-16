@@ -40,6 +40,7 @@ const NAV: NavEntry[] = [
     children: [
       { href: "/reports/overview", label: "Tổng hợp" },
       { href: "/reports/projects", label: "Theo dự án" },
+      { href: "/reports/segments", label: "Phân khúc" },
       { href: "/reports/partners", label: "Đối tác" },
       { href: "/reports/people", label: "Theo nhân sự" },
       { href: "/reports/time", label: "Theo thời gian" },

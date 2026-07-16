@@ -111,6 +111,9 @@ export type ProductRow = {
   pmgBasePrice: number | null;
   pmgRate: number | null;
   pmgSaleRate: number | null;
+  bedrooms: number | null;
+  areaM2: number | null;
+  parseNote: string | null;
 };
 
 export type RevReconRow = {
@@ -213,6 +216,9 @@ export async function loadReportData(filters: ReportFilters): Promise<ReportData
       pmgBasePrice: products.pmgBasePrice,
       pmgRate: products.pmgRate,
       pmgSaleRate: products.pmgSaleRate,
+      bedrooms: products.bedrooms,
+      areaM2: products.areaM2,
+      parseNote: products.parseNote,
     })
     .from(products)
     .leftJoin(departments, eq(products.departmentId, departments.id));
@@ -234,6 +240,9 @@ export async function loadReportData(filters: ReportFilters): Promise<ReportData
     pmgBasePrice: p.pmgBasePrice,
     pmgRate: p.pmgRate,
     pmgSaleRate: p.pmgSaleRate,
+    bedrooms: p.bedrooms,
+    areaM2: p.areaM2,
+    parseNote: p.parseNote,
   }));
 
   const yearSet = new Set<number>();

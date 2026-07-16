@@ -43,6 +43,19 @@ function buildProductData(fd: FormData) {
       ? toTitleCase(toStr(fd.get("customerName")))
       : null,
     unitDescription: toStrOrNull(fd.get("unitDescription")),
+    bedrooms: (() => {
+      const raw = toStr(fd.get("bedrooms"));
+      if (!raw) return null;
+      const n = Number(raw);
+      return Number.isFinite(n) && n >= 0 && n <= 9 ? n : null;
+    })(),
+    areaM2: (() => {
+      const raw = toStr(fd.get("areaM2"));
+      if (!raw) return null;
+      const n = Number(raw);
+      return Number.isFinite(n) && n > 0 ? n : null;
+    })(),
+    parseNote: null, // clear cờ review khi user save form (đã check tay)
     salesPerson: toStrOrNull(fd.get("salesPerson"))
       ? toTitleCase(toStr(fd.get("salesPerson")))
       : null,
