@@ -65,10 +65,12 @@ export default async function ReportsSegmentsPage({
   const maxBedroomUnits = bedroomRows[0]?.units ?? 1;
 
   // ===== Group by price bucket =====
+  // Dùng pmg_base_price = giá bán căn thực cho khách (~3-6 tỷ);
+  // KHÔNG dùng sell_price vì Excel lưu sell_price = DT BRE nhận (~200 triệu HH).
   type PriceAgg = { label: string; units: number; revenue: number };
   const priceMap = new Map<string, PriceAgg>();
   for (const p of prodRows) {
-    const price = Number(p.sellPrice ?? 0);
+    const price = Number(p.pmgBasePrice ?? 0);
     const key = price > 0 ? bucketOf(price) : "(chưa có giá)";
     if (!priceMap.has(key)) priceMap.set(key, { label: key, units: 0, revenue: 0 });
     const agg = priceMap.get(key)!;
@@ -204,7 +206,10 @@ export default async function ReportsSegmentsPage({
 
       {/* ===== Price bucket ===== */}
       <div>
-        <h2 className="text-lg font-semibold mb-3">Phân khúc theo tầm giá — {filterLabel}</h2>
+        <h2 className="text-lg font-semibold mb-1">Phân khúc theo tầm giá — {filterLabel}</h2>
+        <p className="text-xs text-slate-500 mb-3">
+          Dựa trên <b>Giá tính PMG</b> (giá bán căn cho khách). Cột "Tổng DT" = doanh thu BRE nhận từ CĐT (HH), khác với giá bán.
+        </p>
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs text-slate-600">
