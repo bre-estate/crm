@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { toNum, toStr, toPct } from "@/lib/parse";
+import { scrapeBatdongsanProject } from "@/lib/scrapers/batdongsan";
 
 function buildProjectData(fd: FormData) {
   const code = toStr(fd.get("code"));
@@ -108,4 +109,47 @@ export async function deleteProject(id: number) {
   await db.delete(projects).where(eq(projects.id, id));
   revalidatePath("/projects");
   redirect("/projects");
+}
+
+/**
+ * Fetch data từ Batdongsan URL của dự án → auto-fill 4 field
+ * (totalUnits, priceMin/Max, district/city, handoverExpected).
+ * Chỉ update field non-null từ parser — giữ nguyên field đã có trong DB nếu parser trả null.
+ */
+export async function refreshProjectFromBatdongsan(id: number): Promise<{
+  ok: boolean;
+  updated: Record<string, unknown>;
+  message: string;
+}> {
+  const [proj] = await db.select().from(projects).where(eq(projects.id, id));
+  if (!proj) throw new Error("Không tìm thấy dự án");
+  if (!proj.batdongsanUrl) throw new Error("Dự án chưa có URL Batdongsan — nhập vào section '🔗 Nguồn tham chiếu'");
+
+  const data = await scrapeBatdongsanProject(proj.batdongsanUrl);
+  const updated: Record<string, unknown> = {};
+  if (data.totalUnits !== null) updated.totalUnits = data.totalUnits;
+  if (data.priceRangeMin !== null) updated.priceRangeMin = data.priceRangeMin;
+  if (data.priceRangeMax !== null) updated.priceRangeMax = data.priceRangeMax;
+  if (data.district) updated.district = data.district;
+  if (data.city) updated.city = data.city;
+  if (data.handoverExpected) updated.handoverExpected = data.handoverExpected;
+  updated.dataUpdatedAt = new Date();
+  updated.dataSourceNote = `Auto-fill từ Batdongsan lúc ${new Date().toLocaleString("vi-VN")}`;
+
+  if (Object.keys(updated).length <= 2) {
+    return {
+      ok: false,
+      updated,
+      message: "Parser không tìm được field nào — cấu trúc trang có thể đã đổi. Nhập tay hoặc báo dev.",
+    };
+  }
+
+  await db.update(projects).set(updated).where(eq(projects.id, id));
+  revalidatePath("/projects");
+  revalidatePath(`/projects/${id}`);
+  return {
+    ok: true,
+    updated,
+    message: `Đã cập nhật ${Object.keys(updated).length - 2} field từ Batdongsan.`,
+  };
 }

@@ -4,7 +4,7 @@ import { eq, asc, count } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import ProjectForm from "../ProjectForm";
-import { updateProject, deleteProject } from "@/lib/actions/projects";
+import { updateProject, deleteProject, refreshProjectFromBatdongsan } from "@/lib/actions/projects";
 
 export default async function EditProjectPage({
   params,
@@ -54,6 +54,11 @@ export default async function EditProjectPage({
         onDelete={async () => {
           "use server";
           await deleteProject(id);
+        }}
+        onRefreshBatdongsan={async () => {
+          "use server";
+          const res = await refreshProjectFromBatdongsan(id);
+          return { ok: res.ok, message: res.message };
         }}
       />
     </div>

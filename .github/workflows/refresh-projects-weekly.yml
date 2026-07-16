@@ -1,0 +1,31 @@
+name: Weekly Projects Refresh from Batdongsan
+
+# Chạy 08:00 sáng thứ Ba giờ VN (= 01:00 UTC Tuesday).
+# Cách 1 ngày với backup weekly (Monday) để không cùng lúc.
+on:
+  schedule:
+    - cron: "0 1 * * 2"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Install deps
+        run: npm install --no-audit --no-fund --no-save postgres tsx dotenv
+
+      - name: Refresh projects from Batdongsan
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npx tsx scripts/refresh-projects-batdongsan.ts

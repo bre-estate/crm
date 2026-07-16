@@ -11,9 +11,10 @@ type Props = {
   partners: Partner[];
   onSave: (fd: FormData) => Promise<void>;
   onDelete?: () => Promise<void>;
+  onRefreshBatdongsan?: () => Promise<{ ok: boolean; message: string }>;
 };
 
-export default function ProjectForm({ project, partners, onSave, onDelete }: Props) {
+export default function ProjectForm({ project, partners, onSave, onDelete, onRefreshBatdongsan }: Props) {
   const [pending, start] = useTransition();
   const router = useRouter();
   const [defaultSaleType, setDefaultSaleType] = useState<"primary" | "secondary">(
@@ -289,13 +290,42 @@ export default function ProjectForm({ project, partners, onSave, onDelete }: Pro
             />
           </Field>
           <Field label="Batdongsan.com.vn URL dự án">
-            <input
-              type="url"
-              name="batdongsanUrl"
-              defaultValue={project?.batdongsanUrl ?? ""}
-              className="input"
-              placeholder="https://batdongsan.com.vn/du-an/..."
-            />
+            <div className="flex gap-2 items-start">
+              <input
+                type="url"
+                name="batdongsanUrl"
+                defaultValue={project?.batdongsanUrl ?? ""}
+                className="input flex-1"
+                placeholder="https://batdongsan.com.vn/du-an/..."
+              />
+              {onRefreshBatdongsan && project?.batdongsanUrl && (
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => {
+                    start(async () => {
+                      try {
+                        const res = await onRefreshBatdongsan();
+                        if (res.ok) toast.success(res.message);
+                        else toast.error(res.message);
+                        router.refresh();
+                      } catch (e) {
+                        toast.error(e instanceof Error ? e.message : "Lỗi fetch");
+                      }
+                    });
+                  }}
+                  className="px-3 py-2 bg-blue-500 text-white rounded-lg text-xs hover:bg-blue-600 disabled:opacity-50 whitespace-nowrap"
+                  title="Fetch từ Batdongsan.com.vn và auto-fill 4 field: tổng căn, giá min/max, quận/TP, bàn giao"
+                >
+                  🔄 Fetch
+                </button>
+              )}
+            </div>
+            {project?.dataUpdatedAt && (
+              <div className="text-[10px] text-slate-500 mt-1">
+                Data cập nhật lần cuối: {new Date(project.dataUpdatedAt).toLocaleString("vi-VN")}
+              </div>
+            )}
           </Field>
           <Field label="CafeLand URL dự án">
             <input
