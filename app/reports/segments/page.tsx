@@ -42,19 +42,30 @@ export default async function ReportsSegmentsPage({
   const data = await loadReportData(filters);
   const { grandTotals, prodRows, filterLabel, yearOptions } = data;
 
-  // ===== Group by bedrooms =====
+  // ===== Group by bedrooms + bonus room flag =====
   type BedroomAgg = { key: string; label: string; units: number; revenue: number; areaSum: number; areaCount: number };
   const bedroomMap = new Map<string, BedroomAgg>();
   for (const p of prodRows) {
-    const key = p.bedrooms == null ? "unknown" : String(p.bedrooms);
-    const label = p.bedrooms == null ? "Chưa xác định" : BEDROOM_LABEL[key] ?? `${p.bedrooms} PN`;
+    let key: string;
+    let label: string;
+    if (p.bedrooms == null) {
+      key = "unknown";
+      label = "Chưa xác định";
+    } else {
+      const suffix = p.hasBonusRoom ? "+" : "";
+      key = `${p.bedrooms}${suffix}`;
+      const base = BEDROOM_LABEL[String(p.bedrooms)] ?? `${p.bedrooms} PN`;
+      label = p.hasBonusRoom ? `${base}+` : base;
+    }
     if (!bedroomMap.has(key))
       bedroomMap.set(key, { key, label, units: 0, revenue: 0, areaSum: 0, areaCount: 0 });
     const agg = bedroomMap.get(key)!;
     agg.units++;
     agg.revenue += Number(p.totalRevenue ?? 0);
-    if (p.areaM2 && p.areaM2 > 0) {
-      agg.areaSum += p.areaM2;
+    // Ưu tiên thông thủy (chuẩn pháp lý)
+    const area = p.areaM2Net ?? p.areaM2Gross;
+    if (area && area > 0) {
+      agg.areaSum += area;
       agg.areaCount++;
     }
   }
@@ -89,6 +100,16 @@ export default async function ReportsSegmentsPage({
     total: number;
     byBedroom: Record<string, number>;
   };
+  const bedroomKeyOf = (p: typeof prodRows[number]): string => {
+    if (p.bedrooms == null) return "unknown";
+    return `${p.bedrooms}${p.hasBonusRoom ? "+" : ""}`;
+  };
+  const bedroomLabelOf = (key: string): string => {
+    if (key === "unknown") return "Chưa xđ";
+    const [base, plus] = [key.replace("+", ""), key.endsWith("+")];
+    const b = BEDROOM_LABEL[base] ?? `${base}PN`;
+    return plus ? `${b}+` : b;
+  };
   const byProject = new Map<string, ProjectBedroomRow>();
   for (const p of prodRows) {
     const proj = data.aggregatedProjects.find((ap) => ap.id === p.projectId);
@@ -97,12 +118,19 @@ export default async function ReportsSegmentsPage({
       byProject.set(projName, { project: projName, partner: proj?.partnerName ?? null, total: 0, byBedroom: {} });
     const row = byProject.get(projName)!;
     row.total++;
-    const key = p.bedrooms == null ? "unknown" : String(p.bedrooms);
+    const key = bedroomKeyOf(p);
     row.byBedroom[key] = (row.byBedroom[key] ?? 0) + 1;
   }
   const projRows = [...byProject.values()].sort((a, b) => b.total - a.total);
-  const bedroomKeys = [...new Set(prodRows.map((p) => p.bedrooms == null ? "unknown" : String(p.bedrooms)))]
-    .sort((a, b) => (a === "unknown" ? 1 : b === "unknown" ? -1 : Number(a) - Number(b)));
+  const bedroomKeys = [...new Set(prodRows.map(bedroomKeyOf))].sort((a, b) => {
+    if (a === "unknown") return 1;
+    if (b === "unknown") return -1;
+    // Sort: 0 < 0+ < 1 < 1+ < 2 < 2+ ...
+    const [an, ap] = [Number(a.replace("+", "")), a.endsWith("+")];
+    const [bn, bp] = [Number(b.replace("+", "")), b.endsWith("+")];
+    if (an !== bn) return an - bn;
+    return ap === bp ? 0 : ap ? 1 : -1;
+  });
 
   // ===== Danh sách căn cần review (parse_note != null) =====
   const needReview = prodRows.filter((p) => p.parseNote);
@@ -127,27 +155,31 @@ export default async function ReportsSegmentsPage({
       {/* Progress: coverage của bedrooms + area */}
       {(() => {
         const withBedrooms = prodRows.filter((p) => p.bedrooms !== null).length;
-        const withArea = prodRows.filter((p) => p.areaM2 && p.areaM2 > 0).length;
+        const withNet = prodRows.filter((p) => p.areaM2Net && p.areaM2Net > 0).length;
+        const withGross = prodRows.filter((p) => p.areaM2Gross && p.areaM2Gross > 0).length;
         const bedPct = totalUnits > 0 ? (withBedrooms / totalUnits) * 100 : 0;
-        const areaPct = totalUnits > 0 ? (withArea / totalUnits) * 100 : 0;
+        const netPct = totalUnits > 0 ? (withNet / totalUnits) * 100 : 0;
+        const grossPct = totalUnits > 0 ? (withGross / totalUnits) * 100 : 0;
         if (totalUnits === 0) return null;
         return (
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
             <div className="font-semibold mb-1">📊 Độ phủ dữ liệu phân khúc:</div>
-            <div className="grid grid-cols-2 gap-4 text-xs">
+            <div className="grid grid-cols-3 gap-4 text-xs">
               <div>
                 <b>Số PN:</b> {withBedrooms}/{totalUnits} ({fmtPctRaw(bedPct, 0)})
-                {withBedrooms < totalUnits && (
-                  <span className="text-amber-700 ml-1">— {totalUnits - withBedrooms} căn chưa có, xem list bên dưới</span>
-                )}
               </div>
               <div>
-                <b>Diện tích m²:</b> {withArea}/{totalUnits} ({fmtPctRaw(areaPct, 0)})
-                {withArea < totalUnits && (
-                  <span className="text-amber-700 ml-1">— {totalUnits - withArea} căn chưa có (nhập tay)</span>
-                )}
+                <b>DT thông thủy:</b> {withNet}/{totalUnits} ({fmtPctRaw(netPct, 0)})
+              </div>
+              <div>
+                <b>DT tim tường:</b> {withGross}/{totalUnits} ({fmtPctRaw(grossPct, 0)})
               </div>
             </div>
+            {(withBedrooms < totalUnits || withNet < totalUnits) && (
+              <div className="mt-2 text-xs">
+                Còn nhiều căn chưa có data — xem list "Cần check tay" cuối trang để bổ sung.
+              </div>
+            )}
           </div>
         );
       })()}
@@ -261,7 +293,7 @@ export default async function ReportsSegmentsPage({
                 <th className="text-left p-2">Dự án</th>
                 {bedroomKeys.map((k) => (
                   <th key={k} className="text-center p-2">
-                    {k === "unknown" ? "Chưa xđ" : BEDROOM_LABEL[k] ?? `${k}PN`}
+                    {bedroomLabelOf(k)}
                   </th>
                 ))}
                 <th className="text-right p-2">Tổng</th>

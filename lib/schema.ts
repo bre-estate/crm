@@ -132,7 +132,9 @@ export const products = pgTable("products", {
   unitDescription: text("unit_description"),
   // Phân khúc — parse từ unit_description hoặc nhập tay
   bedrooms: integer("bedrooms"), // 0=studio, 1=1PN, 2=2PN, null=chưa
-  areaM2: doublePrecision("area_m2"),
+  hasBonusRoom: boolean("has_bonus_room").default(false), // "+PN" — phòng phụ đa năng
+  areaM2Net: doublePrecision("area_m2_net"), // Diện tích thông thủy (chuẩn pháp lý)
+  areaM2Gross: doublePrecision("area_m2_gross"), // Diện tích tim tường (marketing)
   parseNote: text("parse_note"), // ghi chú khi parse không chắc — cần user review
 
   customerName: text("customer_name"),

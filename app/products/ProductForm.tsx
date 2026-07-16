@@ -256,35 +256,58 @@ export default function ProductForm({
             />
           </Field>
           <Field label="Số phòng ngủ">
-            <select
-              name="bedrooms"
-              defaultValue={product?.bedrooms == null ? "" : String(product.bedrooms)}
-              className="input"
-            >
-              <option value="">— chưa xác định —</option>
-              <option value="0">Studio</option>
-              <option value="1">1 PN</option>
-              <option value="2">2 PN</option>
-              <option value="3">3 PN</option>
-              <option value="4">4 PN</option>
-              <option value="5">5+ PN</option>
-            </select>
+            <div className="flex gap-2 items-center">
+              <select
+                name="bedrooms"
+                defaultValue={product?.bedrooms == null ? "" : String(product.bedrooms)}
+                className="input flex-1"
+              >
+                <option value="">— chưa xác định —</option>
+                <option value="0">Studio</option>
+                <option value="1">1 PN</option>
+                <option value="2">2 PN</option>
+                <option value="3">3 PN</option>
+                <option value="4">4 PN</option>
+                <option value="5">5+ PN</option>
+              </select>
+              <label className="flex items-center gap-1 text-xs whitespace-nowrap" title="Có phòng phụ đa năng (VD 1PN+, 2PN+)">
+                <input
+                  type="checkbox"
+                  name="hasBonusRoom"
+                  defaultChecked={product?.hasBonusRoom ?? false}
+                />
+                <span>+PN phụ</span>
+              </label>
+            </div>
             {product?.parseNote && (
               <div className="text-[10px] text-amber-600 mt-1">
                 ⚠️ {product.parseNote}
               </div>
             )}
           </Field>
-          <Field label="Diện tích (m²)">
+          <Field label="DT thông thủy (m²)">
             <input
               type="number"
               step="0.01"
               min="0"
-              name="areaM2"
-              defaultValue={product?.areaM2 ?? ""}
+              name="areaM2Net"
+              defaultValue={product?.areaM2Net ?? ""}
               className="input"
               placeholder="vd: 65.5"
             />
+            <div className="text-[10px] text-slate-500 mt-1">Chuẩn pháp lý + sổ đỏ</div>
+          </Field>
+          <Field label="DT tim tường (m²)">
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              name="areaM2Gross"
+              defaultValue={product?.areaM2Gross ?? ""}
+              className="input"
+              placeholder="vd: 72.0"
+            />
+            <div className="text-[10px] text-slate-500 mt-1">Marketing CĐT · gross</div>
           </Field>
           <Field label="Ngày cọc">
             <input

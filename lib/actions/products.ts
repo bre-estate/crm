@@ -49,8 +49,15 @@ function buildProductData(fd: FormData) {
       const n = Number(raw);
       return Number.isFinite(n) && n >= 0 && n <= 9 ? n : null;
     })(),
-    areaM2: (() => {
-      const raw = toStr(fd.get("areaM2"));
+    hasBonusRoom: fd.get("hasBonusRoom") === "on",
+    areaM2Net: (() => {
+      const raw = toStr(fd.get("areaM2Net"));
+      if (!raw) return null;
+      const n = Number(raw);
+      return Number.isFinite(n) && n > 0 ? n : null;
+    })(),
+    areaM2Gross: (() => {
+      const raw = toStr(fd.get("areaM2Gross"));
       if (!raw) return null;
       const n = Number(raw);
       return Number.isFinite(n) && n > 0 ? n : null;

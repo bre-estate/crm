@@ -112,7 +112,9 @@ export type ProductRow = {
   pmgRate: number | null;
   pmgSaleRate: number | null;
   bedrooms: number | null;
-  areaM2: number | null;
+  hasBonusRoom: boolean | null;
+  areaM2Net: number | null;
+  areaM2Gross: number | null;
   parseNote: string | null;
 };
 
@@ -217,7 +219,9 @@ export async function loadReportData(filters: ReportFilters): Promise<ReportData
       pmgRate: products.pmgRate,
       pmgSaleRate: products.pmgSaleRate,
       bedrooms: products.bedrooms,
-      areaM2: products.areaM2,
+      hasBonusRoom: products.hasBonusRoom,
+      areaM2Net: products.areaM2Net,
+      areaM2Gross: products.areaM2Gross,
       parseNote: products.parseNote,
     })
     .from(products)
@@ -241,7 +245,9 @@ export async function loadReportData(filters: ReportFilters): Promise<ReportData
     pmgRate: p.pmgRate,
     pmgSaleRate: p.pmgSaleRate,
     bedrooms: p.bedrooms,
-    areaM2: p.areaM2,
+    hasBonusRoom: p.hasBonusRoom,
+    areaM2Net: p.areaM2Net,
+    areaM2Gross: p.areaM2Gross,
     parseNote: p.parseNote,
   }));
 
