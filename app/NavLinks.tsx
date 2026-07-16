@@ -9,6 +9,7 @@ type NavLeaf = {
   href: string;
   label: string;
   gate?: Gate;
+  section?: string; // header nhóm trong group (VD "Thị trường")
 };
 
 type NavGroup = {
@@ -39,13 +40,13 @@ const NAV: NavEntry[] = [
     // Parent không set gate — child gate quyết định visible (segments-only user
     // vẫn thấy parent nếu Phân khúc visible).
     children: [
-      { href: "/reports/overview", label: "Tổng hợp", gate: "reports" },
-      { href: "/reports/projects", label: "Theo dự án", gate: "reports" },
-      { href: "/reports/segments", label: "Phân khúc", gate: "segments" },
-      { href: "/reports/partners", label: "Đối tác", gate: "reports" },
-      { href: "/reports/people", label: "Theo nhân sự", gate: "reports" },
-      { href: "/reports/time", label: "Theo thời gian", gate: "reports" },
-      { href: "/reports/cashflow", label: "Dòng tiền", gate: "owner" },
+      { href: "/reports/overview", label: "Tổng hợp", gate: "reports", section: "Tổng quan" },
+      { href: "/reports/segments", label: "Phân khúc", gate: "segments", section: "Thị trường" },
+      { href: "/reports/projects", label: "Theo dự án", gate: "reports", section: "Thị trường" },
+      { href: "/reports/partners", label: "Đối tác", gate: "reports", section: "Thị trường" },
+      { href: "/reports/people", label: "Theo nhân sự", gate: "reports", section: "Nội bộ" },
+      { href: "/reports/time", label: "Theo thời gian", gate: "reports", section: "Nội bộ" },
+      { href: "/reports/cashflow", label: "Dòng tiền", gate: "owner", section: "Tài chính" },
     ],
   },
   { href: "/finance", label: "Tài chính", gate: "owner" },
@@ -102,28 +103,50 @@ export default function NavLinks({
         const visibleChildren = n.children.filter((c) => canSee(c.gate));
         if (visibleChildren.length === 0) return null;
 
+        // Group children theo section (giữ nguyên thứ tự xuất hiện)
+        const sectionsOrder: (string | null)[] = [];
+        const bySection = new Map<string | null, NavLeaf[]>();
+        for (const c of visibleChildren) {
+          const key = c.section ?? null;
+          if (!bySection.has(key)) {
+            bySection.set(key, []);
+            sectionsOrder.push(key);
+          }
+          bySection.get(key)!.push(c);
+        }
+        const hasSections = sectionsOrder.some((s) => s !== null);
+
         return (
           <div key={n.label} className="pt-1">
             <div className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
               {n.label}
             </div>
             <div className="space-y-0.5">
-              {visibleChildren.map((c) => {
-                const active = isActive(pathname, c.href);
-                return (
-                  <Link
-                    key={c.href}
-                    href={c.href}
-                    className={
-                      active
-                        ? "block pl-6 pr-3 py-1.5 rounded-lg text-sm font-medium bg-orange-50 text-orange-700 border-l-2 border-orange-500"
-                        : "block pl-6 pr-3 py-1.5 rounded-lg text-sm text-slate-700 hover:bg-slate-100 transition-colors"
-                    }
-                  >
-                    {c.label}
-                  </Link>
-                );
-              })}
+              {sectionsOrder.map((sec) => (
+                <div key={sec ?? "_none"}>
+                  {hasSections && sec && (
+                    <div className="px-6 pt-1.5 pb-0.5 text-[9px] font-medium uppercase tracking-wide text-slate-400/70">
+                      {sec}
+                    </div>
+                  )}
+                  {bySection.get(sec)!.map((c) => {
+                    const active = isActive(pathname, c.href);
+                    return (
+                      <Link
+                        key={c.href}
+                        href={c.href}
+                        className={
+                          active
+                            ? "block pl-6 pr-3 py-1.5 rounded-lg text-sm font-medium bg-orange-50 text-orange-700 border-l-2 border-orange-500"
+                            : "block pl-6 pr-3 py-1.5 rounded-lg text-sm text-slate-700 hover:bg-slate-100 transition-colors"
+                        }
+                      >
+                        {c.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
           </div>
         );
