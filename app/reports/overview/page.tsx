@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { fmtMoney, fmtPctRaw } from "@/lib/format";
 import { hasReportsAccess, getOwnerEmail } from "@/lib/auth";
-import { loadReportData, parseFilters } from "@/lib/reports";
+import { loadReportData, parseFilters, effectiveYM } from "@/lib/reports";
 import { Card, ReportsHeader } from "../_shared";
 import { db } from "@/lib/db";
 import { companyExpenses } from "@/lib/schema";
@@ -56,13 +56,21 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
       amount: Number(e.amount ?? 0),
     }));
 
+    // Accrual accounting: group rev + cost theo THÁNG GHI NHẬN DT của căn
+    // (không phải ngày ĐC). Match income + expense cùng căn về cùng period,
+    // tránh lệch timing (VD ĐC rev tháng 7, ĐC cost tháng 8 → lãi âm giả).
+    const productMonthMap = new Map<number, string>();
+    for (const p of data.prodRowsAll) {
+      const ym = effectiveYM(p.recognitionMonth, p.depositDate);
+      if (ym) productMonthMap.set(p.id, `${ym.y}-${String(ym.mo).padStart(2, "0")}`);
+    }
     for (const r of revReconsAll) {
-      const m = r.reconDate?.slice(0, 7);
+      const m = productMonthMap.get(r.productId);
       if (!m) continue;
       getOrInitMonth(m).revenue += r.receivable;
     }
     for (const c of costReconsAll) {
-      const m = c.reconDate?.slice(0, 7);
+      const m = productMonthMap.get(c.productId);
       if (!m) continue;
       getOrInitMonth(m).cost += c.payable;
     }
@@ -304,9 +312,10 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
           </div>
 
           <div>
-            <h2 className="text-lg font-semibold mb-1">📈 P&L theo tháng (đã ĐC)</h2>
+            <h2 className="text-lg font-semibold mb-1">📈 P&L theo tháng</h2>
             <p className="text-xs text-slate-500 mb-3">
-              Lãi thuần từng tháng dựa trên đợt ĐC + CP QL cùng tháng. Cross-year, không lọc period.
+              Accrual — DT + GV gộp theo tháng ghi nhận DT của căn (không phải ngày ĐC).
+              Match income + expense cùng căn về cùng tháng, đúng nghiệp vụ kế toán. CP QL gộp theo tháng phát sinh.
             </p>
             <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
               <table className="w-full text-sm min-w-[700px]">
