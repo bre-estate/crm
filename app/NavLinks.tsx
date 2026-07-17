@@ -103,53 +103,32 @@ export default function NavLinks({
         const visibleChildren = n.children.filter((c) => canSee(c.gate));
         if (visibleChildren.length === 0) return null;
 
-        // Group children theo section (giữ nguyên thứ tự xuất hiện)
-        const sectionsOrder: (string | null)[] = [];
-        const bySection = new Map<string | null, NavLeaf[]>();
-        for (const c of visibleChildren) {
-          const key = c.section ?? null;
-          if (!bySection.has(key)) {
-            bySection.set(key, []);
-            sectionsOrder.push(key);
-          }
-          bySection.get(key)!.push(c);
-        }
-        const hasSections = sectionsOrder.some((s) => s !== null);
-
+        // Flat render: section grouping data giữ lại chỉ để dùng cho
+        // landing hub /reports (card sections). Sidebar không phân nhóm
+        // trong sub-page để tránh visual clutter (Supabase/Retool pattern).
         return (
           <div key={n.label} className="pt-1">
             <div className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
               {n.label}
             </div>
             <div className="space-y-0.5">
-              {sectionsOrder.map((sec, sectionIdx) => (
-                <div
-                  key={sec ?? "_none"}
-                  className={
-                    hasSections && sectionIdx > 0
-                      ? "mt-1.5 pt-1.5 border-t border-slate-100"
-                      : ""
-                  }
-                  title={sec ?? undefined}
-                >
-                  {bySection.get(sec)!.map((c) => {
-                    const active = isActive(pathname, c.href);
-                    return (
-                      <Link
-                        key={c.href}
-                        href={c.href}
-                        className={
-                          active
-                            ? "block pl-6 pr-3 py-1.5 rounded-lg text-sm font-medium bg-orange-50 text-orange-700 border-l-2 border-orange-500"
-                            : "block pl-6 pr-3 py-1.5 rounded-lg text-sm text-slate-700 hover:bg-slate-100 transition-colors"
-                        }
-                      >
-                        {c.label}
-                      </Link>
-                    );
-                  })}
-                </div>
-              ))}
+              {visibleChildren.map((c) => {
+                const active = isActive(pathname, c.href);
+                return (
+                  <Link
+                    key={c.href}
+                    href={c.href}
+                    title={c.section ?? undefined}
+                    className={
+                      active
+                        ? "block pl-6 pr-3 py-1.5 rounded-lg text-sm font-medium bg-orange-50 text-orange-700 border-l-2 border-orange-500"
+                        : "block pl-6 pr-3 py-1.5 rounded-lg text-sm text-slate-700 hover:bg-slate-100 transition-colors"
+                    }
+                  >
+                    {c.label}
+                  </Link>
+                );
+              })}
             </div>
           </div>
         );
