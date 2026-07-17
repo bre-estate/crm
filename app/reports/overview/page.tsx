@@ -1,20 +1,120 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { fmtMoney, fmtPctRaw } from "@/lib/format";
-import { hasReportsAccess } from "@/lib/auth";
+import { hasReportsAccess, getOwnerEmail } from "@/lib/auth";
 import { loadReportData, parseFilters } from "@/lib/reports";
 import { Card, ReportsHeader } from "../_shared";
+import { db } from "@/lib/db";
+import { companyExpenses } from "@/lib/schema";
 
 export const dynamic = "force-dynamic";
 
 type SearchParams = Promise<{ year?: string; range?: string }>;
+
+// nowMonth - m (số tháng cách hiện tại). Format "YYYY-MM".
+function monthDiff(m: string, now: string): number {
+  const [y1, mo1] = m.split("-").map(Number);
+  const [y2, mo2] = now.split("-").map(Number);
+  if (!y1 || !y2) return 999;
+  return (y2 - y1) * 12 + (mo2 - mo1);
+}
 
 export default async function ReportsOverviewPage({ searchParams }: { searchParams: SearchParams }) {
   if (!(await hasReportsAccess())) redirect("/");
   const sp = await searchParams;
   const filters = parseFilters(sp);
   const data = await loadReportData(filters);
-  const { grandTotals, profitExpected, profitRealized, financial, filterLabel, yearOptions } = data;
+  const { grandTotals, profitExpected, profitRealized, financial, filterLabel, yearOptions, revReconsAll, costReconsAll } = data;
+  const isOwner = (await getOwnerEmail()) !== null;
+
+  // ===== Monthly P&L (owner-only) =====
+  type MonthlyPnl = {
+    month: string;
+    revenue: number; // đã ĐC (nếu 0 thì dùng expected? Prefer đã ĐC vì chỉ tháng có ĐC mới có realized)
+    cost: number;
+    expense: number;
+    profitGross: number; // rev/1.1 - cost
+    profitNet: number; // profitGross - expense
+  };
+  const pnlByMonth = new Map<string, MonthlyPnl>();
+  const getOrInitMonth = (m: string): MonthlyPnl => {
+    if (!pnlByMonth.has(m))
+      pnlByMonth.set(m, { month: m, revenue: 0, cost: 0, expense: 0, profitGross: 0, profitNet: 0 });
+    return pnlByMonth.get(m)!;
+  };
+
+  let allExpenses: Array<{ month: string; amount: number }> = [];
+  let breakEvenUnits: number | null = null;
+  let avgUnitsPerMonth: number | null = null;
+  let avgMonthlyExpense = 0;
+  let avgProfitPerUnit = 0;
+
+  if (isOwner) {
+    const expenseRows = await db.select().from(companyExpenses);
+    allExpenses = expenseRows.map((e) => ({
+      month: e.expenseMonth ?? "",
+      amount: Number(e.amount ?? 0),
+    }));
+
+    for (const r of revReconsAll) {
+      const m = r.reconDate?.slice(0, 7);
+      if (!m) continue;
+      getOrInitMonth(m).revenue += r.receivable;
+    }
+    for (const c of costReconsAll) {
+      const m = c.reconDate?.slice(0, 7);
+      if (!m) continue;
+      getOrInitMonth(m).cost += c.payable;
+    }
+    for (const e of allExpenses) {
+      if (!e.month) continue;
+      getOrInitMonth(e.month).expense += e.amount;
+    }
+    for (const pnl of pnlByMonth.values()) {
+      pnl.profitGross = pnl.revenue / 1.1 - pnl.cost;
+      pnl.profitNet = pnl.profitGross - pnl.expense;
+    }
+
+    // Break-even: cần bao nhiêu căn/tháng để cover CP QL?
+    // avgMonthlyExpense = trung bình CP QL 12 tháng gần nhất
+    const nowMonth = new Date().toISOString().slice(0, 7);
+    const lastYearExpenses = allExpenses.filter((e) => {
+      if (!e.month) return false;
+      const diff = monthDiff(e.month, nowMonth);
+      return diff >= 0 && diff <= 11;
+    });
+    const totalExpense12m = lastYearExpenses.reduce((s, e) => s + e.amount, 0);
+    avgMonthlyExpense = totalExpense12m / 12;
+
+    // avgProfitPerUnit từ toàn bộ data hiện có (không lọc period)
+    const totalGrossProfit = data.aggregatedProjects.reduce(
+      (s, p) => s + (p.totalRevenueExpected / 1.1 - p.totalCostExpected),
+      0,
+    );
+    const totalUnits = data.aggregatedProjects.reduce((s, p) => s + p.numProducts, 0);
+    avgProfitPerUnit = totalUnits > 0 ? totalGrossProfit / totalUnits : 0;
+
+    if (avgProfitPerUnit > 0 && avgMonthlyExpense > 0) {
+      breakEvenUnits = avgMonthlyExpense / avgProfitPerUnit;
+    }
+
+    // Avg units bán / tháng thực tế (12 tháng gần nhất)
+    const unitMonths = new Map<string, number>();
+    for (const p of data.prodRowsAll) {
+      const ym = p.recognitionMonth || p.depositDate;
+      if (!ym) continue;
+      const m = ym.slice(0, 7);
+      const diff = monthDiff(m, nowMonth);
+      if (diff < 0 || diff > 11) continue;
+      unitMonths.set(m, (unitMonths.get(m) ?? 0) + 1);
+    }
+    const monthCount = unitMonths.size;
+    if (monthCount > 0) {
+      avgUnitsPerMonth = [...unitMonths.values()].reduce((s, n) => s + n, 0) / monthCount;
+    }
+  }
+
+  const pnlMonths = [...pnlByMonth.values()].sort((a, b) => b.month.localeCompare(a.month));
 
   return (
     <div className="space-y-6">
@@ -133,6 +233,151 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
             </div>
           )}
         </div>
+      )}
+
+      {/* ===== Break-even + P&L monthly (owner-only, cross-year) ===== */}
+      {isOwner && (
+        <>
+          <div>
+            <h2 className="text-lg font-semibold mb-1">⚖️ Điểm hòa vốn</h2>
+            <p className="text-xs text-slate-500 mb-3">
+              Số căn/tháng cần bán để cover CP quản lý. Dựa TB CP QL 12 tháng gần nhất + lãi gộp TB/căn toàn bộ dữ liệu.
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <Card
+                label="CP QL TB / tháng"
+                value={fmtMoney(avgMonthlyExpense)}
+                sub="12 tháng gần nhất"
+                warn
+              />
+              <Card
+                label="Lãi gộp TB / căn"
+                value={fmtMoney(avgProfitPerUnit)}
+                sub="Toàn bộ căn đã có"
+              />
+              <Card
+                label="Điểm hòa vốn"
+                value={
+                  breakEvenUnits !== null
+                    ? `${breakEvenUnits.toFixed(1)} căn/tháng`
+                    : "—"
+                }
+                sub="CP QL / Lãi TB/căn"
+                warn
+              />
+              <Card
+                label="Thực tế đang bán"
+                value={
+                  avgUnitsPerMonth !== null
+                    ? `${avgUnitsPerMonth.toFixed(1)} căn/tháng`
+                    : "—"
+                }
+                sub="TB 12 tháng gần nhất"
+                highlight={
+                  avgUnitsPerMonth !== null &&
+                  breakEvenUnits !== null &&
+                  avgUnitsPerMonth >= breakEvenUnits
+                }
+              />
+            </div>
+            {breakEvenUnits !== null && avgUnitsPerMonth !== null && (
+              <div
+                className={`mt-3 rounded-lg p-3 text-sm ${
+                  avgUnitsPerMonth >= breakEvenUnits
+                    ? "bg-green-50 border border-green-200 text-green-800"
+                    : "bg-red-50 border border-red-200 text-red-800"
+                }`}
+              >
+                {avgUnitsPerMonth >= breakEvenUnits ? (
+                  <>
+                    ✅ Đang <b>vượt điểm hòa vốn</b> {(avgUnitsPerMonth - breakEvenUnits).toFixed(1)} căn/tháng.
+                    Lãi thuần dương.
+                  </>
+                ) : (
+                  <>
+                    ⚠️ Đang <b>dưới điểm hòa vốn</b> {(breakEvenUnits - avgUnitsPerMonth).toFixed(1)} căn/tháng.
+                    Cần bán thêm để cover CP QL.
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <h2 className="text-lg font-semibold mb-1">📈 P&L theo tháng (đã ĐC)</h2>
+            <p className="text-xs text-slate-500 mb-3">
+              Lãi thuần từng tháng dựa trên đợt ĐC + CP QL cùng tháng. Cross-year, không lọc period.
+            </p>
+            <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
+              <table className="w-full text-sm min-w-[700px]">
+                <thead className="bg-slate-50 text-xs text-slate-600">
+                  <tr>
+                    <th className="text-left p-2">Tháng</th>
+                    <th className="text-right p-2">DT ĐC (gồm VAT)</th>
+                    <th className="text-right p-2">Giá vốn ĐC</th>
+                    <th className="text-right p-2">CP QL</th>
+                    <th className="text-right p-2">Lãi gộp</th>
+                    <th className="text-right p-2 w-56">Lãi thuần</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(() => {
+                    const maxAbsNet = Math.max(...pnlMonths.map((p) => Math.abs(p.profitNet)), 1);
+                    return pnlMonths.map((p) => {
+                      const pct = (Math.abs(p.profitNet) / maxAbsNet) * 100;
+                      const positive = p.profitNet >= 0;
+                      return (
+                        <tr key={p.month} className="border-t border-slate-100">
+                          <td className="p-2 font-mono text-sm">{p.month}</td>
+                          <td className="p-2 text-right tabular-nums text-xs">
+                            {p.revenue > 0 ? fmtMoney(p.revenue) : "—"}
+                          </td>
+                          <td className="p-2 text-right tabular-nums text-xs">
+                            {p.cost > 0 ? fmtMoney(p.cost) : "—"}
+                          </td>
+                          <td className="p-2 text-right tabular-nums text-xs text-orange-700">
+                            {p.expense > 0 ? fmtMoney(p.expense) : "—"}
+                          </td>
+                          <td
+                            className={`p-2 text-right tabular-nums text-xs font-medium ${
+                              p.profitGross >= 0 ? "text-slate-700" : "text-red-700"
+                            }`}
+                          >
+                            {fmtMoney(p.profitGross)}
+                          </td>
+                          <td className="p-2">
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 h-3 bg-slate-100 rounded overflow-hidden">
+                                <div
+                                  className={`h-full ${positive ? "bg-green-500" : "bg-red-500"}`}
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                              <div
+                                className={`text-right tabular-nums text-xs font-semibold w-24 ${
+                                  positive ? "text-green-700" : "text-red-700"
+                                }`}
+                              >
+                                {fmtMoney(p.profitNet)}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    });
+                  })()}
+                  {pnlMonths.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="p-6 text-center text-slate-500 text-sm">
+                        Chưa có dữ liệu P&L theo tháng.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
