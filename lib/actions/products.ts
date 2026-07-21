@@ -10,7 +10,7 @@ import {
   productAdjustments,
 } from "@/lib/schema";
 import { toTitleCase } from "@/lib/format";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { logActivity } from "@/lib/audit";
@@ -137,6 +137,35 @@ export async function updateProduct(id: number, fd: FormData) {
   if (!data.projectId || !data.unitCode) throw new Error("Chọn dự án và nhập mã căn");
   const productCode = await buildProductCode(data.projectId, data.unitCode);
   const [before] = await db.select().from(products).where(eq(products.id, id));
+
+  // Guard: không cho giảm cdt_bonus_sale/manager xuống dưới sum đã ĐC.
+  // Nghiệp vụ: config thưởng CĐT là số CĐT cam kết trả BRE cho căn này;
+  // recon là số ĐÃ ĐC (đã ghi HĐ). Giảm config bên dưới sum recon =
+  // data không nhất quán (recon đã lập HĐ cao hơn config mới).
+  const reconSums = await db
+    .select({
+      sumBonusSale: sql<string>`COALESCE(SUM(${revenueReconciliations.cdtBonusSale}), 0)`,
+      sumBonusMgr: sql<string>`COALESCE(SUM(${revenueReconciliations.cdtBonusManager}), 0)`,
+    })
+    .from(revenueReconciliations)
+    .where(eq(revenueReconciliations.productId, id));
+  const sumSale = Number(reconSums[0]?.sumBonusSale ?? 0);
+  const sumMgr = Number(reconSums[0]?.sumBonusMgr ?? 0);
+  const newSale = Number(data.cdtBonusSale ?? 0);
+  const newMgr = Number(data.cdtBonusManager ?? 0);
+  if (sumSale > 0 && newSale < sumSale - 1) {
+    throw new Error(
+      `Không giảm được "CĐT thưởng sale" xuống ${newSale.toLocaleString("vi-VN")} — đã ĐC ${sumSale.toLocaleString("vi-VN")}. ` +
+        `Nếu đợt ĐC sai, vào Doanh thu sửa/xoá đợt cũ trước.`,
+    );
+  }
+  if (sumMgr > 0 && newMgr < sumMgr - 1) {
+    throw new Error(
+      `Không giảm được "CĐT thưởng quản lý" xuống ${newMgr.toLocaleString("vi-VN")} — đã ĐC ${sumMgr.toLocaleString("vi-VN")}. ` +
+        `Nếu đợt ĐC sai, vào Doanh thu sửa/xoá đợt cũ trước.`,
+    );
+  }
+
   await db.update(products).set({ productCode, ...data }).where(eq(products.id, id));
   // Recompute total_revenue + total_cost sau update (config có thể đổi
   // pmg_base, pmg_rate, admin, thưởng → totals phải sync).
