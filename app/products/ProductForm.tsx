@@ -185,8 +185,14 @@ export default function ProductForm({
     <form
       action={(fd) => {
         // Pre-check client: không cho giảm CĐT thưởng xuống dưới sum đã ĐC
-        const newSale = Number(fd.get("cdtBonusSale") ?? 0);
-        const newMgr = Number(fd.get("cdtBonusManager") ?? 0);
+        // MoneyInput format "33.000.000" — phải strip dot trước khi Number(),
+        // không thì Number("33.000.000") = NaN → check silently pass.
+        const parseVN = (v: FormDataEntryValue | null): number => {
+          const digits = String(v ?? "").replace(/[^\d]/g, "");
+          return digits ? Number(digits) : 0;
+        };
+        const newSale = parseVN(fd.get("cdtBonusSale"));
+        const newMgr = parseVN(fd.get("cdtBonusManager"));
         if (reconCdtBonusSaleSum > 0 && newSale < reconCdtBonusSaleSum - 1) {
           toast.warning(
             `Không giảm được "CĐT thưởng sale" xuống ${newSale.toLocaleString("vi-VN")} — đã ĐC ${reconCdtBonusSaleSum.toLocaleString("vi-VN")}. Muốn giảm thì phải sửa/xoá đợt ĐC trước.`,
