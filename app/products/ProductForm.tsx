@@ -335,6 +335,7 @@ export default function ProductForm({
                 name="unitTypeCombined"
                 defaultValue={(() => {
                   if (product?.unitType === "penthouse") return "penthouse";
+                  if (product?.unitType === "duplex") return "duplex";
                   if (product?.unitType === "shophouse") return "shophouse";
                   if (product?.unitType === "commercial") return "commercial";
                   return product?.bedrooms == null ? "" : String(product.bedrooms);
@@ -348,6 +349,7 @@ export default function ProductForm({
                 <option value="3">3 PN</option>
                 <option value="4">4 PN</option>
                 <option value="penthouse">Penthouse</option>
+                <option value="duplex">Duplex</option>
                 <option value="shophouse">Shophouse</option>
                 <option value="commercial">TMDV (Thương mại dịch vụ)</option>
               </select>

@@ -16,6 +16,7 @@ const BEDROOM_LABEL: Record<string, string> = {
   "3": "3 PN",
   "4": "4 PN",
   penthouse: "Penthouse",
+  duplex: "Duplex",
   shophouse: "Shophouse",
   commercial: "TMDV",
 };
@@ -53,6 +54,9 @@ export default async function ReportsSegmentsPage({
     if (p.unitType === "penthouse") {
       key = "penthouse";
       label = "Penthouse";
+    } else if (p.unitType === "duplex") {
+      key = "duplex";
+      label = "Duplex";
     } else if (p.unitType === "shophouse") {
       key = "shophouse";
       label = "Shophouse";
@@ -112,6 +116,7 @@ export default async function ReportsSegmentsPage({
   };
   const bedroomKeyOf = (p: typeof prodRows[number]): string => {
     if (p.unitType === "penthouse") return "penthouse";
+    if (p.unitType === "duplex") return "duplex";
     if (p.unitType === "shophouse") return "shophouse";
     if (p.unitType === "commercial") return "commercial";
     if (p.bedrooms == null) return "unknown";
@@ -120,6 +125,7 @@ export default async function ReportsSegmentsPage({
   const bedroomLabelOf = (key: string): string => {
     if (key === "unknown") return "Chưa xđ";
     if (key === "penthouse") return "Penthouse";
+    if (key === "duplex") return "Duplex";
     if (key === "shophouse") return "Shophouse";
     if (key === "commercial") return "TMDV";
     const [base, plus] = [key.replace("+", ""), key.endsWith("+")];
@@ -139,11 +145,12 @@ export default async function ReportsSegmentsPage({
   }
   const projRows = [...byProject.values()].sort((a, b) => b.total - a.total);
   const bedroomKeys = [...new Set(prodRows.map(bedroomKeyOf))].sort((a, b) => {
-    // Order: 0 < 0+ < 1 < 1+ < ... < penthouse < shophouse < TMDV < unknown
+    // Order: 0 < 0+ < 1 < 1+ < ... < penthouse < duplex < shophouse < TMDV < unknown
     const rank = (k: string): number => {
       if (k === "unknown") return 9999;
       if (k === "commercial") return 950;
       if (k === "shophouse") return 900;
+      if (k === "duplex") return 850;
       if (k === "penthouse") return 800;
       const n = Number(k.replace("+", ""));
       return n * 10 + (k.endsWith("+") ? 1 : 0);

@@ -47,6 +47,7 @@ function buildProductData(fd: FormData) {
       // Combined dropdown value: "" | "0"..."4" | "penthouse" | "shophouse" | "commercial"
       const raw = toStr(fd.get("unitTypeCombined"));
       if (raw === "penthouse") return { unitType: "penthouse" as const, bedrooms: null };
+      if (raw === "duplex") return { unitType: "duplex" as const, bedrooms: null };
       if (raw === "shophouse") return { unitType: "shophouse" as const, bedrooms: null };
       if (raw === "commercial") return { unitType: "commercial" as const, bedrooms: null };
       if (!raw) return { unitType: "apartment" as const, bedrooms: null };

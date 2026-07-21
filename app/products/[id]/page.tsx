@@ -191,12 +191,14 @@ export default async function ProductDetailPage({
   })();
 
   // Đã thu tách theo loại: HH sale vs Thưởng nóng
-  // Phân loại recon: nếu có cdtBonus > 0 và revThis = 0 → là recon thưởng nóng
+  // Phân loại recon: có cdtBonus khác 0 và revThis = 0 → là recon thưởng nóng.
+  // Include recon âm (thu hồi tạm ứng) — cùng category, để sum ra 0 khi
+  // đã thu hồi đủ → không hiện warning "chưa nhập config" giả.
   const isBonusRecon = (rec: (typeof revRecs)[number]["rec"]) => {
     const cdt =
       Number(rec.cdtBonusSale ?? 0) + Number(rec.cdtBonusManager ?? 0);
     const rev = Number(rec.revenueThisTime ?? 0);
-    return cdt > 0 && rev === 0;
+    return cdt !== 0 && rev === 0;
   };
   const hhReconIds = new Set(
     revRecs.filter((r) => !isBonusRecon(r.rec)).map((r) => r.rec.id),
