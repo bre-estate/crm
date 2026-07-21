@@ -2,11 +2,48 @@
 
 import { useLayoutEffect, useRef, useState } from "react";
 
+/**
+ * Parse chuỗi tiền có thể có dấu thập phân (VD copy-paste "37,414,177.31"
+ * từ Excel). Bỏ phần thập phân, chỉ giữ integer (VND không dùng cent).
+ * Handles cả 2 format: US ("37,414,177.31") + VN ("37.414.177,31").
+ */
+function parseAmount(v: string): number {
+  const s = v.trim();
+  if (!s) return 0;
+
+  const lastComma = s.lastIndexOf(",");
+  const lastDot = s.lastIndexOf(".");
+  let decimalSep = "";
+  // Detect dấu thập phân = separator cuối cùng theo sau 1-2 chữ số
+  if (lastComma > lastDot) {
+    const afterComma = s.length - lastComma - 1;
+    if (afterComma >= 1 && afterComma <= 2 && /^\d+$/.test(s.slice(lastComma + 1))) {
+      decimalSep = ",";
+    }
+  } else if (lastDot > lastComma) {
+    const afterDot = s.length - lastDot - 1;
+    if (afterDot >= 1 && afterDot <= 2 && /^\d+$/.test(s.slice(lastDot + 1))) {
+      decimalSep = ".";
+    }
+  }
+
+  let intPart: string;
+  if (decimalSep) {
+    intPart = s.substring(0, s.lastIndexOf(decimalSep));
+  } else {
+    intPart = s;
+  }
+  const digits = intPart.replace(/[^\d]/g, "");
+  return digits ? Number(digits) : 0;
+}
+
 function fmt(v: number | string | null | undefined): string {
   if (v === null || v === undefined || v === "") return "";
-  const digits = String(v).replace(/[^\d]/g, "");
-  if (!digits) return "";
-  return Number(digits).toLocaleString("vi-VN");
+  // Nếu v là number → dùng trực tiếp. Nếu string → smart parse tránh
+  // strip nhầm dấu thập phân thành concat digits (bug 37,414,177.31 → 3.7 tỷ).
+  const n = typeof v === "number" ? Math.floor(v) : parseAmount(String(v));
+  if (!n) return "";
+  return n.toLocaleString("vi-VN");
 }
 
 type Props = {
@@ -72,7 +109,9 @@ export default function MoneyInput({
     cursorTarget.current = newCursor;
 
     if (onValueChange) {
-      const digits = next.replace(/[^\d]/g, "");
+      // next đã format vi-VN (dấu chấm ngăn hàng nghìn, không có thập phân)
+      // → strip dấu chấm là đúng, không lo phần decimal (đã bị parseAmount cắt)
+      const digits = next.replace(/\./g, "");
       onValueChange(digits ? Number(digits) : 0);
     }
   };

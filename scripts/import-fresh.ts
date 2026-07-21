@@ -38,8 +38,29 @@ const excelDate = (v: unknown): string | null => {
 
 const toNum = (v: unknown): number => {
   if (v == null || v === "") return 0;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
+  // Excel cell với format công thức chia có thể có phần thập phân (VD 37414177.31).
+  // VND không dùng cent → floor về integer để tránh accumulation errors.
+  if (typeof v === "number") return Number.isFinite(v) ? Math.floor(v) : 0;
+  const s = String(v).trim();
+  if (!s) return 0;
+  // String với separator (thousand/decimal) — smart parse tránh strip nhầm
+  // dấu thập phân thành concat digits (bug ×100).
+  const lastComma = s.lastIndexOf(",");
+  const lastDot = s.lastIndexOf(".");
+  let intPart = s;
+  if (lastComma > lastDot) {
+    const after = s.length - lastComma - 1;
+    if (after >= 1 && after <= 2 && /^\d+$/.test(s.slice(lastComma + 1))) {
+      intPart = s.substring(0, lastComma);
+    }
+  } else if (lastDot > lastComma) {
+    const after = s.length - lastDot - 1;
+    if (after >= 1 && after <= 2 && /^\d+$/.test(s.slice(lastDot + 1))) {
+      intPart = s.substring(0, lastDot);
+    }
+  }
+  const digits = intPart.replace(/[^\d]/g, "");
+  return digits ? Number(digits) : 0;
 };
 
 const toStr = (v: unknown): string => (v == null ? "" : String(v).trim());
