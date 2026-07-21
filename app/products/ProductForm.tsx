@@ -219,6 +219,52 @@ export default function ProductForm({
       autoComplete="off"
       className="space-y-6 bg-white border border-slate-200 rounded-xl p-6"
     >
+      {/* ===== Top action bar (chỉ hiện khi edit) ===== */}
+      {isEdit && (
+        <div className="sticky top-0 z-20 -mx-6 -mt-6 mb-2 px-6 py-3 bg-white border-b border-slate-200 flex items-center gap-3">
+          <div className="text-lg font-bold flex-1">Sửa giao dịch</div>
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="px-4 py-2 border border-slate-300 rounded-lg text-sm hover:bg-slate-50"
+            disabled={pending}
+          >
+            Hủy
+          </button>
+          <button
+            type="submit"
+            disabled={pending}
+            className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm hover:bg-orange-600 disabled:opacity-50"
+          >
+            {pending ? "Đang lưu..." : "Lưu"}
+          </button>
+        </div>
+      )}
+
+      {/* ===== Inline warning: config CĐT thưởng < sum đã ĐC ===== */}
+      {isEdit &&
+        ((reconCdtBonusSaleSum > 0 && cdtBonusSaleLive < reconCdtBonusSaleSum - 1) ||
+          (reconCdtBonusMgrSum > 0 && cdtBonusMgrLive < reconCdtBonusMgrSum - 1)) && (
+          <div className="bg-amber-50 border border-amber-300 rounded-lg p-3 text-sm text-amber-900 space-y-1">
+            <div className="font-semibold">⚠️ Config CĐT thưởng thấp hơn số đã đối chiếu:</div>
+            {reconCdtBonusSaleSum > 0 && cdtBonusSaleLive < reconCdtBonusSaleSum - 1 && (
+              <div className="text-xs">
+                · CĐT thưởng sale: đang nhập <b>{cdtBonusSaleLive.toLocaleString("vi-VN")}</b> nhưng đã ĐC{" "}
+                <b>{reconCdtBonusSaleSum.toLocaleString("vi-VN")}</b> — không lưu được nếu bấm Lưu.
+              </div>
+            )}
+            {reconCdtBonusMgrSum > 0 && cdtBonusMgrLive < reconCdtBonusMgrSum - 1 && (
+              <div className="text-xs">
+                · CĐT thưởng quản lý: đang nhập <b>{cdtBonusMgrLive.toLocaleString("vi-VN")}</b> nhưng đã ĐC{" "}
+                <b>{reconCdtBonusMgrSum.toLocaleString("vi-VN")}</b> — không lưu được nếu bấm Lưu.
+              </div>
+            )}
+            <div className="text-xs text-amber-700 pt-1">
+              Muốn giảm config: vào Doanh thu sửa/xoá đợt ĐC cũ trước, rồi quay lại đây giảm.
+            </div>
+          </div>
+        )}
+
       <Section title="Thông tin căn">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <Field label="Loại giao dịch" required>

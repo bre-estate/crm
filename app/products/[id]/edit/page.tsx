@@ -148,7 +148,6 @@ export default async function EditProductPage({
         <span className="text-slate-400">/</span>
         <span>Sửa</span>
       </div>
-      <h1 className="text-2xl font-bold">Sửa giao dịch</h1>
       <ProductForm
         product={product}
         projects={allProjects}
