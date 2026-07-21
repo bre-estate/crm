@@ -17,6 +17,7 @@ const BEDROOM_LABEL: Record<string, string> = {
   "4": "4 PN",
   penthouse: "Penthouse",
   shophouse: "Shophouse",
+  commercial: "TMDV",
 };
 
 const PRICE_BUCKETS: { label: string; min: number; max: number }[] = [
@@ -55,6 +56,9 @@ export default async function ReportsSegmentsPage({
     } else if (p.unitType === "shophouse") {
       key = "shophouse";
       label = "Shophouse";
+    } else if (p.unitType === "commercial") {
+      key = "commercial";
+      label = "TMDV";
     } else if (p.bedrooms == null) {
       key = "unknown";
       label = "Chưa xác định";
@@ -109,6 +113,7 @@ export default async function ReportsSegmentsPage({
   const bedroomKeyOf = (p: typeof prodRows[number]): string => {
     if (p.unitType === "penthouse") return "penthouse";
     if (p.unitType === "shophouse") return "shophouse";
+    if (p.unitType === "commercial") return "commercial";
     if (p.bedrooms == null) return "unknown";
     return `${p.bedrooms}${p.hasBonusRoom ? "+" : ""}`;
   };
@@ -116,6 +121,7 @@ export default async function ReportsSegmentsPage({
     if (key === "unknown") return "Chưa xđ";
     if (key === "penthouse") return "Penthouse";
     if (key === "shophouse") return "Shophouse";
+    if (key === "commercial") return "TMDV";
     const [base, plus] = [key.replace("+", ""), key.endsWith("+")];
     const b = BEDROOM_LABEL[base] ?? `${base}PN`;
     return plus ? `${b}+` : b;
@@ -133,9 +139,10 @@ export default async function ReportsSegmentsPage({
   }
   const projRows = [...byProject.values()].sort((a, b) => b.total - a.total);
   const bedroomKeys = [...new Set(prodRows.map(bedroomKeyOf))].sort((a, b) => {
-    // Order: 0 < 0+ < 1 < 1+ < 2 < 2+ ... < penthouse < shophouse < unknown
+    // Order: 0 < 0+ < 1 < 1+ < ... < penthouse < shophouse < TMDV < unknown
     const rank = (k: string): number => {
       if (k === "unknown") return 9999;
+      if (k === "commercial") return 950;
       if (k === "shophouse") return 900;
       if (k === "penthouse") return 800;
       const n = Number(k.replace("+", ""));

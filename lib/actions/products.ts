@@ -44,10 +44,11 @@ function buildProductData(fd: FormData) {
       : null,
     unitDescription: toStrOrNull(fd.get("unitDescription")),
     ...(() => {
-      // Combined dropdown value: "" | "0"..."4" | "penthouse" | "shophouse"
+      // Combined dropdown value: "" | "0"..."4" | "penthouse" | "shophouse" | "commercial"
       const raw = toStr(fd.get("unitTypeCombined"));
       if (raw === "penthouse") return { unitType: "penthouse" as const, bedrooms: null };
       if (raw === "shophouse") return { unitType: "shophouse" as const, bedrooms: null };
+      if (raw === "commercial") return { unitType: "commercial" as const, bedrooms: null };
       if (!raw) return { unitType: "apartment" as const, bedrooms: null };
       const n = Number(raw);
       const beds = Number.isFinite(n) && n >= 0 && n <= 4 ? n : null;

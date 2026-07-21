@@ -284,6 +284,7 @@ export default function ProductForm({
                 defaultValue={(() => {
                   if (product?.unitType === "penthouse") return "penthouse";
                   if (product?.unitType === "shophouse") return "shophouse";
+                  if (product?.unitType === "commercial") return "commercial";
                   return product?.bedrooms == null ? "" : String(product.bedrooms);
                 })()}
                 className="input flex-1"
@@ -296,6 +297,7 @@ export default function ProductForm({
                 <option value="4">4 PN</option>
                 <option value="penthouse">Penthouse</option>
                 <option value="shophouse">Shophouse</option>
+                <option value="commercial">TMDV (Thương mại dịch vụ)</option>
               </select>
               <label className="flex items-center gap-1 text-xs whitespace-nowrap" title="Có phòng phụ đa năng (VD 1PN+, 2PN+). Chỉ áp dụng cho căn hộ 1-4 PN.">
                 <input
