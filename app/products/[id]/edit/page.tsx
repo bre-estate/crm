@@ -116,6 +116,18 @@ export default async function EditProductPage({
     .where(eq(costReconciliations.productId, id));
   const hasRecons = Number(revC) + Number(costC) > 0;
 
+  // Sum recon cdt_bonus_sale/manager — để form pre-check trước khi submit
+  // (chặn user giảm config bên dưới sum đã ĐC + toast warning trực tiếp).
+  const [reconBonusSums] = await db
+    .select({
+      sumBonusSale: sql<string>`COALESCE(SUM(${revenueReconciliations.cdtBonusSale}), 0)`,
+      sumBonusMgr: sql<string>`COALESCE(SUM(${revenueReconciliations.cdtBonusManager}), 0)`,
+    })
+    .from(revenueReconciliations)
+    .where(eq(revenueReconciliations.productId, id));
+  const reconCdtBonusSaleSum = Number(reconBonusSums?.sumBonusSale ?? 0);
+  const reconCdtBonusMgrSum = Number(reconBonusSums?.sumBonusMgr ?? 0);
+
   return (
     <div className="space-y-4 max-w-4xl">
       <div className="flex items-center gap-2 text-sm">
@@ -145,6 +157,8 @@ export default async function EditProductPage({
         employees={allEmployees}
         returnTo={returnTo}
         lockCoreFields={hasRecons}
+        reconCdtBonusSaleSum={reconCdtBonusSaleSum}
+        reconCdtBonusMgrSum={reconCdtBonusMgrSum}
         existingAdjustments={adjustments}
         onSave={async (fd) => {
           "use server";

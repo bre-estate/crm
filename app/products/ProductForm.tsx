@@ -31,6 +31,9 @@ type Props = {
   returnTo?: string | null;
   // Nếu true → khóa 3 field pmgBase / pmgRate / adminFee (dùng "Điều chỉnh thông tin căn" thay)
   lockCoreFields?: boolean;
+  // Sum recon cdt_bonus_sale/manager để pre-check khi user giảm config
+  reconCdtBonusSaleSum?: number;
+  reconCdtBonusMgrSum?: number;
   // Existing adjustments từ DB (hiển thị trong block Điều chỉnh)
   existingAdjustments?: ProductAdjustment[];
 };
@@ -55,6 +58,8 @@ export default function ProductForm({
   onDelete,
   returnTo,
   lockCoreFields = false,
+  reconCdtBonusSaleSum = 0,
+  reconCdtBonusMgrSum = 0,
   existingAdjustments = [],
 }: Props) {
   const [pending, start] = useTransition();
@@ -178,7 +183,24 @@ export default function ProductForm({
 
   return (
     <form
-      action={(fd) =>
+      action={(fd) => {
+        // Pre-check client: không cho giảm CĐT thưởng xuống dưới sum đã ĐC
+        const newSale = Number(fd.get("cdtBonusSale") ?? 0);
+        const newMgr = Number(fd.get("cdtBonusManager") ?? 0);
+        if (reconCdtBonusSaleSum > 0 && newSale < reconCdtBonusSaleSum - 1) {
+          toast.warning(
+            `Không giảm được "CĐT thưởng sale" xuống ${newSale.toLocaleString("vi-VN")} — đã ĐC ${reconCdtBonusSaleSum.toLocaleString("vi-VN")}. Muốn giảm thì phải sửa/xoá đợt ĐC trước.`,
+            { duration: 8000 },
+          );
+          return;
+        }
+        if (reconCdtBonusMgrSum > 0 && newMgr < reconCdtBonusMgrSum - 1) {
+          toast.warning(
+            `Không giảm được "CĐT thưởng quản lý" xuống ${newMgr.toLocaleString("vi-VN")} — đã ĐC ${reconCdtBonusMgrSum.toLocaleString("vi-VN")}. Muốn giảm thì phải sửa/xoá đợt ĐC trước.`,
+            { duration: 8000 },
+          );
+          return;
+        }
         start(async () => {
           try {
             await onSave(fd);
@@ -186,8 +208,8 @@ export default function ProductForm({
             if (e && typeof e === "object" && "digest" in e && String((e as { digest?: unknown }).digest ?? "").startsWith("NEXT_REDIRECT")) throw e;
             toast.error(e instanceof Error ? e.message : "Lỗi khi lưu");
           }
-        })
-      }
+        });
+      }}
       autoComplete="off"
       className="space-y-6 bg-white border border-slate-200 rounded-xl p-6"
     >
