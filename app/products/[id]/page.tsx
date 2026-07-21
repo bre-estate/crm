@@ -368,28 +368,75 @@ export default async function ProductDetailPage({
         </div>
       )}
 
-      {/* Data quality warnings */}
-      {hasMissingCdtBonusCfg && (
-        <div className="bg-amber-50 border border-amber-300 rounded-lg p-4 flex gap-3 items-start">
-          <div className="text-2xl leading-none">⚠️</div>
-          <div className="flex-1">
-            <div className="text-sm font-semibold text-amber-900">
-              Thông tin căn thiếu nhập:
-              {missingCfgSale >= 1000 && <span> &quot;chủ đầu tư thưởng sale&quot;</span>}
-              {missingCfgSale >= 1000 && missingCfgMgr >= 1000 && <span>,</span>}
-              {missingCfgMgr >= 1000 && <span> &quot;chủ đầu tư thưởng quản lý&quot;</span>}
-            </div>
-            <div className="mt-2">
-              <Link
-                href={editHref}
-                className="text-xs bg-amber-600 text-white px-3 py-1 rounded hover:bg-amber-700"
-              >
-                Sửa thông tin căn →
-              </Link>
+      {/* Data quality warnings — 2 case: chưa nhập config vs config < đã ĐC */}
+      {hasMissingCdtBonusCfg && (() => {
+        // Cùng field có 2 case:
+        //   (1) product.cdtBonus* = 0 → chưa nhập config
+        //   (2) product.cdtBonus* > 0 nhưng < sum đã ĐC → cấu hình lệch
+        const cfgSaleValue = Number(p.cdtBonusSale ?? 0);
+        const cfgMgrValue = Number(p.cdtBonusManager ?? 0);
+        const missingSale = missingCfgSale >= 1000 && cfgSaleValue === 0;
+        const missingMgr = missingCfgMgr >= 1000 && cfgMgrValue === 0;
+        const lowerSale = missingCfgSale >= 1000 && cfgSaleValue > 0;
+        const lowerMgr = missingCfgMgr >= 1000 && cfgMgrValue > 0;
+
+        return (
+          <div className="bg-amber-50 border border-amber-300 rounded-lg p-4 flex gap-3 items-start">
+            <div className="text-2xl leading-none">⚠️</div>
+            <div className="flex-1 space-y-2 text-sm">
+              {(missingSale || missingMgr) && (
+                <div className="text-amber-900">
+                  <b>Chưa nhập config trên căn</b>
+                  {missingSale && (
+                    <span>
+                      : &quot;CĐT thưởng sale&quot; (đã ĐC {fmtMoney(sumReconCdtSale)})
+                    </span>
+                  )}
+                  {missingSale && missingMgr && <span>;</span>}
+                  {missingMgr && (
+                    <span>
+                      {" "}
+                      &quot;CĐT thưởng quản lý&quot; (đã ĐC {fmtMoney(sumReconCdtMgr)})
+                    </span>
+                  )}
+                  .
+                </div>
+              )}
+              {(lowerSale || lowerMgr) && (
+                <div className="text-amber-900">
+                  <b>Config KHÔNG KHỚP số đã ĐC</b>
+                  {lowerSale && (
+                    <span>
+                      : CĐT thưởng sale config <b>{fmtMoney(cfgSaleValue)}</b> nhưng đã ĐC{" "}
+                      <b>{fmtMoney(sumReconCdtSale)}</b> (chênh {fmtMoney(missingCfgSale)})
+                    </span>
+                  )}
+                  {lowerSale && lowerMgr && <span>;</span>}
+                  {lowerMgr && (
+                    <span>
+                      {lowerSale ? "; " : ": "}CĐT thưởng quản lý config{" "}
+                      <b>{fmtMoney(cfgMgrValue)}</b> nhưng đã ĐC{" "}
+                      <b>{fmtMoney(sumReconCdtMgr)}</b> (chênh {fmtMoney(missingCfgMgr)})
+                    </span>
+                  )}
+                  .
+                  <div className="mt-1 text-xs text-amber-700">
+                    Không thể giảm config bên dưới số đã ĐC. Nếu đợt ĐC sai → vào Doanh thu sửa/xoá đợt trước, rồi mới giảm config.
+                  </div>
+                </div>
+              )}
+              <div>
+                <Link
+                  href={editHref}
+                  className="text-xs bg-amber-600 text-white px-3 py-1 rounded hover:bg-amber-700"
+                >
+                  Sửa thông tin căn →
+                </Link>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* === 1. THÔNG TIN CĂN === */}
       <SectionCard title="1. Thông tin căn" icon="🏠">
