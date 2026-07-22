@@ -412,25 +412,25 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
           </div>
         </div>
 
-        <form className="flex gap-2 items-end flex-wrap">
-          <div>
-            <label className="block text-xs text-slate-600 mb-1">Mã căn</label>
+        <form className="flex gap-2 items-end flex-nowrap overflow-x-auto">
+          <div className="shrink-0">
+            <label className="block text-[11px] text-slate-600 mb-1">Mã căn</label>
             <input
               type="text"
               name="unitCode"
               defaultValue={filterUnitCode ?? ""}
-              className="input min-w-32"
-              placeholder="vd: A.25.26"
+              className="input w-24 text-sm"
+              placeholder="A.25.26"
             />
           </div>
-          <div>
-            <label className="block text-xs text-slate-600 mb-1">Dự án</label>
+          <div className="shrink-0">
+            <label className="block text-[11px] text-slate-600 mb-1">Dự án</label>
             <SearchableSelect
               name="projectId"
               defaultValue={projectId ?? ""}
               emptyOption="— Tất cả —"
-              placeholder="Gõ tên dự án..."
-              className="min-w-72"
+              placeholder="Dự án..."
+              className="w-40"
               options={allProjects.map((p) => ({
                 value: p.id,
                 label: p.name,
@@ -438,25 +438,25 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
               }))}
             />
           </div>
-          <div>
-            <label className="block text-xs text-slate-600 mb-1">Phòng</label>
+          <div className="shrink-0">
+            <label className="block text-[11px] text-slate-600 mb-1">Phòng</label>
             <SearchableSelect
               name="departmentId"
               defaultValue={departmentId ?? ""}
               emptyOption="— Tất cả —"
-              placeholder="Gõ tên phòng..."
-              className="min-w-48"
+              placeholder="Phòng..."
+              className="w-32"
               options={allDepts.map((d) => ({ value: d.id, label: d.name }))}
             />
           </div>
-          <div>
-            <label className="block text-xs text-slate-600 mb-1">NVKD</label>
+          <div className="shrink-0">
+            <label className="block text-[11px] text-slate-600 mb-1">NVKD</label>
             <SearchableSelect
               name="salesPerson"
               defaultValue={filterSalesPerson ?? ""}
               emptyOption="— Tất cả —"
-              placeholder="Gõ tên NVKD..."
-              className="min-w-56"
+              placeholder="NVKD..."
+              className="w-40"
               options={salesPersonOptions.map((s) => ({
                 value: s.name,
                 label: s.name,
@@ -464,26 +464,26 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
               }))}
             />
           </div>
-          <div>
-            <label className="block text-xs text-slate-600 mb-1">Từ ngày cọc</label>
+          <div className="shrink-0">
+            <label className="block text-[11px] text-slate-600 mb-1">Từ ngày cọc</label>
             <input
               type="date"
               name="from"
               defaultValue={dateFrom ?? ""}
-              className="input"
+              className="input w-36 text-sm"
             />
           </div>
-          <div>
-            <label className="block text-xs text-slate-600 mb-1">Đến ngày cọc</label>
+          <div className="shrink-0">
+            <label className="block text-[11px] text-slate-600 mb-1">Đến ngày cọc</label>
             <input
               type="date"
               name="to"
               defaultValue={dateTo ?? ""}
-              className="input"
+              className="input w-36 text-sm"
             />
           </div>
           <input type="hidden" name="tab" value={activeTab} />
-          <button className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200">
+          <button className="shrink-0 bg-slate-100 border border-slate-300 rounded-lg px-3 py-1.5 text-sm hover:bg-slate-200">
             Lọc
           </button>
           {(filterProjectId ||
@@ -494,7 +494,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
             filterUnitCode) && (
             <Link
               href={`/products?tab=${activeTab}`}
-              className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200"
+              className="shrink-0 bg-slate-100 border border-slate-300 rounded-lg px-3 py-1.5 text-sm hover:bg-slate-200"
             >
               Reset
             </Link>
