@@ -412,8 +412,8 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
           </div>
         </div>
 
-        <form className="flex gap-2 items-end flex-nowrap overflow-x-auto">
-          <div className="shrink-0">
+        <form className="flex gap-2 items-end flex-wrap">
+          <div>
             <label className="block text-[11px] text-slate-600 mb-1">Mã căn</label>
             <input
               type="text"
@@ -423,7 +423,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
               placeholder="A.25.26"
             />
           </div>
-          <div className="shrink-0">
+          <div>
             <label className="block text-[11px] text-slate-600 mb-1">Dự án</label>
             <SearchableSelect
               name="projectId"
@@ -438,7 +438,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
               }))}
             />
           </div>
-          <div className="shrink-0">
+          <div>
             <label className="block text-[11px] text-slate-600 mb-1">Phòng</label>
             <SearchableSelect
               name="departmentId"
@@ -449,7 +449,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
               options={allDepts.map((d) => ({ value: d.id, label: d.name }))}
             />
           </div>
-          <div className="shrink-0">
+          <div>
             <label className="block text-[11px] text-slate-600 mb-1">NVKD</label>
             <SearchableSelect
               name="salesPerson"
@@ -464,7 +464,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
               }))}
             />
           </div>
-          <div className="shrink-0">
+          <div>
             <label className="block text-[11px] text-slate-600 mb-1">Từ ngày cọc</label>
             <input
               type="date"
@@ -473,7 +473,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
               className="input w-36 text-sm"
             />
           </div>
-          <div className="shrink-0">
+          <div>
             <label className="block text-[11px] text-slate-600 mb-1">Đến ngày cọc</label>
             <input
               type="date"
@@ -483,7 +483,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
             />
           </div>
           <input type="hidden" name="tab" value={activeTab} />
-          <button className="shrink-0 bg-slate-100 border border-slate-300 rounded-lg px-3 py-1.5 text-sm hover:bg-slate-200">
+          <button className="bg-slate-100 border border-slate-300 rounded-lg px-3 py-1.5 text-sm hover:bg-slate-200">
             Lọc
           </button>
           {(filterProjectId ||
@@ -494,7 +494,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
             filterUnitCode) && (
             <Link
               href={`/products?tab=${activeTab}`}
-              className="shrink-0 bg-slate-100 border border-slate-300 rounded-lg px-3 py-1.5 text-sm hover:bg-slate-200"
+              className="bg-slate-100 border border-slate-300 rounded-lg px-3 py-1.5 text-sm hover:bg-slate-200"
             >
               Reset
             </Link>
