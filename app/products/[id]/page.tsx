@@ -11,6 +11,7 @@ import {
   paymentsOut,
   productAdjustments,
   activityLogs,
+  employees,
 } from "@/lib/schema";
 import { fmtMoney, fmtDate, fmtPct, fmtPctTight, fmtPctRaw, costTypeLabel, toTitleCase } from "@/lib/format";
 import { eq, desc } from "drizzle-orm";
@@ -109,6 +110,18 @@ export default async function ProductDetailPage({
   if (!row) notFound();
   const p = row.product;
   const isSecondary = p.saleType === "secondary";
+
+  // Lookup NVKD trong employees để phân biệt CTV (chưa phân phòng)
+  // → không hiển thị text Excel legacy misleading.
+  const nvkdEmp = p.salesPerson
+    ? await db
+        .select({ position: employees.position, departmentId: employees.departmentId })
+        .from(employees)
+        .where(eq(employees.name, p.salesPerson))
+        .then((r) => r[0] ?? null)
+    : null;
+  const isNvkdCtv = nvkdEmp?.position === "ctv";
+  const nvkdCtvUnassigned = isNvkdCtv && !nvkdEmp?.departmentId;
 
   // === Compute derived values ===
   // Latest %PMG_LK — CANONICAL từ product config (updated bởi mọi adjustment
@@ -450,16 +463,32 @@ export default async function ProductDetailPage({
           {!isSecondary && <Info label="Đối tác (CĐT/F1)" value={row.partner?.name ?? "—"} />}
           <Info label="Mô tả căn" value={p.unitDescription ?? "—"} />
           <Info label="Tên khách" value={toTitleCase(p.customerName) || "—"} />
-          <Info label="NVKD" value={toTitleCase(p.salesPerson) || "—"} />
+          <Info
+            label="NVKD"
+            value={
+              (toTitleCase(p.salesPerson) || "—") +
+              (isNvkdCtv ? " · CTV" : "")
+            }
+          />
           <Info
             label="Trưởng phòng (TPKD)"
             value={
-              toTitleCase(p.deptLeaderName) ||
-              toTitleCase(row.department?.leaderName) ||
-              "—"
+              // CTV chưa gán phòng → không show text Excel legacy (VD Bách hiện là CEO,
+              // không còn là TPKD của group Freelancer).
+              nvkdCtvUnassigned
+                ? "—"
+                : toTitleCase(p.deptLeaderName) ||
+                  toTitleCase(row.department?.leaderName) ||
+                  "—"
             }
           />
-          <Info label="Phòng KD" value={row.department?.name ?? p.deptName ?? "—"} />
+          <Info
+            label="Phòng KD"
+            value={
+              row.department?.name ??
+              (nvkdCtvUnassigned ? "CTV (chưa phân phòng)" : p.deptName ?? "—")
+            }
+          />
           <Info label="Ngày cọc" value={fmtDate(p.depositDate)} />
           <Info label="Tháng ghi nhận DT" value={p.recognitionMonth ?? "—"} mono />
         </div>

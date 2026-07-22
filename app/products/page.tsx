@@ -6,6 +6,7 @@ import {
   departments,
   revenueReconciliations,
   paymentsIn,
+  employees,
 } from "@/lib/schema";
 import { fmtMoney, fmtDate, fmtPctTight, fmtPctRaw, displayPartnerName } from "@/lib/format";
 import { eq, asc, desc, and, gte, lte, ilike, inArray, type SQL } from "drizzle-orm";
@@ -139,6 +140,17 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
     if (p.saleType === "secondary") secondaryCount++;
     else primaryCount++;
   }
+
+  // Load employees để badge CTV + resolve dept/leader từ employees table
+  // (fallback text field trên product record chỉ dùng khi employee không có).
+  const allEmps = await db
+    .select({
+      name: employees.name,
+      position: employees.position,
+      departmentId: employees.departmentId,
+    })
+    .from(employees);
+  const empByName = new Map(allEmps.map((e) => [e.name.toLowerCase(), e]));
 
   // For each căn: tính phí HH dự kiến (theo %PMG_LK mới nhất, hồi tố) vs đã thu (từ payments_in).
   const productIds = rows.map((r) => r.id);
@@ -460,14 +472,22 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
             phaseCount: 0,
             invoiceIds: new Set<number>(),
           };
+          const emp = r.salesPerson ? empByName.get(r.salesPerson.trim().toLowerCase()) : null;
+          const isCtv = emp?.position === "ctv";
+          // Nếu NVKD là CTV và chưa gán phòng thực → không show text Excel legacy
+          // (VD "Freelancer / Đoàn Lê Bách" không còn chính xác vì Bách giờ CEO).
+          const displayDeptName =
+            r.departmentName ??
+            (isCtv && !emp?.departmentId ? null : r.deptName ?? null);
           return {
             id: r.id,
             unitCode: r.unitCode,
             projectName: r.projectName ?? null,
             partnerName: r.partnerName ?? null,
-            departmentName: r.departmentName ?? null,
-            deptName: r.deptName ?? null,
+            departmentName: displayDeptName,
+            deptName: displayDeptName,
             salesPerson: r.salesPerson ?? null,
+            isCtv,
             depositDate: r.depositDate ?? null,
             recognitionMonth: r.recognitionMonth ?? null,
             pmgBasePrice: Number(r.pmgBasePrice ?? 0),

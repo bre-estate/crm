@@ -21,6 +21,7 @@ export type ProductRow = {
   departmentName: string | null;
   deptName: string | null;
   salesPerson: string | null;
+  isCtv?: boolean;
   depositDate: string | null;
   recognitionMonth: string | null;
   pmgBasePrice: number | null;
@@ -213,11 +214,28 @@ export default function ProductsTable({
                       >
                         {r.departmentName}
                       </span>
+                    ) : r.isCtv ? (
+                      <span
+                        className="text-xs px-2 py-0.5 rounded whitespace-nowrap bg-amber-100 text-amber-800 border border-amber-200"
+                        title="CTV chưa phân phòng — cộng tác viên/freelance ngoài công ty"
+                      >
+                        CTV
+                      </span>
                     ) : (
                       <span className="text-xs text-slate-400">—</span>
                     )}
                   </td>
-                  <td className="p-2 text-xs">{r.salesPerson ?? "—"}</td>
+                  <td className="p-2 text-xs">
+                    {r.salesPerson ?? "—"}
+                    {r.isCtv && r.salesPerson && (
+                      <span
+                        className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200 font-semibold"
+                        title="Cộng tác viên / Freelance"
+                      >
+                        CTV
+                      </span>
+                    )}
+                  </td>
                   <td className="p-2 text-xs">{fmtDate(r.depositDate)}</td>
                   <td className="p-2 text-xs font-mono">{r.recognitionMonth ?? "—"}</td>
                   <td className="p-2 text-right tabular-nums">{fmtMoney(r.pmgBasePrice)}</td>
