@@ -431,14 +431,7 @@ export default function ProductForm({
             <input type="hidden" name="departmentId" value={departmentIdState} />
             <input type="hidden" name="deptName" defaultValue={product?.deptName ?? ""} />
           </Field>
-          <Field label="Tháng ghi nhận DT (YYYY-MM)">
-            <input
-              name="recognitionMonth"
-              defaultValue={product?.recognitionMonth ?? ""}
-              className="input"
-              placeholder="vd: 2025-06"
-            />
-          </Field>
+          {/* Tháng ghi nhận DT bỏ khỏi form — luôn = tháng của deposit_date */}
           {/* Ngày hoàn thành dự kiến + PTTT ẩn — bỏ khỏi UI theo yêu cầu */}
           <input
             type="hidden"

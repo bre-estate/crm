@@ -37,7 +37,7 @@ export default async function ReportsProjectsPage({ searchParams }: { searchPara
   };
   const byProj = new Map<number, { units: number; months: Set<string> }>();
   for (const p of prodRows) {
-    const ym = effectiveYM(p.recognitionMonth, p.depositDate);
+    const ym = effectiveYM(null, p.depositDate);
     if (!ym) continue;
     const key = p.projectId;
     if (!byProj.has(key)) byProj.set(key, { units: 0, months: new Set() });

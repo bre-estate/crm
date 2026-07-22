@@ -76,7 +76,8 @@ function buildProductData(fd: FormData) {
     departmentId: toNum(fd.get("departmentId")) || null,
     depositDate: toStrOrNull(fd.get("depositDate")),
     expectedCompleteDate: toStrOrNull(fd.get("expectedCompleteDate")),
-    recognitionMonth: toStrOrNull(fd.get("recognitionMonth")),
+    // recognition_month bỏ khỏi form — luôn = tháng của deposit_date
+    recognitionMonth: null,
     saleType,
     paymentMethod: toStrOrNull(fd.get("paymentMethod")),
 

@@ -39,14 +39,14 @@ export const RANGE_LABEL: Record<RangeKey, string> = {
   h2: "Nửa cuối năm (T7–T12)",
 };
 
-// Ưu tiên recognition_month, fallback deposit_date.
+// DT ghi nhận tại thời điểm cọc → luôn dùng deposit_date.
+// Arg recognitionMonth giữ signature backward compat nhưng ignore.
 export function effectiveYM(
-  recognitionMonth: string | null,
+  _recognitionMonth: string | null,
   depositDate: string | null,
 ): { y: number; mo: number } | null {
-  const src = recognitionMonth || depositDate;
-  if (!src) return null;
-  const m = src.match(/^(\d{4})-(\d{2})/);
+  if (!depositDate) return null;
+  const m = depositDate.match(/^(\d{4})-(\d{2})/);
   return m ? { y: Number(m[1]), mo: Number(m[2]) } : null;
 }
 

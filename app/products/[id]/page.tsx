@@ -490,7 +490,6 @@ export default async function ProductDetailPage({
             }
           />
           <Info label="Ngày cọc" value={fmtDate(p.depositDate)} />
-          <Info label="Tháng ghi nhận DT" value={p.recognitionMonth ?? "—"} mono />
         </div>
         {p.note && p.note.trim() && (
           <div className="mt-3 pt-3 border-t border-slate-100">

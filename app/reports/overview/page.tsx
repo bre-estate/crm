@@ -56,12 +56,12 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
       amount: Number(e.amount ?? 0),
     }));
 
-    // Accrual accounting: group rev + cost theo THÁNG GHI NHẬN DT của căn
+    // Accrual accounting: group rev + cost theo THÁNG CỌC của căn
     // (không phải ngày ĐC). Match income + expense cùng căn về cùng period,
     // tránh lệch timing (VD ĐC rev tháng 7, ĐC cost tháng 8 → lãi âm giả).
     const productMonthMap = new Map<number, string>();
     for (const p of data.prodRowsAll) {
-      const ym = effectiveYM(p.recognitionMonth, p.depositDate);
+      const ym = effectiveYM(null, p.depositDate);
       if (ym) productMonthMap.set(p.id, `${ym.y}-${String(ym.mo).padStart(2, "0")}`);
     }
     for (const r of revReconsAll) {
@@ -109,7 +109,7 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
     // Avg units bán / tháng thực tế (12 tháng gần nhất)
     const unitMonths = new Map<string, number>();
     for (const p of data.prodRowsAll) {
-      const ym = p.recognitionMonth || p.depositDate;
+      const ym = p.depositDate;
       if (!ym) continue;
       const m = ym.slice(0, 7);
       const diff = monthDiff(m, nowMonth);

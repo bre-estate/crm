@@ -21,6 +21,8 @@ export const dynamic = "force-dynamic";
 type SearchParams = Promise<{
   projectId?: string;
   departmentId?: string;
+  salesPerson?: string;
+  depositMonth?: string;
   tab?: string;
   from?: string;
   to?: string;
@@ -29,7 +31,7 @@ type SearchParams = Promise<{
 }>;
 
 export default async function ProductsPage({ searchParams }: { searchParams: SearchParams }) {
-  const { projectId, departmentId, tab, from, to, unitCode, justCreated } = await searchParams;
+  const { projectId, departmentId, salesPerson, depositMonth, tab, from, to, unitCode, justCreated } = await searchParams;
   // Parse ids vừa tạo (comma-separated). Set để O(1) lookup.
   const justCreatedIds = new Set<number>(
     (justCreated ?? "")
@@ -43,11 +45,17 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
   const dateFrom = from?.trim() || null;
   const dateTo = to?.trim() || null;
   const filterUnitCode = unitCode?.trim() || null;
+  const filterSalesPerson = salesPerson?.trim() || null;
+  const filterDepositMonth = depositMonth?.trim().match(/^\d{4}-\d{2}$/)
+    ? depositMonth.trim()
+    : null;
 
   // Preserve filter state khi user vào edit rồi save → quay lại list
   const returnToParams = new URLSearchParams();
   if (projectId) returnToParams.set("projectId", String(projectId));
   if (departmentId) returnToParams.set("departmentId", String(departmentId));
+  if (salesPerson) returnToParams.set("salesPerson", String(salesPerson));
+  if (filterDepositMonth) returnToParams.set("depositMonth", filterDepositMonth);
   if (tab) returnToParams.set("tab", String(tab));
   if (from) returnToParams.set("from", String(from));
   if (to) returnToParams.set("to", String(to));
@@ -73,7 +81,6 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
     departmentId: products.departmentId,
     departmentName: departments.name,
     depositDate: products.depositDate,
-    recognitionMonth: products.recognitionMonth,
     saleType: products.saleType,
     pmgBasePrice: products.pmgBasePrice,
     pmgRate: products.pmgRate,
@@ -97,8 +104,13 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
   if (!skipFilters) {
     if (filterProjectId) whereParts.push(eq(products.projectId, filterProjectId));
     if (filterDeptId) whereParts.push(eq(products.departmentId, filterDeptId));
+    if (filterSalesPerson) whereParts.push(eq(products.salesPerson, filterSalesPerson));
     if (dateFrom) whereParts.push(gte(products.depositDate, dateFrom));
     if (dateTo) whereParts.push(lte(products.depositDate, dateTo));
+    if (filterDepositMonth) {
+      // Match YYYY-MM prefix trên deposit_date (text column format YYYY-MM-DD).
+      whereParts.push(ilike(products.depositDate, `${filterDepositMonth}%`));
+    }
     if (filterUnitCode) whereParts.push(ilike(products.unitCode, `%${filterUnitCode}%`));
   }
 
@@ -151,6 +163,24 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
     })
     .from(employees);
   const empByName = new Map(allEmps.map((e) => [e.name.toLowerCase(), e]));
+
+  // Options cho dropdown NVKD — distinct sales_person hiện có trong products,
+  // enrich với position từ employees để tag CTV. Sort alpha (VN accent-safe).
+  const distinctSp = await db
+    .selectDistinct({ name: products.salesPerson })
+    .from(products);
+  const salesPersonOptions = distinctSp
+    .map((s) => s.name?.trim())
+    .filter((n): n is string => !!n)
+    .map((name) => {
+      const emp = empByName.get(name.toLowerCase());
+      return {
+        name,
+        position: emp?.position ?? null,
+        isCtv: emp?.position === "ctv",
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, "vi"));
 
   // For each căn: tính phí HH dự kiến (theo %PMG_LK mới nhất, hồi tố) vs đã thu (từ payments_in).
   const productIds = rows.map((r) => r.id);
@@ -338,7 +368,9 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
           params.set("tab", t.key);
           if (filterProjectId) params.set("projectId", String(filterProjectId));
           if (filterDeptId) params.set("departmentId", String(filterDeptId));
+          if (filterSalesPerson) params.set("salesPerson", filterSalesPerson);
           if (filterUnitCode) params.set("unitCode", filterUnitCode);
+          if (filterDepositMonth) params.set("depositMonth", filterDepositMonth);
           if (dateFrom) params.set("from", dateFrom);
           if (dateTo) params.set("to", dateTo);
           return (
@@ -402,6 +434,16 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
             />
           </div>
           <div>
+            <label className="block text-xs text-slate-600 mb-1">Tháng cọc</label>
+            <input
+              type="month"
+              name="depositMonth"
+              defaultValue={filterDepositMonth ?? ""}
+              className="input"
+              title="Chọn tháng cọc (YYYY-MM). Kết hợp được với Từ/Đến ngày."
+            />
+          </div>
+          <div>
             <label className="block text-xs text-slate-600 mb-1">Từ ngày cọc</label>
             <input
               type="date"
@@ -445,11 +487,32 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
               options={allDepts.map((d) => ({ value: d.id, label: d.name }))}
             />
           </div>
+          <div>
+            <label className="block text-xs text-slate-600 mb-1">NVKD</label>
+            <SearchableSelect
+              name="salesPerson"
+              defaultValue={filterSalesPerson ?? ""}
+              emptyOption="— Tất cả —"
+              placeholder="Gõ tên NVKD..."
+              className="min-w-56"
+              options={salesPersonOptions.map((s) => ({
+                value: s.name,
+                label: s.name,
+                sublabel: s.isCtv ? "CTV" : s.position ? s.position.toUpperCase() : undefined,
+              }))}
+            />
+          </div>
           <input type="hidden" name="tab" value={activeTab} />
           <button className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200">
             Lọc
           </button>
-          {(filterProjectId || filterDeptId || dateFrom || dateTo || filterUnitCode) && (
+          {(filterProjectId ||
+            filterDeptId ||
+            filterSalesPerson ||
+            filterDepositMonth ||
+            dateFrom ||
+            dateTo ||
+            filterUnitCode) && (
             <Link
               href={`/products?tab=${activeTab}`}
               className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200"
@@ -489,7 +552,6 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
             salesPerson: r.salesPerson ?? null,
             isCtv,
             depositDate: r.depositDate ?? null,
-            recognitionMonth: r.recognitionMonth ?? null,
             pmgBasePrice: Number(r.pmgBasePrice ?? 0),
             pmgRate: Number(r.pmgRate ?? 0),
             totalRevenue: Number(r.totalRevenue ?? 0),

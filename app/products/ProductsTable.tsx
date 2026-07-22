@@ -23,7 +23,6 @@ export type ProductRow = {
   salesPerson: string | null;
   isCtv?: boolean;
   depositDate: string | null;
-  recognitionMonth: string | null;
   pmgBasePrice: number | null;
   pmgRate: number | null;
   totalRevenue: number | null;
@@ -148,8 +147,7 @@ export default function ProductsTable({
               <th className="text-left p-2">Dự án / Đối tác</th>
               <th className="text-left p-2 whitespace-nowrap">Phòng</th>
               <th className="text-left p-2 whitespace-nowrap">NVKD</th>
-              <th className="text-left p-2 whitespace-nowrap">Cọc</th>
-              <th className="text-left p-2 whitespace-nowrap">Ghi nhận</th>
+              <th className="text-left p-2 whitespace-nowrap">Ngày cọc</th>
               <th className="text-right p-2 whitespace-nowrap">Giá PMG</th>
               <th className="text-right p-2 whitespace-nowrap">%PMG</th>
               <th className="text-right p-2 whitespace-nowrap">Tổng DT</th>
@@ -237,7 +235,6 @@ export default function ProductsTable({
                     )}
                   </td>
                   <td className="p-2 text-xs">{fmtDate(r.depositDate)}</td>
-                  <td className="p-2 text-xs font-mono">{r.recognitionMonth ?? "—"}</td>
                   <td className="p-2 text-right tabular-nums">{fmtMoney(r.pmgBasePrice)}</td>
                   <td className="p-2 text-right tabular-nums">{fmtPctTight(r.pmgRate)}</td>
                   <td className="p-2 text-right tabular-nums">{fmtMoney(r.totalRevenue)}</td>
@@ -303,7 +300,7 @@ export default function ProductsTable({
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={14} className="p-6 text-center text-slate-500 text-sm">
+                <td colSpan={13} className="p-6 text-center text-slate-500 text-sm">
                   Không có giao dịch nào theo bộ lọc.
                 </td>
               </tr>
