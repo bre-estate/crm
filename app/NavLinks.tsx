@@ -51,6 +51,7 @@ const NAV: NavEntry[] = [
   },
   { href: "/finance", label: "Tài chính", gate: "owner" },
   { href: "/employees", label: "Nhân viên" },
+  { href: "/departments", label: "Phòng KD" },
   { href: "/admin/activity", label: "Lịch sử hoạt động", gate: "owner" },
 ];
 
