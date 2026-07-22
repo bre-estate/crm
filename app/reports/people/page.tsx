@@ -17,9 +17,26 @@ export default async function ReportsPeoplePage({ searchParams }: { searchParams
   const data = await loadReportData(filters);
   const { grandTotals, prodRows, filterLabel, yearOptions, costReconsAll } = data;
 
-  // Alias resolution: name → ownerName (nếu là alias)
-  const allEmps = await db.select({ id: employees.id, name: employees.name, aliasOfId: employees.aliasOfId }).from(employees);
+  // Alias resolution: name → ownerName (nếu là alias). Cũng lấy position để badge CTV.
+  const allEmps = await db
+    .select({
+      id: employees.id,
+      name: employees.name,
+      aliasOfId: employees.aliasOfId,
+      position: employees.position,
+    })
+    .from(employees);
   const empById = new Map(allEmps.map((e) => [e.id, e]));
+  // Map name lowercase → position (dùng cho badge CTV trong bảng KPI)
+  const positionByName = new Map<string, string>();
+  for (const e of allEmps) positionByName.set(e.name.toLowerCase(), e.position);
+  // Với alias: resolve về owner position (Bách là TPKD, alias của Bách cũng tính TPKD)
+  const resolvePosition = (name: string): string | null => {
+    const key = name.trim().toLowerCase();
+    const mapped = aliasMap.get(key);
+    if (mapped) return positionByName.get(mapped.ownerName.toLowerCase()) ?? null;
+    return positionByName.get(key) ?? null;
+  };
   const aliasMap = new Map<string, { ownerName: string; aliases: string[] }>();
   for (const e of allEmps) {
     if (e.aliasOfId) {
@@ -111,6 +128,25 @@ export default async function ReportsPeoplePage({ searchParams }: { searchParams
   const maxRev = nvkdSorted[0]?.totalRevenue ?? 1;
   const unassigned = byNvkd.get("(Chưa có NVKD)");
 
+  // ===== Breakdown: CTV vs Nội bộ =====
+  let ctvUnits = 0, ctvRevenue = 0, internalUnits = 0, internalRevenue = 0, unknownUnits = 0, unknownRevenue = 0;
+  for (const n of nvkdSorted) {
+    const pos = resolvePosition(n.name);
+    if (pos === "ctv") {
+      ctvUnits += n.numProducts;
+      ctvRevenue += n.totalRevenue;
+    } else if (pos) {
+      internalUnits += n.numProducts;
+      internalRevenue += n.totalRevenue;
+    } else {
+      unknownUnits += n.numProducts;
+      unknownRevenue += n.totalRevenue;
+    }
+  }
+  const totalRev = ctvRevenue + internalRevenue + unknownRevenue;
+  const ctvPct = totalRev > 0 ? (ctvRevenue / totalRev) * 100 : 0;
+  const internalPct = totalRev > 0 ? (internalRevenue / totalRev) * 100 : 0;
+
   return (
     <div className="space-y-6">
       <ReportsHeader
@@ -120,6 +156,43 @@ export default async function ReportsPeoplePage({ searchParams }: { searchParams
         filterLabel={filterLabel}
         totalProducts={grandTotals.products}
       />
+
+      {/* ===== Breakdown: CTV vs Nội bộ ===== */}
+      <div>
+        <h2 className="text-lg font-semibold mb-1">Doanh thu qua CTV vs Nội bộ — {filterLabel}</h2>
+        <p className="text-xs text-slate-500 mb-3">
+          Phân tách DT theo loại người bán. CTV = cộng tác viên/freelance cá nhân ngoài công ty. Nội bộ = NV chính thức (NVKD/TPKD/CEO/Admin).
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+            <div className="text-xs text-slate-600 font-medium">Nội bộ (NV công ty)</div>
+            <div className="text-xl font-bold tabular-nums mt-1 text-blue-800">
+              {fmtMoney(internalRevenue)}
+            </div>
+            <div className="text-xs text-slate-500 mt-1">
+              {internalUnits} căn · {fmtPctRaw(internalPct, 1)} trên tổng
+            </div>
+          </div>
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+            <div className="text-xs text-slate-600 font-medium">Cộng tác viên (CTV)</div>
+            <div className="text-xl font-bold tabular-nums mt-1 text-amber-800">
+              {fmtMoney(ctvRevenue)}
+            </div>
+            <div className="text-xs text-slate-500 mt-1">
+              {ctvUnits} căn · {fmtPctRaw(ctvPct, 1)} trên tổng
+            </div>
+          </div>
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+            <div className="text-xs text-slate-600 font-medium">Chưa xác định</div>
+            <div className="text-xl font-bold tabular-nums mt-1 text-slate-700">
+              {fmtMoney(unknownRevenue)}
+            </div>
+            <div className="text-xs text-slate-500 mt-1">
+              {unknownUnits} căn · NV chưa có trong /employees
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div>
         <h2 className="text-lg font-semibold mb-3">Theo phòng — {filterLabel}</h2>
@@ -207,6 +280,14 @@ export default async function ReportsPeoplePage({ searchParams }: { searchParams
                     <td className="p-2 text-xs text-slate-500">#{i + 1}</td>
                     <td className="p-2 font-medium">
                       {n.name}
+                      {resolvePosition(n.name) === "ctv" && (
+                        <span
+                          className="ml-2 text-[10px] px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200 font-semibold"
+                          title="Cộng tác viên / Freelance — không phải NV nội bộ"
+                        >
+                          CTV
+                        </span>
+                      )}
                       {aliases.length > 0 && (
                         <span
                           className="ml-2 text-[10px] px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200"
