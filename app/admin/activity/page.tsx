@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { activityLogs, products } from "@/lib/schema";
-import { desc, eq, and, gte, lte, sql } from "drizzle-orm";
+import { desc, eq, and, gte, lte, sql, inArray } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { getOwnerEmail } from "@/lib/auth";
 import Link from "next/link";
@@ -121,13 +121,14 @@ export default async function ActivityAdminPage({
   const productIds = Array.from(
     new Set(rows.map((r) => r.productId).filter((v): v is number => v !== null)),
   );
-  const productMap = new Map<number, string>();
+  const productMap = new Map<number, string | null>();
   if (productIds.length > 0) {
     const prods = await db
       .select({ id: products.id, unitCode: products.unitCode })
-      .from(products);
+      .from(products)
+      .where(inArray(products.id, productIds));
     for (const p of prods) {
-      if (productIds.includes(p.id)) productMap.set(p.id, p.unitCode ?? String(p.id));
+      productMap.set(p.id, p.unitCode ?? null);
     }
   }
 
@@ -306,12 +307,21 @@ export default async function ActivityAdminPage({
                 { from: unknown; to: unknown }
               >;
               const changeKeys = Object.keys(changes);
+              const unitCode = a.productId ? productMap.get(a.productId) : null;
               const productLink = a.productId ? (
                 <Link
                   href={`/products/${a.productId}`}
-                  className="text-blue-600 hover:underline font-mono"
+                  className="text-blue-600 hover:underline"
+                  title={`Product ID ${a.productId}`}
                 >
-                  {productMap.get(a.productId) ?? `#${a.productId}`}
+                  {unitCode ? (
+                    <span className="font-mono font-medium">{unitCode}</span>
+                  ) : (
+                    <span className="italic text-slate-500">(căn đã xóa)</span>
+                  )}
+                  <span className="ml-1 text-[10px] text-slate-400 font-mono">
+                    #{a.productId}
+                  </span>
                 </Link>
               ) : null;
               return (
@@ -326,8 +336,13 @@ export default async function ActivityAdminPage({
                     </span>
                   </td>
                   <td className="p-2 whitespace-nowrap text-xs text-slate-700">
-                    {ENTITY_LABEL[a.entityType] ?? a.entityType} #{a.entityId}
-                    {productLink && <span className="ml-1">· {productLink}</span>}
+                    <div>{ENTITY_LABEL[a.entityType] ?? a.entityType} #{a.entityId}</div>
+                    {productLink && (
+                      <div className="mt-0.5">
+                        <span className="text-slate-500">Căn: </span>
+                        {productLink}
+                      </div>
+                    )}
                   </td>
                   <td className="p-2 text-xs">
                     {a.summary && (
