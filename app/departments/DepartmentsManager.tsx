@@ -74,7 +74,7 @@ export default function DepartmentsManager({
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold">Phòng KD</h1>
+          <h1 className="text-2xl font-bold">Phòng Kinh Doanh</h1>
           <p className="text-sm text-slate-500 mt-1">
             Quản lý phòng kinh doanh + trưởng phòng (TPKD). NV được gán vào phòng qua trang{" "}
             <a href="/employees" className="text-blue-600 hover:underline">
