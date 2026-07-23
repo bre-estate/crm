@@ -54,7 +54,7 @@ const NAV: NavEntry[] = [
     label: "Nhân sự",
     children: [
       { href: "/employees", label: "Nhân viên" },
-      { href: "/departments", label: "Phòng Kinh Doanh" },
+      { href: "/departments", label: "Phòng ban" },
     ],
   },
   { href: "/admin/activity", label: "Lịch sử hoạt động", gate: "owner" },
