@@ -110,7 +110,7 @@ export default function SearchableSelect({
         <span className="text-slate-400 ml-2">▾</span>
       </button>
       {open && (
-        <div className="absolute z-20 mt-1 w-full bg-white border border-slate-300 rounded-lg shadow-lg max-h-72 overflow-hidden flex flex-col">
+        <div className="absolute z-20 mt-1 min-w-full w-max max-w-sm bg-white border border-slate-300 rounded-lg shadow-lg max-h-72 overflow-hidden flex flex-col">
           <input
             ref={inputRef}
             type="text"
@@ -145,9 +145,9 @@ export default function SearchableSelect({
                       isSelected ? "bg-blue-100 font-semibold" : ""
                     }`}
                   >
-                    <div>{o.label}</div>
+                    <div className="whitespace-nowrap">{o.label}</div>
                     {o.sublabel && (
-                      <div className="text-xs text-slate-500">{o.sublabel}</div>
+                      <div className="text-xs text-slate-500 whitespace-nowrap">{o.sublabel}</div>
                     )}
                   </button>
                 );
