@@ -341,6 +341,8 @@ export const companyInvestments = pgTable("company_investments", {
 });
 
 // Chi phí quản lý (opex) — theo tháng, chi tiết từng khoản
+// LEGACY: giữ để không break /finance page cũ. Sẽ migrate sang
+// financial_transactions trong Phase 2.
 export const companyExpenses = pgTable("company_expenses", {
   id: serial("id").primaryKey(),
   expenseMonth: text("expense_month").notNull(), // YYYY-MM
@@ -351,6 +353,60 @@ export const companyExpenses = pgTable("company_expenses", {
   description: text("description"),
   note: text("note"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ===================== ACCOUNTING SUBSYSTEM (Phase 1 — 2026-07-24) =====================
+// Nền tảng cho phần quản lý kế toán/tài chính nội bộ. Không dùng
+// company_expenses nữa (legacy) — mọi transaction mới đều vào đây.
+//
+// Chart of accounts đơn giản, khớp keyword classifier trong lib/accounting/rules.ts
+
+// Bảng tài khoản kế toán (chart of accounts) — theo TT200 simplified.
+// Không phải bảng transactions — chỉ danh mục để classifier tra khi phân nhóm.
+export const accountingCategories = pgTable("accounting_categories", {
+  code: text("code").primaryKey(), // "6421", "6427", "411", "244", ...
+  name: text("name").notNull(),
+  groupName: text("group_name").notNull(), // "Chi phí quản lý" / "Vốn" / "Tài sản" / ...
+  isExpense: boolean("is_expense").notNull().default(true), // false cho vốn/hoàn/cọc
+  displayOrder: integer("display_order").notNull().default(100),
+});
+
+// Bảng giao dịch tài chính — 1 row = 1 khoản chi/thu/vốn/hoàn/cọc hộ.
+// Dedup theo dedup_key (source file + row hash) để re-import không nhân bản.
+export const financialTransactions = pgTable("financial_transactions", {
+  id: serial("id").primaryKey(),
+  // Ngày phát sinh (fallback = ngày cuối tháng nếu chỉ biết tháng)
+  transactionDate: text("transaction_date").notNull(), // YYYY-MM-DD
+  transactionMonth: text("transaction_month").notNull(), // YYYY-MM
+  description: text("description").notNull(),
+  amount: doublePrecision("amount").notNull(), // luôn dương
+  direction: text("direction", { enum: ["out", "in"] }).notNull().default("out"),
+
+  // Phân loại
+  categoryCode: text("category_code")
+    .notNull()
+    .references(() => accountingCategories.code),
+  // Nhóm quản lý mềm — cho UI filter (khác categoryCode nếu cần group nhiều TK)
+  managementGroup: text("management_group"),
+
+  // Nguồn tiền
+  payer: text("payer"), // "company" / "Triết" / "Bách" / "Nga" / "Tường Vi"
+  recipient: text("recipient"),
+
+  // Hóa đơn
+  hasInvoice: boolean("has_invoice").notNull().default(false),
+  invoiceNo: text("invoice_no"),
+  // null = chưa xác định (kế toán sẽ verify sau); true = hợp lệ vào BCTC
+  invoiceValid: boolean("invoice_valid"),
+
+  // Truy vết import
+  sourceFile: text("source_file").notNull(), // "thanh-toan" / "MERGED-Triết" / "TU-Nga" / ...
+  sourceRow: integer("source_row"),
+  dedupKey: text("dedup_key").notNull().unique(),
+
+  note: text("note"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Cấu hình toàn công ty (single row)
@@ -490,6 +546,10 @@ export type CompanyInvestment = typeof companyInvestments.$inferSelect;
 export type NewCompanyInvestment = typeof companyInvestments.$inferInsert;
 export type CompanyExpense = typeof companyExpenses.$inferSelect;
 export type NewCompanyExpense = typeof companyExpenses.$inferInsert;
+export type AccountingCategory = typeof accountingCategories.$inferSelect;
+export type NewAccountingCategory = typeof accountingCategories.$inferInsert;
+export type FinancialTransaction = typeof financialTransactions.$inferSelect;
+export type NewFinancialTransaction = typeof financialTransactions.$inferInsert;
 export type CompanySettings = typeof companySettings.$inferSelect;
 export type Employee = typeof employees.$inferSelect;
 export type NewEmployee = typeof employees.$inferInsert;

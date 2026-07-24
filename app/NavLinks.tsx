@@ -49,7 +49,15 @@ const NAV: NavEntry[] = [
       { href: "/reports/cashflow", label: "Dòng tiền", gate: "owner", section: "Tài chính" },
     ],
   },
-  { href: "/finance", label: "Tài chính", gate: "owner" },
+  {
+    label: "Tài chính",
+    gate: "owner",
+    children: [
+      { href: "/finance", label: "Vốn / CP QL (cũ)", gate: "owner" },
+      { href: "/finance/transactions", label: "Giao dịch", gate: "owner" },
+      { href: "/finance/import", label: "Import Excel", gate: "owner" },
+    ],
+  },
   {
     label: "Nhân sự",
     children: [

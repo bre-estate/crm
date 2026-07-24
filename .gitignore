@@ -52,3 +52,6 @@ scripts/inspect-*.ts
 
 # Sample folder — bug videos operator gửi + extracted frames + bulk test files (local only)
 sample/
+
+# Excel data thô (tài chính nội bộ, không public)
+data-excel/
