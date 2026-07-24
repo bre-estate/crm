@@ -12,9 +12,10 @@ import {
   paymentsOut,
   companyInvestments,
   companyExpenses,
+  financialTransactions,
   companySettings,
 } from "@/lib/schema";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { getOwnerEmail } from "@/lib/auth";
 
 export type RangeKey = "full" | "q1" | "q2" | "q3" | "q4" | "h1" | "h2";
@@ -471,8 +472,21 @@ export async function loadReportData(filters: ReportFilters): Promise<ReportData
   const showFinance = (await getOwnerEmail()) !== null;
   let financial: ReportData["financial"] | undefined;
   if (showFinance) {
-    const [invRows, expRows, settingsRows] = await Promise.all([
+    // Chi phí quản lý (opex) — ưu tiên financial_transactions (Phase 1 new).
+    // Fallback company_expenses (legacy) nếu chưa nạp data mới.
+    // TK nhóm 1-8 (per framework 2026-07-24): loại HH sale, vốn, hoàn, cọc hộ, thứ cấp.
+    const OPEX_CATEGORIES = [
+      "6421", "6427-rent", "6427-svc", "6417", "153-211", "6428", "6425", "635",
+    ];
+    const [invRows, txOpexRows, expRows, settingsRows] = await Promise.all([
       db.select().from(companyInvestments),
+      db
+        .select({
+          month: financialTransactions.transactionMonth,
+          amount: financialTransactions.amount,
+        })
+        .from(financialTransactions)
+        .where(inArray(financialTransactions.categoryCode, OPEX_CATEGORIES)),
       db.select().from(companyExpenses),
       db.select().from(companySettings),
     ]);
@@ -481,16 +495,24 @@ export async function loadReportData(filters: ReportFilters): Promise<ReportData
       businessStartDate: null as string | null,
     };
     const totalInvestment = invRows.reduce((s, i) => s + Number(i.amount), 0);
+
+    // Nếu có transaction mới → dùng; fallback expenses cũ.
+    // Uniform shape: { month, amount }
+    const sourceExpenses: Array<{ month: string; amount: number }> =
+      txOpexRows.length > 0
+        ? txOpexRows.map((e) => ({ month: e.month, amount: Number(e.amount) }))
+        : expRows.map((e) => ({ month: e.expenseMonth ?? "", amount: Number(e.amount) }));
+
     const filteredExpenses = year
-      ? expRows.filter((e) => {
-          const m = e.expenseMonth?.match(/^(\d{4})-(\d{2})/);
+      ? sourceExpenses.filter((e) => {
+          const m = e.month?.match(/^(\d{4})-(\d{2})/);
           if (!m) return false;
           const y = Number(m[1]);
           const mo = Number(m[2]);
           const [minMo, maxMo] = RANGE_MONTHS[range];
           return y === year && mo >= minMo && mo <= maxMo;
         })
-      : expRows;
+      : sourceExpenses;
     const totalExpense = filteredExpenses.reduce((s, e) => s + Number(e.amount), 0);
 
     let monthsInPeriod = 12;

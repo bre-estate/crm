@@ -5,7 +5,15 @@ import { hasReportsAccess, getOwnerEmail } from "@/lib/auth";
 import { loadReportData, parseFilters, effectiveYM } from "@/lib/reports";
 import { Card, ReportsHeader } from "../_shared";
 import { db } from "@/lib/db";
-import { companyExpenses } from "@/lib/schema";
+import { companyExpenses, financialTransactions } from "@/lib/schema";
+import { inArray, sql } from "drizzle-orm";
+
+// TK kế toán nhóm chi phí quản lý — nhóm 1-8 per framework 2026-07-24.
+// Loại nhóm 9 (HH sale — đã ở giá vốn CRM), 10 (thứ cấp), 11 (vốn góp),
+// 13 (hoàn YCTV), 14 (cọc hộ khách) → không phải chi phí BCTC.
+const OPEX_CATEGORIES = [
+  "6421", "6427-rent", "6427-svc", "6417", "153-211", "6428", "6425", "635",
+];
 
 export const dynamic = "force-dynamic";
 
@@ -50,11 +58,28 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
   let avgProfitPerUnit = 0;
 
   if (isOwner) {
-    const expenseRows = await db.select().from(companyExpenses);
-    allExpenses = expenseRows.map((e) => ({
-      month: e.expenseMonth ?? "",
-      amount: Number(e.amount ?? 0),
-    }));
+    // Nguồn chi phí quản lý mới (Phase 1): financial_transactions với TK nhóm 1-8.
+    // Nếu chưa có transaction → fallback company_expenses (legacy) để không
+    // vỡ trang khi DB rỗng data mới.
+    const txExpenses = await db
+      .select({
+        month: financialTransactions.transactionMonth,
+        amount: financialTransactions.amount,
+      })
+      .from(financialTransactions)
+      .where(inArray(financialTransactions.categoryCode, OPEX_CATEGORIES));
+    if (txExpenses.length > 0) {
+      allExpenses = txExpenses.map((e) => ({
+        month: e.month,
+        amount: Number(e.amount ?? 0),
+      }));
+    } else {
+      const expenseRows = await db.select().from(companyExpenses);
+      allExpenses = expenseRows.map((e) => ({
+        month: e.expenseMonth ?? "",
+        amount: Number(e.amount ?? 0),
+      }));
+    }
 
     // Accrual accounting: group rev + cost theo THÁNG CỌC của căn
     // (không phải ngày ĐC). Match income + expense cùng căn về cùng period,

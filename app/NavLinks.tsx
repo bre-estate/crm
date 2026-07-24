@@ -53,9 +53,10 @@ const NAV: NavEntry[] = [
     label: "Tài chính",
     gate: "owner",
     children: [
-      { href: "/finance", label: "Vốn / CP QL (cũ)", gate: "owner" },
+      { href: "/finance", label: "Tổng quan", gate: "owner" },
+      { href: "/finance/capital", label: "Vốn góp founder", gate: "owner" },
       { href: "/finance/transactions", label: "Giao dịch", gate: "owner" },
-      { href: "/finance/import", label: "Import Excel", gate: "owner" },
+      { href: "/finance/legacy", label: "Dữ liệu cũ", gate: "owner" },
     ],
   },
   {
