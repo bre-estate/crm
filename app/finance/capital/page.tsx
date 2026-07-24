@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { financialTransactions } from "@/lib/schema";
 import { getOwnerEmail } from "@/lib/auth";
 import { notFound } from "next/navigation";
-import { sql, inArray, desc } from "drizzle-orm";
+import { sql, inArray, desc, and, ne, isNotNull } from "drizzle-orm";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -13,9 +13,10 @@ export default async function CapitalPage() {
   const owner = await getOwnerEmail();
   if (!owner) notFound();
 
-  // Mọi giao dịch vốn góp (411) + kí quỹ (244).
-  // Kí quỹ 244 vẫn là vốn góp founder per framework 2026-07-24
-  // (Founder → cty → CĐT); cty ghi TS 244 đối ứng VCSH 411.
+  // Framework 2026-07-24: Vốn góp founder = TOÀN BỘ tiền Triết/Bách chi cá nhân
+  // hộ cty (kể cả không hóa đơn), TRỪ chi phí thứ cấp (nhóm 10 — Bách chi ngoài
+  // phục vụ hoạt động thứ cấp cá nhân).
+  // → payer IN (Triết, Bách) AND categoryCode != 'secondary'
   const rows = await db
     .select({
       id: financialTransactions.id,
@@ -24,16 +25,27 @@ export default async function CapitalPage() {
       description: financialTransactions.description,
       amount: financialTransactions.amount,
       categoryCode: financialTransactions.categoryCode,
+      managementGroup: financialTransactions.managementGroup,
       payer: financialTransactions.payer,
     })
     .from(financialTransactions)
-    .where(inArray(financialTransactions.categoryCode, ["411", "244"]))
+    .where(
+      and(
+        inArray(financialTransactions.payer, ["Triết", "Bách"]),
+        ne(financialTransactions.categoryCode, "secondary"),
+        isNotNull(financialTransactions.payer),
+      ),
+    )
     .orderBy(desc(financialTransactions.transactionDate));
 
   const totalCapital = rows.reduce((s, r) => s + Number(r.amount), 0);
   const totalKiquy = rows
     .filter((r) => r.categoryCode === "244")
     .reduce((s, r) => s + Number(r.amount), 0);
+  const totalDirectVon = rows
+    .filter((r) => r.categoryCode === "411")
+    .reduce((s, r) => s + Number(r.amount), 0);
+  const totalChiHo = totalCapital - totalKiquy - totalDirectVon;
 
   // Group per founder × month
   const founders = new Set<string>();
@@ -63,22 +75,26 @@ export default async function CapitalPage() {
         </div>
         <h1 className="text-2xl font-bold mt-1">Vốn góp founder</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Vốn góp CSH (TK 411) + Ký quỹ dự án (TK 244). Ký quỹ vẫn là tiền
-          Triết bỏ vào cty để cty ký quỹ với đối tác — coi là vốn góp per
-          framework chốt 2026-07-24.
+          Toàn bộ tiền Triết + Bách bỏ cá nhân ra cho hoạt động cty (kể cả
+          không hóa đơn), TRỪ chi ngoài phục vụ thứ cấp. Bao gồm: nộp TK
+          cty, ký quỹ, chi hộ (mua thiết bị, thuê VP, lương, quảng cáo...).
         </p>
       </div>
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard label="Tổng vốn góp" value={fmt(totalCapital)} sub="411 + 244" />
+        <StatCard label="Tổng vốn góp" value={fmt(totalCapital)} sub={`${rows.length} giao dịch`} />
         <StatCard
-          label="Vốn CSH (411)"
-          value={fmt(totalCapital - totalKiquy)}
-          sub="Topup + nộp TK cty"
+          label="Nộp thẳng TK cty (411)"
+          value={fmt(totalDirectVon)}
+          sub="Topup / nộp tiền TK cty"
         />
-        <StatCard label="Ký quỹ (244)" value={fmt(totalKiquy)} sub="Dự án A&T + ..." />
-        <StatCard label="Số founder" value={`${founderList.length}`} sub={founderList.join(" · ")} />
+        <StatCard label="Ký quỹ dự án (244)" value={fmt(totalKiquy)} sub="A&T + đối tác" />
+        <StatCard
+          label="Chi hộ cty"
+          value={fmt(totalChiHo)}
+          sub="Mua thiết bị, thuê VP, lương..."
+        />
       </div>
 
       {/* Per-founder totals */}

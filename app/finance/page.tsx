@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { financialTransactions, companyInvestments, companyExpenses } from "@/lib/schema";
 import { getOwnerEmail } from "@/lib/auth";
 import { notFound } from "next/navigation";
-import { sql, eq, inArray } from "drizzle-orm";
+import { sql, eq, inArray, and, ne, isNotNull } from "drizzle-orm";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -21,19 +21,25 @@ export default async function FinanceLandingPage() {
     })
     .from(financialTransactions);
 
-  // Vốn góp (TK 411) — total và per founder
+  // Vốn góp founder = mọi giao dịch payer IN (Triết, Bách) TRỪ thứ cấp.
+  // Framework 2026-07-24: bao gồm cả chi hộ, không chỉ TK 411/244.
   const capitalRows = await db
     .select({
       payer: financialTransactions.payer,
       sum: sql<number>`sum(amount)::float8`,
     })
     .from(financialTransactions)
-    .where(inArray(financialTransactions.categoryCode, ["411", "244"]))
+    .where(
+      and(
+        inArray(financialTransactions.payer, ["Triết", "Bách"]),
+        ne(financialTransactions.categoryCode, "secondary"),
+      ),
+    )
     .groupBy(financialTransactions.payer);
   const capitalTotal = capitalRows.reduce((s, r) => s + Number(r.sum), 0);
   const byFounder = new Map(capitalRows.map((r) => [r.payer ?? "?", Number(r.sum)]));
 
-  // Kí quỹ (TK 244) riêng
+  // Ký quỹ (244) riêng
   const [kiquyRow] = await db
     .select({ sum: sql<number>`coalesce(sum(amount), 0)::float8` })
     .from(financialTransactions)
@@ -65,19 +71,19 @@ export default async function FinanceLandingPage() {
           sub={`${fmt(txSummary.sum)} VND`}
         />
         <StatCard
-          label="Vốn góp CSH"
-          value={fmt(capitalTotal - Number(kiquyRow.sum))}
-          sub="TK 411 (chưa tính ký quỹ)"
+          label="Vốn góp Triết"
+          value={fmt(byFounder.get("Triết") ?? 0)}
+          sub="Bỏ cá nhân cho cty"
         />
         <StatCard
-          label="Ký quỹ dự án"
-          value={fmt(Number(kiquyRow.sum))}
-          sub="TK 244"
+          label="Vốn góp Bách"
+          value={fmt(byFounder.get("Bách") ?? 0)}
+          sub="Bỏ cá nhân cho cty"
         />
         <StatCard
-          label="Vốn + Ký quỹ"
+          label="Tổng founder"
           value={fmt(capitalTotal)}
-          sub="Tổng founder bỏ vào cty"
+          sub="Triết + Bách"
         />
       </div>
 
