@@ -33,18 +33,26 @@ const sheetToMonth = (name: string): string => {
 };
 
 /**
- * Sinh dedup key: sha1 của (source + tháng + số tiền + norm nội dung).
+ * Sinh dedup key: sha1 của (source + tháng + số tiền + norm nội dung + recipient).
+ * Include recipient để 5 khoản "Thưởng tết 200k" cho 5 người khác nhau
+ * không bị gộp làm 1 (bug ban đầu).
  * Re-import cùng file → skip row đã có.
  */
-function makeDedupKey(source: string, month: string, amount: number, desc: string): string {
-  const normDesc = desc
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[đĐ]/g, "d")
-    .replace(/\s+/g, "");
+function makeDedupKey(
+  source: string,
+  month: string,
+  amount: number,
+  desc: string,
+  recipient: string,
+): string {
+  const norm = (s: string) =>
+    s.toLowerCase()
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .replace(/[đĐ]/g, "d")
+      .replace(/\s+/g, "");
   return createHash("sha1")
-    .update(`${source}|${month}|${amount}|${normDesc}`)
+    .update(`${source}|${month}|${amount}|${norm(desc)}|${norm(recipient)}`)
     .digest("hex");
 }
 
@@ -95,7 +103,7 @@ export function parseThanhToan(buf: Buffer): ParsedRow[] {
       invoiceValid: null,
       sourceFile: source,
       sourceRow: i + 1,
-      dedupKey: makeDedupKey(source, monthOf(iso), amount, description),
+      dedupKey: makeDedupKey(source, monthOf(iso), amount, description, recipient),
       note: c.note + (bp ? ` · Bộ phận: ${bp}` : ""),
     });
   }
@@ -144,7 +152,7 @@ export function parseMerged(buf: Buffer): ParsedRow[] {
         invoiceValid: null,
         sourceFile: source,
         sourceRow: i + 1,
-        dedupKey: makeDedupKey(source, month, amount, description),
+        dedupKey: makeDedupKey(source, month, amount, description, ""),
         note: c.note + (ngayRaw ? ` · Ngày Excel: ${clean(ngayRaw)}` : ""),
       });
     }
@@ -194,7 +202,7 @@ export function parseTamUng(buf: Buffer): ParsedRow[] {
         invoiceValid: null,
         sourceFile: source,
         sourceRow: i + 1,
-        dedupKey: makeDedupKey(source, monthOf(iso), chi, description),
+        dedupKey: makeDedupKey(source, monthOf(iso), chi, description, clean(r[10])),
         note: c.note,
       });
     }
