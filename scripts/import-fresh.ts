@@ -43,6 +43,28 @@ const toNum = (v: unknown): number => {
   if (typeof v === "number") return Number.isFinite(v) ? Math.floor(v) : 0;
   const s = String(v).trim();
   if (!s) return 0;
+  // fallthrough parse below
+  return parseVNString(s);
+};
+
+/**
+ * Parse rate/pct từ Excel giữ nguyên decimal (0.0575, 0.65, ...).
+ * KHÔNG floor như toNum vì rate fraction < 1 sẽ mất về 0.
+ * Excel lưu %PMG_LK dưới dạng 0.0575 (5.75%). DB cũng lưu decimal.
+ */
+const toRate = (v: unknown): number => {
+  if (v == null || v === "") return 0;
+  if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+  const s = String(v).trim();
+  if (!s) return 0;
+  // "5.75%" / "5,75%" → 0.0575; "0.0575" → 0.0575
+  const clean = s.replace(/[%\s]/g, "").replace(/,/g, ".");
+  const n = Number(clean);
+  if (!Number.isFinite(n)) return 0;
+  return s.includes("%") ? n / 100 : n;
+};
+
+function parseVNString(s: string): number {
   // String với separator (thousand/decimal) — smart parse tránh strip nhầm
   // dấu thập phân thành concat digits (bug ×100).
   const lastComma = s.lastIndexOf(",");
@@ -236,22 +258,22 @@ async function main() {
           totalRevenue: toNum(r[15]),
           totalCost: toNum(r[17]),
           pmgBasePrice: toNum(r[19]),
-          pmgRate: toNum(r[20]),
-          otherFeePct: toNum(r[21]),
+          pmgRate: toRate(r[20]),
+          otherFeePct: toRate(r[21]),
           otherRevenue: toNum(r[22]),
           revenueReduction: toNum(r[23]),
           adminFee: toNum(r[24]),
           cdtBonusSale: toNum(r[26]),
           cdtBonusManager: toNum(r[27]),
-          pmgSaleRate: toNum(r[28]),
-          saleCommissionRate: toNum(r[29]),
+          pmgSaleRate: toRate(r[28]),
+          saleCommissionRate: toRate(r[29]),
           adminFeeSale: toNum(r[30]),
           customerSupport: toNum(r[31]),
           bonusSale: toNum(r[32]),
           bonusManager: toNum(r[33]),
-          kpiCeoRate: toNum(r[34]),
-          kpiTpkdRate: toNum(r[35]),
-          kpiAdminRate: toNum(r[36]),
+          kpiCeoRate: toRate(r[34]),
+          kpiTpkdRate: toRate(r[35]),
+          kpiAdminRate: toRate(r[36]),
           otherCost: toNum(r[37]),
           note: [toStr(r[25]), toStr(r[38])].filter(Boolean).join(" | ") || null,
         })
@@ -342,10 +364,10 @@ async function main() {
           minutesNumber: toStr(r[2]) || null,
           invoiceId,
           phaseNumber: parsePhase(r[17]),
-          pmgCumulativePct: toNum(r[12]),
-          pmgSupportPct: toNum(r[13]),
-          otherRevenuePct: toNum(r[14]),
-          phasePctThisTime: toNum(r[15]),
+          pmgCumulativePct: toRate(r[12]),
+          pmgSupportPct: toRate(r[13]),
+          otherRevenuePct: toRate(r[14]),
+          phasePctThisTime: toRate(r[15]),
           pmgBasePrice: toNum(r[11]),
           adminFeeVat: toNum(r[16]),
           revenueProgressCumulative: toNum(r[18]),
@@ -439,9 +461,9 @@ async function main() {
             employeeName,
             costType: def.type,
             pmgBasePriceSale: toNum(r[11]),
-            pmgLkSaleRate: toNum(r[12]),
-            pmgCumulativePctSale: toNum(r[14]),
-            commissionRate: def.type === "sale_commission" ? toNum(r[15]) : 0,
+            pmgLkSaleRate: toRate(r[12]),
+            pmgCumulativePctSale: toRate(r[14]),
+            commissionRate: def.type === "sale_commission" ? toRate(r[15]) : 0,
             adminFeeSale: def.type === "sale_commission" ? toNum(r[16]) : 0,
             customerSupport: def.type === "customer_support" ? amount : 0,
             fiscalYear: toNum(r[18]) || null,
@@ -449,7 +471,7 @@ async function main() {
             pmgThisTime: def.type === "sale_commission" ? toNum(r[20]) : 0,
             pmgPayable: def.type === "sale_commission" ? toNum(r[21]) : 0,
             pmgRemaining: def.type === "sale_commission" ? toNum(r[22]) : 0,
-            kpiRate: def.rateCol && def.type.startsWith("kpi_") ? toNum(r[def.rateCol]) : 0,
+            kpiRate: def.rateCol && def.type.startsWith("kpi_") ? toRate(r[def.rateCol]) : 0,
             kpiAmount: def.type.startsWith("kpi_") ? amount : 0,
             amountPayableThisTime: amount,
           })
