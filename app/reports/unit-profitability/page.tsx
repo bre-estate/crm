@@ -1,25 +1,29 @@
 import { db } from "@/lib/db";
-import { products, projects, partners, costReconciliations } from "@/lib/schema";
+import { products, projects, partners, financialTransactions } from "@/lib/schema";
 import { hasReportsAccess } from "@/lib/auth";
-import { eq, sql, inArray, asc, desc } from "drizzle-orm";
+import { eq, sql, inArray } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { displayPartnerName } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-const fmt = (n: number) => n.toLocaleString("vi-VN");
-const fmtM = (n: number) => (n / 1_000_000).toFixed(1) + "M";
+const OPEX_CATEGORIES = ["6421", "6427-rent", "6427-svc", "6417", "6428", "6425", "635"];
 
-type SortKey = "gross" | "grossPct" | "revenue" | "cost" | "unitCode" | "date";
+const fmt = (n: number) => n.toLocaleString("vi-VN");
+
+type SortKey = "net" | "netPct" | "gross" | "grossPct" | "revenue" | "cost" | "opex" | "unitCode" | "date";
 type SortOrder = "asc" | "desc";
 type SearchParams = Promise<{ sort?: string; order?: string; project?: string }>;
 
 const SORT_LABELS: Record<SortKey, string> = {
+  net: "Lãi thuần",
+  netPct: "Biên thuần %",
   gross: "Lãi gộp",
-  grossPct: "Biên lợi nhuận %",
+  grossPct: "Biên gộp %",
   revenue: "Doanh thu",
   cost: "Giá vốn",
+  opex: "CP QL phân bổ",
   unitCode: "Mã căn",
   date: "Ngày cọc",
 };
@@ -31,7 +35,7 @@ export default async function UnitProfitabilityPage({
 }) {
   if (!(await hasReportsAccess())) redirect("/");
   const sp = await searchParams;
-  const sortKey: SortKey = (sp.sort as SortKey) in SORT_LABELS ? (sp.sort as SortKey) : "gross";
+  const sortKey: SortKey = (sp.sort as SortKey) in SORT_LABELS ? (sp.sort as SortKey) : "net";
   const order: SortOrder = sp.order === "asc" ? "asc" : "desc";
   const projectFilter = sp.project ? Number(sp.project) : null;
 
@@ -55,18 +59,56 @@ export default async function UnitProfitabilityPage({
     .leftJoin(projects, eq(products.projectId, projects.id))
     .leftJoin(partners, eq(projects.partnerId, partners.id));
 
-  // Compute derived
+  // ===== Phân bổ CP QL per tháng theo chuẩn kế toán quản trị (absorption costing) =====
+  // Cách A: CP QL tháng T chia đều cho các căn cọc trong tháng T.
+  // → Căn cọc trong tháng ít căn sẽ gánh nhiều CP QL hơn (đúng: chi phí cố định
+  // chia trên số căn thực bán được kỳ đó).
+  const opexByMonth = await db
+    .select({
+      month: financialTransactions.transactionMonth,
+      sum: sql<number>`sum(amount)::float8`,
+    })
+    .from(financialTransactions)
+    .where(inArray(financialTransactions.categoryCode, OPEX_CATEGORIES))
+    .groupBy(financialTransactions.transactionMonth);
+  const opexPerMonth = new Map<string, number>();
+  for (const r of opexByMonth) opexPerMonth.set(r.month, Number(r.sum));
+
+  // Số căn cọc theo tháng (dùng cho phân bổ CP QL)
+  const unitsPerMonth = new Map<string, number>();
+  for (const r of rows) {
+    if (!r.depositDate) continue;
+    const m = r.depositDate.slice(0, 7);
+    unitsPerMonth.set(m, (unitsPerMonth.get(m) ?? 0) + 1);
+  }
+
+  // Compute derived per unit — bao gồm phân bổ CP QL
   const derived = rows.map((r) => {
     const rev = Number(r.totalRevenue ?? 0);
     const cost = Number(r.totalCost ?? 0);
     const grossVND = rev / 1.1 - cost;
     const grossPct = rev > 0 ? (grossVND / (rev / 1.1)) * 100 : 0;
+
+    // Phân bổ CP QL: OPEX tháng cọc / số căn cùng tháng
+    let allocatedOpex = 0;
+    if (r.depositDate) {
+      const m = r.depositDate.slice(0, 7);
+      const opexM = opexPerMonth.get(m) ?? 0;
+      const nM = unitsPerMonth.get(m) ?? 1;
+      allocatedOpex = opexM / nM;
+    }
+    const netVND = grossVND - allocatedOpex;
+    const netPct = rev > 0 ? (netVND / (rev / 1.1)) * 100 : 0;
+
     return {
       ...r,
       rev,
       cost,
       grossVND,
       grossPct,
+      allocatedOpex,
+      netVND,
+      netPct,
     };
   });
 
@@ -79,6 +121,10 @@ export default async function UnitProfitabilityPage({
   const sorted = [...filtered].sort((a, b) => {
     const mult = order === "asc" ? 1 : -1;
     switch (sortKey) {
+      case "net":
+        return (a.netVND - b.netVND) * mult;
+      case "netPct":
+        return (a.netPct - b.netPct) * mult;
       case "gross":
         return (a.grossVND - b.grossVND) * mult;
       case "grossPct":
@@ -87,6 +133,8 @@ export default async function UnitProfitabilityPage({
         return (a.rev - b.rev) * mult;
       case "cost":
         return (a.cost - b.cost) * mult;
+      case "opex":
+        return (a.allocatedOpex - b.allocatedOpex) * mult;
       case "unitCode":
         return a.unitCode.localeCompare(b.unitCode) * mult;
       case "date":
@@ -100,8 +148,12 @@ export default async function UnitProfitabilityPage({
   const totalRev = filtered.reduce((s, r) => s + r.rev, 0);
   const totalCost = filtered.reduce((s, r) => s + r.cost, 0);
   const totalGross = filtered.reduce((s, r) => s + r.grossVND, 0);
+  const totalOpex = filtered.reduce((s, r) => s + r.allocatedOpex, 0);
+  const totalNet = filtered.reduce((s, r) => s + r.netVND, 0);
   const avgGross = filtered.length > 0 ? totalGross / filtered.length : 0;
+  const avgNet = filtered.length > 0 ? totalNet / filtered.length : 0;
   const avgGrossPct = totalRev > 0 ? (totalGross / (totalRev / 1.1)) * 100 : 0;
+  const avgNetPct = totalRev > 0 ? (totalNet / (totalRev / 1.1)) * 100 : 0;
 
   // Distinct projects for filter
   const projectList = [
@@ -133,24 +185,28 @@ export default async function UnitProfitabilityPage({
         </div>
         <h1 className="text-2xl font-bold mt-1">Lợi nhuận từng căn</h1>
         <p className="text-sm text-slate-500 mt-1">
-          {filtered.length} căn · Doanh thu = HH cty thu từ CĐT · Giá vốn = HH trả nội bộ +
-          KPI + thưởng · Lãi gộp = DT/1.1 − Giá vốn (chưa trừ CP quản lý). Click header cột để sort.
+          {filtered.length} căn · <b>Lãi gộp</b> = DT/1.1 − Giá vốn · <b>CP QL phân bổ</b> theo
+          chuẩn kế toán quản trị (absorption costing): CP QL tháng T chia đều cho các căn cọc
+          trong tháng T · <b>Lãi thuần</b> = Lãi gộp − CP QL phân bổ. Click header cột để sort.
         </p>
       </div>
 
       {/* Filter + stats */}
       <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
           <Stat label="Tổng DT (gồm VAT)" value={fmt(totalRev)} />
           <Stat label="Tổng Giá vốn" value={fmt(totalCost)} warn />
+          <Stat label="Tổng CP QL phân bổ" value={fmt(Math.round(totalOpex))} warn />
           <Stat
-            label="Tổng Lãi gộp"
-            value={fmt(Math.round(totalGross))}
-            highlight={totalGross >= 0}
+            label={`Lãi gộp TB / căn · biên ${avgGrossPct.toFixed(1)}%`}
+            value={fmt(Math.round(avgGross))}
+            highlight={avgGross >= 0}
           />
           <Stat
-            label={`Lãi gộp TB / căn · Biên ${avgGrossPct.toFixed(1)}%`}
-            value={fmt(Math.round(avgGross))}
+            label={`Lãi thuần TB / căn · biên ${avgNetPct.toFixed(1)}%`}
+            value={fmt(Math.round(avgNet))}
+            highlight={avgNet >= 0}
+            bad={avgNet < 0}
           />
         </div>
         <form className="flex gap-2 items-end">
@@ -218,16 +274,30 @@ export default async function UnitProfitabilityPage({
                 </Link>
               </th>
               <th className="text-right p-2 whitespace-nowrap">
-                <Link href={sortLink("grossPct")} className="hover:underline">
-                  Biên % {sortIcon("grossPct")}
+                <Link href={sortLink("opex")} className="hover:underline">
+                  CP QL {sortIcon("opex")}
+                </Link>
+              </th>
+              <th className="text-right p-2 whitespace-nowrap">
+                <Link href={sortLink("net")} className="hover:underline">
+                  Lãi thuần {sortIcon("net")}
+                </Link>
+              </th>
+              <th className="text-right p-2 whitespace-nowrap">
+                <Link href={sortLink("netPct")} className="hover:underline">
+                  Biên thuần % {sortIcon("netPct")}
                 </Link>
               </th>
             </tr>
           </thead>
           <tbody>
             {sorted.map((r) => {
-              const gPct = r.grossPct;
-              const gColor = gPct >= 40 ? "text-green-700" : gPct >= 30 ? "text-slate-700" : "text-orange-700";
+              const nPct = r.netPct;
+              const nColor = r.netVND < 0
+                ? "text-red-700"
+                : nPct >= 15
+                  ? "text-green-700"
+                  : "text-slate-700";
               return (
                 <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50">
                   <td className="p-2 font-mono text-xs">
@@ -243,11 +313,17 @@ export default async function UnitProfitabilityPage({
                   <td className="p-2 text-right font-mono text-xs">{r.depositDate ?? "—"}</td>
                   <td className="p-2 text-right tabular-nums">{fmt(r.rev)}</td>
                   <td className="p-2 text-right tabular-nums text-orange-700">{fmt(r.cost)}</td>
-                  <td className={`p-2 text-right tabular-nums font-semibold ${gColor}`}>
+                  <td className="p-2 text-right tabular-nums text-slate-600">
                     {fmt(Math.round(r.grossVND))}
                   </td>
-                  <td className={`p-2 text-right tabular-nums text-xs ${gColor}`}>
-                    {gPct.toFixed(1)}%
+                  <td className="p-2 text-right tabular-nums text-xs text-orange-700">
+                    {fmt(Math.round(r.allocatedOpex))}
+                  </td>
+                  <td className={`p-2 text-right tabular-nums font-bold ${nColor}`}>
+                    {fmt(Math.round(r.netVND))}
+                  </td>
+                  <td className={`p-2 text-right tabular-nums text-xs ${nColor}`}>
+                    {nPct.toFixed(1)}%
                   </td>
                 </tr>
               );
@@ -260,19 +336,37 @@ export default async function UnitProfitabilityPage({
               </td>
               <td className="p-2 text-right tabular-nums">{fmt(totalRev)}</td>
               <td className="p-2 text-right tabular-nums text-orange-700">{fmt(totalCost)}</td>
-              <td className="p-2 text-right tabular-nums text-green-700">
+              <td className="p-2 text-right tabular-nums text-slate-600">
                 {fmt(Math.round(totalGross))}
               </td>
-              <td className="p-2 text-right tabular-nums text-green-700">
-                {avgGrossPct.toFixed(1)}%
+              <td className="p-2 text-right tabular-nums text-orange-700">
+                {fmt(Math.round(totalOpex))}
+              </td>
+              <td
+                className={`p-2 text-right tabular-nums ${
+                  totalNet >= 0 ? "text-green-700" : "text-red-700"
+                }`}
+              >
+                {fmt(Math.round(totalNet))}
+              </td>
+              <td
+                className={`p-2 text-right tabular-nums text-xs ${
+                  totalNet >= 0 ? "text-green-700" : "text-red-700"
+                }`}
+              >
+                {avgNetPct.toFixed(1)}%
               </td>
             </tr>
           </tfoot>
         </table>
       </div>
 
-      <div className="text-xs text-slate-500 italic">
-        Note: Số tô đỏ = biên &lt; 30%. Số tô xanh = biên ≥ 40%. Click "Mã căn" để xem chi tiết breakdown DT/chi phí/lợi nhuận của từng căn.
+      <div className="text-xs text-slate-500 italic space-y-1">
+        <p>
+          <b>Lãi thuần âm</b> = tháng cọc có CP QL cao mà bán ít căn (VD T2/2026: CP 856M
+          nhưng chỉ 1-2 căn cọc → mỗi căn gánh &gt;400M CP QL).
+        </p>
+        <p>Số tô đỏ = lãi thuần âm. Số tô xanh = biên thuần ≥ 15%. Click "Mã căn" xem breakdown chi tiết.</p>
       </div>
     </div>
   );
@@ -283,13 +377,21 @@ function Stat({
   value,
   warn,
   highlight,
+  bad,
 }: {
   label: string;
   value: string;
   warn?: boolean;
   highlight?: boolean;
+  bad?: boolean;
 }) {
-  const color = warn ? "text-orange-700" : highlight ? "text-green-700" : "";
+  const color = bad
+    ? "text-red-700"
+    : warn
+      ? "text-orange-700"
+      : highlight
+        ? "text-green-700"
+        : "";
   return (
     <div>
       <div className="text-[10px] text-slate-500 uppercase tracking-wide font-semibold">{label}</div>
