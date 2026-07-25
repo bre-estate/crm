@@ -73,12 +73,20 @@ export default async function FinanceLandingPage() {
         <StatCard
           label="Vốn góp Triết"
           value={fmt(byFounder.get("Triết") ?? 0)}
-          sub="Bỏ cá nhân cho cty"
+          sub={
+            capitalTotal > 0
+              ? `${(((byFounder.get("Triết") ?? 0) / capitalTotal) * 100).toFixed(1)}% tổng`
+              : "—"
+          }
         />
         <StatCard
           label="Vốn góp Bách"
           value={fmt(byFounder.get("Bách") ?? 0)}
-          sub="Bỏ cá nhân cho cty"
+          sub={
+            capitalTotal > 0
+              ? `${(((byFounder.get("Bách") ?? 0) / capitalTotal) * 100).toFixed(1)}% tổng`
+              : "—"
+          }
         />
         <StatCard
           label="Tổng founder"
