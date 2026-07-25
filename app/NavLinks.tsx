@@ -10,10 +10,17 @@ type NavLeaf = {
   label: string;
   gate?: Gate;
   section?: string; // header nhóm trong group (VD "Thị trường")
+  /** exact match — nếu true, chỉ active khi pathname === href.
+   *  Dùng cho parent link có sub-page (VD /finance) để không active
+   *  khi đang ở /finance/capital. */
+  exact?: boolean;
 };
 
 type NavGroup = {
   label: string;
+  /** Nếu có href, parent label render dưới dạng link (VD "Tài chính" →
+   *  /finance landing hub). Nếu không, chỉ là section header text. */
+  href?: string;
   gate?: Gate;
   children: NavLeaf[];
 };
@@ -51,9 +58,9 @@ const NAV: NavEntry[] = [
   },
   {
     label: "Tài chính",
+    href: "/finance",
     gate: "owner",
     children: [
-      { href: "/finance", label: "Tổng quan", gate: "owner" },
       { href: "/finance/capital", label: "Vốn góp founder", gate: "owner" },
       { href: "/finance/transactions", label: "Giao dịch", gate: "owner" },
       { href: "/finance/legacy", label: "Dữ liệu cũ", gate: "owner" },
@@ -69,8 +76,9 @@ const NAV: NavEntry[] = [
   { href: "/admin/activity", label: "Lịch sử hoạt động", gate: "owner" },
 ];
 
-function isActive(pathname: string, href: string): boolean {
+function isActive(pathname: string, href: string, exact = false): boolean {
   if (href === "/") return pathname === "/";
+  if (exact) return pathname === href;
   return pathname === href || pathname.startsWith(href + "/");
 }
 
@@ -99,7 +107,7 @@ export default function NavLinks({
         if (!canSee(n.gate)) return null;
 
         if (!isGroup(n)) {
-          const active = isActive(pathname, n.href);
+          const active = isActive(pathname, n.href, n.exact);
           return (
             <Link
               key={n.href}
@@ -118,17 +126,31 @@ export default function NavLinks({
         const visibleChildren = n.children.filter((c) => canSee(c.gate));
         if (visibleChildren.length === 0) return null;
 
-        // Flat render: section grouping data giữ lại chỉ để dùng cho
-        // landing hub /reports (card sections). Sidebar không phân nhóm
-        // trong sub-page để tránh visual clutter (Supabase/Retool pattern).
+        // Parent = section header hoặc link. Nếu có href → link tới landing
+        // hub (VD /finance), exact match để KHÔNG active khi ở sub-page.
+        // Children indent vào để phân cấp rõ ràng.
+        const parentActive = n.href ? pathname === n.href : false;
         return (
           <div key={n.label} className="pt-1">
-            <div className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-              {n.label}
-            </div>
-            <div className="space-y-0.5">
+            {n.href ? (
+              <Link
+                href={n.href}
+                className={
+                  parentActive
+                    ? "block px-3 py-1.5 rounded-lg text-sm font-medium bg-orange-50 text-orange-700 border-l-2 border-orange-500"
+                    : "block px-3 py-1.5 rounded-lg text-sm text-slate-700 font-medium hover:bg-slate-100 transition-colors"
+                }
+              >
+                {n.label}
+              </Link>
+            ) : (
+              <div className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                {n.label}
+              </div>
+            )}
+            <div className="space-y-0.5 mt-0.5">
               {visibleChildren.map((c) => {
-                const active = isActive(pathname, c.href);
+                const active = isActive(pathname, c.href, c.exact);
                 return (
                   <Link
                     key={c.href}
