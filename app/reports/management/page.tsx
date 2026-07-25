@@ -29,14 +29,20 @@ function subMonth(m: string, delta: number): string {
   return `${newY}-${String(newMo).padStart(2, "0")}`;
 }
 
-export default async function ManagementReportPage() {
+type SearchParams = Promise<{ year?: string }>;
+
+export default async function ManagementReportPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
   const owner = await getOwnerEmail();
   if (!owner) notFound();
 
+  const sp = await searchParams;
   const nowMonth = new Date().toISOString().slice(0, 7);
-  const cutoffMonth = subMonth(nowMonth, 11); // 12 tháng gần nhất
 
-  // ===== 1. OPEX breakdown theo nhóm × tháng (12 tháng gần nhất) =====
+  // ===== 1. OPEX rows toàn thời gian — filter theo năm cho breakdown table =====
   const opexRows = await db
     .select({
       month: financialTransactions.transactionMonth,
@@ -53,7 +59,16 @@ export default async function ManagementReportPage() {
       financialTransactions.managementGroup,
     );
 
-  // Grid: group × month
+  // Xác định các năm có data
+  const yearsSet = new Set<string>();
+  for (const r of opexRows) {
+    if (r.month) yearsSet.add(r.month.slice(0, 4));
+  }
+  const yearList = [...yearsSet].sort().reverse();
+  const currentYear = nowMonth.slice(0, 4);
+  const selectedYear = sp.year && yearsSet.has(sp.year) ? sp.year : (yearsSet.has(currentYear) ? currentYear : yearList[0] ?? currentYear);
+
+  // Grid: group × month (filter theo năm selected)
   const groupsSet = new Set<string>();
   const monthsSet = new Set<string>();
   const grid = new Map<string, Map<string, number>>();
@@ -61,8 +76,7 @@ export default async function ManagementReportPage() {
   for (const r of opexRows) {
     const g = r.group ?? r.code;
     if (!r.month) continue;
-    // Chỉ lấy 12 tháng gần nhất
-    if (monthDiff(r.month, nowMonth) > 11 || monthDiff(r.month, nowMonth) < 0) continue;
+    if (r.month.slice(0, 4) !== selectedYear) continue;
     groupsSet.add(g);
     monthsSet.add(r.month);
     if (!grid.has(g)) grid.set(g, new Map());
@@ -71,8 +85,13 @@ export default async function ManagementReportPage() {
   }
   const groupList = [...groupsSet].sort();
   const monthList = [...monthsSet].sort();
+  const yearlyTotal = [...groupTotals.values()].reduce((s, v) => s + v, 0);
+  const monthsWithData = monthList.length || 1;
 
-  const opexTotal12m = [...groupTotals.values()].reduce((s, v) => s + v, 0);
+  // Break-even dùng 12 tháng gần nhất (rolling avg, không đổi theo tab năm)
+  const opexTotal12m = opexRows
+    .filter((r) => r.month && monthDiff(r.month, nowMonth) >= 0 && monthDiff(r.month, nowMonth) <= 11)
+    .reduce((s, r) => s + Number(r.sum), 0);
   const avgOpexMonth = opexTotal12m / 12;
 
   // ===== 2. P&L monthly (accrual — rev + cost gộp theo tháng cọc căn) =====
@@ -114,8 +133,9 @@ export default async function ManagementReportPage() {
       getM(m).opex += v;
     }
   }
+  // P&L monthly: filter theo năm selected (không dùng 12-month rolling)
   const pnlMonths = [...pnl.values()]
-    .filter((p) => monthDiff(p.month, nowMonth) >= 0 && monthDiff(p.month, nowMonth) <= 11)
+    .filter((p) => p.month.slice(0, 4) === selectedYear)
     .sort((a, b) => b.month.localeCompare(a.month));
 
   // ===== 3. Break-even =====
@@ -203,9 +223,12 @@ export default async function ManagementReportPage() {
         )}
       </section>
 
-      {/* ===== SECTION 2: CP QL breakdown theo nhóm × tháng ===== */}
+      {/* ===== SECTION 2: CP QL breakdown theo nhóm × tháng (tabs năm) ===== */}
       <section>
-        <h2 className="text-lg font-semibold mb-1">💼 CP QL — breakdown theo nhóm × tháng</h2>
+        <div className="flex items-baseline justify-between mb-1">
+          <h2 className="text-lg font-semibold">💼 CP QL — breakdown theo nhóm × tháng</h2>
+          <YearTabs years={yearList} selected={selectedYear} />
+        </div>
         <p className="text-xs text-slate-500 mb-3">
           Loại: Thiết bị (CAPEX riêng), thuế GTGT/TNDN/TNCN (pass-through), booking hoàn/cọc hộ khách, HH sale (nằm ở giá vốn CRM).
         </p>
@@ -216,10 +239,10 @@ export default async function ManagementReportPage() {
                 <th className="text-left p-2 sticky left-0 bg-slate-50 whitespace-nowrap">Nhóm</th>
                 {monthList.map((m) => (
                   <th key={m} className="text-right p-2 whitespace-nowrap">
-                    {m}
+                    T{Number(m.slice(5))}
                   </th>
                 ))}
-                <th className="text-right p-2 whitespace-nowrap bg-slate-100">TỔNG</th>
+                <th className="text-right p-2 whitespace-nowrap bg-slate-100">TỔNG {selectedYear}</th>
                 <th className="text-right p-2 whitespace-nowrap">TB/tháng</th>
                 <th className="text-right p-2 whitespace-nowrap">% tổng</th>
               </tr>
@@ -227,7 +250,7 @@ export default async function ManagementReportPage() {
             <tbody>
               {groupList.map((g) => {
                 const total = groupTotals.get(g) ?? 0;
-                const pct = opexTotal12m > 0 ? (total / opexTotal12m) * 100 : 0;
+                const pct = yearlyTotal > 0 ? (total / yearlyTotal) * 100 : 0;
                 return (
                   <tr key={g} className="border-t border-slate-100 hover:bg-slate-50">
                     <td className="p-2 sticky left-0 bg-white whitespace-nowrap font-medium">{g}</td>
@@ -242,11 +265,18 @@ export default async function ManagementReportPage() {
                     <td className="p-2 text-right tabular-nums font-semibold bg-slate-50">
                       {fmt(total)}
                     </td>
-                    <td className="p-2 text-right tabular-nums">{fmt(total / 12)}</td>
+                    <td className="p-2 text-right tabular-nums">{fmt(total / monthsWithData)}</td>
                     <td className="p-2 text-right tabular-nums">{pct.toFixed(1)}%</td>
                   </tr>
                 );
               })}
+              {groupList.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="p-6 text-center text-slate-500">
+                    Chưa có CP QL trong năm {selectedYear}.
+                  </td>
+                </tr>
+              )}
             </tbody>
             <tfoot className="bg-slate-100 font-bold">
               <tr>
@@ -262,8 +292,8 @@ export default async function ManagementReportPage() {
                     </td>
                   );
                 })}
-                <td className="p-2 text-right tabular-nums">{fmt(opexTotal12m)}</td>
-                <td className="p-2 text-right tabular-nums">{fmt(avgOpexMonth)}</td>
+                <td className="p-2 text-right tabular-nums">{fmt(yearlyTotal)}</td>
+                <td className="p-2 text-right tabular-nums">{fmt(yearlyTotal / monthsWithData)}</td>
                 <td className="p-2 text-right">100%</td>
               </tr>
             </tfoot>
@@ -273,7 +303,9 @@ export default async function ManagementReportPage() {
 
       {/* ===== SECTION 3: P&L monthly ===== */}
       <section>
-        <h2 className="text-lg font-semibold mb-1">📈 P&L theo tháng</h2>
+        <div className="flex items-baseline justify-between mb-1">
+          <h2 className="text-lg font-semibold">📈 P&L theo tháng — {selectedYear}</h2>
+        </div>
         <p className="text-xs text-slate-500 mb-3">
           Accrual: DT + Giá vốn gộp theo tháng cọc căn. CP QL gộp theo tháng phát sinh.
           Lãi thuần = DT/1.1 − Giá vốn − CP QL.
@@ -343,6 +375,30 @@ export default async function ManagementReportPage() {
           </table>
         </div>
       </section>
+    </div>
+  );
+}
+
+function YearTabs({ years, selected }: { years: string[]; selected: string }) {
+  if (years.length <= 1) return null;
+  return (
+    <div className="flex gap-1">
+      {years.map((y) => {
+        const active = y === selected;
+        return (
+          <Link
+            key={y}
+            href={`/reports/management?year=${y}`}
+            className={
+              active
+                ? "px-3 py-1 rounded text-xs font-semibold bg-orange-500 text-white"
+                : "px-3 py-1 rounded text-xs bg-slate-100 text-slate-700 hover:bg-slate-200"
+            }
+          >
+            {y}
+          </Link>
+        );
+      })}
     </div>
   );
 }
