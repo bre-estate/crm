@@ -1,9 +1,11 @@
 import { db } from "@/lib/db";
-import { financialTransactions, companyInvestments, companyExpenses } from "@/lib/schema";
+import { financialTransactions, companySettings } from "@/lib/schema";
 import { getOwnerEmail } from "@/lib/auth";
 import { notFound } from "next/navigation";
-import { sql, eq, inArray, and, ne, isNotNull } from "drizzle-orm";
+import { sql, eq, inArray, and, ne } from "drizzle-orm";
 import Link from "next/link";
+import SettingsForm from "./SettingsForm";
+import { updateSettings } from "@/lib/actions/finance";
 
 export const dynamic = "force-dynamic";
 
@@ -45,13 +47,9 @@ export default async function FinanceLandingPage() {
     .from(financialTransactions)
     .where(eq(financialTransactions.categoryCode, "244"));
 
-  // Legacy data — cho migration awareness
-  const [legacyInv] = await db
-    .select({ n: sql<number>`count(*)::int` })
-    .from(companyInvestments);
-  const [legacyExp] = await db
-    .select({ n: sql<number>`count(*)::int` })
-    .from(companyExpenses);
+  // Settings (thuế TNDN + ngày bắt đầu KD)
+  const settingsRows = await db.select().from(companySettings);
+  const settings = settingsRows[0] ?? { id: 1, taxRate: 0.2, businessStartDate: null };
 
   return (
     <div className="max-w-5xl space-y-5">
@@ -128,12 +126,20 @@ export default async function FinanceLandingPage() {
           badge="Sắp có"
           disabled
         />
+      </div>
 
-        <SectionCard
-          title="Cấu hình + dữ liệu cũ"
-          desc="Thuế TNDN, ngày bắt đầu KD, dữ liệu chi phí/đầu tư cũ (legacy)."
-          href="/finance/legacy"
-          badge={`${legacyInv.n} đầu tư · ${legacyExp.n} chi phí cũ`}
+      {/* Cấu hình cty — inline vì đơn giản, ít khi sửa */}
+      <div className="bg-white border border-slate-200 rounded-xl p-5">
+        <h2 className="text-lg font-semibold">⚙️ Cấu hình</h2>
+        <p className="text-xs text-slate-500 mb-3">
+          Thuế TNDN (%) + ngày bắt đầu kinh doanh (dùng tính Payback period).
+        </p>
+        <SettingsForm
+          settings={settings}
+          onSave={async (fd) => {
+            "use server";
+            await updateSettings(fd);
+          }}
         />
       </div>
 

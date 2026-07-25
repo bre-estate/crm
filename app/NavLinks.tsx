@@ -63,7 +63,6 @@ const NAV: NavEntry[] = [
     children: [
       { href: "/finance/capital", label: "Vốn góp founder", gate: "owner" },
       { href: "/finance/transactions", label: "Giao dịch", gate: "owner" },
-      { href: "/finance/legacy", label: "Dữ liệu cũ", gate: "owner" },
     ],
   },
   {
