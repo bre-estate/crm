@@ -474,9 +474,12 @@ export async function loadReportData(filters: ReportFilters): Promise<ReportData
   if (showFinance) {
     // Chi phí quản lý (opex) — ưu tiên financial_transactions (Phase 1 new).
     // Fallback company_expenses (legacy) nếu chưa nạp data mới.
-    // TK nhóm 1-8 (per framework 2026-07-24): loại HH sale, vốn, hoàn, cọc hộ, thứ cấp.
+    // Framework chốt 2026-07-25:
+    //   - Bỏ 153-211 (Thiết bị/TSCĐ = CAPEX 1 lần, không phải OPEX tháng)
+    //   - Bỏ 3331-3334 (Thuế GTGT/TNDN/TNCN pass-through, không giảm lợi nhuận)
+    //   - Giữ 6425 chỉ còn thuế môn bài + công đoàn (OPEX thật)
     const OPEX_CATEGORIES = [
-      "6421", "6427-rent", "6427-svc", "6417", "153-211", "6428", "6425", "635",
+      "6421", "6427-rent", "6427-svc", "6417", "6428", "6425", "635",
     ];
     const [invRows, txOpexRows, expRows, settingsRows] = await Promise.all([
       db.select().from(companyInvestments),

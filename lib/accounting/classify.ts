@@ -49,8 +49,23 @@ const RULES: Rule[] = [
       "hoàn tiền booking", "hoan tien booking",
       "hoàn tiền yêu cầu tư vấn", "hoan tien yeu cau tu van",
       "hoàn cọc booking", "hoan coc booking",
+      "hoàn tiền da", "hoan tien da",
+      "hoàn tiền dự án", "hoan tien du an",
     ],
     note: "Không phải chi phí — giảm TK 3411/3388 (trả lại nội bộ đã tạm ứng booking)",
+  },
+  // Cấp tạm ứng cho Admin/HR — không phải chi phí, là chuyển tiền
+  // (tăng TK 141 Tạm ứng, giảm TK 111/112). Khi Admin chi ra thực (Nga_HR
+  // / Tường Vi_admin sheet) mới là chi phí thực.
+  {
+    categoryCode: "141",
+    managementGroup: "15. Cấp tạm ứng nội bộ",
+    keywords: [
+      "ứng chi phí tháng", "ung chi phi thang",
+      "ứng chi phí t", "ung chi phi t",
+      "cấp tạm ứng", "cap tam ung",
+    ],
+    note: "Không phải chi phí — cấp tạm ứng cho Admin/HR (TK 141)",
   },
   {
     categoryCode: "131",
@@ -66,6 +81,10 @@ const RULES: Rule[] = [
     categoryCode: "632",
     managementGroup: "9. HH sale / Thù lao sale",
     keywords: [
+      // Thưởng doanh số cho sale/NVKD/manager (dựa trên bán được) — không
+      // phải lương OPEX. Ưu tiên match trước "thu nhập khác" trong nhóm 1.
+      "thưởng + thu nhập khác", "thuong + thu nhap khac",
+      "bổ sung thưởng + thu nhập khác", "bo sung thuong + thu nhap khac",
       "hoa hồng", "hoa hong", "hh sale", "hh ", "thưởng doanh số nội bộ",
       "thù lao cộng tác viên", "thu lao cong tac vien",
       "thù lao ctv", "thu lao ctv",
@@ -85,16 +104,33 @@ const RULES: Rule[] = [
     ],
     note: "Đã ghi ở CRM giá vốn per căn. Dùng cho P&L merge, KHÔNG cộng vào chi phí quản lý",
   },
+  // Thuế pass-through (GTGT + TNDN) — KHÔNG phải chi phí OPEX.
+  // - Thuế GTGT: cty thu VAT khách + trả VAT nhà cung cấp, chênh nộp NN.
+  //   Không giảm lợi nhuận, chỉ giảm tiền.
+  // - Thuế TNDN: nộp SAU khi tính lãi trước thuế. Tính riêng trong P&L.
+  // Ưu tiên match trước 6425 để tách rõ.
+  // Thuế pass-through: GTGT + TNDN + TNCN (cty nộp thay NV, đã khấu trừ
+  // từ lương gross → không tính chi phí lần 2). Không phải OPEX.
+  {
+    categoryCode: "3331-3334",
+    managementGroup: "7b. Thuế pass-through (GTGT/TNDN/TNCN)",
+    keywords: [
+      "thuế gtgt", "thue gtgt", "gtgt",
+      "thuế tndn", "thue tndn", "tndn",
+      "thuế tncn", "thue tncn", "tncn",
+      "thuế thu nhập cá nhân", "thue thu nhap ca nhan",
+      "tạm nộp tndn", "tam nop tndn",
+      "hoàn trả tiền thuế tncn", "hoan tra tien thue tncn",
+    ],
+    note: "Không phải chi phí quản lý — VAT/TNDN/TNCN pass-through",
+  },
+  // Thuế OPEX thật: môn bài + công đoàn + lệ phí (không TNCN).
   {
     categoryCode: "6425",
-    managementGroup: "7. Thuế / Phí NN",
+    managementGroup: "7. Thuế / Phí NN (OPEX)",
     keywords: [
-      "thuế môn bài", "thue mon bai", "thuế tndn", "thue tndn",
-      "thuế gtgt", "thue gtgt", "gtgt",
-      "tndn", "tncn", "thuế thu nhập", "thue thu nhap",
-      "công đoàn", "cong doan", "lệ phí", "le phi",
-      "tạm nộp", "tam nop", "nộp thuế", "nop thue",
-      "đóng thuế", "dong thue",
+      "thuế môn bài", "thue mon bai", "lệ phí môn bài", "le phi mon bai",
+      "công đoàn", "cong doan",
     ],
   },
   {

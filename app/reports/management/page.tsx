@@ -1,0 +1,371 @@
+import { db } from "@/lib/db";
+import { financialTransactions, accountingCategories, products, revenueReconciliations, costReconciliations } from "@/lib/schema";
+import { getOwnerEmail } from "@/lib/auth";
+import { notFound } from "next/navigation";
+import { sql, inArray, gte } from "drizzle-orm";
+import Link from "next/link";
+
+export const dynamic = "force-dynamic";
+
+// Framework 2026-07-25: OPEX chuẩn (loại CAPEX + thuế pass-through + tạm ứng + booking)
+const OPEX_CATEGORIES = ["6421", "6427-rent", "6427-svc", "6417", "6428", "6425", "635"];
+
+const fmt = (n: number) => n.toLocaleString("vi-VN");
+const fmtM = (n: number) => (n / 1_000_000).toFixed(1) + "M";
+
+// nowMonth - m tháng (âm nếu m trong tương lai)
+function monthDiff(from: string, to: string): number {
+  const [y1, mo1] = from.split("-").map(Number);
+  const [y2, mo2] = to.split("-").map(Number);
+  if (!y1 || !y2) return 0;
+  return (y2 - y1) * 12 + (mo2 - mo1);
+}
+
+function subMonth(m: string, delta: number): string {
+  const [y, mo] = m.split("-").map(Number);
+  const total = y * 12 + (mo - 1) - delta;
+  const newY = Math.floor(total / 12);
+  const newMo = (total % 12) + 1;
+  return `${newY}-${String(newMo).padStart(2, "0")}`;
+}
+
+export default async function ManagementReportPage() {
+  const owner = await getOwnerEmail();
+  if (!owner) notFound();
+
+  const nowMonth = new Date().toISOString().slice(0, 7);
+  const cutoffMonth = subMonth(nowMonth, 11); // 12 tháng gần nhất
+
+  // ===== 1. OPEX breakdown theo nhóm × tháng (12 tháng gần nhất) =====
+  const opexRows = await db
+    .select({
+      month: financialTransactions.transactionMonth,
+      code: financialTransactions.categoryCode,
+      group: financialTransactions.managementGroup,
+      sum: sql<number>`sum(amount)::float8`,
+      n: sql<number>`count(*)::int`,
+    })
+    .from(financialTransactions)
+    .where(inArray(financialTransactions.categoryCode, OPEX_CATEGORIES))
+    .groupBy(
+      financialTransactions.transactionMonth,
+      financialTransactions.categoryCode,
+      financialTransactions.managementGroup,
+    );
+
+  // Grid: group × month
+  const groupsSet = new Set<string>();
+  const monthsSet = new Set<string>();
+  const grid = new Map<string, Map<string, number>>();
+  const groupTotals = new Map<string, number>();
+  for (const r of opexRows) {
+    const g = r.group ?? r.code;
+    if (!r.month) continue;
+    // Chỉ lấy 12 tháng gần nhất
+    if (monthDiff(r.month, nowMonth) > 11 || monthDiff(r.month, nowMonth) < 0) continue;
+    groupsSet.add(g);
+    monthsSet.add(r.month);
+    if (!grid.has(g)) grid.set(g, new Map());
+    grid.get(g)!.set(r.month, Number(r.sum));
+    groupTotals.set(g, (groupTotals.get(g) ?? 0) + Number(r.sum));
+  }
+  const groupList = [...groupsSet].sort();
+  const monthList = [...monthsSet].sort();
+
+  const opexTotal12m = [...groupTotals.values()].reduce((s, v) => s + v, 0);
+  const avgOpexMonth = opexTotal12m / 12;
+
+  // ===== 2. P&L monthly (accrual — rev + cost gộp theo tháng cọc căn) =====
+  const allProducts = await db.select({ id: products.id, depositDate: products.depositDate }).from(products);
+  const productMonthMap = new Map<number, string>();
+  for (const p of allProducts) {
+    if (p.depositDate) productMonthMap.set(p.id, p.depositDate.slice(0, 7));
+  }
+
+  const [revs, costs] = await Promise.all([
+    db.select({
+      productId: revenueReconciliations.productId,
+      receivable: revenueReconciliations.totalReceivableThisTime,
+    }).from(revenueReconciliations),
+    db.select({
+      productId: costReconciliations.productId,
+      payable: costReconciliations.amountPayableThisTime,
+    }).from(costReconciliations),
+  ]);
+
+  type MonthlyPnL = { month: string; revenue: number; cost: number; opex: number };
+  const pnl = new Map<string, MonthlyPnL>();
+  const getM = (m: string) => {
+    if (!pnl.has(m)) pnl.set(m, { month: m, revenue: 0, cost: 0, opex: 0 });
+    return pnl.get(m)!;
+  };
+  for (const r of revs) {
+    const m = productMonthMap.get(r.productId);
+    if (!m) continue;
+    getM(m).revenue += Number(r.receivable ?? 0);
+  }
+  for (const cst of costs) {
+    const m = productMonthMap.get(cst.productId);
+    if (!m) continue;
+    getM(cst.productId ? m : "?").cost += Number(cst.payable ?? 0);
+  }
+  for (const [g, mmap] of grid) {
+    for (const [m, v] of mmap) {
+      getM(m).opex += v;
+    }
+  }
+  const pnlMonths = [...pnl.values()]
+    .filter((p) => monthDiff(p.month, nowMonth) >= 0 && monthDiff(p.month, nowMonth) <= 11)
+    .sort((a, b) => b.month.localeCompare(a.month));
+
+  // ===== 3. Break-even =====
+  // Lãi gộp TB / căn (toàn bộ căn)
+  const productStats = await db
+    .select({
+      revExp: sql<number>`coalesce(sum(total_revenue), 0)::float8`,
+      costExp: sql<number>`coalesce(sum(total_cost), 0)::float8`,
+      n: sql<number>`count(*)::int`,
+    })
+    .from(products);
+  const totalRev = Number(productStats[0]?.revExp ?? 0);
+  const totalCost = Number(productStats[0]?.costExp ?? 0);
+  const numUnits = Number(productStats[0]?.n ?? 0);
+  const avgGrossProfitPerUnit = numUnits > 0 ? (totalRev / 1.1 - totalCost) / numUnits : 0;
+  const breakEvenUnits = avgGrossProfitPerUnit > 0 && avgOpexMonth > 0
+    ? avgOpexMonth / avgGrossProfitPerUnit
+    : null;
+
+  // Avg units bán / tháng thực tế 12 tháng gần nhất
+  const unitMonths = new Map<string, number>();
+  for (const p of allProducts) {
+    if (!p.depositDate) continue;
+    const m = p.depositDate.slice(0, 7);
+    if (monthDiff(m, nowMonth) < 0 || monthDiff(m, nowMonth) > 11) continue;
+    unitMonths.set(m, (unitMonths.get(m) ?? 0) + 1);
+  }
+  const avgUnitsPerMonth = unitMonths.size > 0
+    ? [...unitMonths.values()].reduce((s, n) => s + n, 0) / unitMonths.size
+    : 0;
+
+  return (
+    <div className="max-w-7xl space-y-6">
+      <div>
+        <div className="text-xs">
+          <Link href="/reports" className="text-blue-600 hover:underline">
+            ← Báo cáo
+          </Link>
+        </div>
+        <h1 className="text-2xl font-bold mt-1">Báo cáo quản trị</h1>
+        <p className="text-sm text-slate-500 mt-1">
+          3 chỉ số then chốt cho owner: <b>Điểm hòa vốn</b>, <b>CP QL breakdown</b>,
+          <b> P&L tháng</b>. Filter theo 12 tháng gần nhất. Đã loại CAPEX +
+          thuế pass-through + booking (per framework 2026-07-25).
+        </p>
+      </div>
+
+      {/* ===== SECTION 1: Điểm hòa vốn ===== */}
+      <section>
+        <h2 className="text-lg font-semibold mb-1">⚖️ Điểm hòa vốn</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <StatCard label="CP QL TB / tháng" value={fmt(avgOpexMonth)} sub="12 tháng gần nhất" warn />
+          <StatCard label="Lãi gộp TB / căn" value={fmt(avgGrossProfitPerUnit)} sub={`${numUnits} căn`} />
+          <StatCard
+            label="Điểm hòa vốn"
+            value={breakEvenUnits !== null ? `${breakEvenUnits.toFixed(1)} căn/tháng` : "—"}
+            sub="CP QL / Lãi TB/căn"
+            warn
+          />
+          <StatCard
+            label="Thực tế đang bán"
+            value={`${avgUnitsPerMonth.toFixed(1)} căn/tháng`}
+            sub="TB 12 tháng"
+            highlight={breakEvenUnits !== null && avgUnitsPerMonth >= breakEvenUnits}
+          />
+        </div>
+        {breakEvenUnits !== null && (
+          <div
+            className={`mt-3 rounded-lg p-3 text-sm ${
+              avgUnitsPerMonth >= breakEvenUnits
+                ? "bg-green-50 border border-green-200 text-green-800"
+                : "bg-red-50 border border-red-200 text-red-800"
+            }`}
+          >
+            {avgUnitsPerMonth >= breakEvenUnits ? (
+              <>
+                ✅ Đang <b>vượt điểm hòa vốn</b> {(avgUnitsPerMonth - breakEvenUnits).toFixed(1)} căn/tháng — lãi thuần dương.
+              </>
+            ) : (
+              <>
+                ⚠️ Đang <b>dưới điểm hòa vốn</b> {(breakEvenUnits - avgUnitsPerMonth).toFixed(1)} căn/tháng — cần bán thêm để cover CP QL.
+              </>
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* ===== SECTION 2: CP QL breakdown theo nhóm × tháng ===== */}
+      <section>
+        <h2 className="text-lg font-semibold mb-1">💼 CP QL — breakdown theo nhóm × tháng</h2>
+        <p className="text-xs text-slate-500 mb-3">
+          Loại: Thiết bị (CAPEX riêng), thuế GTGT/TNDN/TNCN (pass-through), booking hoàn/cọc hộ khách, HH sale (nằm ở giá vốn CRM).
+        </p>
+        <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead className="bg-slate-50">
+              <tr>
+                <th className="text-left p-2 sticky left-0 bg-slate-50 whitespace-nowrap">Nhóm</th>
+                {monthList.map((m) => (
+                  <th key={m} className="text-right p-2 whitespace-nowrap">
+                    {m}
+                  </th>
+                ))}
+                <th className="text-right p-2 whitespace-nowrap bg-slate-100">TỔNG</th>
+                <th className="text-right p-2 whitespace-nowrap">TB/tháng</th>
+                <th className="text-right p-2 whitespace-nowrap">% tổng</th>
+              </tr>
+            </thead>
+            <tbody>
+              {groupList.map((g) => {
+                const total = groupTotals.get(g) ?? 0;
+                const pct = opexTotal12m > 0 ? (total / opexTotal12m) * 100 : 0;
+                return (
+                  <tr key={g} className="border-t border-slate-100 hover:bg-slate-50">
+                    <td className="p-2 sticky left-0 bg-white whitespace-nowrap font-medium">{g}</td>
+                    {monthList.map((m) => {
+                      const v = grid.get(g)?.get(m) ?? 0;
+                      return (
+                        <td key={m} className="p-2 text-right tabular-nums">
+                          {v > 0 ? fmtM(v) : <span className="text-slate-300">—</span>}
+                        </td>
+                      );
+                    })}
+                    <td className="p-2 text-right tabular-nums font-semibold bg-slate-50">
+                      {fmt(total)}
+                    </td>
+                    <td className="p-2 text-right tabular-nums">{fmt(total / 12)}</td>
+                    <td className="p-2 text-right tabular-nums">{pct.toFixed(1)}%</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot className="bg-slate-100 font-bold">
+              <tr>
+                <td className="p-2 sticky left-0 bg-slate-100">TỔNG CP QL</td>
+                {monthList.map((m) => {
+                  const monthTotal = [...grid.values()].reduce(
+                    (s, mm) => s + (mm.get(m) ?? 0),
+                    0,
+                  );
+                  return (
+                    <td key={m} className="p-2 text-right tabular-nums">
+                      {fmtM(monthTotal)}
+                    </td>
+                  );
+                })}
+                <td className="p-2 text-right tabular-nums">{fmt(opexTotal12m)}</td>
+                <td className="p-2 text-right tabular-nums">{fmt(avgOpexMonth)}</td>
+                <td className="p-2 text-right">100%</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
+
+      {/* ===== SECTION 3: P&L monthly ===== */}
+      <section>
+        <h2 className="text-lg font-semibold mb-1">📈 P&L theo tháng</h2>
+        <p className="text-xs text-slate-500 mb-3">
+          Accrual: DT + Giá vốn gộp theo tháng cọc căn. CP QL gộp theo tháng phát sinh.
+          Lãi thuần = DT/1.1 − Giá vốn − CP QL.
+        </p>
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-xs">
+              <tr>
+                <th className="text-left p-2">Tháng</th>
+                <th className="text-right p-2">DT (gồm VAT)</th>
+                <th className="text-right p-2">Giá vốn</th>
+                <th className="text-right p-2">CP QL</th>
+                <th className="text-right p-2">Lãi gộp</th>
+                <th className="text-right p-2 w-64">Lãi thuần</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pnlMonths.map((p) => {
+                const gross = p.revenue / 1.1 - p.cost;
+                const net = gross - p.opex;
+                const maxAbs = Math.max(...pnlMonths.map((x) => Math.abs(x.revenue / 1.1 - x.cost - x.opex)), 1);
+                const pct = (Math.abs(net) / maxAbs) * 100;
+                const positive = net >= 0;
+                return (
+                  <tr key={p.month} className="border-t border-slate-100">
+                    <td className="p-2 font-mono">{p.month}</td>
+                    <td className="p-2 text-right tabular-nums text-xs">
+                      {p.revenue > 0 ? fmt(p.revenue) : <span className="text-slate-300">—</span>}
+                    </td>
+                    <td className="p-2 text-right tabular-nums text-xs text-orange-700">
+                      {p.cost > 0 ? fmt(p.cost) : <span className="text-slate-300">—</span>}
+                    </td>
+                    <td className="p-2 text-right tabular-nums text-xs text-orange-700">
+                      {p.opex > 0 ? fmt(p.opex) : <span className="text-slate-300">—</span>}
+                    </td>
+                    <td className={`p-2 text-right tabular-nums text-xs font-medium ${gross >= 0 ? "text-slate-700" : "text-red-700"}`}>
+                      {fmt(gross)}
+                    </td>
+                    <td className="p-2">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-3 bg-slate-100 rounded overflow-hidden">
+                          <div
+                            className={`h-full ${positive ? "bg-green-500" : "bg-red-500"}`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <div
+                          className={`text-right tabular-nums text-xs font-semibold w-28 ${
+                            positive ? "text-green-700" : "text-red-700"
+                          }`}
+                        >
+                          {fmt(net)}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {pnlMonths.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="p-6 text-center text-slate-500 text-sm">
+                    Chưa có data 12 tháng gần nhất.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  sub,
+  warn,
+  highlight,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  warn?: boolean;
+  highlight?: boolean;
+}) {
+  const border = highlight ? "border-green-300" : warn ? "border-orange-200" : "border-slate-200";
+  return (
+    <div className={`bg-white border ${border} rounded-xl p-4`}>
+      <div className="text-[10px] text-slate-500 uppercase tracking-wide font-semibold">{label}</div>
+      <div className="text-xl font-bold tabular-nums mt-1">{value}</div>
+      {sub && <div className="text-[11px] text-slate-500 mt-0.5">{sub}</div>}
+    </div>
+  );
+}

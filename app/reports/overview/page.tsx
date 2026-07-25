@@ -8,11 +8,12 @@ import { db } from "@/lib/db";
 import { companyExpenses, financialTransactions } from "@/lib/schema";
 import { inArray, sql } from "drizzle-orm";
 
-// TK kế toán nhóm chi phí quản lý — nhóm 1-8 per framework 2026-07-24.
-// Loại nhóm 9 (HH sale — đã ở giá vốn CRM), 10 (thứ cấp), 11 (vốn góp),
-// 13 (hoàn YCTV), 14 (cọc hộ khách) → không phải chi phí BCTC.
+// Framework chốt 2026-07-25:
+//   - Bỏ 153-211 (Thiết bị/TSCĐ = CAPEX, khấu hao riêng)
+//   - Bỏ 3331-3334 (Thuế GTGT/TNDN/TNCN pass-through, không giảm lãi)
+//   - 6425 chỉ còn thuế môn bài + công đoàn (OPEX thật)
 const OPEX_CATEGORIES = [
-  "6421", "6427-rent", "6427-svc", "6417", "153-211", "6428", "6425", "635",
+  "6421", "6427-rent", "6427-svc", "6417", "6428", "6425", "635",
 ];
 
 export const dynamic = "force-dynamic";
