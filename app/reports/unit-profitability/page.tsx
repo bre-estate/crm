@@ -59,44 +59,26 @@ export default async function UnitProfitabilityPage({
     .leftJoin(projects, eq(products.projectId, projects.id))
     .leftJoin(partners, eq(projects.partnerId, partners.id));
 
-  // ===== Phân bổ CP QL per tháng theo chuẩn kế toán quản trị (absorption costing) =====
-  // Cách A: CP QL tháng T chia đều cho các căn cọc trong tháng T.
-  // → Căn cọc trong tháng ít căn sẽ gánh nhiều CP QL hơn (đúng: chi phí cố định
-  // chia trên số căn thực bán được kỳ đó).
-  const opexByMonth = await db
-    .select({
-      month: financialTransactions.transactionMonth,
-      sum: sql<number>`sum(amount)::float8`,
-    })
+  // ===== Phân bổ CP QL — Cách A' (chia đều bình quân toàn kỳ) =====
+  // CP QL / căn = Tổng CP QL lũy kế / Tổng số căn (all time).
+  // Mọi căn gánh cùng 1 con số cố định — không bị outlier do tháng
+  // bất thường (VD T2/2026 thưởng tết 856M, T7/2026 chỉ 87M).
+  // Reflect "cost trung bình của cty" — công bằng theo hoạt động chung.
+  const [opexAll] = await db
+    .select({ sum: sql<number>`coalesce(sum(amount), 0)::float8` })
     .from(financialTransactions)
-    .where(inArray(financialTransactions.categoryCode, OPEX_CATEGORIES))
-    .groupBy(financialTransactions.transactionMonth);
-  const opexPerMonth = new Map<string, number>();
-  for (const r of opexByMonth) opexPerMonth.set(r.month, Number(r.sum));
+    .where(inArray(financialTransactions.categoryCode, OPEX_CATEGORIES));
+  const totalOpexAllTime = Number(opexAll.sum);
+  const totalUnitsAllTime = rows.length;
+  const opexPerUnit = totalUnitsAllTime > 0 ? totalOpexAllTime / totalUnitsAllTime : 0;
 
-  // Số căn cọc theo tháng (dùng cho phân bổ CP QL)
-  const unitsPerMonth = new Map<string, number>();
-  for (const r of rows) {
-    if (!r.depositDate) continue;
-    const m = r.depositDate.slice(0, 7);
-    unitsPerMonth.set(m, (unitsPerMonth.get(m) ?? 0) + 1);
-  }
-
-  // Compute derived per unit — bao gồm phân bổ CP QL
+  // Compute derived per unit — mọi căn gánh cùng opexPerUnit
   const derived = rows.map((r) => {
     const rev = Number(r.totalRevenue ?? 0);
     const cost = Number(r.totalCost ?? 0);
     const grossVND = rev / 1.1 - cost;
     const grossPct = rev > 0 ? (grossVND / (rev / 1.1)) * 100 : 0;
-
-    // Phân bổ CP QL: OPEX tháng cọc / số căn cùng tháng
-    let allocatedOpex = 0;
-    if (r.depositDate) {
-      const m = r.depositDate.slice(0, 7);
-      const opexM = opexPerMonth.get(m) ?? 0;
-      const nM = unitsPerMonth.get(m) ?? 1;
-      allocatedOpex = opexM / nM;
-    }
+    const allocatedOpex = opexPerUnit;
     const netVND = grossVND - allocatedOpex;
     const netPct = rev > 0 ? (netVND / (rev / 1.1)) * 100 : 0;
 
@@ -185,9 +167,9 @@ export default async function UnitProfitabilityPage({
         </div>
         <h1 className="text-2xl font-bold mt-1">Lợi nhuận từng căn</h1>
         <p className="text-sm text-slate-500 mt-1">
-          {filtered.length} căn · <b>Lãi gộp</b> = DT/1.1 − Giá vốn · <b>CP QL phân bổ</b> theo
-          chuẩn kế toán quản trị (absorption costing): CP QL tháng T chia đều cho các căn cọc
-          trong tháng T · <b>Lãi thuần</b> = Lãi gộp − CP QL phân bổ. Click header cột để sort.
+          {filtered.length} căn · <b>Lãi gộp</b> = DT/1.1 − Giá vốn · <b>CP QL phân bổ</b> chia đều
+          bình quân toàn kỳ ({fmt(Math.round(opexPerUnit))} VND/căn = {fmt(Math.round(totalOpexAllTime))} tổng CP QL ÷ {totalUnitsAllTime} căn)
+          · <b>Lãi thuần</b> = Lãi gộp − CP QL phân bổ. Click header cột để sort.
         </p>
       </div>
 
@@ -363,10 +345,10 @@ export default async function UnitProfitabilityPage({
 
       <div className="text-xs text-slate-500 italic space-y-1">
         <p>
-          <b>Lãi thuần âm</b> = tháng cọc có CP QL cao mà bán ít căn (VD T2/2026: CP 856M
-          nhưng chỉ 1-2 căn cọc → mỗi căn gánh &gt;400M CP QL).
+          <b>Cách phân bổ CP QL</b>: chia đều bình quân toàn kỳ. Mọi căn gánh cùng
+          {" "}{fmt(Math.round(opexPerUnit))} VND. Đơn giản, không bị outlier tháng cao thấp.
         </p>
-        <p>Số tô đỏ = lãi thuần âm. Số tô xanh = biên thuần ≥ 15%. Click "Mã căn" xem breakdown chi tiết.</p>
+        <p>Số tô đỏ = lãi thuần âm (căn có lãi gộp thấp hơn CP QL phân bổ). Số tô xanh = biên thuần ≥ 15%. Click "Mã căn" xem breakdown chi tiết.</p>
       </div>
     </div>
   );
