@@ -44,19 +44,25 @@ const NAV: NavEntry[] = [
   },
   {
     label: "Báo cáo",
-    // Parent không set gate — child gate quyết định visible (segments-only user
-    // vẫn thấy parent nếu Phân khúc visible).
+    href: "/reports",
+    // Parent không set gate — child gate quyết định visible.
+    // Thứ tự children QUAN TRỌNG: liền nhau theo section để render header đúng.
     children: [
+      // TỔNG QUAN
       { href: "/reports/overview", label: "Tổng hợp", gate: "reports", section: "Tổng quan" },
       { href: "/reports/management", label: "Quản trị", gate: "owner", section: "Tổng quan" },
+      { href: "/reports/unit-profitability", label: "Lãi từng căn", gate: "reports", section: "Tổng quan" },
+      // TÀI CHÍNH
       { href: "/reports/balance-sheet", label: "BCĐKT", gate: "owner", section: "Tài chính" },
       { href: "/reports/cash-flow-statement", label: "LCTT", gate: "owner", section: "Tài chính" },
+      { href: "/reports/cashflow", label: "Dòng tiền HH", gate: "owner", section: "Tài chính" },
+      // THỊ TRƯỜNG
       { href: "/reports/segments", label: "Phân khúc", gate: "segments", section: "Thị trường" },
       { href: "/reports/projects", label: "Theo dự án", gate: "reports", section: "Thị trường" },
       { href: "/reports/partners", label: "Đối tác", gate: "reports", section: "Thị trường" },
+      // NỘI BỘ
       { href: "/reports/people", label: "Theo nhân sự", gate: "reports", section: "Nội bộ" },
       { href: "/reports/time", label: "Theo thời gian", gate: "reports", section: "Nội bộ" },
-      { href: "/reports/cashflow", label: "Dòng tiền", gate: "owner", section: "Tài chính" },
     ],
   },
   {
@@ -151,23 +157,42 @@ export default function NavLinks({
               </div>
             )}
             <div className="space-y-0.5 mt-0.5">
-              {visibleChildren.map((c) => {
-                const active = isActive(pathname, c.href, c.exact);
-                return (
-                  <Link
-                    key={c.href}
-                    href={c.href}
-                    title={c.section ?? undefined}
-                    className={
-                      active
-                        ? "block pl-6 pr-3 py-1.5 rounded-lg text-sm font-medium bg-orange-50 text-orange-700 border-l-2 border-orange-500"
-                        : "block pl-6 pr-3 py-1.5 rounded-lg text-sm text-slate-700 hover:bg-slate-100 transition-colors"
-                    }
-                  >
-                    {c.label}
-                  </Link>
-                );
-              })}
+              {/* Render sub-section headers khi có `section` field. Group children
+                  có cùng section liền nhau, insert header trước group.
+                  Nếu no section → render flat như cũ. */}
+              {(() => {
+                const rendered: React.ReactNode[] = [];
+                let lastSection = "__none__";
+                for (const c of visibleChildren) {
+                  const sec = c.section ?? "__nosec__";
+                  if (sec !== lastSection && c.section) {
+                    rendered.push(
+                      <div
+                        key={`sec-${sec}`}
+                        className="pl-6 pt-1.5 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400"
+                      >
+                        {c.section}
+                      </div>,
+                    );
+                  }
+                  lastSection = sec;
+                  const active = isActive(pathname, c.href, c.exact);
+                  rendered.push(
+                    <Link
+                      key={c.href}
+                      href={c.href}
+                      className={
+                        active
+                          ? `block ${c.section ? "pl-9" : "pl-6"} pr-3 py-1.5 rounded-lg text-sm font-medium bg-orange-50 text-orange-700 border-l-2 border-orange-500`
+                          : `block ${c.section ? "pl-9" : "pl-6"} pr-3 py-1.5 rounded-lg text-sm text-slate-700 hover:bg-slate-100 transition-colors`
+                      }
+                    >
+                      {c.label}
+                    </Link>,
+                  );
+                }
+                return rendered;
+              })()}
             </div>
           </div>
         );
