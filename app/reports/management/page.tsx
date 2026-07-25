@@ -88,11 +88,13 @@ export default async function ManagementReportPage({
   const yearlyTotal = [...groupTotals.values()].reduce((s, v) => s + v, 0);
   const monthsWithData = monthList.length || 1;
 
-  // Break-even dùng 12 tháng gần nhất (rolling avg, không đổi theo tab năm)
-  const opexTotal12m = opexRows
-    .filter((r) => r.month && monthDiff(r.month, nowMonth) >= 0 && monthDiff(r.month, nowMonth) <= 11)
+  // Break-even dùng NĂM HIỆN TẠI YTD (2026-01 → nowMonth) — chốt 2026-07-25.
+  // Phản ánh chi tiêu thực tế năm nay, không bị pha loãng bởi tháng cũ.
+  const monthsSoFar = Number(nowMonth.slice(5)); // T7 → 7
+  const opexCurrentYear = opexRows
+    .filter((r) => r.month?.startsWith(currentYear))
     .reduce((s, r) => s + Number(r.sum), 0);
-  const avgOpexMonth = opexTotal12m / 12;
+  const avgOpexMonth = monthsSoFar > 0 ? opexCurrentYear / monthsSoFar : 0;
 
   // ===== 2. P&L monthly (accrual — rev + cost gộp theo tháng cọc căn) =====
   const allProducts = await db.select({ id: products.id, depositDate: products.depositDate }).from(products);
@@ -155,16 +157,14 @@ export default async function ManagementReportPage({
     ? avgOpexMonth / avgGrossProfitPerUnit
     : null;
 
-  // Avg units bán / tháng thực tế 12 tháng gần nhất
-  const unitMonths = new Map<string, number>();
-  for (const p of allProducts) {
-    if (!p.depositDate) continue;
-    const m = p.depositDate.slice(0, 7);
-    if (monthDiff(m, nowMonth) < 0 || monthDiff(m, nowMonth) > 11) continue;
-    unitMonths.set(m, (unitMonths.get(m) ?? 0) + 1);
-  }
-  const avgUnitsPerMonth = unitMonths.size > 0
-    ? [...unitMonths.values()].reduce((s, n) => s + n, 0) / unitMonths.size
+  // Avg units bán / tháng — theo năm hiện tại YTD (nhất quán với avgOpexMonth).
+  // Chia cho monthsSoFar (không chia số tháng có bán) để bao gồm cả tháng ế
+  // → BE comparison đúng: "TB căn/tháng kể cả tháng 0 căn".
+  const unitsCurrentYear = allProducts.filter((p) =>
+    p.depositDate?.startsWith(currentYear),
+  ).length;
+  const avgUnitsPerMonth = monthsSoFar > 0
+    ? unitsCurrentYear / monthsSoFar
     : 0;
 
   return (
@@ -178,7 +178,7 @@ export default async function ManagementReportPage({
         <h1 className="text-2xl font-bold mt-1">Báo cáo quản trị</h1>
         <p className="text-sm text-slate-500 mt-1">
           3 chỉ số then chốt cho owner: <b>Điểm hòa vốn</b>, <b>CP QL breakdown</b>,
-          <b> P&L tháng</b>. Filter theo 12 tháng gần nhất. Đã loại CAPEX +
+          <b> P&L tháng</b>. Filter theo Năm {currentYear} YTD ({monthsSoFar} tháng). Đã loại CAPEX +
           thuế pass-through + booking (per framework 2026-07-25).
         </p>
       </div>
@@ -187,7 +187,7 @@ export default async function ManagementReportPage({
       <section>
         <h2 className="text-lg font-semibold mb-1">⚖️ Điểm hòa vốn</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <StatCard label="CP QL TB / tháng" value={fmt(avgOpexMonth)} sub="12 tháng gần nhất" warn />
+          <StatCard label="CP QL TB / tháng" value={fmt(avgOpexMonth)} sub={`Năm ${currentYear} YTD (${monthsSoFar} tháng)`} warn />
           <StatCard label="Lãi gộp TB / căn" value={fmt(avgGrossProfitPerUnit)} sub={`${numUnits} căn`} />
           <StatCard
             label="Điểm hòa vốn"
@@ -198,7 +198,7 @@ export default async function ManagementReportPage({
           <StatCard
             label="Thực tế đang bán"
             value={`${avgUnitsPerMonth.toFixed(1)} căn/tháng`}
-            sub="TB 12 tháng"
+            sub={`Năm ${currentYear} YTD`}
             highlight={breakEvenUnits !== null && avgUnitsPerMonth >= breakEvenUnits}
           />
         </div>
@@ -380,7 +380,7 @@ export default async function ManagementReportPage({
               {pnlMonths.length === 0 && (
                 <tr>
                   <td colSpan={6} className="p-6 text-center text-slate-500 text-sm">
-                    Chưa có data 12 tháng gần nhất.
+                    Chưa có data Năm {currentYear} YTD ({monthsSoFar} tháng).
                   </td>
                 </tr>
               )}

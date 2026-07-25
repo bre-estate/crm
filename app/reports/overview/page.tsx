@@ -110,15 +110,14 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
     }
 
     // Break-even: cần bao nhiêu căn/tháng để cover CP QL?
-    // avgMonthlyExpense = trung bình CP QL 12 tháng gần nhất
+    // avgMonthlyExpense = TB năm hiện tại YTD (chốt 2026-07-25) — phản ánh
+    // chi tiêu thực tế năm nay, không pha loãng bởi tháng cũ.
     const nowMonth = new Date().toISOString().slice(0, 7);
-    const lastYearExpenses = allExpenses.filter((e) => {
-      if (!e.month) return false;
-      const diff = monthDiff(e.month, nowMonth);
-      return diff >= 0 && diff <= 11;
-    });
-    const totalExpense12m = lastYearExpenses.reduce((s, e) => s + e.amount, 0);
-    avgMonthlyExpense = totalExpense12m / 12;
+    const currentYear = nowMonth.slice(0, 4);
+    const monthsSoFar = Number(nowMonth.slice(5));
+    const currentYearExpenses = allExpenses.filter((e) => e.month?.startsWith(currentYear));
+    const totalExpenseCurYear = currentYearExpenses.reduce((s, e) => s + e.amount, 0);
+    avgMonthlyExpense = monthsSoFar > 0 ? totalExpenseCurYear / monthsSoFar : 0;
 
     // avgProfitPerUnit từ toàn bộ data hiện có (không lọc period)
     const totalGrossProfit = data.aggregatedProjects.reduce(
@@ -132,20 +131,12 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
       breakEvenUnits = avgMonthlyExpense / avgProfitPerUnit;
     }
 
-    // Avg units bán / tháng thực tế (12 tháng gần nhất)
-    const unitMonths = new Map<string, number>();
-    for (const p of data.prodRowsAll) {
-      const ym = p.depositDate;
-      if (!ym) continue;
-      const m = ym.slice(0, 7);
-      const diff = monthDiff(m, nowMonth);
-      if (diff < 0 || diff > 11) continue;
-      unitMonths.set(m, (unitMonths.get(m) ?? 0) + 1);
-    }
-    const monthCount = unitMonths.size;
-    if (monthCount > 0) {
-      avgUnitsPerMonth = [...unitMonths.values()].reduce((s, n) => s + n, 0) / monthCount;
-    }
+    // Avg units bán / tháng — theo năm hiện tại YTD (chia đều monthsSoFar,
+    // kể cả tháng ế). Nhất quán với avgMonthlyExpense.
+    const unitsCurrentYear = data.prodRowsAll.filter((p) =>
+      p.depositDate?.startsWith(currentYear),
+    ).length;
+    avgUnitsPerMonth = monthsSoFar > 0 ? unitsCurrentYear / monthsSoFar : 0;
   }
 
   const pnlMonths = [...pnlByMonth.values()].sort((a, b) => b.month.localeCompare(a.month));
@@ -275,13 +266,13 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
           <div>
             <h2 className="text-lg font-semibold mb-1">⚖️ Điểm hòa vốn</h2>
             <p className="text-xs text-slate-500 mb-3">
-              Số căn/tháng cần bán để cover CP quản lý. Dựa TB CP QL 12 tháng gần nhất + lãi gộp TB/căn toàn bộ dữ liệu.
+              Số căn/tháng cần bán để cover CP quản lý. TB CP QL + căn bán tính theo năm hiện tại YTD (chốt 2026-07-25).
             </p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <Card
                 label="CP QL TB / tháng"
                 value={fmtMoney(avgMonthlyExpense)}
-                sub="12 tháng gần nhất"
+                sub="Năm hiện tại YTD"
                 warn
               />
               <Card
@@ -306,7 +297,7 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
                     ? `${avgUnitsPerMonth.toFixed(1)} căn/tháng`
                     : "—"
                 }
-                sub="TB 12 tháng gần nhất"
+                sub="Năm hiện tại YTD"
                 highlight={
                   avgUnitsPerMonth !== null &&
                   breakEvenUnits !== null &&
