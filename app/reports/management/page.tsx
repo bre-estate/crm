@@ -239,7 +239,13 @@ export default async function ManagementReportPage({
                 <th className="text-left p-2 sticky left-0 bg-slate-50 whitespace-nowrap">Nhóm</th>
                 {monthList.map((m) => (
                   <th key={m} className="text-right p-2 whitespace-nowrap">
-                    T{Number(m.slice(5))}
+                    <Link
+                      href={`/reports/management/${m}`}
+                      className="text-blue-600 hover:underline"
+                      title="Xem chi tiết tháng này"
+                    >
+                      T{Number(m.slice(5))}
+                    </Link>
                   </th>
                 ))}
                 <th className="text-right p-2 whitespace-nowrap bg-slate-100">TỔNG {selectedYear}</th>
@@ -331,7 +337,14 @@ export default async function ManagementReportPage({
                 const positive = net >= 0;
                 return (
                   <tr key={p.month} className="border-t border-slate-100">
-                    <td className="p-2 font-mono">{p.month}</td>
+                    <td className="p-2 font-mono">
+                      <Link
+                        href={`/reports/management/${p.month}`}
+                        className="text-blue-600 hover:underline"
+                      >
+                        {p.month}
+                      </Link>
+                    </td>
                     <td className="p-2 text-right tabular-nums text-xs">
                       {p.revenue > 0 ? fmt(p.revenue) : <span className="text-slate-300">—</span>}
                     </td>

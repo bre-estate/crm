@@ -49,6 +49,8 @@ const NAV: NavEntry[] = [
     children: [
       { href: "/reports/overview", label: "Tổng hợp", gate: "reports", section: "Tổng quan" },
       { href: "/reports/management", label: "Quản trị", gate: "owner", section: "Tổng quan" },
+      { href: "/reports/balance-sheet", label: "BCĐKT", gate: "owner", section: "Tài chính" },
+      { href: "/reports/cash-flow-statement", label: "LCTT", gate: "owner", section: "Tài chính" },
       { href: "/reports/segments", label: "Phân khúc", gate: "segments", section: "Thị trường" },
       { href: "/reports/projects", label: "Theo dự án", gate: "reports", section: "Thị trường" },
       { href: "/reports/partners", label: "Đối tác", gate: "reports", section: "Thị trường" },
