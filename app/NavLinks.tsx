@@ -31,6 +31,7 @@ const isGroup = (n: NavEntry): n is NavGroup => "children" in n;
 
 const NAV: NavEntry[] = [
   { href: "/", label: "Tổng quan" },
+  { href: "/alerts", label: "🔔 Cảnh báo", gate: "owner" },
   { href: "/partners", label: "Đối tác" },
   { href: "/projects", label: "Dự án" },
   {

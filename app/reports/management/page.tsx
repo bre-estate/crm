@@ -1,8 +1,8 @@
 import { db } from "@/lib/db";
-import { financialTransactions, accountingCategories, products, revenueReconciliations, costReconciliations } from "@/lib/schema";
+import { financialTransactions, accountingCategories, products, revenueReconciliations, costReconciliations, companySettings } from "@/lib/schema";
 import { getOwnerEmail } from "@/lib/auth";
 import { notFound } from "next/navigation";
-import { sql, inArray, gte, eq } from "drizzle-orm";
+import { sql, inArray, gte, eq, ne, and } from "drizzle-orm";
 import Link from "next/link";
 import { monthlyDepreciation } from "@/lib/accounting/depreciation";
 
