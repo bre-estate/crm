@@ -7,10 +7,14 @@ import {
   deleteDepartmentNoRedirect,
 } from "@/lib/actions/departments";
 import DepartmentsManager from "./DepartmentsManager";
+import { getOwnerEmail } from "@/lib/auth";
+import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function DepartmentsPage() {
+  // Owner-only — quản lý phòng ban là quyền của founder
+  if (!(await getOwnerEmail())) notFound();
   const [depts, tpkds, prodCounts, empCounts] = await Promise.all([
     db.select().from(departments).orderBy(asc(departments.name)),
     db

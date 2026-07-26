@@ -78,9 +78,10 @@ const NAV: NavEntry[] = [
   },
   {
     label: "Nhân sự",
+    gate: "owner",
     children: [
-      { href: "/employees", label: "Nhân viên" },
-      { href: "/departments", label: "Phòng ban" },
+      { href: "/employees", label: "Nhân viên", gate: "owner" },
+      { href: "/departments", label: "Phòng ban", gate: "owner" },
     ],
   },
   { href: "/admin/activity", label: "Lịch sử hoạt động", gate: "owner" },

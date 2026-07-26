@@ -2,12 +2,13 @@ import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
 
-// Danh sách email được phép truy cập trang /finance + finance actions.
-// Sau này extend theo team → thêm vào array.
-const OWNER_EMAILS = ["trietnguyen308@gmail.com"];
+// Danh sách email được phép truy cập TOÀN BỘ app — 2 founders (Triết + Bách).
+// Bao gồm: /finance/*, /alerts, /admin/activity, /reports/*, /employees, /departments.
+const OWNER_EMAILS = ["trietnguyen308@gmail.com", "bach.khdt@gmail.com"];
 
-// Email được phép truy cập MỌI trang /reports (thêm ngoài owner).
-const REPORTS_EMAILS = ["trietnguyen308@gmail.com", "bach.khdt@gmail.com"];
+// Email được phép truy cập MỌI trang /reports (subset của OWNER + thêm reader).
+// Hiện REPORTS = OWNER (không có reader khác).
+const REPORTS_EMAILS = OWNER_EMAILS;
 
 // Email chỉ được vào /reports/segments (nhập bổ sung số PN + diện tích căn),
 // không thấy các báo cáo khác (tránh lộ DT/biên LN nội bộ).

@@ -7,10 +7,14 @@ import {
   deleteEmployeeNoRedirect,
 } from "@/lib/actions/employees";
 import EmployeesManager from "./EmployeesManager";
+import { getOwnerEmail } from "@/lib/auth";
+import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function EmployeesPage() {
+  // Owner-only — lộ lương/thông tin cá nhân, không cho staff xem
+  if (!(await getOwnerEmail())) notFound();
   const [rows, depts] = await Promise.all([
     db
       .select({
