@@ -2,15 +2,16 @@ import { db } from "@/lib/db";
 import { financialTransactions, accountingCategories, products, revenueReconciliations, costReconciliations } from "@/lib/schema";
 import { getOwnerEmail } from "@/lib/auth";
 import { notFound } from "next/navigation";
-import { sql, inArray, gte } from "drizzle-orm";
+import { sql, inArray, gte, eq } from "drizzle-orm";
 import Link from "next/link";
+import { monthlyDepreciation } from "@/lib/accounting/depreciation";
 
 export const dynamic = "force-dynamic";
 
 // Framework 2026-07-25: OPEX chuẩn (loại CAPEX + thuế pass-through + tạm ứng + booking)
 const OPEX_CATEGORIES = ["6421", "6427-rent", "6427-svc", "6417", "6428", "6425", "635"];
 
-const fmt = (n: number) => n.toLocaleString("vi-VN");
+const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
 const fmtM = (n: number) => (n / 1_000_000).toFixed(1) + "M";
 
 // nowMonth - m tháng (âm nếu m trong tương lai)
@@ -94,7 +95,21 @@ export default async function ManagementReportPage({
   const opexCurrentYear = opexRows
     .filter((r) => r.month?.startsWith(currentYear))
     .reduce((s, r) => s + Number(r.sum), 0);
-  const avgOpexMonth = monthsSoFar > 0 ? opexCurrentYear / monthsSoFar : 0;
+  const opexPureAvg = monthsSoFar > 0 ? opexCurrentYear / monthsSoFar : 0;
+
+  // ===== Khấu hao TSCĐ (chốt 2026-07-26) — cộng vào CP QL tháng =====
+  const tscdRows = await db
+    .select({
+      month: financialTransactions.transactionMonth,
+      cost: financialTransactions.amount,
+    })
+    .from(financialTransactions)
+    .where(eq(financialTransactions.categoryCode, "153-211"));
+  const monthlyDepTotal = tscdRows.reduce(
+    (s, a) => s + monthlyDepreciation(a.month, Number(a.cost), nowMonth),
+    0,
+  );
+  const avgOpexMonth = opexPureAvg + monthlyDepTotal;
 
   // ===== 2. P&L monthly (accrual — rev + cost gộp theo tháng cọc căn) =====
   const allProducts = await db.select({ id: products.id, depositDate: products.depositDate }).from(products);
@@ -187,7 +202,12 @@ export default async function ManagementReportPage({
       <section>
         <h2 className="text-lg font-semibold mb-1">⚖️ Điểm hòa vốn</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <StatCard label="CP QL TB / tháng" value={fmt(avgOpexMonth)} sub={`Năm ${currentYear} YTD (${monthsSoFar} tháng)`} warn />
+          <StatCard
+            label="CP QL TB / tháng"
+            value={fmt(avgOpexMonth)}
+            sub={`OPEX ${fmt(opexPureAvg)} + KH TSCĐ ${fmt(monthlyDepTotal)}`}
+            warn
+          />
           <StatCard label="Lãi gộp TB / căn" value={fmt(avgGrossProfitPerUnit)} sub={`${numUnits} căn`} />
           <StatCard
             label="Điểm hòa vốn"

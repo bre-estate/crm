@@ -6,7 +6,8 @@ import { loadReportData, parseFilters, effectiveYM } from "@/lib/reports";
 import { Card, ReportsHeader } from "../_shared";
 import { db } from "@/lib/db";
 import { companyExpenses, financialTransactions } from "@/lib/schema";
-import { inArray, sql } from "drizzle-orm";
+import { inArray, sql, eq } from "drizzle-orm";
+import { monthlyDepreciation } from "@/lib/accounting/depreciation";
 
 // Framework chốt 2026-07-25:
 //   - Bỏ 153-211 (Thiết bị/TSCĐ = CAPEX, khấu hao riêng)
@@ -117,7 +118,21 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
     const monthsSoFar = Number(nowMonth.slice(5));
     const currentYearExpenses = allExpenses.filter((e) => e.month?.startsWith(currentYear));
     const totalExpenseCurYear = currentYearExpenses.reduce((s, e) => s + e.amount, 0);
-    avgMonthlyExpense = monthsSoFar > 0 ? totalExpenseCurYear / monthsSoFar : 0;
+    const opexPureAvg = monthsSoFar > 0 ? totalExpenseCurYear / monthsSoFar : 0;
+
+    // Cộng khấu hao TSCĐ (nhóm 5) vào CP QL — chốt 2026-07-26
+    const tscdRows = await db
+      .select({
+        month: financialTransactions.transactionMonth,
+        cost: financialTransactions.amount,
+      })
+      .from(financialTransactions)
+      .where(eq(financialTransactions.categoryCode, "153-211"));
+    const monthlyDepTotal = tscdRows.reduce(
+      (s, a) => s + monthlyDepreciation(a.month, Number(a.cost), nowMonth),
+      0,
+    );
+    avgMonthlyExpense = opexPureAvg + monthlyDepTotal;
 
     // avgProfitPerUnit từ toàn bộ data hiện có (không lọc period)
     const totalGrossProfit = data.aggregatedProjects.reduce(

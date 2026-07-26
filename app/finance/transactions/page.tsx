@@ -14,7 +14,7 @@ type SearchParams = Promise<{
   q?: string;
 }>;
 
-const fmt = (n: number) => n.toLocaleString("vi-VN");
+const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
 
 export default async function TransactionsPage({
   searchParams,

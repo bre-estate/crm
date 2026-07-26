@@ -27,7 +27,7 @@ const SOURCE_META: Record<SourceType, { label: string; hint: string }> = {
   },
 };
 
-const fmt = (n: number) => n.toLocaleString("vi-VN");
+const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
 
 export default function ImportClient() {
   const router = useRouter();

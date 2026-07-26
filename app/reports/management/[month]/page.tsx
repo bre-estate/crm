@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 const OPEX_CATEGORIES = ["6421", "6427-rent", "6427-svc", "6417", "6428", "6425", "635"];
 
-const fmt = (n: number) => n.toLocaleString("vi-VN");
+const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
 
 type Params = Promise<{ month: string }>;
 

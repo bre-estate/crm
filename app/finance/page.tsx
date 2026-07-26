@@ -9,7 +9,7 @@ import { updateSettings } from "@/lib/actions/finance";
 
 export const dynamic = "force-dynamic";
 
-const fmt = (n: number) => n.toLocaleString("vi-VN");
+const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
 
 export default async function FinanceLandingPage() {
   const owner = await getOwnerEmail();
@@ -120,11 +120,10 @@ export default async function FinanceLandingPage() {
         />
 
         <SectionCard
-          title="Tài sản công ty"
-          desc="Ký quỹ dự án + thiết bị/TSCĐ + đầu tư ban đầu. Sẽ mở rộng sau."
+          title="Tài sản cố định"
+          desc="TSCĐ / CCDC (máy móc, thiết bị VP) với khấu hao đường thẳng 3 năm. Khấu hao/tháng cộng vào CP QL."
           href="/finance/assets"
-          badge="Sắp có"
-          disabled
+          badge="TSCĐ"
         />
       </div>
 

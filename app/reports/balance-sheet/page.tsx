@@ -4,12 +4,13 @@ import { getOwnerEmail } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import { sql, inArray, eq, ne, and } from "drizzle-orm";
 import Link from "next/link";
+import { netBookValue, accumulatedDepreciation } from "@/lib/accounting/depreciation";
 
 export const dynamic = "force-dynamic";
 
 const OPEX_CATEGORIES = ["6421", "6427-rent", "6427-svc", "6417", "6428", "6425", "635"];
 
-const fmt = (n: number) => n.toLocaleString("vi-VN");
+const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
 
 /**
  * BCĐKT snapshot at current date.
@@ -63,12 +64,24 @@ export default async function BalanceSheetPage() {
     .where(eq(financialTransactions.categoryCode, "141"));
   const tamUng = Number(tu.s);
 
-  // 153/211 TSCĐ/CCDC (nhóm 5)
-  const [tscd] = await db
-    .select({ s: sql<number>`coalesce(sum(amount), 0)::float8` })
+  // 153/211 TSCĐ/CCDC (nhóm 5) — Giá trị net = giá gốc − khấu hao lũy kế
+  const tscdRows = await db
+    .select({
+      month: financialTransactions.transactionMonth,
+      cost: financialTransactions.amount,
+    })
     .from(financialTransactions)
     .where(eq(financialTransactions.categoryCode, "153-211"));
-  const tscdCcdc = Number(tscd.s);
+  const nowMonth = new Date().toISOString().slice(0, 7);
+  const tscdCcdc = tscdRows.reduce(
+    (s, a) => s + netBookValue(a.month, Number(a.cost), nowMonth),
+    0,
+  );
+  const tscdGross = tscdRows.reduce((s, a) => s + Number(a.cost), 0);
+  const tscdAccumDep = tscdRows.reduce(
+    (s, a) => s + accumulatedDepreciation(a.month, Number(a.cost), nowMonth),
+    0,
+  );
 
   // 244 Ký quỹ dài hạn
   const [kq] = await db
@@ -129,7 +142,7 @@ export default async function BalanceSheetPage() {
     ["131", "Phải thu khách hàng", phaiThuKhach],
     ["138", "Phải thu khác (cọc hộ khách)", phaiThuKhac],
     ["141", "Tạm ứng nội bộ", tamUng],
-    ["153/211", "TSCĐ + CCDC (chưa trừ khấu hao)", tscdCcdc],
+    ["153/211", `TSCĐ/CCDC net (gốc ${fmt(Math.round(tscdGross))} − KH ${fmt(Math.round(tscdAccumDep))})`, tscdCcdc],
     ["244", "Ký quỹ dài hạn", kyQuy],
   ];
   const liabEquity: Array<[string, string, number, "npt" | "vcsh"]> = [

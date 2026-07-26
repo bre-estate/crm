@@ -7,7 +7,7 @@ import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-const fmt = (n: number) => n.toLocaleString("vi-VN");
+const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
 
 export default async function CapitalPage() {
   const owner = await getOwnerEmail();
