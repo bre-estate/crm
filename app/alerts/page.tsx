@@ -120,7 +120,7 @@ export default async function AlertsPage() {
       id: "below-be-3m",
       severity: "critical",
       title: `Bán dưới điểm hòa vốn 3 tháng liền`,
-      description: `BE cần ${beUnits.toFixed(1)} căn/tháng. Thực tế:`,
+      description: `Điểm hòa vốn cần ${beUnits.toFixed(1)} căn/tháng. Thực tế:`,
       detail: (
         <ul className="list-disc list-inside text-xs mt-1 space-y-0.5">
           {last3Counts.map((x) => (
@@ -135,7 +135,7 @@ export default async function AlertsPage() {
   }
 
   // ============================================================
-  // ALERT 2: Cash runway < 3 tháng
+  // ALERT 2: Tiền còn chạy được < 3 tháng
   // ============================================================
   // Cash cty (ước tính) = topup (411) + paymentsIn − paymentsOut − chi thanh-toan
   // KHÔNG cộng MERGED cá nhân (đó là Bách/Triết chi cá nhân, không qua TK cty)
@@ -171,7 +171,7 @@ export default async function AlertsPage() {
     alerts.push({
       id: "cash-runway",
       severity: "critical",
-      title: `Cash runway thấp: còn ~${runway.toFixed(1)} tháng`,
+      title: `Tiền còn chạy được thấp: còn ~${runway.toFixed(1)} tháng`,
       description: `Ước tính cash TK cty: ${fmt(estimatedCash)} VND. CP QL trung bình ${fmt(cpQlMonth)} VND/tháng. Có thể chỉ chạy được ${runway.toFixed(1)} tháng nữa.`,
       detail: (
         <div className="text-[11px] mt-1 text-slate-600">
@@ -185,7 +185,7 @@ export default async function AlertsPage() {
     alerts.push({
       id: "cash-runway-warn",
       severity: "warning",
-      title: `Cash runway cần theo dõi: ~${runway.toFixed(1)} tháng`,
+      title: `Tiền còn chạy được cần theo dõi: ~${runway.toFixed(1)} tháng`,
       description: `CP QL ${fmt(cpQlMonth)} VND/tháng, cash ước ${fmt(estimatedCash)} VND. Nên plan revenue/vốn.`,
       action: { href: "/reports/balance-sheet", label: "Xem BCĐKT" },
     });
@@ -414,15 +414,15 @@ export default async function AlertsPage() {
         <p className="text-sm text-slate-500 mt-1">
           {alerts.length === 0
             ? "✅ Không có cảnh báo nào — cty đang chạy ổn."
-            : `${alerts.length} cảnh báo cần chú ý. Critical trước, warning sau.`}
+            : `${alerts.length} cảnh báo cần chú ý. Nguy cấp trước, cảnh báo sau.`}
         </p>
       </div>
 
       {/* Summary stats */}
       <div className="grid grid-cols-3 gap-3">
-        <SummaryCard label="Critical" count={critical.length} color="red" />
-        <SummaryCard label="Warning" count={warning.length} color="amber" />
-        <SummaryCard label="Info" count={info.length} color="blue" />
+        <SummaryCard label="Nguy cấp" count={critical.length} color="red" />
+        <SummaryCard label="Cảnh báo" count={warning.length} color="amber" />
+        <SummaryCard label="Thông tin" count={info.length} color="blue" />
       </div>
 
       {/* Alerts */}

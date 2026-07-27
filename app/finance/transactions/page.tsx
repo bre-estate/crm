@@ -99,7 +99,7 @@ export default async function TransactionsPage({
           href="/finance/import"
           className="bg-orange-500 text-white rounded-lg px-4 py-2 text-sm hover:bg-orange-600"
         >
-          + Import Excel
+          + Nạp Excel
         </Link>
       </div>
 
@@ -207,7 +207,7 @@ export default async function TransactionsPage({
             {rows.length === 0 && (
               <tr>
                 <td colSpan={8} className="p-6 text-center text-slate-500 text-sm">
-                  Chưa có giao dịch. <Link href="/finance/import" className="text-blue-600 hover:underline">Import Excel</Link>.
+                  Chưa có giao dịch. <Link href="/finance/import" className="text-blue-600 hover:underline">Nạp Excel</Link>.
                 </td>
               </tr>
             )}

@@ -344,7 +344,7 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
           </div>
 
           <div>
-            <h2 className="text-lg font-semibold mb-1">📈 P&L theo tháng</h2>
+            <h2 className="text-lg font-semibold mb-1">📈 Lãi/lỗ theo tháng</h2>
             <p className="text-xs text-slate-500 mb-3">
               Accrual — DT + GV gộp theo tháng ghi nhận DT của căn (không phải ngày ĐC).
               Match income + expense cùng căn về cùng tháng, đúng nghiệp vụ kế toán. CP QL gộp theo tháng phát sinh.
@@ -410,7 +410,7 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
                   {pnlMonths.length === 0 && (
                     <tr>
                       <td colSpan={6} className="p-6 text-center text-slate-500 text-sm">
-                        Chưa có dữ liệu P&L theo tháng.
+                        Chưa có dữ liệu lãi/lỗ theo tháng.
                       </td>
                     </tr>
                   )}

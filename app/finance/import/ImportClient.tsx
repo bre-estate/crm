@@ -67,20 +67,20 @@ export default function ImportClient() {
     if (!fileB64 || !preview) return;
     if (
       !confirm(
-        `Apply ${preview.total - preview.dupCount} rows mới vào DB?\n(${preview.dupCount} rows trùng sẽ bị skip.)`,
+        `Nạp ${preview.total - preview.dupCount} dòng mới vào cơ sở dữ liệu?\n(${preview.dupCount} dòng trùng sẽ bị bỏ qua.)`,
       )
     )
       return;
     start(async () => {
       try {
         const r = await applyImport(type, fileB64);
-        toast.success(`Inserted ${r.inserted}, skipped ${r.skipped}`);
+        toast.success(`Đã nạp ${r.inserted}, bỏ qua ${r.skipped}`);
         setFileB64(null);
         setFileName("");
         setPreview(null);
         router.refresh();
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Lỗi apply");
+        toast.error(e instanceof Error ? e.message : "Lỗi nạp");
       }
     });
   };
@@ -88,14 +88,14 @@ export default function ImportClient() {
   const doClearAll = () => {
     if (
       !confirm(
-        "XÓA TOÀN BỘ giao dịch tài chính trong DB?\nHành động không hoàn tác được.\nDùng khi muốn re-import lại từ đầu.",
+        "XÓA TOÀN BỘ giao dịch tài chính trong cơ sở dữ liệu?\nHành động không hoàn tác được.\nDùng khi muốn nạp lại từ đầu.",
       )
     )
       return;
     start(async () => {
       try {
         const r = await clearAllTransactions();
-        toast.success(`Đã xóa ${r.deleted} rows`);
+        toast.success(`Đã xóa ${r.deleted} dòng`);
         router.refresh();
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Lỗi xóa");
@@ -141,7 +141,7 @@ export default function ImportClient() {
             disabled={!fileB64 || pending}
             className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200 disabled:opacity-50"
           >
-            {pending ? "Đang xử lý..." : "Preview"}
+            {pending ? "Đang xử lý..." : "Xem thử"}
           </button>
         </div>
       </div>
@@ -151,7 +151,7 @@ export default function ImportClient() {
           <div className="flex justify-between items-start">
             <div>
               <h2 className="text-lg font-semibold">
-                Preview — {preview.total} rows, {preview.dupCount} trùng
+                Xem thử — {preview.total} dòng, {preview.dupCount} trùng
               </h2>
               <div className="text-xs text-slate-500">
                 Nguồn: {Object.entries(preview.bySource).map(([k, v]) => `${k}:${v}`).join(", ")}
@@ -164,8 +164,8 @@ export default function ImportClient() {
               className="bg-orange-500 text-white rounded-lg px-6 py-2 text-sm hover:bg-orange-600 disabled:opacity-50"
             >
               {pending
-                ? "Đang apply..."
-                : `Apply ${preview.total - preview.dupCount} rows mới`}
+                ? "Đang nạp..."
+                : `Nạp ${preview.total - preview.dupCount} dòng mới`}
             </button>
           </div>
 
@@ -175,8 +175,8 @@ export default function ImportClient() {
               <thead className="bg-slate-50 text-xs">
                 <tr>
                   <th className="text-left p-2">Nhóm</th>
-                  <th className="text-right p-2">Số row</th>
-                  <th className="text-right p-2">Tổng VND</th>
+                  <th className="text-right p-2">Số dòng</th>
+                  <th className="text-right p-2">Tổng (VND)</th>
                 </tr>
               </thead>
               <tbody>
@@ -193,7 +193,7 @@ export default function ImportClient() {
 
           <div>
             <div className="text-xs font-semibold text-slate-600 mb-1">
-              Sample 20 rows đầu (⚠ = trùng, sẽ skip)
+              20 dòng đầu (⚠ = trùng, sẽ bỏ qua)
             </div>
             <div className="overflow-x-auto border border-slate-200 rounded-lg">
               <table className="w-full text-xs">
@@ -215,7 +215,7 @@ export default function ImportClient() {
                     >
                       <td className="p-2 font-mono">{r.transactionDate}</td>
                       <td className="p-2">
-                        {r.isDup && <span title="Đã có trong DB">⚠ </span>}
+                        {r.isDup && <span title="Đã có trong cơ sở dữ liệu">⚠ </span>}
                         {r.description.slice(0, 60)}
                       </td>
                       <td className="p-2 text-right tabular-nums">{fmt(r.amount)}</td>
@@ -232,10 +232,10 @@ export default function ImportClient() {
       )}
 
       <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-        <div className="text-xs font-semibold text-red-800 mb-1">Danger zone</div>
+        <div className="text-xs font-semibold text-red-800 mb-1">Vùng nguy hiểm</div>
         <p className="text-xs text-red-700 mb-2">
-          Xóa toàn bộ giao dịch tài chính đã import. Dùng khi muốn reset và
-          import lại từ đầu (VD file Excel có thay đổi cấu trúc).
+          Xóa toàn bộ giao dịch tài chính đã nạp. Dùng khi muốn nạp lại từ đầu
+          (VD file Excel có thay đổi cấu trúc).
         </p>
         <button
           type="button"
@@ -243,7 +243,7 @@ export default function ImportClient() {
           disabled={pending}
           className="bg-red-600 text-white rounded-lg px-4 py-2 text-xs hover:bg-red-700 disabled:opacity-50"
         >
-          Xóa toàn bộ transactions
+          Xóa toàn bộ giao dịch
         </button>
       </div>
     </div>

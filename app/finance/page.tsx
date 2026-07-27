@@ -131,7 +131,7 @@ export default async function FinanceLandingPage() {
       <div className="bg-white border border-slate-200 rounded-xl p-5">
         <h2 className="text-lg font-semibold">⚙️ Cấu hình</h2>
         <p className="text-xs text-slate-500 mb-3">
-          Thuế TNDN (%) + ngày bắt đầu kinh doanh (dùng tính Payback period).
+          Thuế TNDN (%) + ngày bắt đầu kinh doanh (dùng tính Thời gian hoàn vốn).
         </p>
         <SettingsForm
           settings={settings}
@@ -143,8 +143,8 @@ export default async function FinanceLandingPage() {
       </div>
 
       <p className="text-[11px] text-slate-400 italic">
-        Import Excel dùng script local <code>scripts/import-financial-local.ts</code>.
-        Không expose UI upload để tránh nhầm lẫn.
+        Nạp dữ liệu Excel dùng script cục bộ <code>scripts/import-financial-local.ts</code>.
+        Không hiển thị giao diện tải lên để tránh nhầm lẫn.
       </p>
     </div>
   );

@@ -165,9 +165,10 @@ export default async function BalanceSheetPage() {
         </div>
         <h1 className="text-2xl font-bold mt-1">Bảng cân đối kế toán</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Snapshot tại {new Date().toISOString().slice(0, 10)}. Đơn giản hóa —
-          chưa full accrual + chưa track sao kê thực. Tiền mặt/TGNH là plug (= NPT + VCSH −
-          TS khác). Sẽ chính xác hơn khi có sổ nhật ký + sao kê.
+          Ảnh chụp tại {new Date().toISOString().slice(0, 10)}. Đơn giản hóa —
+          chưa hạch toán dồn tích đầy đủ + chưa đối chiếu sao kê thực. Tiền mặt/TGNH
+          là số cân đối (= Nợ phải trả + Vốn CSH − Tài sản khác). Sẽ chính xác hơn
+          khi có sổ nhật ký + sao kê.
         </p>
       </div>
 
@@ -266,7 +267,7 @@ export default async function BalanceSheetPage() {
         <p className="font-semibold">Ghi chú simplified accounting (chờ Phase 4 sổ nhật ký):</p>
         <ul className="list-disc list-inside space-y-1">
           <li>
-            <b>Tiền mặt/TGNH</b> là số plug (cân đối), không phải số dư sao kê thực. Nếu âm → có
+            <b>Tiền mặt/TGNH</b> là số cân đối, không phải số dư sao kê thực. Nếu âm → có
             khoản chưa track (VD lãi ngân hàng thu vào, tiền vay ngoài).
           </li>
           <li>

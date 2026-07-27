@@ -181,7 +181,7 @@ export default async function CashFlowStatementPage({
           <YearTabs years={yearList} selected={selectedYear} />
         </div>
         <p className="text-sm text-slate-500 mt-1">
-          Năm {selectedYear} · Direct method · 3 dòng tiền: KD, đầu tư, tài chính.
+          Năm {selectedYear} · Phương pháp trực tiếp · 3 dòng tiền: hoạt động kinh doanh, đầu tư, tài chính.
         </p>
       </div>
 

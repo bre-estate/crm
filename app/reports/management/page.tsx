@@ -192,9 +192,9 @@ export default async function ManagementReportPage({
         </div>
         <h1 className="text-2xl font-bold mt-1">Báo cáo quản trị</h1>
         <p className="text-sm text-slate-500 mt-1">
-          3 chỉ số then chốt cho owner: <b>Điểm hòa vốn</b>, <b>CP QL breakdown</b>,
-          <b> P&L tháng</b>. Filter theo Năm {currentYear} YTD ({monthsSoFar} tháng). Đã loại CAPEX +
-          thuế pass-through + booking (per framework 2026-07-25).
+          3 chỉ số then chốt cho chủ cty: <b>Điểm hòa vốn</b>, <b>Cơ cấu CP QL</b>,
+          <b> Lãi/lỗ theo tháng</b>. Tính theo Năm {currentYear} đến hiện tại ({monthsSoFar} tháng). Đã loại
+          chi phí đầu tư TSCĐ + thuế nộp thay (GTGT/TNDN/TNCN) + booking (theo framework 2026-07-25).
         </p>
       </div>
 
@@ -205,7 +205,7 @@ export default async function ManagementReportPage({
           <StatCard
             label="CP QL TB / tháng"
             value={fmt(avgOpexMonth)}
-            sub={`OPEX ${fmt(opexPureAvg)} + KH TSCĐ ${fmt(monthlyDepTotal)}`}
+            sub={`CP thường ${fmt(opexPureAvg)} + KH TSCĐ ${fmt(monthlyDepTotal)}`}
             warn
           />
           <StatCard label="Lãi gộp TB / căn" value={fmt(avgGrossProfitPerUnit)} sub={`${numUnits} căn`} />
@@ -246,11 +246,11 @@ export default async function ManagementReportPage({
       {/* ===== SECTION 2: CP QL breakdown theo nhóm × tháng (tabs năm) ===== */}
       <section>
         <div className="flex items-baseline justify-between mb-1">
-          <h2 className="text-lg font-semibold">💼 CP QL — breakdown theo nhóm × tháng</h2>
+          <h2 className="text-lg font-semibold">💼 CP QL — phân tích theo nhóm × tháng</h2>
           <YearTabs years={yearList} selected={selectedYear} />
         </div>
         <p className="text-xs text-slate-500 mb-3">
-          Loại: Thiết bị (CAPEX riêng), thuế GTGT/TNDN/TNCN (pass-through), booking hoàn/cọc hộ khách, HH sale (nằm ở giá vốn CRM).
+          Đã loại: Thiết bị (chi phí đầu tư riêng), thuế GTGT/TNDN/TNCN (nộp thay), booking hoàn/cọc hộ khách, HH sale (nằm ở giá vốn CRM).
         </p>
         <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
           <table className="w-full text-xs">
@@ -330,7 +330,7 @@ export default async function ManagementReportPage({
       {/* ===== SECTION 3: P&L monthly ===== */}
       <section>
         <div className="flex items-baseline justify-between mb-1">
-          <h2 className="text-lg font-semibold">📈 P&L theo tháng — {selectedYear}</h2>
+          <h2 className="text-lg font-semibold">📈 Lãi/lỗ theo tháng — {selectedYear}</h2>
         </div>
         <p className="text-xs text-slate-500 mb-3">
           Accrual: DT + Giá vốn gộp theo tháng cọc căn. CP QL gộp theo tháng phát sinh.
