@@ -5,6 +5,7 @@ import {
   paymentsIn,
   products,
   projects,
+  partners,
 } from "@/lib/schema";
 import { eq, asc } from "drizzle-orm";
 import { notFound } from "next/navigation";
@@ -22,7 +23,19 @@ export default async function InvoiceDetailPage({
   const id = Number(idStr);
   if (!Number.isFinite(id)) notFound();
 
-  const [inv] = await db.select().from(invoices).where(eq(invoices.id, id));
+  const [inv] = await db
+    .select({
+      id: invoices.id,
+      invoiceNumber: invoices.invoiceNumber,
+      invoiceDate: invoices.invoiceDate,
+      totalAmountVat: invoices.totalAmountVat,
+      note: invoices.note,
+      partnerId: invoices.partnerId,
+      partnerName: partners.name,
+    })
+    .from(invoices)
+    .leftJoin(partners, eq(partners.id, invoices.partnerId))
+    .where(eq(invoices.id, id));
   if (!inv) notFound();
 
   const recons = await db
@@ -82,9 +95,15 @@ export default async function InvoiceDetailPage({
 
       <div>
         <h1 className="text-2xl font-bold">Hóa đơn #{inv.invoiceNumber}</h1>
-        {inv.invoiceDate && (
-          <p className="text-sm text-slate-500 mt-1">Ngày lập: {inv.invoiceDate}</p>
-        )}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500 mt-1">
+          {inv.invoiceDate && <span>Ngày lập: {inv.invoiceDate}</span>}
+          {inv.partnerName && (
+            <span>
+              CĐT:{" "}
+              <span className="font-medium text-slate-800">{inv.partnerName}</span>
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4">

@@ -8,6 +8,7 @@ export type InvoiceRow = {
   id: number;
   number: string;
   date: string | null;
+  partnerName: string | null;
   total: number;
   paid: number;
   remaining: number;
@@ -17,23 +18,27 @@ export type InvoiceRow = {
 export default function InvoicesTable({ rows }: { rows: InvoiceRow[] }) {
   const [qNumber, setQNumber] = useState("");
   const [qDate, setQDate] = useState("");
+  const [qPartner, setQPartner] = useState("");
 
   const filtered = useMemo(() => {
     const n = qNumber.trim().toLowerCase();
     const d = qDate.trim().toLowerCase();
-    if (!n && !d) return rows;
+    const p = qPartner.trim().toLowerCase();
+    if (!n && !d && !p) return rows;
     return rows.filter((r) => {
       if (n && !r.number.toLowerCase().includes(n)) return false;
       if (d && !(r.date ?? "").toLowerCase().includes(d)) return false;
+      if (p && !(r.partnerName ?? "").toLowerCase().includes(p)) return false;
       return true;
     });
-  }, [rows, qNumber, qDate]);
+  }, [rows, qNumber, qDate, qPartner]);
 
   const clearAll = () => {
     setQNumber("");
     setQDate("");
+    setQPartner("");
   };
-  const hasFilter = qNumber || qDate;
+  const hasFilter = qNumber || qDate || qPartner;
 
   return (
     <>
@@ -58,6 +63,16 @@ export default function InvoicesTable({ rows }: { rows: InvoiceRow[] }) {
             className="input w-64"
           />
         </div>
+        <div>
+          <label className="block text-xs text-slate-600 mb-1">CĐT</label>
+          <input
+            type="search"
+            value={qPartner}
+            onChange={(e) => setQPartner(e.target.value)}
+            placeholder="vd: Dataloca"
+            className="input w-56"
+          />
+        </div>
         {hasFilter && (
           <button
             type="button"
@@ -78,6 +93,7 @@ export default function InvoicesTable({ rows }: { rows: InvoiceRow[] }) {
             <tr>
               <th className="text-left p-3">Số HĐ</th>
               <th className="text-left p-3">Ngày HĐ</th>
+              <th className="text-left p-3">CĐT</th>
               <th className="text-right p-3">Số căn ĐC</th>
               <th className="text-right p-3">Giá trị HĐ</th>
               <th className="text-right p-3">Đã thu</th>
@@ -100,6 +116,9 @@ export default function InvoicesTable({ rows }: { rows: InvoiceRow[] }) {
                   <td className="p-3 font-mono text-xs font-medium">{r.number}</td>
                   <td className="p-3 text-slate-500">
                     {r.date || <span className="text-slate-300">—</span>}
+                  </td>
+                  <td className="p-3 text-slate-700">
+                    {r.partnerName || <span className="text-slate-300">—</span>}
                   </td>
                   <td className="p-3 text-right tabular-nums">
                     {r.reconCount > 0 ? (
@@ -146,7 +165,7 @@ export default function InvoicesTable({ rows }: { rows: InvoiceRow[] }) {
             })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={7} className="p-6 text-center text-slate-500 text-sm">
+                <td colSpan={8} className="p-6 text-center text-slate-500 text-sm">
                   {rows.length === 0
                     ? "Chưa có hóa đơn nào. HĐ tự sinh khi tạo ĐC doanh thu có số HĐ."
                     : "Không tìm thấy hóa đơn khớp bộ lọc."}

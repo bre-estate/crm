@@ -8,7 +8,7 @@ import { displayPartnerName } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-const OPEX_CATEGORIES = ["6421", "6427-rent", "6427-svc", "6417", "6428", "6425", "635"];
+import { OPEX_CATEGORIES } from "@/lib/accounting/categories";
 
 const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
 

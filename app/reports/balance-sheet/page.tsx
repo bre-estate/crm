@@ -8,7 +8,7 @@ import { netBookValue, accumulatedDepreciation } from "@/lib/accounting/deprecia
 
 export const dynamic = "force-dynamic";
 
-const OPEX_CATEGORIES = ["6421", "6427-rent", "6427-svc", "6417", "6428", "6425", "635"];
+import { OPEX_CATEGORIES } from "@/lib/accounting/categories";
 
 const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
 
@@ -71,7 +71,7 @@ export default async function BalanceSheetPage() {
       cost: financialTransactions.amount,
     })
     .from(financialTransactions)
-    .where(eq(financialTransactions.categoryCode, "153-211"));
+    .where(eq(financialTransactions.categoryCode, "242"));
   const nowMonth = new Date().toISOString().slice(0, 7);
   const tscdCcdc = tscdRows.reduce(
     (s, a) => s + netBookValue(a.month, Number(a.cost), nowMonth),

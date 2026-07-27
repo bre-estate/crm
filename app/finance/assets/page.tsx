@@ -22,7 +22,7 @@ export default async function AssetsPage() {
 
   const nowMonth = new Date().toISOString().slice(0, 7);
 
-  // TSCĐ/CCDC = financial_transactions category='153-211' (nhóm 5)
+  // TSCĐ/CCDC = financial_transactions category='242' (chi phí trả trước, phân bổ dần)
   const rows = await db
     .select({
       id: financialTransactions.id,
@@ -34,7 +34,7 @@ export default async function AssetsPage() {
       sourceFile: financialTransactions.sourceFile,
     })
     .from(financialTransactions)
-    .where(eq(financialTransactions.categoryCode, "153-211"))
+    .where(eq(financialTransactions.categoryCode, "242"))
     .orderBy(desc(financialTransactions.transactionDate));
 
   // Compute per asset

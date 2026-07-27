@@ -1,0 +1,58 @@
+/**
+ * Category codes tập trung theo BCTC Kim (TT200).
+ * Thay đổi tại đây một lần → tất cả report dùng chung.
+ */
+
+// Chi phí bán hàng (TK 641)
+export const CAT_641 = ["6411", "6417"] as const;
+
+// Chi phí quản lý (TK 642)
+export const CAT_642 = ["6421", "6423", "6425", "6427"] as const;
+
+// Chi phí khác (TK 811)
+export const CAT_811 = ["811"] as const;
+
+// Chi phí trả trước (TK 242) — không tính vào CP kỳ, phân bổ dần
+export const CAT_242 = ["242"] as const;
+
+// Chi phí tài chính (TK 635)
+export const CAT_635 = ["635"] as const;
+
+// TẤT CẢ chi phí HĐ = 641 + 642 + 811 + 635 (không gồm 242 vì phân bổ)
+export const OPEX_CATEGORIES: string[] = [
+  ...CAT_641,
+  ...CAT_642,
+  ...CAT_811,
+  ...CAT_635,
+];
+
+// Trong đó, 641 vs 642 phục vụ grouping BCTC
+export const BUCKET_641: string[] = [...CAT_641];
+export const BUCKET_642: string[] = [...CAT_642];
+export const BUCKET_811: string[] = [...CAT_811];
+
+// Category "không phải chi phí" (loại khỏi P&L)
+export const NON_EXPENSE_CATEGORIES = [
+  "411", "244", "3411", "131", "141", "3331-3334", "unclassified",
+] as const;
+
+/**
+ * Phân loại categoryCode → bucket 641/642/811/other để render P&L.
+ */
+export function bucketOf(code: string): "641" | "642" | "811" | "635" | "242" | "other" {
+  if ((CAT_641 as readonly string[]).includes(code)) return "641";
+  if ((CAT_642 as readonly string[]).includes(code)) return "642";
+  if ((CAT_811 as readonly string[]).includes(code)) return "811";
+  if ((CAT_635 as readonly string[]).includes(code)) return "635";
+  if ((CAT_242 as readonly string[]).includes(code)) return "242";
+  return "other";
+}
+
+export const BUCKET_LABELS: Record<string, string> = {
+  "641": "Chi phí bán hàng",
+  "642": "Chi phí quản lý",
+  "811": "Chi phí khác",
+  "635": "Chi phí tài chính",
+  "242": "Chi phí trả trước",
+  "other": "Khác",
+};

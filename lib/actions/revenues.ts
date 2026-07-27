@@ -1,19 +1,34 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { revenueReconciliations, invoices, paymentsIn, products } from "@/lib/schema";
-import { and, eq, sql } from "drizzle-orm";
+import { revenueReconciliations, invoices, paymentsIn, products, projects } from "@/lib/schema";
+import { and, eq, sql, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { logActivity } from "@/lib/audit";
 import { toNum, toStr, toStrOrNull, toPct } from "@/lib/parse";
 
+// Suy partner_id từ product → project → partner_id.
+// Mỗi CĐT có sổ HĐ riêng, số HĐ có thể trùng giữa các CĐT → partner_id
+// PHẢI vào key khớp để không nhầm gộp 2 HĐ khác CĐT thành 1.
+async function resolvePartnerId(productId: number | null): Promise<number | null> {
+  if (!productId) return null;
+  const [row] = await db
+    .select({ partnerId: projects.partnerId })
+    .from(products)
+    .leftJoin(projects, eq(projects.id, products.projectId))
+    .where(eq(products.id, productId));
+  return row?.partnerId ?? null;
+}
+
 async function findOrCreateInvoice(
   number: string,
   date: string | null,
+  productId: number | null,
 ): Promise<number | null> {
   if (!number && !date) return null;
   const safeNumber = number || "(chưa có số)";
+  const partnerId = await resolvePartnerId(productId);
   const existing = await db
     .select({ id: invoices.id })
     .from(invoices)
@@ -21,6 +36,9 @@ async function findOrCreateInvoice(
       and(
         eq(invoices.invoiceNumber, safeNumber),
         date ? eq(invoices.invoiceDate, date) : eq(invoices.invoiceDate, ""),
+        partnerId === null
+          ? isNull(invoices.partnerId)
+          : eq(invoices.partnerId, partnerId),
       ),
     );
   if (existing[0]) return existing[0].id;
@@ -29,6 +47,7 @@ async function findOrCreateInvoice(
     .values({
       invoiceNumber: safeNumber,
       invoiceDate: date,
+      partnerId,
       totalAmountVat: 0,
     })
     .returning({ id: invoices.id });
@@ -117,7 +136,7 @@ export async function createRevenue(fd: FormData) {
 
   const invoiceNumber = toStr(fd.get("invoiceNumber"));
   const invoiceDate = toStrOrNull(fd.get("invoiceDate"));
-  const invoiceId = await findOrCreateInvoice(invoiceNumber, invoiceDate);
+  const invoiceId = await findOrCreateInvoice(invoiceNumber, invoiceDate, data.productId);
 
   const [rec] = await db
     .insert(revenueReconciliations)
@@ -165,7 +184,7 @@ export async function updateRevenue(id: number, fd: FormData) {
 
   const invoiceNumber = toStr(fd.get("invoiceNumber"));
   const invoiceDate = toStrOrNull(fd.get("invoiceDate"));
-  const invoiceId = await findOrCreateInvoice(invoiceNumber, invoiceDate);
+  const invoiceId = await findOrCreateInvoice(invoiceNumber, invoiceDate, data.productId);
 
   const [before] = await db
     .select()
@@ -308,7 +327,7 @@ export async function createRevenueBulk(rows: BulkRevenueRow[]) {
 
       let invoiceId: number | null = null;
       if (r.invoiceNumber) {
-        invoiceId = await findOrCreateInvoice(r.invoiceNumber, r.invoiceDate ?? null);
+        invoiceId = await findOrCreateInvoice(r.invoiceNumber, r.invoiceDate ?? null, r.productId);
       }
       const [inserted] = await db
         .insert(revenueReconciliations)

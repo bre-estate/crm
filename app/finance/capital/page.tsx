@@ -16,7 +16,7 @@ export default async function CapitalPage() {
   // Framework 2026-07-24: Vốn góp founder = TOÀN BỘ tiền Triết/Bách chi cá nhân
   // hộ cty (kể cả không hóa đơn), TRỪ chi phí thứ cấp (nhóm 10 — Bách chi ngoài
   // phục vụ hoạt động thứ cấp cá nhân).
-  // → payer IN (Triết, Bách) AND categoryCode != 'secondary'
+  // → payer IN (Triết, Bách) AND categoryCode != '811' (chi phí không hóa đơn Triết)
   const rows = await db
     .select({
       id: financialTransactions.id,
@@ -32,7 +32,7 @@ export default async function CapitalPage() {
     .where(
       and(
         inArray(financialTransactions.payer, ["Triết", "Bách"]),
-        ne(financialTransactions.categoryCode, "secondary"),
+        ne(financialTransactions.categoryCode, "811"),
         isNotNull(financialTransactions.payer),
       ),
     )

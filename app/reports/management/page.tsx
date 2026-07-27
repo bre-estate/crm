@@ -5,11 +5,9 @@ import { notFound } from "next/navigation";
 import { sql, inArray, gte, eq, ne, and } from "drizzle-orm";
 import Link from "next/link";
 import { monthlyDepreciation } from "@/lib/accounting/depreciation";
+import { OPEX_CATEGORIES, BUCKET_641, BUCKET_642, BUCKET_811, bucketOf, BUCKET_LABELS } from "@/lib/accounting/categories";
 
 export const dynamic = "force-dynamic";
-
-// Framework 2026-07-25: OPEX chuẩn (loại CAPEX + thuế pass-through + tạm ứng + booking)
-const OPEX_CATEGORIES = ["6421", "6427-rent", "6427-svc", "6417", "6428", "6425", "635"];
 
 const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
 const fmtM = (n: number) => (n / 1_000_000).toFixed(1) + "M";
@@ -30,7 +28,7 @@ function subMonth(m: string, delta: number): string {
   return `${newY}-${String(newMo).padStart(2, "0")}`;
 }
 
-type SearchParams = Promise<{ year?: string }>;
+type SearchParams = Promise<{ year?: string; view?: string }>;
 
 export default async function ManagementReportPage({
   searchParams,
@@ -42,11 +40,17 @@ export default async function ManagementReportPage({
 
   const sp = await searchParams;
   const nowMonth = new Date().toISOString().slice(0, 7);
+  // Toggle: view=cash (theo tháng chi tiền) hoặc view=accrual (theo tháng phát sinh recon).
+  // Default = accrual (chuẩn kế toán VN — khớp Kim BCTC).
+  const view: "cash" | "accrual" = sp.view === "cash" ? "cash" : "accrual";
+  const monthCol = view === "accrual"
+    ? financialTransactions.accrualMonth
+    : financialTransactions.transactionMonth;
 
   // ===== 1. OPEX rows toàn thời gian — filter theo năm cho breakdown table =====
   const opexRows = await db
     .select({
-      month: financialTransactions.transactionMonth,
+      month: monthCol,
       code: financialTransactions.categoryCode,
       group: financialTransactions.managementGroup,
       sum: sql<number>`sum(amount)::float8`,
@@ -55,7 +59,7 @@ export default async function ManagementReportPage({
     .from(financialTransactions)
     .where(inArray(financialTransactions.categoryCode, OPEX_CATEGORIES))
     .groupBy(
-      financialTransactions.transactionMonth,
+      monthCol,
       financialTransactions.categoryCode,
       financialTransactions.managementGroup,
     );
@@ -104,7 +108,7 @@ export default async function ManagementReportPage({
       cost: financialTransactions.amount,
     })
     .from(financialTransactions)
-    .where(eq(financialTransactions.categoryCode, "153-211"));
+    .where(eq(financialTransactions.categoryCode, "242"));
   const monthlyDepTotal = tscdRows.reduce(
     (s, a) => s + monthlyDepreciation(a.month, Number(a.cost), nowMonth),
     0,
@@ -193,9 +197,17 @@ export default async function ManagementReportPage({
         <h1 className="text-2xl font-bold mt-1">Báo cáo quản trị</h1>
         <p className="text-sm text-slate-500 mt-1">
           3 chỉ số then chốt cho chủ cty: <b>Điểm hòa vốn</b>, <b>Cơ cấu CP HĐ</b>,
-          <b> Lãi/lỗ theo tháng</b>. Tính theo Năm {currentYear} đến hiện tại ({monthsSoFar} tháng). Đã loại
-          chi phí đầu tư TSCĐ + thuế nộp thay (GTGT/TNDN/TNCN) + booking (theo framework 2026-07-25).
+          <b> Lãi/lỗ theo tháng</b>. Tính theo Năm {currentYear} đến hiện tại ({monthsSoFar} tháng).
         </p>
+        <div className="mt-3 flex items-center gap-3 text-xs">
+          <span className="text-slate-500">Ghi nhận theo:</span>
+          <ViewToggle current={view} selectedYear={selectedYear} />
+          <span className="text-slate-400">
+            {view === "accrual"
+              ? "Dồn tích — theo tháng phát sinh recon (chuẩn Kim BCTC)"
+              : "Tiền mặt — theo tháng chi thực tế"}
+          </span>
+        </div>
       </div>
 
       {/* ===== SECTION 1: Điểm hòa vốn ===== */}
@@ -432,6 +444,37 @@ function YearTabs({ years, selected }: { years: string[]; selected: string }) {
           </Link>
         );
       })}
+    </div>
+  );
+}
+
+function ViewToggle({
+  current,
+  selectedYear,
+}: {
+  current: "cash" | "accrual";
+  selectedYear: string;
+}) {
+  const mkLink = (v: "cash" | "accrual") =>
+    `/reports/management?year=${selectedYear}&view=${v}`;
+  return (
+    <div className="inline-flex bg-slate-100 rounded p-0.5">
+      <Link
+        href={mkLink("accrual")}
+        className={`px-2.5 py-1 rounded text-xs font-medium ${
+          current === "accrual" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+        }`}
+      >
+        Dồn tích
+      </Link>
+      <Link
+        href={mkLink("cash")}
+        className={`px-2.5 py-1 rounded text-xs font-medium ${
+          current === "cash" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+        }`}
+      >
+        Tiền mặt
+      </Link>
     </div>
   );
 }

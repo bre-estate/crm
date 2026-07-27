@@ -1,18 +1,19 @@
 /**
- * Classifier chi phí BRE — nguồn: scripts/classify-expenses.ts (2026-07-24).
- * Trả về (categoryCode, managementGroup, note) khớp với accounting_categories seed.
+ * Classifier chi phí BRE — theo BCTC Kim (TT200) — sửa 2026-07-27.
+ * Trả về (categoryCode, managementGroup, note).
  *
- * Import từ:
- *  - Server action (import Excel)
- *  - Inline re-classify (Phase 3)
+ * Cấu trúc mới:
+ *   641 CP bán hàng: 6411 (lương NVKD) + 6417 (HH sale + MKT + thưởng + tiếp khách)
+ *   642 CP quản lý:  6421 (lương admin) + 6423 (đồ dùng VP) + 6425 (thuế) + 6427 (dịch vụ)
+ *   811 CP khác:     chi không hóa đơn Triết
+ *   242 CP trả trước: Gimbal + TSCĐ nhỏ phân bổ dần
  *
- * Rule priority: cao nhất → thấp nhất. Thứ cấp/Vốn/Hoàn/Đặt cọc ưu tiên
- * trước để hard-exclude khỏi chi phí BCTC.
+ * Rule priority: cao nhất → thấp nhất.
  */
 
 export type ClassifyResult = {
-  categoryCode: string; // FK accounting_categories.code
-  managementGroup: string; // "1. Nhân sự" | ... — cho UI filter
+  categoryCode: string;
+  managementGroup: string;
   note: string;
 };
 
@@ -23,12 +24,41 @@ type Rule = {
   note?: string;
 };
 
+// Danh sách nhận diện NVKD (dùng để phân biệt lương 6411 vs 6421)
+const NVKD_KEYWORDS = [
+  "bách", "bach",
+  "công thành", "cong thanh", "hồ nguyễn công", "ho nguyen cong",
+  "minh nhật", "minh nhat", "trần minh nhật", "tran minh nhat",
+  "cẩm giang", "cam giang",
+  "ngọc duyên", "ngoc duyen",
+  "thanh thúy", "thanh thuy", "lê trịnh", "le trinh",
+  "thị hồng", "thi hong",
+  "quý tài", "quy tai",
+  "hạ uyên", "ha uyen",
+  "duy anh", "huỳnh duy",
+  "hạ sang", "ha sang", "đoàn ngọc",
+  "lan kim", "hồ thị lan",
+  "khánh linh", "khanh linh", "trần thị khánh",
+  "quang tùng", "quang tung", "phạm quang",
+  "cẩm nhung", "cam nhung",
+  "thái an", "thai an", "vũ thái",
+  "đăng khoa", "dang khoa",
+];
+
+const ADMIN_KEYWORDS = [
+  "tường vi", "tuong vi", "danh hoàng",
+  "kế toán", "ke toan",
+];
+
 const RULES: Rule[] = [
+  // ═════════════════════════════════════════════════
+  //   NHÓM KHÔNG PHẢI CHI PHÍ (loại khỏi BCTC)
+  // ═════════════════════════════════════════════════
   {
-    categoryCode: "secondary",
-    managementGroup: "10. Thứ cấp (loại)",
-    keywords: ["sang nhượng", "sang nhuong", "thưởng doanh số", "thuong doanh so"],
-    note: "LOẠI khỏi chi phí công ty (per framework 2026-07-24)",
+    categoryCode: "811",
+    managementGroup: "10a. Chi phí khác (không hóa đơn)",
+    keywords: ["sang nhượng", "sang nhuong"],
+    note: "TK 811 — chi không hóa đơn (per BCTC Kim)",
   },
   {
     categoryCode: "411",
@@ -44,19 +74,15 @@ const RULES: Rule[] = [
     categoryCode: "3411",
     managementGroup: "13. Hoàn booking YCTV",
     keywords: [
-      "hoàn tiền yctv", "hoan tien yctv",
-      "yctv",
+      "hoàn tiền yctv", "hoan tien yctv", "yctv",
       "hoàn tiền booking", "hoan tien booking",
       "hoàn tiền yêu cầu tư vấn", "hoan tien yeu cau tu van",
       "hoàn cọc booking", "hoan coc booking",
       "hoàn tiền da", "hoan tien da",
       "hoàn tiền dự án", "hoan tien du an",
     ],
-    note: "Không phải chi phí — giảm TK 3411/3388 (trả lại nội bộ đã tạm ứng booking)",
+    note: "Không phải chi phí — giảm TK 3411/3388",
   },
-  // Cấp tạm ứng cho Admin/HR — không phải chi phí, là chuyển tiền
-  // (tăng TK 141 Tạm ứng, giảm TK 111/112). Khi Admin chi ra thực (Nga_HR
-  // / Tường Vi_admin sheet) mới là chi phí thực.
   {
     categoryCode: "141",
     managementGroup: "15. Cấp tạm ứng nội bộ",
@@ -75,42 +101,8 @@ const RULES: Rule[] = [
       "đặt cọc thay", "dat coc thay",
       "cọc hộ khách", "coc ho khach",
     ],
-    note: "Không phải chi phí — tăng TK 131/138 phải thu khách (cty cọc thay)",
+    note: "Không phải chi phí — tăng TK 131/138 phải thu",
   },
-  {
-    categoryCode: "632",
-    managementGroup: "9. HH sale / Thù lao sale",
-    keywords: [
-      // Thưởng doanh số cho sale/NVKD/manager (dựa trên bán được) — không
-      // phải lương OPEX. Ưu tiên match trước "thu nhập khác" trong nhóm 1.
-      "thưởng + thu nhập khác", "thuong + thu nhap khac",
-      "bổ sung thưởng + thu nhập khác", "bo sung thuong + thu nhap khac",
-      "hoa hồng", "hoa hong", "hh sale", "hh ", "thưởng doanh số nội bộ",
-      "thù lao cộng tác viên", "thu lao cong tac vien",
-      "thù lao ctv", "thu lao ctv",
-      "phụ cấp cộng tác viên", "phu cap cong tac vien",
-      "phụ cấp ctv", "phu cap ctv",
-      "hỗ trợ ctv", "ho tro ctv",
-      "thưởng kpi quản lý", "thuong kpi quan ly",
-      "hỗ trợ tăng lô", "ho tro tang lo",
-      "thưởng nóng", "thuong nong",
-      "hỗ trợ khách mua", "ho tro khach mua",
-      "hỗ trợ khách hàng", "ho tro khach hang",
-      "thanh toán hỗ trợ khách", "thanh toan ho tro khach",
-      "thanh toán thù lao", "thanh toan thu lao",
-      "thưởng booking", "thuong booking",
-      "thưởng ctv", "thuong ctv",
-      "hỗ trợ tăng ca", "ho tro tang ca",
-    ],
-    note: "Đã ghi ở CRM giá vốn per căn. Dùng cho P&L merge, KHÔNG cộng vào chi phí quản lý",
-  },
-  // Thuế pass-through (GTGT + TNDN) — KHÔNG phải chi phí OPEX.
-  // - Thuế GTGT: cty thu VAT khách + trả VAT nhà cung cấp, chênh nộp NN.
-  //   Không giảm lợi nhuận, chỉ giảm tiền.
-  // - Thuế TNDN: nộp SAU khi tính lãi trước thuế. Tính riêng trong P&L.
-  // Ưu tiên match trước 6425 để tách rõ.
-  // Thuế pass-through: GTGT + TNDN + TNCN (cty nộp thay NV, đã khấu trừ
-  // từ lương gross → không tính chi phí lần 2). Không phải OPEX.
   {
     categoryCode: "3331-3334",
     managementGroup: "7b. Thuế pass-through (GTGT/TNDN/TNCN)",
@@ -122,9 +114,8 @@ const RULES: Rule[] = [
       "tạm nộp tndn", "tam nop tndn",
       "hoàn trả tiền thuế tncn", "hoan tra tien thue tncn",
     ],
-    note: "Không phải chi phí quản lý — VAT/TNDN/TNCN pass-through",
+    note: "Không phải chi phí OPEX — VAT/TNDN/TNCN pass-through",
   },
-  // Thuế OPEX thật: môn bài + công đoàn + lệ phí (không TNCN).
   {
     categoryCode: "6425",
     managementGroup: "7. Thuế / Phí NN (OPEX)",
@@ -133,9 +124,66 @@ const RULES: Rule[] = [
       "công đoàn", "cong doan",
     ],
   },
+
+  // ═════════════════════════════════════════════════
+  //   641 CHI PHÍ BÁN HÀNG
+  // ═════════════════════════════════════════════════
+  {
+    categoryCode: "6417",
+    managementGroup: "1b. HH sale + Marketing + Thưởng doanh số",
+    keywords: [
+      // HH sale + thưởng doanh số (Kim gộp vào 6417)
+      "thưởng + thu nhập khác", "thuong + thu nhap khac",
+      "bổ sung thưởng + thu nhập khác", "bo sung thuong + thu nhap khac",
+      "hoa hồng", "hoa hong", "hh sale", "hh ", "thưởng doanh số",
+      "thù lao cộng tác viên", "thu lao cong tac vien",
+      "thù lao ctv", "thu lao ctv",
+      "phụ cấp cộng tác viên", "phu cap cong tac vien",
+      "phụ cấp ctv", "phu cap ctv",
+      "hỗ trợ ctv", "ho tro ctv",
+      "thưởng kpi quản lý", "thuong kpi quan ly",
+      "thưởng kpi ql", "thuong kpi ql",
+      "hỗ trợ tăng lô", "ho tro tang lo",
+      "thưởng nóng", "thuong nong",
+      "hỗ trợ khách mua", "ho tro khach mua",
+      "hỗ trợ khách hàng", "ho tro khach hang",
+      "thanh toán hỗ trợ khách", "thanh toan ho tro khach",
+      "thanh toán thù lao", "thanh toan thu lao",
+      "thưởng booking", "thuong booking",
+      "thưởng ctv", "thuong ctv",
+      "hỗ trợ tăng ca", "ho tro tang ca",
+      "trích trước chi phí hoa hồng", "trich truoc chi phi hoa hong",
+      "trích trước thưởng", "trich truoc thuong",
+      "trích trước chi phí kpi", "trich truoc chi phi kpi",
+      "trích trước chi phí hỗ trợ", "trich truoc chi phi ho tro",
+      // Marketing / quảng cáo
+      "quảng cáo", "quang cao", "qc facebook", "qc fb", "fb ads", "facebook ads",
+      "google ads", "batdongsan", "chợ tốt", "cho tot", "chotot",
+      "in ấn", "in an", "in thẻ", "in the", "in name card", "in tờ", "in to",
+      "tờ rơi", "to roi", "tờ gấp", "to gap", "banner", "standee",
+      "tuyển dụng", "tuyen dung",
+      "topup ads", "nạp tiền google ads", "nap tien google ads",
+      "capcut", "logo", "bdsvn", "bds vn", "batdongsan.vn",
+      // Tiếp khách + du lịch + khai trương (chi phí bán hàng khác)
+      "tiếp khách", "tiep khach",
+      "tất niên", "tat nien", "liên hoan", "lien hoan",
+      "du lịch", "du lich", "team building", "homestay", "bbq", "tiệc", "tiec",
+      "khai trương", "khai truong",
+      "đi ăn", "di an", "nhậu", "nhau ", "karaoke",
+      "sinh nhật", "sinh nhat",
+      // Website hosting & CP CPB (chi phí trả trước phân bổ hàng tháng)
+      "hạch toán cp cpb : phí dịch vụ quảng cáo", "hach toan cp cpb : phi dich vu quang cao",
+      "website batdongsan",
+    ],
+    note: "TK 6417 (BCTC): chi phí bán hàng khác — Kim gộp HH + MKT + thưởng doanh số + tiếp khách",
+  },
+
+  // Lương: cần detect NVKD vs Admin để chọn 6411 vs 6421
+  // Rule này em xử lý bằng resolveByRecipient bên dưới, nhưng để classifier
+  // đơn giản hoạt động, mặc định "lương" → 6421, sau đó reclassify script check recipient.
   {
     categoryCode: "6421",
-    managementGroup: "1. Nhân sự",
+    managementGroup: "1c. Lương + phụ cấp + BHXH",
     keywords: [
       "lương", "luong ",
       "bhxh", "bhyt", "bhtn", "bảo hiểm", "bao hiem",
@@ -148,15 +196,20 @@ const RULES: Rule[] = [
       "bổ sung thưởng", "bo sung thuong",
       "hỗ trợ tết", "ho tro tet",
       "thưởng tháng", "thuong thang",
-      "thưởng kpi ql", "thuong kpi ql",
       "hồ gia (marketing)",
       "quyết editor", "quyet editor",
     ],
+    note: "TK 6421 default. Reclassify sau theo recipient → 6411 nếu NVKD.",
   },
+
+  // ═════════════════════════════════════════════════
+  //   642 CHI PHÍ QUẢN LÝ (không phải nhân sự)
+  // ═════════════════════════════════════════════════
   {
-    categoryCode: "6427-rent",
-    managementGroup: "2. Thuê văn phòng",
+    categoryCode: "6427",
+    managementGroup: "2. Thuê VP + tiện ích + dịch vụ",
     keywords: [
+      // Thuê văn phòng + tiện ích
       "thuê văn phòng", "thue van phong", "thuê trụ sở", "thue tru so",
       "thuê vp", "thue vp", "thuê nhà", "thue nha", "thuê mặt bằng", "thue mat bang",
       "tiền thuê", "tien thue",
@@ -171,12 +224,7 @@ const RULES: Rule[] = [
       "cọc thuê", "coc thue",
       "cọc mặt bằng", "coc mat bang",
       "mặt bằng", "mat bang",
-    ],
-  },
-  {
-    categoryCode: "6427-svc",
-    managementGroup: "3. Dịch vụ mua ngoài",
-    keywords: [
+      // Dịch vụ mua ngoài
       "dịch vụ kế toán", "dich vu ke toan", "phí kế toán", "phi ke toan",
       "phí ngân hàng", "phi ngan hang",
       "token", "chữ ký số", "chu ky so",
@@ -185,7 +233,6 @@ const RULES: Rule[] = [
       "tên miền", "ten mien", "domain",
       "ssl", "chứng chỉ ssl", "chung chi ssl",
       "houzez", "wordpress", "envato",
-      "capcut",
       "hóa đơn điện tử", "hoa don dien tu",
       "phần mềm", "phan mem",
       "website bre", "web bre",
@@ -194,26 +241,47 @@ const RULES: Rule[] = [
       "phí dịch vụ", "phi dich vu",
       "cước gọi", "cuoc goi",
       "cước điện thoại", "cuoc dien thoai",
+      // Đăng ký / phí hành chính
+      "đăng ký ", "dang ky ",
+      "công chứng", "cong chuc",
+      "phòng cháy chữa cháy", "pccc",
+      "nộp hồ sơ", "nop ho so",
+      "con dấu", "con dau",
+      "công văn", "cong van",
+      "phụ lục", "phu luc",
     ],
+    note: "TK 6427 (BCTC): dịch vụ mua ngoài — thuê VP, tiện ích, phần mềm, dịch vụ HC",
   },
+
+  // Đồ dùng VP (Kim tách riêng TK 6423)
   {
-    categoryCode: "6417",
-    managementGroup: "4. Marketing / Quảng cáo",
+    categoryCode: "6423",
+    managementGroup: "6a. Đồ dùng VP",
     keywords: [
-      "quảng cáo", "quang cao", "qc facebook", "qc fb", "fb ads", "facebook ads",
-      "google ads", "batdongsan", "chợ tốt", "cho tot", "chotot",
-      "in ấn", "in an", "in thẻ", "in the", "in name card", "in tờ", "in to",
-      "tờ rơi", "to roi", "tờ gấp", "to gap", "banner", "standee",
-      "tuyển dụng", "tuyen dung",
-      "topup ads", "nạp tiền google ads", "nap tien google ads",
-      "capcut pro",
-      "logo",
-      "bdsvn", "bds vn", "batdongsan.vn",
+      "văn phòng phẩm", "van phong pham", "vpp",
+      "giấy a4", "giay a4", "giấy in", "giay in",
+      "mực in", "muc in",
+      "vệ sinh", "ve sinh", "btaskee",
+      "đồng phục", "dong phuc", "áo dự án", "ao du an",
+      "nước lau", "nuoc lau", "giấy ăn", "giay an", "khăn lau", "khan lau",
+      "sáp thơm", "sap thom", "nước rửa chén", "nuoc rua chen", "thùng rác", "thung rac",
+      "túi rác", "tui rac", "chổi", "choi ",
+      "cây lau nhà", "cay lau nha", "bao rác", "bao rac",
+      "khay làm nước đá", "khay lam nuoc da",
+      "nước rửa tay", "nuoc rua tay",
+      "ghim bấm", "ghim bam",
+      "sim", "cước sim", "cuoc sim",
+      "shoppee", "shopee",
     ],
+    note: "TK 6423 (BCTC): đồ dùng văn phòng",
   },
+
+  // ═════════════════════════════════════════════════
+  //   242 CHI PHÍ TRẢ TRƯỚC (thiết bị phân bổ dần)
+  // ═════════════════════════════════════════════════
   {
-    categoryCode: "153-211",
-    managementGroup: "5. Thiết bị / TSCĐ",
+    categoryCode: "242",
+    managementGroup: "5a. TSCĐ phân bổ dần",
     keywords: [
       "thiết bị", "thiet bi",
       "máy in", "may in", "máy lạnh", "may lanh", "máy chấm công", "may cham cong",
@@ -233,87 +301,12 @@ const RULES: Rule[] = [
       "cây văn phòng", "cay van phong",
       "mua ghế", "mua ghe", "mua bàn", "mua ban",
     ],
+    note: "TK 242 (BCTC): trả trước, phân bổ vào 6417/6427 hàng tháng",
   },
-  {
-    categoryCode: "6428",
-    managementGroup: "6. Vận hành khác",
-    keywords: [
-      "văn phòng phẩm", "van phong pham", "vpp",
-      "ship", "giao ", "book be", "book grab", "grab",
-      "tiếp khách", "tiep khach", "liên hoan", "lien hoan", "tất niên", "tat nien",
-      "cúng", "cung ", "thần tài", "than tai", "hoa cúng", "hoa cung", "trái cây cúng", "trai cay cung",
-      "khai trương", "khai truong",
-      "đào tạo", "dao tao",
-      "đồng phục", "dong phuc", "áo dự án", "ao du an",
-      "nước lau", "nuoc lau", "giấy ăn", "giay an", "khăn lau", "khan lau",
-      "hoa quả", "hoa qua", "trái cây", "trai cay",
-      "múa lân", "mua lan",
-      "học chứng chỉ", "hoc chung chi",
-      "phòng cháy chữa cháy", "pccc",
-      "thẻ xe", "the xe", "thẻ từ", "the tu", "chìa khoá", "chia khoa",
-      "văn bản", "van ban", "công chứng", "cong chuc",
-      "bánh cúng", "banh cung", "bánh trái", "banh trai",
-      "sáp thơm", "sap thom", "nước rửa chén", "nuoc rua chen", "thùng rác", "thung rac",
-      "vệ sinh", "ve sinh", "btaskee",
-      "mực in", "muc in",
-      "be nhận", "be nhan",
-      "hỗ trợ tết", "ho tro tet",
-      "trả ship", "tra ship",
-      "nước hoa xịt thơm", "nuoc hoa xit thom",
-      "pin thay", "pin ", "chân đèn", "chan den", "sạc", "sac",
-      "vệ sinh thảm", "ve sinh tham", "thảm", "tham ",
-      "vật tư", "vat tu", "ổ khoá", "o khoa",
-      "nhang", "hương", "huong",
-      "đăng ký ", "dang ky ", "đăng ký thẻ", "dang ky the",
-      "con dấu", "con dau",
-      "nộp hồ sơ", "nop ho so", "giao hồ sơ", "giao ho so",
-      "hoa và trái cây", "hoa va trai cay", "hoa + trái cây", "hoa+trai cay",
-      "trà bánh", "tra banh",
-      "karaoke",
-      "thành lập", "thanh lap",
-      "du lịch", "du lich", "team building", "homestay", "bbq", "tiệc", "tiec",
-      "đi ăn", "di an",
-      "folder bre", "bì thư", "bi thu",
-      "lì xì", "li xi",
-      "nhậu", "nhau ",
-      "hoa chúc mừng", "hoa chuc mung",
-      "khởi công", "khoi cong",
-      "tháo lắp cam", "thao lap cam",
-      "setup", "bộ bình cốc", "bo binh coc", "tranh tạo động lực", "tranh tao dong luc",
-      "cây lau nhà", "cay lau nha", "bao rác", "bao rac", "kéo", "keo ",
-      "cây xúc rác", "cay xuc rac", "chổi", "choi ",
-      "túi rác", "tui rac", "khay làm nước đá", "khay lam nuoc da",
-      "tô ", "to ", "dù", "du ", "dép", "dep ",
-      "quét dọn", "quet don",
-      "bánh kem", "banh kem",
-      "nước ngọt", "nuoc ngot",
-      "thuốc xịt cây", "thuoc xit cay",
-      "cây để bàn", "cay de ban",
-      "cây để", "cay de",
-      "hoa", "hoa + bánh", "hoa + banh",
-      "giấy", "giay",
-      "xịt thơm", "xit thom",
-      "dây vòi xịt", "day voi xit",
-      "book dọn", "book don", "book dọn dẹp", "book don dep",
-      "giúp việc", "giup viec",
-      "tiền vàng", "tien vang", "rượu", "ruou ",
-      "gửi ", "gui ",
-      "phụ lục", "phu luc",
-      "trạm y tế", "tram y te",
-      "huy hiệu", "huy hieu", "cup ",
-      "poster",
-      "ghim bấm", "ghim bam",
-      "sinh nhật", "sinh nhat",
-      "nước rửa tay", "nuoc rua tay",
-      "book",
-      "giấy a4", "giay a4",
-      "ứng chi phí", "ung chi phi",
-      "tạm ứng hr", "tam ung hr",
-      "sim", "cước sim", "cuoc sim",
-      "shoppee", "shopee",
-      "vàng + rượu",
-    ],
-  },
+
+  // ═════════════════════════════════════════════════
+  //   635 CHI PHÍ TÀI CHÍNH
+  // ═════════════════════════════════════════════════
   {
     categoryCode: "635",
     managementGroup: "8. Chi phí tài chính",
@@ -331,15 +324,38 @@ const normMatch = (s: string) =>
     .replace(/\s+/g, " ")
     .trim();
 
-export function classify(text: string): ClassifyResult {
+function containsAny(text: string, keywords: string[]): boolean {
+  const n = normMatch(text);
+  return keywords.some((k) => n.includes(normMatch(k)));
+}
+
+/**
+ * @param text description
+ * @param recipient tên người nhận (dùng để tách 6411 vs 6421 với lương)
+ */
+export function classify(text: string, recipient?: string): ClassifyResult {
   const norm = normMatch(text);
   for (const rule of RULES) {
     for (const kw of rule.keywords) {
       const kwNorm = normMatch(kw);
       if (norm.includes(kwNorm)) {
+        let categoryCode = rule.categoryCode;
+        let managementGroup = rule.managementGroup;
+
+        // Lương: nếu 6421 nhưng NVKD detected (via recipient hoặc description) → chuyển 6411
+        if (rule.categoryCode === "6421") {
+          const combined = `${text} ${recipient ?? ""}`;
+          const hasNVKD = containsAny(combined, NVKD_KEYWORDS);
+          const hasAdmin = containsAny(combined, ADMIN_KEYWORDS);
+          if (hasNVKD && !hasAdmin) {
+            categoryCode = "6411";
+            managementGroup = "1a. Lương NVKD";
+          }
+        }
+
         return {
-          categoryCode: rule.categoryCode,
-          managementGroup: rule.managementGroup,
+          categoryCode,
+          managementGroup,
           note: rule.note ?? "",
         };
       }

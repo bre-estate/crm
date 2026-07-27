@@ -8,6 +8,7 @@ import {
   boolean,
   uuid,
   jsonb,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
@@ -185,15 +186,27 @@ export const products = pgTable("products", {
 });
 
 // ===================== 5. INVOICES =====================
-export const invoices = pgTable("invoices", {
-  id: serial("id").primaryKey(),
-  invoiceNumber: text("invoice_number").notNull(),
-  invoiceDate: text("invoice_date"),
-  partnerId: integer("partner_id").references(() => partners.id),
-  totalAmountVat: doublePrecision("total_amount_vat").default(0),
-  note: text("note"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+// UNIQUE (invoice_number, invoice_date, partner_id) — mỗi CĐT có sổ HĐ riêng,
+// số HĐ trùng giữa các CĐT là hợp lệ, nhưng cùng bộ 3 phải unique.
+export const invoices = pgTable(
+  "invoices",
+  {
+    id: serial("id").primaryKey(),
+    invoiceNumber: text("invoice_number").notNull(),
+    invoiceDate: text("invoice_date"),
+    partnerId: integer("partner_id").references(() => partners.id),
+    totalAmountVat: doublePrecision("total_amount_vat").default(0),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    numberDatePartnerUniq: uniqueIndex("invoices_number_date_partner_uniq").on(
+      t.invoiceNumber,
+      sql`COALESCE(${t.invoiceDate}, '')`,
+      sql`COALESCE(${t.partnerId}, 0)`,
+    ),
+  }),
+);
 
 // ===================== 6. REVENUE RECONCILIATIONS (2.2) =====================
 export const revenueReconciliations = pgTable("revenue_reconciliations", {
@@ -369,6 +382,9 @@ export const accountingCategories = pgTable("accounting_categories", {
   groupName: text("group_name").notNull(), // "Chi phí quản lý" / "Vốn" / "Tài sản" / ...
   isExpense: boolean("is_expense").notNull().default(true), // false cho vốn/hoàn/cọc
   displayOrder: integer("display_order").notNull().default(100),
+  // Nhóm BCTC TT200: "641" (CP bán hàng), "642" (CP quản lý), "811" (CP khác),
+  // "242" (CP trả trước), "other" (vốn/tài sản/thuế pass-through)
+  groupBctc: text("group_bctc"),
 });
 
 // Bảng giao dịch tài chính — 1 row = 1 khoản chi/thu/vốn/hoàn/cọc hộ.
@@ -377,7 +393,11 @@ export const financialTransactions = pgTable("financial_transactions", {
   id: serial("id").primaryKey(),
   // Ngày phát sinh (fallback = ngày cuối tháng nếu chỉ biết tháng)
   transactionDate: text("transaction_date").notNull(), // YYYY-MM-DD
-  transactionMonth: text("transaction_month").notNull(), // YYYY-MM
+  transactionMonth: text("transaction_month").notNull(), // YYYY-MM — tháng chi tiền (cash view)
+  // Tháng phát sinh recon (accrual view). Default = transactionMonth với row không gắn deal.
+  accrualMonth: text("accrual_month").notNull(),
+  // Link tới căn để reconciliation + drill-down (nullable — nhiều row không gắn căn)
+  productId: integer("product_id").references(() => products.id),
   description: text("description").notNull(),
   amount: doublePrecision("amount").notNull(), // luôn dương
   direction: text("direction", { enum: ["out", "in"] }).notNull().default("out"),

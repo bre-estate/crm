@@ -86,11 +86,12 @@ export function parseThanhToan(buf: Buffer): ParsedRow[] {
     if (!iso) continue;
     const bp = clean(r[3]);
     const recipient = clean(r[10]);
-    const c = classify(`${description} ${clean(r[9])} ${recipient}`);
+    const c = classify(`${description} ${clean(r[9])} ${recipient}`, recipient);
     const source = "thanh-toan";
     out.push({
       transactionDate: iso,
       transactionMonth: monthOf(iso),
+      accrualMonth: monthOf(iso),
       description,
       amount,
       direction: "out",
@@ -135,11 +136,12 @@ export function parseMerged(buf: Buffer): ParsedRow[] {
       // Nếu không parse được ngày → dùng ngày 15 của tháng làm fallback.
       const iso = `${month}-15`;
       const description = `${hangMuc}${chiTiet ? " — " + chiTiet : ""}`;
-      const c = classify(`${hangMuc} ${chiTiet} ${clean(r[3])}`);
+      const c = classify(`${hangMuc} ${chiTiet} ${clean(r[3])}`, clean(r[3]));
       const source = `merged-${nguoi}`;
       out.push({
         transactionDate: iso,
         transactionMonth: month,
+        accrualMonth: month,
         description,
         amount,
         direction: "out",
@@ -185,11 +187,12 @@ export function parseTamUng(buf: Buffer): ParsedRow[] {
       if (!iso) continue;
       const description = clean(r[1]);
       const invoiceNo = clean(r[8]) || null;
-      const c = classify(description);
+      const c = classify(description, clean(r[10]));
       const source = `tam-ung-${nguoi}`;
       out.push({
         transactionDate: iso,
         transactionMonth: monthOf(iso),
+      accrualMonth: monthOf(iso),
         description,
         amount: chi,
         direction: "out",

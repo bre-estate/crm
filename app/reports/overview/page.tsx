@@ -9,13 +9,7 @@ import { companyExpenses, financialTransactions } from "@/lib/schema";
 import { inArray, sql, eq } from "drizzle-orm";
 import { monthlyDepreciation } from "@/lib/accounting/depreciation";
 
-// Framework chốt 2026-07-25:
-//   - Bỏ 153-211 (Thiết bị/TSCĐ = CAPEX, khấu hao riêng)
-//   - Bỏ 3331-3334 (Thuế GTGT/TNDN/TNCN pass-through, không giảm lãi)
-//   - 6425 chỉ còn thuế môn bài + công đoàn (OPEX thật)
-const OPEX_CATEGORIES = [
-  "6421", "6427-rent", "6427-svc", "6417", "6428", "6425", "635",
-];
+import { OPEX_CATEGORIES } from "@/lib/accounting/categories";
 
 export const dynamic = "force-dynamic";
 
@@ -121,7 +115,7 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
         cost: financialTransactions.amount,
       })
       .from(financialTransactions)
-      .where(eq(financialTransactions.categoryCode, "153-211"));
+      .where(eq(financialTransactions.categoryCode, "242"));
     const monthlyDepTotal = tscdRows.reduce(
       (s, a) => s + monthlyDepreciation(a.month, Number(a.cost), nowMonth),
       0,

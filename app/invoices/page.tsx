@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { invoices, revenueReconciliations, paymentsIn } from "@/lib/schema";
+import { invoices, revenueReconciliations, paymentsIn, partners } from "@/lib/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import InvoicesTable from "./InvoicesTable";
 
@@ -8,7 +8,18 @@ export const dynamic = "force-dynamic";
 export default async function InvoicesPage() {
   // Aggregate: mỗi HĐ có N recon, mỗi recon có M payment.
   // Query 2 vòng: recon count + total per invoice; payments sum per invoice.
-  const invRows = await db.select().from(invoices).orderBy(desc(invoices.invoiceDate));
+  const invRows = await db
+    .select({
+      id: invoices.id,
+      invoiceNumber: invoices.invoiceNumber,
+      invoiceDate: invoices.invoiceDate,
+      totalAmountVat: invoices.totalAmountVat,
+      partnerId: invoices.partnerId,
+      partnerName: partners.name,
+    })
+    .from(invoices)
+    .leftJoin(partners, eq(partners.id, invoices.partnerId))
+    .orderBy(desc(invoices.invoiceDate));
 
   const reconAgg = await db
     .select({
@@ -53,6 +64,7 @@ export default async function InvoicesPage() {
       id: inv.id,
       number: inv.invoiceNumber,
       date: inv.invoiceDate,
+      partnerName: inv.partnerName ?? null,
       total,
       paid,
       remaining: total - paid,

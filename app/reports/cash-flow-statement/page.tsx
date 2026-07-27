@@ -7,7 +7,7 @@ import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-const OPEX_CATEGORIES = ["6421", "6427-rent", "6427-svc", "6417", "6428", "6425", "635"];
+import { OPEX_CATEGORIES } from "@/lib/accounting/categories";
 
 const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
 
@@ -99,7 +99,7 @@ export default async function CashFlowStatementPage({
     .from(financialTransactions)
     .where(
       and(
-        eq(financialTransactions.categoryCode, "153-211"),
+        eq(financialTransactions.categoryCode, "242"),
         sql`transaction_month LIKE ${yearMonthPrefix + "%"}`,
       ),
     );

@@ -4,10 +4,9 @@ import { getOwnerEmail } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import { eq, inArray, desc, and, sql, like } from "drizzle-orm";
 import Link from "next/link";
+import { OPEX_CATEGORIES } from "@/lib/accounting/categories";
 
 export const dynamic = "force-dynamic";
-
-const OPEX_CATEGORIES = ["6421", "6427-rent", "6427-svc", "6417", "6428", "6425", "635"];
 
 const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
 
