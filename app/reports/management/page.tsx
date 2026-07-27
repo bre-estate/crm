@@ -111,20 +111,20 @@ export default async function ManagementReportPage({
   );
   const avgOpexMonth = opexPureAvg + monthlyDepTotal;
 
-  // ===== 2. P&L monthly (accrual — rev + cost gộp theo tháng cọc căn) =====
+  // ===== 2. Lãi/lỗ theo tháng — Kim confirm 2026-07-27: theo NGÀY ĐC =====
+  // Dồn tích theo ngày đối chiếu (recon date), KHÔNG dùng ngày cọc căn.
+  // Ngày cọc chỉ dùng cho tính thưởng NVKD ở /reports/people.
   const allProducts = await db.select({ id: products.id, depositDate: products.depositDate }).from(products);
-  const productMonthMap = new Map<number, string>();
-  for (const p of allProducts) {
-    if (p.depositDate) productMonthMap.set(p.id, p.depositDate.slice(0, 7));
-  }
 
   const [revs, costs] = await Promise.all([
     db.select({
       productId: revenueReconciliations.productId,
+      reconDate: revenueReconciliations.reconciliationDate,
       receivable: revenueReconciliations.totalReceivableThisTime,
     }).from(revenueReconciliations),
     db.select({
       productId: costReconciliations.productId,
+      reconDate: costReconciliations.reconciliationDate,
       payable: costReconciliations.amountPayableThisTime,
     }).from(costReconciliations),
   ]);
@@ -136,16 +136,16 @@ export default async function ManagementReportPage({
     return pnl.get(m)!;
   };
   for (const r of revs) {
-    const m = productMonthMap.get(r.productId);
-    if (!m) continue;
+    if (!r.reconDate) continue;
+    const m = r.reconDate.slice(0, 7);
     getM(m).revenue += Number(r.receivable ?? 0);
   }
   for (const cst of costs) {
-    const m = productMonthMap.get(cst.productId);
-    if (!m) continue;
-    getM(cst.productId ? m : "?").cost += Number(cst.payable ?? 0);
+    if (!cst.reconDate) continue;
+    const m = cst.reconDate.slice(0, 7);
+    getM(m).cost += Number(cst.payable ?? 0);
   }
-  for (const [g, mmap] of grid) {
+  for (const [, mmap] of grid) {
     for (const [m, v] of mmap) {
       getM(m).opex += v;
     }
@@ -333,7 +333,7 @@ export default async function ManagementReportPage({
           <h2 className="text-lg font-semibold">📈 Lãi/lỗ theo tháng — {selectedYear}</h2>
         </div>
         <p className="text-xs text-slate-500 mb-3">
-          Accrual: DT + Giá vốn gộp theo tháng cọc căn. CP HĐ gộp theo tháng phát sinh.
+          Dồn tích theo ngày đối chiếu (chuẩn kế toán VN — Kim confirm 2026-07-27). CP HĐ gộp theo tháng phát sinh.
           Lãi thuần = DT/1.1 − Giá vốn − CP HĐ.
         </p>
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">

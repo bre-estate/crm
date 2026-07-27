@@ -39,39 +39,45 @@ export default async function MonthDetailPage({ params }: { params: Params }) {
     .where(eq(financialTransactions.transactionMonth, month))
     .orderBy(desc(financialTransactions.transactionDate));
 
-  // ===== 2. Rev + Cost reconciliations trong tháng (theo tháng cọc căn) =====
-  const productsInMonth = await db
-    .select({ id: products.id, unitCode: products.unitCode, projectId: products.projectId })
+  // ===== 2. Rev + Cost reconciliations trong tháng theo NGÀY ĐC =====
+  // Kim confirm 2026-07-27: DT ghi sổ theo ngày đối chiếu, không theo cọc.
+  const revs = await db
+    .select({
+      id: revenueReconciliations.id,
+      productId: revenueReconciliations.productId,
+      reconDate: revenueReconciliations.reconciliationDate,
+      receivable: revenueReconciliations.totalReceivableThisTime,
+      revThisTime: revenueReconciliations.revenueThisTime,
+    })
+    .from(revenueReconciliations)
+    .where(like(revenueReconciliations.reconciliationDate, `${month}-%`));
+  const costs = await db
+    .select({
+      id: costReconciliations.id,
+      productId: costReconciliations.productId,
+      reconDate: costReconciliations.reconciliationDate,
+      costType: costReconciliations.costType,
+      employeeName: costReconciliations.employeeName,
+      payable: costReconciliations.amountPayableThisTime,
+    })
+    .from(costReconciliations)
+    .where(like(costReconciliations.reconciliationDate, `${month}-%`));
+
+  // Fetch product info cho recon rows
+  const productIds = [...new Set([...revs.map((r) => r.productId), ...costs.map((c) => c.productId)])];
+  const productsInvolved = productIds.length > 0
+    ? await db
+        .select({ id: products.id, unitCode: products.unitCode, projectId: products.projectId })
+        .from(products)
+        .where(inArray(products.id, productIds))
+    : [];
+  const productMap = new Map(productsInvolved.map((p) => [p.id, p]));
+
+  // Số căn CỌC trong tháng (để hiển thị info, không dùng cho P&L)
+  const productsCockedInMonth = await db
+    .select({ id: products.id })
     .from(products)
     .where(like(products.depositDate, `${month}-%`));
-  const productIds = productsInMonth.map((p) => p.id);
-  const productMap = new Map(productsInMonth.map((p) => [p.id, p]));
-
-  const revs = productIds.length > 0
-    ? await db
-        .select({
-          id: revenueReconciliations.id,
-          productId: revenueReconciliations.productId,
-          reconDate: revenueReconciliations.reconciliationDate,
-          receivable: revenueReconciliations.totalReceivableThisTime,
-          revThisTime: revenueReconciliations.revenueThisTime,
-        })
-        .from(revenueReconciliations)
-        .where(inArray(revenueReconciliations.productId, productIds))
-    : [];
-  const costs = productIds.length > 0
-    ? await db
-        .select({
-          id: costReconciliations.id,
-          productId: costReconciliations.productId,
-          reconDate: costReconciliations.reconciliationDate,
-          costType: costReconciliations.costType,
-          employeeName: costReconciliations.employeeName,
-          payable: costReconciliations.amountPayableThisTime,
-        })
-        .from(costReconciliations)
-        .where(inArray(costReconciliations.productId, productIds))
-    : [];
 
   // ===== 3. Aggregate =====
   const opexTxs = txs.filter((t) => OPEX_CATEGORIES.includes(t.categoryCode));
@@ -111,7 +117,7 @@ export default async function MonthDetailPage({ params }: { params: Params }) {
         </div>
         <h1 className="text-2xl font-bold mt-1">Chi tiết tháng T{monthNum}/{year}</h1>
         <p className="text-sm text-slate-500 mt-1">
-          {txs.length} giao dịch tài chính · {productsInMonth.length} căn cọc trong tháng ·
+          {txs.length} giao dịch tài chính · {productsCockedInMonth.length} căn cọc trong tháng ·
           {revs.length} DT ĐC · {costs.length} giá vốn ĐC
         </p>
       </div>

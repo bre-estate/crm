@@ -83,22 +83,16 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
       }));
     }
 
-    // Accrual accounting: group rev + cost theo THÁNG CỌC của căn
-    // (không phải ngày ĐC). Match income + expense cùng căn về cùng period,
-    // tránh lệch timing (VD ĐC rev tháng 7, ĐC cost tháng 8 → lãi âm giả).
-    const productMonthMap = new Map<number, string>();
-    for (const p of data.prodRowsAll) {
-      const ym = effectiveYM(null, p.depositDate);
-      if (ym) productMonthMap.set(p.id, `${ym.y}-${String(ym.mo).padStart(2, "0")}`);
-    }
+    // Dồn tích theo NGÀY ĐC (Kim confirm 2026-07-27) — chuẩn kế toán VN.
+    // KHÔNG dùng ngày cọc căn (ngày cọc chỉ cho tính thưởng NVKD).
     for (const r of revReconsAll) {
-      const m = productMonthMap.get(r.productId);
-      if (!m) continue;
+      if (!r.reconDate) continue;
+      const m = r.reconDate.slice(0, 7);
       getOrInitMonth(m).revenue += r.receivable;
     }
     for (const c of costReconsAll) {
-      const m = productMonthMap.get(c.productId);
-      if (!m) continue;
+      if (!c.reconDate) continue;
+      const m = c.reconDate.slice(0, 7);
       getOrInitMonth(m).cost += c.payable;
     }
     for (const e of allExpenses) {
@@ -346,8 +340,8 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
           <div>
             <h2 className="text-lg font-semibold mb-1">📈 Lãi/lỗ theo tháng</h2>
             <p className="text-xs text-slate-500 mb-3">
-              Accrual — DT + GV gộp theo tháng ghi nhận DT của căn (không phải ngày ĐC).
-              Match income + expense cùng căn về cùng tháng, đúng nghiệp vụ kế toán. CP HĐ gộp theo tháng phát sinh.
+              Dồn tích theo ngày đối chiếu (chuẩn kế toán VN — Kim confirm 2026-07-27).
+              CP HĐ gộp theo tháng phát sinh.
             </p>
             <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
               <table className="w-full text-sm min-w-[700px]">
