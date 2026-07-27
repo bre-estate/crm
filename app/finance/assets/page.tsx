@@ -75,7 +75,7 @@ export default async function AssetsPage() {
         <p className="text-sm text-slate-500 mt-1">
           Danh sách TSCĐ nhóm 5 (thiết bị/máy móc). Khấu hao đường thẳng đều
           <b> {DEFAULT_LIFE_MONTHS} tháng</b> (3 năm) — theo TT45/2013 cho thiết bị VP.
-          Khấu hao tháng cộng vào CP QL trong /reports/management.
+          Khấu hao tháng cộng vào CP HĐ trong /reports/management.
         </p>
       </div>
 
@@ -186,8 +186,8 @@ export default async function AssetsPage() {
             (giá trị net = 0 sổ sách)
           </li>
           <li>
-            <b>Cộng vào CP QL</b>: Khấu hao/tháng hiện tại = {fmt(totalMonthlyDep)} VND — sẽ
-            add vào CP QL trong /reports/management và /reports/overview
+            <b>Cộng vào CP HĐ</b>: Khấu hao/tháng hiện tại = {fmt(totalMonthlyDep)} VND — sẽ
+            add vào CP HĐ trong /reports/management và /reports/overview
           </li>
           <li>
             <b>BCĐKT</b>: TS 153/211 hiển thị Giá gốc − Khấu hao lũy kế = Giá trị còn lại{" "}

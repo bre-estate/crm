@@ -110,7 +110,7 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
       pnl.profitNet = pnl.profitGross - pnl.expense;
     }
 
-    // Break-even: cần bao nhiêu căn/tháng để cover CP QL?
+    // Break-even: cần bao nhiêu căn/tháng để cover CP HĐ?
     // avgMonthlyExpense = TB năm hiện tại YTD (chốt 2026-07-25) — phản ánh
     // chi tiêu thực tế năm nay, không pha loãng bởi tháng cũ.
     const nowMonth = new Date().toISOString().slice(0, 7);
@@ -120,7 +120,7 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
     const totalExpenseCurYear = currentYearExpenses.reduce((s, e) => s + e.amount, 0);
     const opexPureAvg = monthsSoFar > 0 ? totalExpenseCurYear / monthsSoFar : 0;
 
-    // Cộng khấu hao TSCĐ (nhóm 5) vào CP QL — chốt 2026-07-26
+    // Cộng khấu hao TSCĐ (nhóm 5) vào CP HĐ — chốt 2026-07-26
     const tscdRows = await db
       .select({
         month: financialTransactions.transactionMonth,
@@ -219,7 +219,7 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
           )}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Card
-              label={`CP QL trong kỳ (${financial.monthsInPeriod} tháng)`}
+              label={`CP HĐ trong kỳ (${financial.monthsInPeriod} tháng)`}
               value={fmtMoney(financial.totalExpense)}
               sub={`${financial.filteredExpensesCount} dòng chi phí`}
               warn
@@ -281,11 +281,11 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
           <div>
             <h2 className="text-lg font-semibold mb-1">⚖️ Điểm hòa vốn</h2>
             <p className="text-xs text-slate-500 mb-3">
-              Số căn/tháng cần bán để cover CP quản lý. TB CP QL + căn bán tính theo năm hiện tại YTD (chốt 2026-07-25).
+              Số căn/tháng cần bán để cover CP quản lý. TB CP HĐ + căn bán tính theo năm hiện tại YTD (chốt 2026-07-25).
             </p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <Card
-                label="CP QL TB / tháng"
+                label="CP HĐ TB / tháng"
                 value={fmtMoney(avgMonthlyExpense)}
                 sub="Năm hiện tại YTD"
                 warn
@@ -302,7 +302,7 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
                     ? `${breakEvenUnits.toFixed(1)} căn/tháng`
                     : "—"
                 }
-                sub="CP QL / Lãi TB/căn"
+                sub="CP HĐ / Lãi TB/căn"
                 warn
               />
               <Card
@@ -336,7 +336,7 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
                 ) : (
                   <>
                     ⚠️ Đang <b>dưới điểm hòa vốn</b> {(breakEvenUnits - avgUnitsPerMonth).toFixed(1)} căn/tháng.
-                    Cần bán thêm để cover CP QL.
+                    Cần bán thêm để cover CP HĐ.
                   </>
                 )}
               </div>
@@ -347,7 +347,7 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
             <h2 className="text-lg font-semibold mb-1">📈 Lãi/lỗ theo tháng</h2>
             <p className="text-xs text-slate-500 mb-3">
               Accrual — DT + GV gộp theo tháng ghi nhận DT của căn (không phải ngày ĐC).
-              Match income + expense cùng căn về cùng tháng, đúng nghiệp vụ kế toán. CP QL gộp theo tháng phát sinh.
+              Match income + expense cùng căn về cùng tháng, đúng nghiệp vụ kế toán. CP HĐ gộp theo tháng phát sinh.
             </p>
             <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
               <table className="w-full text-sm min-w-[700px]">
@@ -356,7 +356,7 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
                     <th className="text-left p-2">Tháng</th>
                     <th className="text-right p-2">DT ĐC (gồm VAT)</th>
                     <th className="text-right p-2">Giá vốn ĐC</th>
-                    <th className="text-right p-2">CP QL</th>
+                    <th className="text-right p-2">CP HĐ</th>
                     <th className="text-right p-2">Lãi gộp</th>
                     <th className="text-right p-2 w-56">Lãi thuần</th>
                   </tr>

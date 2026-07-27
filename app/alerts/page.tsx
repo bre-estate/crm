@@ -135,7 +135,7 @@ export default async function AlertsPage() {
   }
 
   // ============================================================
-  // ALERT 2: Tiền còn chạy được < 3 tháng
+  // ALERT 2: Sức khỏe tài chính < 3 tháng
   // ============================================================
   // Cash cty (ước tính) = topup (411) + paymentsIn − paymentsOut − chi thanh-toan
   // KHÔNG cộng MERGED cá nhân (đó là Bách/Triết chi cá nhân, không qua TK cty)
@@ -171,8 +171,8 @@ export default async function AlertsPage() {
     alerts.push({
       id: "cash-runway",
       severity: "critical",
-      title: `Tiền còn chạy được thấp: còn ~${runway.toFixed(1)} tháng`,
-      description: `Ước tính cash TK cty: ${fmt(estimatedCash)} VND. CP QL trung bình ${fmt(cpQlMonth)} VND/tháng. Có thể chỉ chạy được ${runway.toFixed(1)} tháng nữa.`,
+      title: `Sức khỏe tài chính thấp: còn ~${runway.toFixed(1)} tháng`,
+      description: `Ước tính cash TK cty: ${fmt(estimatedCash)} VND. CP HĐ trung bình ${fmt(cpQlMonth)} VND/tháng. Có thể chỉ chạy được ${runway.toFixed(1)} tháng nữa.`,
       detail: (
         <div className="text-[11px] mt-1 text-slate-600">
           ⚠️ Đây là ước tính — chưa track sao kê ngân hàng thực. Số thực có thể chênh.
@@ -185,8 +185,8 @@ export default async function AlertsPage() {
     alerts.push({
       id: "cash-runway-warn",
       severity: "warning",
-      title: `Tiền còn chạy được cần theo dõi: ~${runway.toFixed(1)} tháng`,
-      description: `CP QL ${fmt(cpQlMonth)} VND/tháng, cash ước ${fmt(estimatedCash)} VND. Nên plan revenue/vốn.`,
+      title: `Sức khỏe tài chính cần theo dõi: ~${runway.toFixed(1)} tháng`,
+      description: `CP HĐ ${fmt(cpQlMonth)} VND/tháng, cash ước ${fmt(estimatedCash)} VND. Nên plan revenue/vốn.`,
       action: { href: "/reports/balance-sheet", label: "Xem BCĐKT" },
     });
   }
@@ -247,7 +247,7 @@ export default async function AlertsPage() {
   }
 
   // ============================================================
-  // ALERT 6: CP QL tháng bất thường > 1.5× TB 6 tháng
+  // ALERT 6: CP HĐ tháng bất thường > 1.5× TB 6 tháng
   // ============================================================
   // Query OPEX per month cho 6 tháng gần nhất (không tính tháng hiện tại)
   const opexPerMonthRows = await db
@@ -283,8 +283,8 @@ export default async function AlertsPage() {
     alerts.push({
       id: "opex-spike",
       severity: "warning",
-      title: `${spikeMonths.length} tháng có CP QL bất thường`,
-      description: `CP QL cao > 1.5× TB 6 tháng gần. Cần rà check lý do (thưởng lớn, thuế, mua sắm bất thường).`,
+      title: `${spikeMonths.length} tháng có CP HĐ bất thường`,
+      description: `CP HĐ cao > 1.5× TB 6 tháng gần. Cần rà check lý do (thưởng lớn, thuế, mua sắm bất thường).`,
       detail: (
         <ul className="list-disc list-inside text-xs mt-1 space-y-0.5">
           {spikeMonths.map((s) => (

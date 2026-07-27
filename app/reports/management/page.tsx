@@ -97,7 +97,7 @@ export default async function ManagementReportPage({
     .reduce((s, r) => s + Number(r.sum), 0);
   const opexPureAvg = monthsSoFar > 0 ? opexCurrentYear / monthsSoFar : 0;
 
-  // ===== Khấu hao TSCĐ (chốt 2026-07-26) — cộng vào CP QL tháng =====
+  // ===== Khấu hao TSCĐ (chốt 2026-07-26) — cộng vào CP HĐ tháng =====
   const tscdRows = await db
     .select({
       month: financialTransactions.transactionMonth,
@@ -192,7 +192,7 @@ export default async function ManagementReportPage({
         </div>
         <h1 className="text-2xl font-bold mt-1">Báo cáo quản trị</h1>
         <p className="text-sm text-slate-500 mt-1">
-          3 chỉ số then chốt cho chủ cty: <b>Điểm hòa vốn</b>, <b>Cơ cấu CP QL</b>,
+          3 chỉ số then chốt cho chủ cty: <b>Điểm hòa vốn</b>, <b>Cơ cấu CP HĐ</b>,
           <b> Lãi/lỗ theo tháng</b>. Tính theo Năm {currentYear} đến hiện tại ({monthsSoFar} tháng). Đã loại
           chi phí đầu tư TSCĐ + thuế nộp thay (GTGT/TNDN/TNCN) + booking (theo framework 2026-07-25).
         </p>
@@ -203,16 +203,16 @@ export default async function ManagementReportPage({
         <h2 className="text-lg font-semibold mb-1">⚖️ Điểm hòa vốn</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <StatCard
-            label="CP QL TB / tháng"
+            label="CP HĐ TB / tháng"
             value={fmt(avgOpexMonth)}
-            sub={`CP thường ${fmt(opexPureAvg)} + KH TSCĐ ${fmt(monthlyDepTotal)}`}
+            sub={`CP tiền mặt ${fmt(opexPureAvg)} + KH TSCĐ ${fmt(monthlyDepTotal)}`}
             warn
           />
           <StatCard label="Lãi gộp TB / căn" value={fmt(avgGrossProfitPerUnit)} sub={`${numUnits} căn`} />
           <StatCard
             label="Điểm hòa vốn"
             value={breakEvenUnits !== null ? `${breakEvenUnits.toFixed(1)} căn/tháng` : "—"}
-            sub="CP QL / Lãi TB/căn"
+            sub="CP HĐ / Lãi TB/căn"
             warn
           />
           <StatCard
@@ -236,17 +236,17 @@ export default async function ManagementReportPage({
               </>
             ) : (
               <>
-                ⚠️ Đang <b>dưới điểm hòa vốn</b> {(breakEvenUnits - avgUnitsPerMonth).toFixed(1)} căn/tháng — cần bán thêm để cover CP QL.
+                ⚠️ Đang <b>dưới điểm hòa vốn</b> {(breakEvenUnits - avgUnitsPerMonth).toFixed(1)} căn/tháng — cần bán thêm để cover CP HĐ.
               </>
             )}
           </div>
         )}
       </section>
 
-      {/* ===== SECTION 2: CP QL breakdown theo nhóm × tháng (tabs năm) ===== */}
+      {/* ===== SECTION 2: CP HĐ breakdown theo nhóm × tháng (tabs năm) ===== */}
       <section>
         <div className="flex items-baseline justify-between mb-1">
-          <h2 className="text-lg font-semibold">💼 CP QL — phân tích theo nhóm × tháng</h2>
+          <h2 className="text-lg font-semibold">💼 CP HĐ — phân tích theo nhóm × tháng</h2>
           <YearTabs years={yearList} selected={selectedYear} />
         </div>
         <p className="text-xs text-slate-500 mb-3">
@@ -299,14 +299,14 @@ export default async function ManagementReportPage({
               {groupList.length === 0 && (
                 <tr>
                   <td colSpan={4} className="p-6 text-center text-slate-500">
-                    Chưa có CP QL trong năm {selectedYear}.
+                    Chưa có CP HĐ trong năm {selectedYear}.
                   </td>
                 </tr>
               )}
             </tbody>
             <tfoot className="bg-slate-100 font-bold">
               <tr>
-                <td className="p-2 sticky left-0 bg-slate-100">TỔNG CP QL</td>
+                <td className="p-2 sticky left-0 bg-slate-100">TỔNG CP HĐ</td>
                 {monthList.map((m) => {
                   const monthTotal = [...grid.values()].reduce(
                     (s, mm) => s + (mm.get(m) ?? 0),
@@ -333,8 +333,8 @@ export default async function ManagementReportPage({
           <h2 className="text-lg font-semibold">📈 Lãi/lỗ theo tháng — {selectedYear}</h2>
         </div>
         <p className="text-xs text-slate-500 mb-3">
-          Accrual: DT + Giá vốn gộp theo tháng cọc căn. CP QL gộp theo tháng phát sinh.
-          Lãi thuần = DT/1.1 − Giá vốn − CP QL.
+          Accrual: DT + Giá vốn gộp theo tháng cọc căn. CP HĐ gộp theo tháng phát sinh.
+          Lãi thuần = DT/1.1 − Giá vốn − CP HĐ.
         </p>
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
           <table className="w-full text-sm">
@@ -343,7 +343,7 @@ export default async function ManagementReportPage({
                 <th className="text-left p-2">Tháng</th>
                 <th className="text-right p-2">DT (gồm VAT)</th>
                 <th className="text-right p-2">Giá vốn</th>
-                <th className="text-right p-2">CP QL</th>
+                <th className="text-right p-2">CP HĐ</th>
                 <th className="text-right p-2">Lãi gộp</th>
                 <th className="text-right p-2 w-64">Lãi thuần</th>
               </tr>
