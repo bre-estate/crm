@@ -140,8 +140,9 @@ export function hasPermission(
 /**
  * Map URL path → resource key.
  * Trả về null nếu path không cần permission (VD: /, /login).
+ * Trả về "reports.*" (wildcard) cho /reports landing — check any reports.*.
  */
-export function resourceOfPath(path: string): Resource | null {
+export function resourceOfPath(path: string): Resource | "reports.*" | null {
   // Normalize: remove trailing slash
   const p = path.replace(/\/$/, "");
 
@@ -152,7 +153,8 @@ export function resourceOfPath(path: string): Resource | null {
     if (key in RESOURCES) return key;
     return "reports.overview";
   }
-  if (p === "/reports") return "reports.overview";
+  // /reports landing — allow nếu user có any reports.*
+  if (p === "/reports") return "reports.*";
 
   // Admin
   if (p.startsWith("/admin/users")) return "admin.users";

@@ -5,6 +5,7 @@ import { count, sum } from "drizzle-orm";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { resolvePermissions, type Action, type Resource, RESOURCES } from "@/lib/permissions";
+import DeniedBanner from "./DeniedBanner";
 
 export const dynamic = "force-dynamic";
 
@@ -133,9 +134,7 @@ export default async function Home({
   return (
     <div className="space-y-6">
       {sp.denied && (
-        <div className="bg-orange-50 border border-orange-200 text-orange-800 rounded-lg p-3 text-sm">
-          Bạn không có quyền truy cập <b>{RESOURCES[sp.denied as Resource] ?? sp.denied}</b>. Liên hệ chủ tài khoản nếu cần thêm quyền.
-        </div>
+        <DeniedBanner label={RESOURCES[sp.denied as Resource] ?? sp.denied} />
       )}
       <div>
         <h1 className="text-2xl font-bold">

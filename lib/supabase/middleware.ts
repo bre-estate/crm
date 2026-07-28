@@ -70,7 +70,11 @@ export async function updateSession(request: NextRequest) {
           perm.role as Role,
           (perm.permissions as Record<string, Action[]>) ?? {},
         );
-        const allowed = perms[resource]?.includes("view") ?? false;
+        // Wildcard /reports → allow nếu có ANY reports.* permission
+        const allowed =
+          resource === "reports.*"
+            ? Object.keys(perms).some((r) => r.startsWith("reports."))
+            : (perms[resource]?.includes("view") ?? false);
         if (!allowed) {
           const url = request.nextUrl.clone();
           url.pathname = "/";
