@@ -197,6 +197,8 @@ export default function CostForm({
   const [totalAmt, setTotalAmt] = useState<number>(
     Number(recon?.amountPayableThisTime ?? 0),
   );
+  // Track khi user vừa gõ "-" chưa kèm digit → giữ hiển thị dấu "-"
+  const [dashPending, setDashPending] = useState(false);
 
   // Effective M cho "Đợt này (dự tính)" — số recon lưu:
   // - Edit mode: dùng M snapshot từ recon (giữ nguyên giá trị đã lưu)
@@ -736,8 +738,14 @@ export default function CostForm({
             targetForType > 0 && paidBefore + totalAmt > targetForType + 1000; // threshold rounding
           const overBy = paidBefore + totalAmt - targetForType;
           const isAdjustment = totalAmt < 0;
-          // Format hiển thị (giữ dấu -). Empty nếu totalAmt = 0.
-          const displayVal = totalAmt !== 0 ? totalAmt.toLocaleString("vi-VN") : "";
+          // Format hiển thị (giữ dấu -). Empty nếu totalAmt = 0, "-" nếu user
+          // vừa gõ dấu - mà chưa có digit.
+          const displayVal =
+            totalAmt !== 0
+              ? totalAmt.toLocaleString("vi-VN")
+              : dashPending
+                ? "-"
+                : "";
           return (
             <>
               <div
@@ -765,7 +773,7 @@ export default function CostForm({
                     inputMode="numeric"
                     value={displayVal}
                     onChange={(e) => {
-                      // Cho phép dấu "-" ở đầu
+                      // Cho phép dấu "-" ở đầu (số âm cho điều chỉnh giảm)
                       const raw = e.target.value.trim();
                       const isNeg = raw.startsWith("-");
                       const digits = raw.replace(/\D/g, "");
@@ -773,6 +781,8 @@ export default function CostForm({
                       const newTotal = isNeg ? -n : n;
                       manuallyOverriddenRef.current = true;
                       setTotalAmt(newTotal);
+                      // Nếu user vừa gõ "-" chưa có digit → giữ hiển thị dấu
+                      setDashPending(isNeg && n === 0);
                     }}
                     onFocus={(e) => e.currentTarget.select()}
                     className={`input text-right text-xl font-bold tabular-nums min-w-40 ${
