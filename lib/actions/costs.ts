@@ -22,11 +22,22 @@ const VALID_COST_TYPES = [
 ] as const;
 type CostType = (typeof VALID_COST_TYPES)[number];
 
+// Cost type "flat" — không dùng %HH/KPI/N/PMG (thưởng nóng, hỗ trợ khách).
+// Với các loại này, các % được zero-out để tránh lưu nhầm số kế thừa từ form.
+const FLAT_COST_TYPES: readonly CostType[] = [
+  "bonus_sale",
+  "bonus_manager",
+  "cdt_bonus_sale",
+  "cdt_bonus_manager",
+  "customer_support",
+];
+
 function buildCostData(fd: FormData) {
   const costTypeRaw = toStr(fd.get("costType"));
   const costType: CostType = VALID_COST_TYPES.includes(costTypeRaw as CostType)
     ? (costTypeRaw as CostType)
     : "sale_commission";
+  const isFlat = FLAT_COST_TYPES.includes(costType);
 
   return {
     productId: toNum(fd.get("productId")),
@@ -37,7 +48,8 @@ function buildCostData(fd: FormData) {
     pmgLkSaleRate: toPct(fd.get("pmgLkSaleRate")),
     pmgProgressAmount: toNum(fd.get("pmgProgressAmount")),
     pmgCumulativePctSale: toPct(fd.get("pmgCumulativePctSale")),
-    commissionRate: toPct(fd.get("commissionRate")),
+    // Flat cost (thưởng nóng, hỗ trợ khách): không dùng %HH → force 0
+    commissionRate: isFlat ? 0 : toPct(fd.get("commissionRate")),
     adminFeeSale: toNum(fd.get("adminFeeSale")),
     customerSupport: toNum(fd.get("customerSupport")),
     fiscalYear: toNum(fd.get("fiscalYear")) || null,
@@ -45,15 +57,18 @@ function buildCostData(fd: FormData) {
     pmgThisTime: toNum(fd.get("pmgThisTime")),
     pmgPayable: toNum(fd.get("pmgPayable")),
     pmgRemaining: toNum(fd.get("pmgRemaining")),
-    kpiRate: toPct(fd.get("kpiRate")),
+    // Flat cost: KPI cũng force 0
+    kpiRate: isFlat ? 0 : toPct(fd.get("kpiRate")),
     kpiAmount: toNum(fd.get("kpiAmount")),
-    // N = Tiến độ PMG đã thu tiền (0..1). Form submit dạng decimal (0.9 = 90%).
-    paymentProgressPct: (() => {
-      const raw = toStr(fd.get("paymentProgressPct"));
-      if (!raw) return 0;
-      const n = Number(raw);
-      return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 0;
-    })(),
+    // N = Tiến độ PMG đã thu tiền. Flat cost không dùng → 0
+    paymentProgressPct: isFlat
+      ? 0
+      : (() => {
+          const raw = toStr(fd.get("paymentProgressPct"));
+          if (!raw) return 0;
+          const n = Number(raw);
+          return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 0;
+        })(),
     amountPayableThisTime: toNum(fd.get("amountPayableThisTime")),
     note: toStrOrNull(fd.get("note")),
   };
@@ -89,7 +104,8 @@ export async function createCost(fd: FormData) {
 
   const paymentDate = toStrOrNull(fd.get("paymentDate"));
   const paymentAmount = toNum(fd.get("paymentAmount"));
-  if (paymentDate || paymentAmount > 0) {
+  // Cho phép số âm (điều chỉnh hoàn/thu lại). Chỉ skip khi cả 2 rỗng.
+  if (paymentDate || paymentAmount !== 0) {
     await db.insert(paymentsOut).values({
       costReconciliationId: rec.id,
       paymentDate,
@@ -275,7 +291,7 @@ export async function createCostBulk(rows: BulkCostRow[]) {
         })
         .returning({ id: costReconciliations.id });
 
-      if (r.paymentDate || r.paymentAmount > 0) {
+      if (r.paymentDate || r.paymentAmount !== 0) {
         await db.insert(paymentsOut).values({
           costReconciliationId: rec.id,
           paymentDate: r.paymentDate,

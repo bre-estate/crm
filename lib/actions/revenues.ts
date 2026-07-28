@@ -149,7 +149,7 @@ export async function createRevenue(fd: FormData) {
 
   const paymentDate = toStrOrNull(fd.get("paymentDate"));
   const paymentAmount = toNum(fd.get("paymentAmount"));
-  if (paymentDate || paymentAmount > 0) {
+  if (paymentDate || paymentAmount !== 0) {
     await db.insert(paymentsIn).values({
       reconciliationId: rec.id,
       paymentDate,
@@ -350,7 +350,7 @@ export async function createRevenueBulk(rows: BulkRevenueRow[]) {
       if (invoiceId) affectedInvoices.add(invoiceId);
 
       // Nếu có thông tin thanh toán → insert payments_in.
-      if (r.paymentAmount && r.paymentAmount > 0 && inserted) {
+      if (r.paymentAmount && r.paymentAmount !== 0 && inserted) {
         await db.insert(paymentsIn).values({
           reconciliationId: inserted.id,
           paymentDate: r.paymentDate ?? null,
