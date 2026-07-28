@@ -429,6 +429,25 @@ export const financialTransactions = pgTable("financial_transactions", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// ===================== USER PERMISSIONS =====================
+export const userPermissions = pgTable("user_permissions", {
+  email: text("email").primaryKey(),
+  fullName: text("full_name"),
+  role: text("role", {
+    enum: ["owner", "manager", "sale", "admin", "hr", "viewer", "custom"],
+  })
+    .notNull()
+    .default("viewer"),
+  // JSONB: { "resource_key": ["view", "edit", "delete"] }
+  permissions: jsonb("permissions").notNull().default({}),
+  active: boolean("active").notNull().default(true),
+  invitedBy: text("invited_by"),
+  invitedAt: timestamp("invited_at", { withTimezone: true }).notNull().defaultNow(),
+  lastLogin: timestamp("last_login", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Cấu hình toàn công ty (single row)
 export const companySettings = pgTable("company_settings", {
   id: serial("id").primaryKey(),

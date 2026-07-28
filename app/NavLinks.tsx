@@ -2,26 +2,26 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
-type Gate = "owner" | "reports" | "segments";
+import type { Action, Resource } from "@/lib/permissions";
 
 type NavLeaf = {
   href: string;
   label: string;
-  gate?: Gate;
-  section?: string; // header nhóm trong group (VD "Thị trường")
-  /** exact match — nếu true, chỉ active khi pathname === href.
-   *  Dùng cho parent link có sub-page (VD /finance) để không active
-   *  khi đang ở /finance/capital. */
+  /** Resource key — visible nếu user có 'view' permission. Nếu không set → luôn visible. */
+  resource?: Resource;
+  /** Owner-only override (VD Admin/user management). */
+  ownerOnly?: boolean;
+  section?: string;
+  /** exact match — nếu true, chỉ active khi pathname === href. */
   exact?: boolean;
 };
 
 type NavGroup = {
   label: string;
-  /** Nếu có href, parent label render dưới dạng link (VD "Tài chính" →
-   *  /finance landing hub). Nếu không, chỉ là section header text. */
   href?: string;
-  gate?: Gate;
+  /** Group-level ownerOnly hoặc resource: nếu set và không pass → ẩn cả group. */
+  ownerOnly?: boolean;
+  resource?: Resource;
   children: NavLeaf[];
 };
 
@@ -31,60 +31,59 @@ const isGroup = (n: NavEntry): n is NavGroup => "children" in n;
 
 const NAV: NavEntry[] = [
   { href: "/", label: "Tổng quan" },
-  { href: "/alerts", label: "🔔 Cảnh báo", gate: "owner" },
-  { href: "/partners", label: "Đối tác" },
-  { href: "/projects", label: "Dự án" },
+  { href: "/alerts", label: "🔔 Cảnh báo", resource: "alerts" },
+  { href: "/partners", label: "Đối tác", resource: "partners" },
+  { href: "/projects", label: "Dự án", resource: "products" },
   {
     label: "Giao dịch",
     children: [
-      { href: "/products", label: "Danh sách căn" },
-      { href: "/revenues", label: "Doanh thu" },
-      { href: "/costs", label: "Giá vốn" },
-      { href: "/invoices", label: "Hóa đơn" },
+      { href: "/products", label: "Danh sách căn", resource: "products" },
+      { href: "/revenues", label: "Doanh thu", resource: "revenues" },
+      { href: "/costs", label: "Giá vốn", resource: "costs" },
+      { href: "/invoices", label: "Hóa đơn", resource: "invoices" },
     ],
   },
   {
     label: "Báo cáo",
     href: "/reports",
-    // Parent không set gate — child gate quyết định visible.
-    // Thứ tự children QUAN TRỌNG: liền nhau theo section để render header đúng.
     children: [
       // TỔNG QUAN
-      { href: "/reports/overview", label: "Tổng hợp", gate: "reports", section: "Tổng quan" },
-      { href: "/reports/management", label: "Quản trị", gate: "owner", section: "Tổng quan" },
-      { href: "/reports/unit-profitability", label: "Lãi từng căn", gate: "reports", section: "Tổng quan" },
+      { href: "/reports/overview", label: "Tổng hợp", resource: "reports.overview", section: "Tổng quan" },
+      { href: "/reports/management", label: "Quản trị", resource: "reports.management", section: "Tổng quan" },
+      { href: "/reports/unit-profitability", label: "Lãi từng căn", resource: "reports.unit-profitability", section: "Tổng quan" },
       // TÀI CHÍNH
-      { href: "/reports/balance-sheet", label: "BCĐKT", gate: "owner", section: "Tài chính" },
-      { href: "/reports/cash-flow-statement", label: "LCTT", gate: "owner", section: "Tài chính" },
-      { href: "/reports/cashflow", label: "Dòng tiền HH", gate: "owner", section: "Tài chính" },
+      { href: "/reports/balance-sheet", label: "BCĐKT", resource: "reports.balance-sheet", section: "Tài chính" },
+      { href: "/reports/cash-flow-statement", label: "LCTT", resource: "reports.cash-flow-statement", section: "Tài chính" },
+      { href: "/reports/cashflow", label: "Dòng tiền HH", ownerOnly: true, section: "Tài chính" },
       // THỊ TRƯỜNG
-      { href: "/reports/segments", label: "Phân khúc", gate: "segments", section: "Thị trường" },
-      { href: "/reports/projects", label: "Theo dự án", gate: "reports", section: "Thị trường" },
-      { href: "/reports/partners", label: "Đối tác", gate: "reports", section: "Thị trường" },
+      { href: "/reports/segments", label: "Phân khúc", resource: "reports.segments", section: "Thị trường" },
+      { href: "/reports/projects", label: "Theo dự án", resource: "reports.overview", section: "Thị trường" },
+      { href: "/reports/partners", label: "Đối tác", resource: "reports.overview", section: "Thị trường" },
       // NỘI BỘ
-      { href: "/reports/people", label: "Theo nhân sự", gate: "reports", section: "Nội bộ" },
-      { href: "/reports/time", label: "Theo thời gian", gate: "reports", section: "Nội bộ" },
+      { href: "/reports/people", label: "Theo nhân sự", resource: "reports.people", section: "Nội bộ" },
+      { href: "/reports/time", label: "Theo thời gian", resource: "reports.overview", section: "Nội bộ" },
     ],
   },
   {
     label: "Tài chính",
     href: "/finance",
-    gate: "owner",
+    resource: "finance",
     children: [
-      { href: "/finance/capital", label: "Vốn góp founder", gate: "owner" },
-      { href: "/finance/assets", label: "Tài sản cố định", gate: "owner" },
-      { href: "/finance/transactions", label: "Giao dịch", gate: "owner" },
+      { href: "/finance/capital", label: "Vốn góp founder", resource: "finance" },
+      { href: "/finance/assets", label: "Tài sản cố định", resource: "finance" },
+      { href: "/finance/transactions", label: "Giao dịch", resource: "finance" },
     ],
   },
   {
     label: "Nhân sự",
-    gate: "owner",
+    resource: "employees",
     children: [
-      { href: "/employees", label: "Nhân viên", gate: "owner" },
-      { href: "/departments", label: "Phòng ban", gate: "owner" },
+      { href: "/employees", label: "Nhân viên", resource: "employees" },
+      { href: "/departments", label: "Phòng ban", resource: "departments" },
     ],
   },
-  { href: "/admin/activity", label: "Lịch sử hoạt động", gate: "owner" },
+  { href: "/admin/users", label: "Quản lý user", ownerOnly: true },
+  { href: "/admin/activity", label: "Lịch sử hoạt động", resource: "admin.activity" },
 ];
 
 function isActive(pathname: string, href: string, exact = false): boolean {
@@ -94,28 +93,25 @@ function isActive(pathname: string, href: string, exact = false): boolean {
 }
 
 export default function NavLinks({
-  isOwner = false,
-  canSeeReports = false,
-  canSeeSegments = false,
+  isOwner,
+  permissions,
 }: {
-  isOwner?: boolean;
-  canSeeReports?: boolean;
-  canSeeSegments?: boolean;
+  isOwner: boolean;
+  permissions: Record<string, Action[]>;
 }) {
   const pathname = usePathname();
 
-  const canSee = (gate: Gate | undefined): boolean => {
-    if (!gate) return true;
-    if (gate === "owner") return isOwner;
-    if (gate === "reports") return canSeeReports;
-    if (gate === "segments") return canSeeSegments;
-    return false;
+  const canSee = (entry: NavLeaf | NavGroup): boolean => {
+    if (entry.ownerOnly) return isOwner;
+    if (isOwner) return true;
+    if (!entry.resource) return true; // no gate → visible cho mọi người authenticated
+    return permissions[entry.resource]?.includes("view") ?? false;
   };
 
   return (
     <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
       {NAV.map((n) => {
-        if (!canSee(n.gate)) return null;
+        if (!canSee(n)) return null;
 
         if (!isGroup(n)) {
           const active = isActive(pathname, n.href, n.exact);
@@ -134,12 +130,9 @@ export default function NavLinks({
           );
         }
 
-        const visibleChildren = n.children.filter((c) => canSee(c.gate));
+        const visibleChildren = n.children.filter((c) => canSee(c));
         if (visibleChildren.length === 0) return null;
 
-        // Parent = section header hoặc link. Nếu có href → link tới landing
-        // hub (VD /finance), exact match để KHÔNG active khi ở sub-page.
-        // Children indent vào để phân cấp rõ ràng.
         const parentActive = n.href ? pathname === n.href : false;
         return (
           <div key={n.label} className="pt-1">
@@ -160,9 +153,6 @@ export default function NavLinks({
               </div>
             )}
             <div className="space-y-0.5 mt-0.5">
-              {/* Render sub-section headers khi có `section` field. Group children
-                  có cùng section liền nhau, insert header trước group.
-                  Nếu no section → render flat như cũ. */}
               {(() => {
                 const rendered: React.ReactNode[] = [];
                 let lastSection = "__none__";

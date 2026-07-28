@@ -5,7 +5,8 @@ import SignOutButton from "./SignOutButton";
 import NavLinks from "./NavLinks";
 import AppShell from "./AppShell";
 import { Toaster } from "sonner";
-import { getOwnerEmail, hasReportsAccess, hasSegmentsAccess } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
+import { resolvePermissions } from "@/lib/permissions";
 
 export const metadata: Metadata = {
   title: "BRE — Quản lý sàn giao dịch BĐS",
@@ -40,11 +41,36 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     );
   }
 
+  const currentUser = await getCurrentUser();
   const displayName =
-    (user.user_metadata?.full_name as string | undefined) ?? user.email ?? "User";
-  const isOwner = (await getOwnerEmail()) !== null;
-  const canSeeReports = await hasReportsAccess();
-  const canSeeSegments = await hasSegmentsAccess();
+    currentUser?.fullName ??
+    (user.user_metadata?.full_name as string | undefined) ??
+    user.email ??
+    "User";
+
+  // Chưa có trong whitelist → force logout để tránh confusion.
+  if (!currentUser) {
+    return (
+      <html lang="vi" className="h-full">
+        <body className="bg-slate-50 text-slate-900 min-h-screen antialiased">
+          <div className="min-h-screen flex items-center justify-center p-6">
+            <div className="max-w-md bg-white border border-slate-200 rounded-xl p-6 shadow-sm text-center">
+              <h1 className="text-lg font-semibold mb-2">Chưa được cấp quyền</h1>
+              <p className="text-sm text-slate-600 mb-4">
+                Tài khoản <b>{user.email}</b> chưa được thêm vào hệ thống. Liên hệ
+                chủ tài khoản để được mời.
+              </p>
+              <SignOutButton />
+            </div>
+          </div>
+          <Toaster position="top-right" richColors closeButton />
+        </body>
+      </html>
+    );
+  }
+
+  const permissions = resolvePermissions(currentUser.role, currentUser.customPermissions);
+  const isOwner = currentUser.role === "owner";
 
   const sidebar = (
     <>
@@ -52,11 +78,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo.png" alt="BRE — Better Real Estate" className="h-14 w-auto" />
       </div>
-      <NavLinks
-        isOwner={isOwner}
-        canSeeReports={canSeeReports}
-        canSeeSegments={canSeeSegments}
-      />
+      <NavLinks isOwner={isOwner} permissions={permissions} />
       <div className="p-3 border-t border-slate-200 space-y-2">
         <div className="text-xs text-slate-600 truncate" title={displayName}>
           {displayName}

@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { resolvePermissions, resourceOfPath, type Action, type Role } from "@/lib/permissions";
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -44,6 +45,40 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);
+  }
+
+  // Permission check: nếu path yêu cầu resource → user phải có 'view'.
+  // Owner qua thẳng. Anonymous và public đã handle ở trên.
+  if (user && !isPublic && path !== "/") {
+    const resource = resourceOfPath(path);
+    if (resource) {
+      const { data: perm } = await supabase
+        .from("user_permissions")
+        .select("role, permissions, active")
+        .eq("email", user.email!)
+        .maybeSingle();
+
+      // User chưa được thêm hoặc bị disable → root redirect để Layout hiển thị notice.
+      if (!perm || !perm.active) {
+        if (path !== "/") {
+          const url = request.nextUrl.clone();
+          url.pathname = "/";
+          return NextResponse.redirect(url);
+        }
+      } else if (perm.role !== "owner") {
+        const perms = resolvePermissions(
+          perm.role as Role,
+          (perm.permissions as Record<string, Action[]>) ?? {},
+        );
+        const allowed = perms[resource]?.includes("view") ?? false;
+        if (!allowed) {
+          const url = request.nextUrl.clone();
+          url.pathname = "/";
+          url.searchParams.set("denied", resource);
+          return NextResponse.redirect(url);
+        }
+      }
+    }
   }
 
   return supabaseResponse;

@@ -33,7 +33,12 @@ async function getStats() {
   };
 }
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ denied?: string }>;
+}) {
+  const sp = await searchParams;
   const s = await getStats();
   const profit = s.totalRev - s.totalCost;
   const margin = s.totalRev > 0 ? (profit / s.totalRev) * 100 : 0;
@@ -48,6 +53,11 @@ export default async function Home() {
 
   return (
     <div className="space-y-6">
+      {sp.denied && (
+        <div className="bg-orange-50 border border-orange-200 text-orange-800 rounded-lg p-3 text-sm">
+          Bạn không có quyền truy cập <b>{sp.denied}</b>. Liên hệ chủ tài khoản nếu cần thêm quyền.
+        </div>
+      )}
       <div>
         <h1 className="text-2xl font-bold">Tổng quan</h1>
         <p className="text-sm text-slate-500 mt-1">
