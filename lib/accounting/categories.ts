@@ -19,11 +19,27 @@ export const CAT_242 = ["242"] as const;
 export const CAT_635 = ["635"] as const;
 
 // TẤT CẢ chi phí HĐ = 641 + 642 + 811 + 635 (không gồm 242 vì phân bổ)
+// Dùng cho: P&L monthly, tổng chi phí BCTC, cash flow statement
 export const OPEX_CATEGORIES: string[] = [
   ...CAT_641,
   ...CAT_642,
   ...CAT_811,
   ...CAT_635,
+];
+
+// Chi phí CỐ ĐỊNH (không scale với doanh số) — dùng cho tính Điểm hòa vốn.
+// LOẠI 6417 vì 6417 hiện gộp HH sale (variable, đã trừ trong products.totalCost).
+// Nếu tính cả 6417 → double count HH sale → BE bị thổi phồng.
+// Marketing + tiếp khách + thưởng doanh số cũng ở 6417 nhưng chấp nhận under-count
+// hơn là double count. Sau này có thể tách sub-category để chính xác hơn.
+export const FIXED_COST_CATEGORIES: string[] = [
+  "6411", // Lương NVKD (cố định)
+  "6421", // Lương admin + kế toán
+  "6423", // Đồ dùng VP
+  "6425", // Thuế môn bài
+  "6427", // Thuê VP + tiện ích + dịch vụ
+  "811", // Chi phí không hóa đơn Triết (cố định)
+  "635", // Chi phí tài chính
 ];
 
 // Trong đó, 641 vs 642 phục vụ grouping BCTC

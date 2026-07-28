@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { sql, inArray, gte, eq, ne, and } from "drizzle-orm";
 import Link from "next/link";
 import { monthlyDepreciation } from "@/lib/accounting/depreciation";
-import { OPEX_CATEGORIES, BUCKET_641, BUCKET_642, BUCKET_811, bucketOf, BUCKET_LABELS } from "@/lib/accounting/categories";
+import { OPEX_CATEGORIES, FIXED_COST_CATEGORIES, BUCKET_641, BUCKET_642, BUCKET_811, bucketOf, BUCKET_LABELS } from "@/lib/accounting/categories";
 
 export const dynamic = "force-dynamic";
 
@@ -101,7 +101,23 @@ export default async function ManagementReportPage({
     .reduce((s, r) => s + Number(r.sum), 0);
   const opexPureAvg = monthsSoFar > 0 ? opexCurrentYear / monthsSoFar : 0;
 
-  // ===== Khấu hao TSCĐ (chốt 2026-07-26) — cộng vào CP HĐ tháng =====
+  // ===== BE dùng chi phí CỐ ĐỊNH (không gồm HH sale 6417) =====
+  // BE = Fixed cost / Lãi gộp per căn. Lãi gộp per căn đã trừ HH sale (products.totalCost).
+  // Nếu Fixed cost cũng gồm 6417 (HH sale) → double count → BE sai lệch lớn.
+  const fixedRows = await db
+    .select({
+      month: monthCol,
+      sum: sql<number>`sum(amount)::float8`,
+    })
+    .from(financialTransactions)
+    .where(inArray(financialTransactions.categoryCode, FIXED_COST_CATEGORIES))
+    .groupBy(monthCol);
+  const fixedCurrentYear = fixedRows
+    .filter((r) => r.month?.startsWith(currentYear))
+    .reduce((s, r) => s + Number(r.sum), 0);
+  const fixedPureAvg = monthsSoFar > 0 ? fixedCurrentYear / monthsSoFar : 0;
+
+  // ===== Khấu hao TSCĐ (chốt 2026-07-26) — cộng vào CP cố định tháng =====
   const tscdRows = await db
     .select({
       month: financialTransactions.transactionMonth,
@@ -113,7 +129,8 @@ export default async function ManagementReportPage({
     (s, a) => s + monthlyDepreciation(a.month, Number(a.cost), nowMonth),
     0,
   );
-  const avgOpexMonth = opexPureAvg + monthlyDepTotal;
+  const avgOpexMonth = opexPureAvg + monthlyDepTotal; // tổng chi phí HĐ TB/tháng
+  const avgFixedMonth = fixedPureAvg + monthlyDepTotal; // chi phí cố định TB/tháng (cho BE)
 
   // ===== 2. Lãi/lỗ theo tháng — Kim confirm 2026-07-27: theo NGÀY ĐC =====
   // Dồn tích theo ngày đối chiếu (recon date), KHÔNG dùng ngày cọc căn.
@@ -172,8 +189,10 @@ export default async function ManagementReportPage({
   const totalCost = Number(productStats[0]?.costExp ?? 0);
   const numUnits = Number(productStats[0]?.n ?? 0);
   const avgGrossProfitPerUnit = numUnits > 0 ? (totalRev / 1.1 - totalCost) / numUnits : 0;
-  const breakEvenUnits = avgGrossProfitPerUnit > 0 && avgOpexMonth > 0
-    ? avgOpexMonth / avgGrossProfitPerUnit
+  // BE dùng chi phí CỐ ĐỊNH (avgFixedMonth), không dùng OPEX toàn bộ
+  // (đã loại 6417 chứa HH sale — vì lãi gộp/căn đã trừ HH sale rồi)
+  const breakEvenUnits = avgGrossProfitPerUnit > 0 && avgFixedMonth > 0
+    ? avgFixedMonth / avgGrossProfitPerUnit
     : null;
 
   // Avg units bán / tháng — theo năm hiện tại YTD (nhất quán với avgOpexMonth).
@@ -215,16 +234,16 @@ export default async function ManagementReportPage({
         <h2 className="text-lg font-semibold mb-1">⚖️ Điểm hòa vốn</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <StatCard
-            label="CP HĐ TB / tháng"
-            value={fmt(avgOpexMonth)}
-            sub={`CP tiền mặt ${fmt(opexPureAvg)} + KH TSCĐ ${fmt(monthlyDepTotal)}`}
+            label="CP cố định TB / tháng"
+            value={fmt(avgFixedMonth)}
+            sub={`Lương + thuê VP + dịch vụ + KH TSCĐ ${fmt(monthlyDepTotal)}`}
             warn
           />
-          <StatCard label="Lãi gộp TB / căn" value={fmt(avgGrossProfitPerUnit)} sub={`${numUnits} căn`} />
+          <StatCard label="Lãi gộp TB / căn" value={fmt(avgGrossProfitPerUnit)} sub={`${numUnits} căn (đã trừ HH sale)`} />
           <StatCard
             label="Điểm hòa vốn"
             value={breakEvenUnits !== null ? `${breakEvenUnits.toFixed(1)} căn/tháng` : "—"}
-            sub="CP HĐ / Lãi TB/căn"
+            sub="CP cố định / Lãi gộp TB/căn"
             warn
           />
           <StatCard
