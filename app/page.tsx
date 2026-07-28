@@ -3,6 +3,8 @@ import { fmtMoney, fmtPctRaw } from "@/lib/format";
 import { partners, projects, products, revenueReconciliations, costReconciliations, paymentsIn } from "@/lib/schema";
 import { count, sum } from "drizzle-orm";
 import Link from "next/link";
+import { getCurrentUser } from "@/lib/auth";
+import { resolvePermissions, type Action, type Resource, RESOURCES } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -39,119 +41,139 @@ export default async function Home({
   searchParams: Promise<{ denied?: string }>;
 }) {
   const sp = await searchParams;
-  const s = await getStats();
-  const profit = s.totalRev - s.totalCost;
-  const margin = s.totalRev > 0 ? (profit / s.totalRev) * 100 : 0;
+  const user = await getCurrentUser();
+  const isOwner = user?.role === "owner";
+  const perms = user
+    ? resolvePermissions(user.role, user.customPermissions)
+    : {};
+  const canView = (r: Resource) =>
+    isOwner || (perms[r]?.includes("view") ?? false);
 
-  const cards = [
-    { label: "Đối tác", value: s.partners, href: "/partners" },
-    { label: "Dự án / Hợp đồng", value: s.projects, href: "/projects" },
-    { label: "Giao dịch (căn chốt)", value: s.products, href: "/products" },
-    { label: "Đợt đối chiếu DT", value: s.revRec, href: "/revenues" },
-    { label: "Dòng đối chiếu GV", value: s.costRec, href: "/costs" },
+  // ============ Owner: full dashboard ============
+  if (isOwner) {
+    const s = await getStats();
+    const profit = s.totalRev - s.totalCost;
+    const margin = s.totalRev > 0 ? (profit / s.totalRev) * 100 : 0;
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold">Tổng quan</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Dashboard theo dõi doanh thu, giá vốn, lợi nhuận toàn công ty.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <StatLink label="Đối tác" value={s.partners} href="/partners" />
+          <StatLink label="Dự án / Hợp đồng" value={s.projects} href="/projects" />
+          <StatLink label="Giao dịch (căn chốt)" value={s.products} href="/products" />
+          <StatLink label="Đợt đối chiếu DT" value={s.revRec} href="/revenues" />
+          <StatLink label="Dòng đối chiếu GV" value={s.costRec} href="/costs" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="bg-white border border-slate-200 rounded-xl p-4">
+            <div className="text-xs text-slate-500">Tổng doanh thu đã đối chiếu</div>
+            <div className="text-xl font-bold mt-2 tabular-nums">{fmtMoney(s.totalRev)}</div>
+          </div>
+          <div className="bg-white border border-orange-300 rounded-xl p-4 bg-orange-50">
+            <div className="text-xs text-slate-500">Tổng giá vốn đã đối chiếu</div>
+            <div className="text-xl font-bold mt-2 tabular-nums">{fmtMoney(s.totalCost)}</div>
+          </div>
+          <div
+            className={`bg-white border rounded-xl p-4 ${
+              profit >= 0 ? "border-green-300 bg-green-50" : "border-red-300 bg-red-50"
+            }`}
+          >
+            <div className="text-xs text-slate-500">Lợi nhuận gộp</div>
+            <div
+              className={`text-xl font-bold mt-2 tabular-nums ${
+                profit >= 0 ? "text-green-700" : "text-red-700"
+              }`}
+            >
+              {fmtMoney(profit)}
+            </div>
+            <div className="text-xs text-slate-500 mt-1">Biên LN: {fmtPctRaw(margin, 1)}</div>
+          </div>
+          <div className="bg-white border border-slate-200 rounded-xl p-4">
+            <div className="text-xs text-slate-500">Tiền đã nhận từ CĐT/F1</div>
+            <div className="text-xl font-bold mt-2 tabular-nums">{fmtMoney(s.totalPaidIn)}</div>
+            <div className="text-xs text-slate-500 mt-1">
+              Còn phải thu: {fmtMoney(s.totalRev - s.totalPaidIn)}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ============ Non-owner: chỉ hiển thị link tới trang được phép ============
+  // Xác định danh sách trang user có view.
+  const availablePages: Array<{ href: string; label: string; resource: Resource }> = [];
+  const pageMap: Array<[Resource, string, string]> = [
+    ["products", "/products", "Danh sách căn"],
+    ["revenues", "/revenues", "Doanh thu"],
+    ["costs", "/costs", "Giá vốn"],
+    ["invoices", "/invoices", "Hóa đơn"],
+    ["partners", "/partners", "Đối tác"],
+    ["finance", "/finance", "Tài chính"],
+    ["employees", "/employees", "Nhân sự"],
+    ["reports.overview", "/reports/overview", "Báo cáo tổng hợp"],
+    ["reports.management", "/reports/management", "Báo cáo quản trị"],
+    ["reports.people", "/reports/people", "Báo cáo sale/team"],
+    ["reports.segments", "/reports/segments", "Phân khúc căn"],
+    ["reports.unit-profitability", "/reports/unit-profitability", "Lãi từng căn"],
+    ["reports.balance-sheet", "/reports/balance-sheet", "BCĐKT"],
+    ["reports.cash-flow-statement", "/reports/cash-flow-statement", "LCTT"],
+    ["alerts", "/alerts", "Cảnh báo"],
+    ["departments", "/departments", "Phòng ban"],
   ];
+  for (const [res, href, label] of pageMap) {
+    if (canView(res)) availablePages.push({ href, label, resource: res });
+  }
 
   return (
     <div className="space-y-6">
       {sp.denied && (
         <div className="bg-orange-50 border border-orange-200 text-orange-800 rounded-lg p-3 text-sm">
-          Bạn không có quyền truy cập <b>{sp.denied}</b>. Liên hệ chủ tài khoản nếu cần thêm quyền.
+          Bạn không có quyền truy cập <b>{RESOURCES[sp.denied as Resource] ?? sp.denied}</b>. Liên hệ chủ tài khoản nếu cần thêm quyền.
         </div>
       )}
       <div>
-        <h1 className="text-2xl font-bold">Tổng quan</h1>
+        <h1 className="text-2xl font-bold">
+          Chào {user?.fullName ?? user?.email ?? "bạn"}
+        </h1>
         <p className="text-sm text-slate-500 mt-1">
-          Dashboard theo dõi doanh thu, giá vốn, lợi nhuận toàn công ty.
+          {availablePages.length === 0
+            ? "Tài khoản chưa được cấp quyền vào trang nào. Liên hệ chủ tài khoản."
+            : `Bạn có quyền truy cập ${availablePages.length} khu vực dưới đây.`}
         </p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        {cards.map((c) => (
-          <Link
-            key={c.href}
-            href={c.href}
-            className="bg-white border border-slate-200 rounded-xl p-4 hover:border-blue-400 transition-colors"
-          >
-            <div className="text-xs text-slate-500">{c.label}</div>
-            <div className="text-2xl font-bold mt-2">{c.value}</div>
-          </Link>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
-          <div className="text-xs text-slate-500">Tổng doanh thu đã đối chiếu</div>
-          <div className="text-xl font-bold mt-2 tabular-nums">{fmtMoney(s.totalRev)}</div>
+      {availablePages.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {availablePages.map((p) => (
+            <Link
+              key={p.href}
+              href={p.href}
+              className="bg-white border border-slate-200 rounded-xl p-4 hover:border-orange-400 transition-colors"
+            >
+              <div className="text-sm font-medium text-slate-700">{p.label}</div>
+              <div className="text-xs text-slate-400 mt-1">{p.href}</div>
+            </Link>
+          ))}
         </div>
-        <div className="bg-white border border-orange-300 rounded-xl p-4 bg-orange-50">
-          <div className="text-xs text-slate-500">Tổng giá vốn đã đối chiếu</div>
-          <div className="text-xl font-bold mt-2 tabular-nums">{fmtMoney(s.totalCost)}</div>
-        </div>
-        <div
-          className={`bg-white border rounded-xl p-4 ${
-            profit >= 0 ? "border-green-300 bg-green-50" : "border-red-300 bg-red-50"
-          }`}
-        >
-          <div className="text-xs text-slate-500">Lợi nhuận gộp</div>
-          <div
-            className={`text-xl font-bold mt-2 tabular-nums ${
-              profit >= 0 ? "text-green-700" : "text-red-700"
-            }`}
-          >
-            {fmtMoney(profit)}
-          </div>
-          <div className="text-xs text-slate-500 mt-1">Biên LN: {fmtPctRaw(margin, 1)}</div>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
-          <div className="text-xs text-slate-500">Tiền đã nhận từ CĐT/F1</div>
-          <div className="text-xl font-bold mt-2 tabular-nums">{fmtMoney(s.totalPaidIn)}</div>
-          <div className="text-xs text-slate-500 mt-1">
-            Còn phải thu: {fmtMoney(s.totalRev - s.totalPaidIn)}
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white border border-slate-200 rounded-xl p-5">
-        <div className="text-sm font-semibold mb-3">Flow nghiệp vụ</div>
-        <ol className="text-sm text-slate-700 space-y-2 list-decimal list-inside">
-          <li>
-            <Link href="/partners" className="text-blue-700 hover:underline">
-              Quản lý đối tác
-            </Link>{" "}
-            (CĐT / F1 / F2)
-          </li>
-          <li>
-            <Link href="/projects" className="text-blue-700 hover:underline">
-              Hợp đồng / dự án
-            </Link>{" "}
-            — cấu hình %PMG, biểu PMG theo mốc, số đợt TT
-          </li>
-          <li>
-            <Link href="/products" className="text-blue-700 hover:underline">
-              Giao dịch
-            </Link>{" "}
-            — mỗi căn chốt cọc là 1 record
-          </li>
-          <li>
-            <Link href="/revenues" className="text-blue-700 hover:underline">
-              Đối chiếu doanh thu
-            </Link>{" "}
-            với CĐT/F1 theo từng đợt, lập hóa đơn, nhận thanh toán
-          </li>
-          <li>
-            <Link href="/costs" className="text-blue-700 hover:underline">
-              Đối chiếu giá vốn
-            </Link>{" "}
-            nội bộ — HH sale, hỗ trợ khách, KPI CEO/TPKD/Admin, thưởng
-          </li>
-          <li>
-            <Link href="/reports" className="text-blue-700 hover:underline">
-              Báo cáo
-            </Link>{" "}
-            tổng hợp theo dự án / theo căn
-          </li>
-        </ol>
-      </div>
+      )}
     </div>
+  );
+}
+
+function StatLink({ label, value, href }: { label: string; value: number; href: string }) {
+  return (
+    <Link
+      href={href}
+      className="bg-white border border-slate-200 rounded-xl p-4 hover:border-blue-400 transition-colors"
+    >
+      <div className="text-xs text-slate-500">{label}</div>
+      <div className="text-2xl font-bold mt-2">{value}</div>
+    </Link>
   );
 }
