@@ -6,15 +6,17 @@ import { useLayoutEffect, useRef, useState } from "react";
  * Parse chuỗi tiền có thể có dấu thập phân (VD copy-paste "37,414,177.31"
  * từ Excel). Bỏ phần thập phân, chỉ giữ integer (VND không dùng cent).
  * Handles cả 2 format: US ("37,414,177.31") + VN ("37.414.177,31").
+ * Hỗ trợ số âm (dấu "-" ở đầu): "-1,000,000" → -1000000.
  */
 function parseAmount(v: string): number {
-  const s = v.trim();
+  let s = v.trim();
   if (!s) return 0;
+  const isNegative = s.startsWith("-");
+  if (isNegative) s = s.slice(1).trim();
 
   const lastComma = s.lastIndexOf(",");
   const lastDot = s.lastIndexOf(".");
   let decimalSep = "";
-  // Detect dấu thập phân = separator cuối cùng theo sau 1-2 chữ số
   if (lastComma > lastDot) {
     const afterComma = s.length - lastComma - 1;
     if (afterComma >= 1 && afterComma <= 2 && /^\d+$/.test(s.slice(lastComma + 1))) {
@@ -34,14 +36,13 @@ function parseAmount(v: string): number {
     intPart = s;
   }
   const digits = intPart.replace(/[^\d]/g, "");
-  return digits ? Number(digits) : 0;
+  const n = digits ? Number(digits) : 0;
+  return isNegative ? -n : n;
 }
 
 function fmt(v: number | string | null | undefined): string {
   if (v === null || v === undefined || v === "") return "";
-  // Nếu v là number → dùng trực tiếp. Nếu string → smart parse tránh
-  // strip nhầm dấu thập phân thành concat digits (bug 37,414,177.31 → 3.7 tỷ).
-  const n = typeof v === "number" ? Math.floor(v) : parseAmount(String(v));
+  const n = typeof v === "number" ? Math.trunc(v) : parseAmount(String(v));
   if (!n) return "";
   return n.toLocaleString("vi-VN");
 }
@@ -85,34 +86,34 @@ export default function MoneyInput({
     const rawValue = input.value;
     const cursorPos = input.selectionStart ?? rawValue.length;
 
+    // Detect dấu - ở đầu (cho phép nhập số âm)
+    const isNeg = rawValue.trim().startsWith("-");
     // Đếm số CHỮ SỐ (không tính dấu chấm) trước cursor
     const digitsBefore = rawValue.slice(0, cursorPos).replace(/[^\d]/g, "").length;
 
     const next = fmt(rawValue);
-    setVal(next);
+    // Nếu user vừa gõ "-" mà chưa có digit → giữ "-" hiển thị để user tiếp tục nhập
+    const display = next === "" && isNeg ? "-" : next;
+    setVal(display);
 
-    // Tính lại vị trí cursor: sau chữ số thứ Nth trong chuỗi đã format
     let newCursor = 0;
     if (digitsBefore === 0) {
-      newCursor = 0;
+      newCursor = display.length;
     } else {
       let count = 0;
-      for (let i = 0; i < next.length; i++) {
-        if (/\d/.test(next[i])) count++;
+      for (let i = 0; i < display.length; i++) {
+        if (/\d/.test(display[i])) count++;
         if (count === digitsBefore) {
           newCursor = i + 1;
           break;
         }
       }
-      if (count < digitsBefore) newCursor = next.length;
+      if (count < digitsBefore) newCursor = display.length;
     }
     cursorTarget.current = newCursor;
 
     if (onValueChange) {
-      // next đã format vi-VN (dấu chấm ngăn hàng nghìn, không có thập phân)
-      // → strip dấu chấm là đúng, không lo phần decimal (đã bị parseAmount cắt)
-      const digits = next.replace(/\./g, "");
-      onValueChange(digits ? Number(digits) : 0);
+      onValueChange(parseAmount(display));
     }
   };
 

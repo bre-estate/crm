@@ -11,7 +11,14 @@ import { and, asc, eq, ne } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import CostForm from "../../CostForm";
-import { updateCost, deleteCost } from "@/lib/actions/costs";
+import CostPaymentsEditor from "./CostPaymentsEditor";
+import {
+  updateCost,
+  deleteCost,
+  addPaymentOut,
+  updatePaymentOut,
+  deletePaymentOut,
+} from "@/lib/actions/costs";
 
 export default async function EditCostPage({
   params,
@@ -127,20 +134,6 @@ export default async function EditCostPage({
         </div>
       )}
 
-      {payments.length > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm">
-          <div className="font-semibold mb-1">Đã có {payments.length} lần thanh toán:</div>
-          <ul className="list-disc list-inside text-xs text-slate-700">
-            {payments.map((p) => (
-              <li key={p.id}>
-                {p.paymentDate ?? "(chưa có ngày)"} —{" "}
-                {new Intl.NumberFormat("vi-VN").format(Number(p.amount ?? 0))} VND
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
       <CostForm
         recon={recon}
         products={productOptions}
@@ -153,6 +146,27 @@ export default async function EditCostPage({
         onDelete={async () => {
           "use server";
           await deleteCost(id, returnTo);
+        }}
+      />
+
+      <CostPaymentsEditor
+        payments={payments.map((p) => ({
+          id: p.id,
+          paymentDate: p.paymentDate,
+          amount: Number(p.amount ?? 0),
+          note: p.note,
+        }))}
+        onUpdate={async (paymentId, fd) => {
+          "use server";
+          await updatePaymentOut(paymentId, fd);
+        }}
+        onDelete={async (paymentId) => {
+          "use server";
+          await deletePaymentOut(paymentId);
+        }}
+        onAdd={async (fd) => {
+          "use server";
+          await addPaymentOut(id, fd);
         }}
       />
     </div>

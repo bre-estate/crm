@@ -208,6 +208,18 @@ export async function addPaymentOut(costReconciliationId: number, fd: FormData) 
   revalidatePath("/costs");
 }
 
+export async function updatePaymentOut(id: number, fd: FormData) {
+  await db
+    .update(paymentsOut)
+    .set({
+      paymentDate: toStrOrNull(fd.get("paymentDate")),
+      amount: toNum(fd.get("amount")),
+      note: toStrOrNull(fd.get("note")),
+    })
+    .where(eq(paymentsOut.id, id));
+  revalidatePath("/costs");
+}
+
 export async function deletePaymentOut(id: number) {
   await db.delete(paymentsOut).where(eq(paymentsOut.id, id));
   revalidatePath("/costs");
