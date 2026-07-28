@@ -167,6 +167,13 @@ export default function CostForm({
   const showSupport = costType === "customer_support";
   const showKpi = costType === "kpi_ceo" || costType === "kpi_tpkd" || costType === "kpi_admin";
   const showBonus = costType === "bonus_sale" || costType === "bonus_manager";
+  // Thưởng nóng (bonus_*, cdt_bonus_*) là số flat — không dùng tiến độ PMG (N)
+  const isFlatCost =
+    costType === "bonus_sale" ||
+    costType === "bonus_manager" ||
+    costType === "cdt_bonus_sale" ||
+    costType === "cdt_bonus_manager" ||
+    costType === "customer_support";
 
   // === Auto-calc state ===
   const parsePct = (s: string): number => {
@@ -541,7 +548,9 @@ export default function CostForm({
                 <div className="text-[10px] text-slate-400 mt-0.5 tabular-nums">
                   {rateBased
                     ? `((PMG Sale − admin) / 1,1 − R) × ${rateName} = ${fmtMoney(targetForType)}`
-                    : "Số flat từ căn"}
+                    : (costType === "cdt_bonus_sale" || costType === "cdt_bonus_manager")
+                      ? `Số flat / 1,1 (đã trừ VAT 10%)`
+                      : "Số flat từ căn"}
                 </div>
               </div>
             );
@@ -608,47 +617,53 @@ export default function CostForm({
           </div>
         )}
 
-        {/* 2 input đơn giản: nội dung + % */}
-        <div className="grid grid-cols-2 gap-4">
+        {/* Nội dung + Tiến độ PMG (N) — ẩn N khi là chi phí flat (thưởng, hỗ trợ khách) */}
+        <div className={isFlatCost ? "" : "grid grid-cols-2 gap-4"}>
           <Field label="Nội dung thanh toán">
             <input
               name="note"
               defaultValue={recon?.note ?? ""}
               className="input"
-              placeholder="vd: Đợt 1, Đợt 2, thưởng nóng, ..."
+              placeholder={
+                isFlatCost
+                  ? "vd: Đợt 1, hoàn dư, điều chỉnh..."
+                  : "vd: Đợt 1, Đợt 2, thưởng nóng, ..."
+              }
             />
           </Field>
-          <Field label="Tiến độ PMG đã thu tiền (N)">
-            <div className="relative">
-              <input
-                type="text"
-                inputMode="decimal"
-                value={progressN}
-                onChange={(e) => {
-                  // User chủ động sửa N → cho phép auto-sync totalAmt lại
-                  manuallyOverriddenRef.current = false;
-                  setProgressN(e.target.value);
-                }}
-                placeholder={maxPrevN > 0 ? `≥ ${(maxPrevN * 100).toFixed(0)}%` : "vd: 90 = khách đã trả CĐT 90%"}
-                className={`input pr-8 ${isNRegression ? "border-red-400 text-red-700" : ""}`}
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
-                %
-              </span>
-            </div>
-            {isNRegression ? (
-              <div className="text-[10px] text-red-600 mt-1 font-semibold">
-                ⚠️ N phải ≥ {(maxPrevN * 100).toFixed(0)}% (tiến độ đợt trước). Không thể lùi tiến độ.
+          {!isFlatCost && (
+            <Field label="Tiến độ PMG đã thu tiền (N)">
+              <div className="relative">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={progressN}
+                  onChange={(e) => {
+                    // User chủ động sửa N → cho phép auto-sync totalAmt lại
+                    manuallyOverriddenRef.current = false;
+                    setProgressN(e.target.value);
+                  }}
+                  placeholder={maxPrevN > 0 ? `≥ ${(maxPrevN * 100).toFixed(0)}%` : "vd: 90 = khách đã trả CĐT 90%"}
+                  className={`input pr-8 ${isNRegression ? "border-red-400 text-red-700" : ""}`}
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+                  %
+                </span>
               </div>
-            ) : (
-              <div className="text-[10px] text-slate-500 mt-1">
-                = ((PMG Sale × N − admin_sale)/1,1 − hỗ trợ khách) × % − đã ĐC
-                {maxPrevN > 0 && (
-                  <span className="block mt-0.5">Tối thiểu {(maxPrevN * 100).toFixed(0)}% (theo đợt trước)</span>
-                )}
-              </div>
-            )}
-          </Field>
+              {isNRegression ? (
+                <div className="text-[10px] text-red-600 mt-1 font-semibold">
+                  ⚠️ N phải ≥ {(maxPrevN * 100).toFixed(0)}% (tiến độ đợt trước). Không thể lùi tiến độ.
+                </div>
+              ) : (
+                <div className="text-[10px] text-slate-500 mt-1">
+                  = ((PMG Sale × N − admin_sale)/1,1 − hỗ trợ khách) × % − đã ĐC
+                  {maxPrevN > 0 && (
+                    <span className="block mt-0.5">Tối thiểu {(maxPrevN * 100).toFixed(0)}% (theo đợt trước)</span>
+                  )}
+                </div>
+              )}
+            </Field>
+          )}
         </div>
 
         {/* Hidden inputs cho các field snapshot cũ để BE không break */}
@@ -715,37 +730,58 @@ export default function CostForm({
         <input type="hidden" name="paymentProgressPct" value={String(progressNNum)} />
       </Section>
 
-      <Section title="💰 Tổng phải trả đợt này">
+      <Section title="💰 Số tiền đợt này">
         {(() => {
           const overLimit =
             targetForType > 0 && paidBefore + totalAmt > targetForType + 1000; // threshold rounding
           const overBy = paidBefore + totalAmt - targetForType;
+          const isAdjustment = totalAmt < 0;
+          // Format hiển thị (giữ dấu -). Empty nếu totalAmt = 0.
+          const displayVal = totalAmt !== 0 ? totalAmt.toLocaleString("vi-VN") : "";
           return (
             <>
               <div
                 className={`rounded-lg border-2 p-4 ${
                   overLimit
                     ? "border-red-300 bg-red-50/60"
-                    : "border-orange-200 bg-orange-50/60"
+                    : isAdjustment
+                      ? "border-blue-200 bg-blue-50/60"
+                      : "border-orange-200 bg-orange-50/60"
                 }`}
               >
                 <div className="flex justify-between items-center gap-3">
-                  <div className={`text-xs ${overLimit ? "text-red-700" : "text-orange-700"}`}>
-                    Auto = Lũy kế mới (theo N nhập ở trên) − đã ĐC trước. Có thể ghi đè thủ công nếu cần.
+                  <div
+                    className={`text-xs ${
+                      overLimit ? "text-red-700" : isAdjustment ? "text-blue-700" : "text-orange-700"
+                    }`}
+                  >
+                    {isAdjustment
+                      ? "Điều chỉnh giảm / hoàn (số âm). VD chi dư đợt trước, đợt này thu lại."
+                      : "Auto = Lũy kế mới − đã ĐC trước. Có thể ghi đè. Nhập số âm (VD -1000000) khi cần hoàn."}
                   </div>
                   <input
                     name="amountPayableThisTime"
                     type="text"
                     inputMode="numeric"
-                    value={totalAmt ? totalAmt.toLocaleString("vi-VN") : ""}
+                    value={displayVal}
                     onChange={(e) => {
-                      const digits = e.target.value.replace(/\D/g, "");
-                      const newTotal = digits ? Number(digits) : 0;
+                      // Cho phép dấu "-" ở đầu
+                      const raw = e.target.value.trim();
+                      const isNeg = raw.startsWith("-");
+                      const digits = raw.replace(/\D/g, "");
+                      const n = digits ? Number(digits) : 0;
+                      const newTotal = isNeg ? -n : n;
                       manuallyOverriddenRef.current = true;
                       setTotalAmt(newTotal);
                     }}
                     onFocus={(e) => e.currentTarget.select()}
-                    className={`input text-right text-xl font-bold tabular-nums min-w-40 ${overLimit ? "text-red-700 border-red-400" : "text-orange-900"}`}
+                    className={`input text-right text-xl font-bold tabular-nums min-w-40 ${
+                      overLimit
+                        ? "text-red-700 border-red-400"
+                        : isAdjustment
+                          ? "text-blue-700 border-blue-300"
+                          : "text-orange-900"
+                    }`}
                     placeholder="0"
                     required
                   />
@@ -761,9 +797,15 @@ export default function CostForm({
                   Vượt <b>{fmtMoney(overBy)}</b> so với mức tối đa {fmtMoney(targetForType)}.
                   <br />
                   <span className="text-xs">
-                    Không cho lưu để tránh chi vượt. Nếu là điều chỉnh hồi tố hợp lệ, sửa mức
-                    tối đa ở /products/{"{"}id{"}"}/edit.
+                    Không cho lưu để tránh chi vượt. Nếu cần điều chỉnh giảm, nhập <b>số âm</b>. Nếu
+                    là điều chỉnh hồi tố hợp lệ, sửa mức tối đa ở /products/{"{"}id{"}"}/edit.
                   </span>
+                </div>
+              )}
+              {isAdjustment && !overLimit && (
+                <div className="mt-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
+                  ℹ️ Đợt này là <b>điều chỉnh giảm</b> {fmtMoney(Math.abs(totalAmt))}. Sau đợt này
+                  còn lại {fmtMoney(paidBefore + totalAmt)} / {fmtMoney(targetForType)}.
                 </div>
               )}
             </>

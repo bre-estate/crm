@@ -66,7 +66,9 @@ export function usesProgressN(costType: CostType): boolean {
   );
 }
 
-/** Cost type flat (không dùng công thức, lấy trực tiếp từ product config). */
+/** Cost type flat (không dùng công thức, lấy trực tiếp từ product config).
+ * Thưởng nóng CĐT (cdt_bonus_*) đã gồm VAT 10% → mức chi thực tế = flat / 1.1
+ * (BRE giữ 10% VAT nộp NN, chỉ chi net cho NVKD/quản lý). */
 export function flatAmount(p: ProductConfig, costType: CostType): number | null {
   switch (costType) {
     case "customer_support":
@@ -76,9 +78,9 @@ export function flatAmount(p: ProductConfig, costType: CostType): number | null 
     case "bonus_manager":
       return p.bonusManager;
     case "cdt_bonus_sale":
-      return p.cdtBonusSale;
+      return p.cdtBonusSale != null ? p.cdtBonusSale / 1.1 : null;
     case "cdt_bonus_manager":
-      return p.cdtBonusManager;
+      return p.cdtBonusManager != null ? p.cdtBonusManager / 1.1 : null;
     default:
       return null;
   }
