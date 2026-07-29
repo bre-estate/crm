@@ -6,7 +6,7 @@ const ws = wb.Sheets["3_BC DOANH THU - GIA VON"];
 // Row 9 in Excel = STT 1 (data start). Cần đọc từng cell W..AI.
 // Chọn row đầu tiên có STT (dùng 9 để có formula ổn định).
 const TARGET_ROWS = [11]; // A.05.09 (Fiato Uptown, có data đầy đủ)
-const COLS = ["F", "N", "O", "P", "Q", "R", "S", "T", "U", "AJ", "AK", "AL", "AM", "AN", "AO", "AP", "AQ", "AR", "AS", "AT", "AU"];
+const COLS = ["R", "U", "AV", "AW", "AX"];
 
 for (const rowNum of TARGET_ROWS) {
   const cellRef = `A${rowNum + 1}`; // XLSX 1-indexed

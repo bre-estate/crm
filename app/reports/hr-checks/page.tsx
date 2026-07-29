@@ -71,6 +71,7 @@ export default async function HrChecksPage({
         productId: costReconciliations.productId,
         costType: costReconciliations.costType,
         amountPayableThisTime: costReconciliations.amountPayableThisTime,
+        paymentProgressPct: costReconciliations.paymentProgressPct,
       })
       .from(costReconciliations),
     db
@@ -112,6 +113,7 @@ export default async function HrChecksPage({
       productId: c.productId,
       costType: c.costType,
       amountPayableThisTime: Number(c.amountPayableThisTime ?? 0),
+      paymentProgressPct: Number(c.paymentProgressPct ?? 0),
     })),
     payRows
       .filter((p) => p.reconciliationId !== null)

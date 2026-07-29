@@ -122,6 +122,7 @@ async function main() {
       productId: costReconciliations.productId,
       costType: costReconciliations.costType,
       amountPayableThisTime: costReconciliations.amountPayableThisTime,
+      paymentProgressPct: costReconciliations.paymentProgressPct,
     }).from(costReconciliations),
     db.select({
       reconciliationId: paymentsIn.reconciliationId,
@@ -160,6 +161,7 @@ async function main() {
       productId: c.productId,
       costType: c.costType,
       amountPayableThisTime: Number(c.amountPayableThisTime ?? 0),
+      paymentProgressPct: Number(c.paymentProgressPct ?? 0),
     })),
     payRows.filter((p) => p.reconciliationId !== null).map((p) => ({
       reconciliationId: p.reconciliationId as number,

@@ -109,6 +109,7 @@ export type CostReconInput = {
   productId: number;
   costType: string;
   amountPayableThisTime: number;
+  paymentProgressPct: number; // dùng để compute T (tiến độ đã ĐC sale)
 };
 
 export type PaymentInInput = {
@@ -133,9 +134,22 @@ export function computeHrChecks(
   }
 
   const costByProductType = new Map<string, number>();
+  const costByProduct = new Map<number, number>(); // tổng đã ĐC per căn (all costType)
+  // MAX N cost recon (chỉ từ sale_commission — khớp Excel filter "U > 0"
+  // trong công thức T = MAXIFS N sheet 2.3 với U > 0).
+  const maxNSaleCommByProduct = new Map<number, number>();
   for (const c of costRecons) {
     const key = `${c.productId}|${c.costType}`;
-    costByProductType.set(key, (costByProductType.get(key) ?? 0) + Number(c.amountPayableThisTime ?? 0));
+    const amt = Number(c.amountPayableThisTime ?? 0);
+    costByProductType.set(key, (costByProductType.get(key) ?? 0) + amt);
+    costByProduct.set(c.productId, (costByProduct.get(c.productId) ?? 0) + amt);
+    if (c.costType === "sale_commission") {
+      const n = Number(c.paymentProgressPct ?? 0);
+      maxNSaleCommByProduct.set(
+        c.productId,
+        Math.max(maxNSaleCommByProduct.get(c.productId) ?? 0, n),
+      );
+    }
   }
   const costSum = (productId: number, costType: CostType) =>
     costByProductType.get(`${productId}|${costType}`) ?? 0;
@@ -165,51 +179,87 @@ export function computeHrChecks(
     const targetRev = Number(p.totalRevenue ?? 0);
     const Y = targetRev - totalReceivable;
 
-    // === Z + AA: % và tiền HH sale còn phải ĐC ===
-    // N = MAX(paymentProgressPct) — cột P sheet 2.2 Excel, do HR nhập tay khi
-    // ĐC doanh thu (biết khách đã trả CĐT bao nhiêu %).
+    // === Z + AA: replicate Excel R formula exact ===
+    // N = MAX(paymentProgressPct) từ revenue recons (cột P sheet 2.2)
     const maxN = recs.reduce(
       (mx, r) => Math.max(mx, Number(r.paymentProgressPct ?? 0)),
       0,
     );
+    // T = MAX(paymentProgressPct) từ cost recons SALE_COMMISSION only.
+    // Khớp Excel: MAXIFS N sheet 2.3 với U (PMG LK dot nay) > 0 — chỉ HH sale
+    // có PMG progress, các loại flat (thưởng, KPI) không tính.
+    const maxNCost = maxNSaleCommByProduct.get(p.id) ?? 0;
+    // Z = N - T (Excel formula)
+    const Z = maxN - maxNCost;
 
+    // Excel R (Giá vốn tương ứng) — công thức exact từ Excel:
+    // R = ((AJ*AM*N - AO)/1.1 - AP)*AN           # HH sale
+    //   + SUM(AK:AL)/1.1                          # CĐT bonus sale+mgr / 1.1
+    //   + AP                                      # customer support
+    //   + AQ + AR                                 # cty bonus sale+mgr
+    //   + AV                                      # CP giá vốn khác (chưa có trong app)
+    //   + ((AJ*AM*N - AO)/1.1 - AP)*(AS+AT)      # KPI CEO + TPKD (theo N)
+    //   + ((AJ*AM - AO)/1.1 - AP)*AU             # KPI Admin (không N)
+    const AJ_ = pmgBase; // pmgBasePrice
+    const AM_ = Number(p.pmgSaleRate ?? p.pmgRate ?? 0); // pmgSaleRate
+    const AO_ = Number(p.adminFeeSale ?? 0); // adminFeeSale
+    const AP_ = Number(p.customerSupport ?? 0); // customerSupport
+    const AN_ = Number(p.saleCommissionRate ?? 0); // saleCommissionRate
+    const AK_ = Number(p.cdtBonusSale ?? 0); // CĐT bonus sale (gồm VAT)
+    const AL_ = Number(p.cdtBonusManager ?? 0); // CĐT bonus manager (gồm VAT)
+    const AQ_ = Number(p.bonusSale ?? 0);
+    const AR_ = Number(p.bonusManager ?? 0);
+    const AV_ = 0; // "CP giá vốn khác" — chưa map trong app
+    const AS_ = Number(p.kpiCeoRate ?? 0);
+    const AT_ = Number(p.kpiTpkdRate ?? 0);
+    const AU_ = Number(p.kpiAdminRate ?? 0);
+
+    // Chỉ tính R nếu có ĐC (O > 0) — như Excel `if(O>0, ...)`
+    const hasRecon = totalReceivable > 0;
+    const baseAtN = (AJ_ * AM_ * maxN - AO_) / 1.1 - AP_;
+    const baseAtFull = (AJ_ * AM_ - AO_) / 1.1 - AP_;
+    const R = hasRecon
+      ? baseAtN * AN_
+        + (AK_ + AL_) / 1.1
+        + AP_
+        + AQ_ + AR_
+        + AV_
+        + baseAtN * (AS_ + AT_)
+        + baseAtFull * AU_
+      : 0;
+
+    // U = SUM all cost recons cho căn (mọi costType)
+    const U = costByProduct.get(p.id) ?? 0;
+    const AA = R - U;
+
+    // === AB → AI (breakdown per loại) — giữ compute độc lập, không phải R-U ===
     const cfg: ProductConfig = {
-      pmgBasePrice: pmgBase,
-      pmgSaleRate: Number(p.pmgSaleRate ?? p.pmgRate ?? 0),
-      adminFeeSale: Number(p.adminFeeSale ?? 0),
-      customerSupport: Number(p.customerSupport ?? 0),
-      saleCommissionRate: Number(p.saleCommissionRate ?? 0),
-      kpiCeoRate: Number(p.kpiCeoRate ?? 0),
-      kpiTpkdRate: Number(p.kpiTpkdRate ?? 0),
-      kpiAdminRate: Number(p.kpiAdminRate ?? 0),
-      bonusSale: Number(p.bonusSale ?? 0),
-      bonusManager: Number(p.bonusManager ?? 0),
-      cdtBonusSale: Number(p.cdtBonusSale ?? 0),
-      cdtBonusManager: Number(p.cdtBonusManager ?? 0),
+      pmgBasePrice: AJ_,
+      pmgSaleRate: AM_,
+      adminFeeSale: AO_,
+      customerSupport: AP_,
+      saleCommissionRate: AN_,
+      kpiCeoRate: AS_,
+      kpiTpkdRate: AT_,
+      kpiAdminRate: AU_,
+      bonusSale: AQ_,
+      bonusManager: AR_,
+      cdtBonusSale: AK_,
+      cdtBonusManager: AL_,
     };
-
-    // HH sale target đến N hiện tại
-    const salesCommTargetAtN = computeLuyKe(cfg, "sale_commission", maxN);
-    const salesCommDone = costSum(p.id, "sale_commission");
-    const AA = salesCommTargetAtN - salesCommDone;
-    // Z = tiến độ % (N) − tiến độ % đã ĐC. Tính % đã ĐC = salesCommDone / salesCommFull.
-    const salesCommFull = computeLuyKe(cfg, "sale_commission", 1);
-    const doneProgress = salesCommFull > 0 ? salesCommDone / salesCommFull : 0;
-    const Z = maxN - doneProgress;
-
-    // === AB → AI ===
-    // Target: computeLuyKe với N=1 (đủ). Với các loại flat (bonus, support),
-    // computeLuyKe trả về giá trị flat trực tiếp.
     const AB = computeLuyKe(cfg, "cdt_bonus_sale", 1) - costSum(p.id, "cdt_bonus_sale");
     const AC = computeLuyKe(cfg, "cdt_bonus_manager", 1) - costSum(p.id, "cdt_bonus_manager");
     const AD = computeLuyKe(cfg, "bonus_sale", 1) - costSum(p.id, "bonus_sale");
     const AE = computeLuyKe(cfg, "bonus_manager", 1) - costSum(p.id, "bonus_manager");
     const AF = computeLuyKe(cfg, "customer_support", 1) - costSum(p.id, "customer_support");
-    // KPI: dùng N hiện tại (theo tiến độ khách trả)
-    const AG = computeLuyKe(cfg, "kpi_ceo", maxN) - costSum(p.id, "kpi_ceo");
-    const AH = computeLuyKe(cfg, "kpi_tpkd", maxN) - costSum(p.id, "kpi_tpkd");
-    // KPI Admin: full (N=1) — chi 1 lần/căn
-    const AI = computeLuyKe(cfg, "kpi_admin", 1) - costSum(p.id, "kpi_admin");
+    // KPI CEO / TPKD / Admin: Excel formula dùng FULL target (không nhân N):
+    // AG = ((AJ*AM - AO)/1.1 - AP)*AS - SUM cost recon kpi_ceo (mỗi đợt tính theo N)
+    // Ý nghĩa: target FULL cho tới khi khách trả 100%, trừ đã ĐC lũy kế.
+    const AG = baseAtFull * AS_ - costSum(p.id, "kpi_ceo");
+    const AH = AT_ > 0
+      ? baseAtFull * AT_ - costSum(p.id, "kpi_tpkd")
+      : 0;
+    const AI = AU_ > 0 ? baseAtFull * AU_ - costSum(p.id, "kpi_admin") : 0;
 
     return {
       productId: p.id,

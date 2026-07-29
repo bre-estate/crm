@@ -129,81 +129,48 @@ async function main() {
       kpiAmount: number;
     }> = [];
 
+    // Excel 1 dòng cost recon = TỔNG chi cho 1 người/đợt, có thể gồm nhiều
+    // component. Amount total (AM) = SUM(V + X:AB + AF + AJ + AL).
+    // Cần SPLIT thành 1 recon per component, mỗi recon amount = phần đó.
+    const kpiCeoAmt = toNum(row[31]); // AF = KPI CEO còn thanh toán đợt này
+    const kpiTpkdAmt = toNum(row[35]); // AJ = KPI TPKD còn đợt này
+    const kpiAdminAmt = toNum(row[37]); // AL = KPI Admin
+
+    if (pmgPayable > 0) {
+      rowsToInsert.push({ costType: "sale_commission", amount: pmgPayable, kpiRate: 0, kpiAmount: 0 });
+    }
     if (csVal > 0) {
-      rowsToInsert.push({ costType: "customer_support", amount: totalAmount, kpiRate: 0, kpiAmount: 0 });
-    } else if (kpiCeoRate > 0) {
+      rowsToInsert.push({ costType: "customer_support", amount: csVal, kpiRate: 0, kpiAmount: 0 });
+    }
+    if (cdtBonusSaleVal > 0) {
+      rowsToInsert.push({ costType: "cdt_bonus_sale", amount: cdtBonusSaleVal, kpiRate: 0, kpiAmount: 0 });
+    }
+    if (cdtBonusMgrVal > 0) {
+      rowsToInsert.push({ costType: "cdt_bonus_manager", amount: cdtBonusMgrVal, kpiRate: 0, kpiAmount: 0 });
+    }
+    if (bsVal > 0) {
+      rowsToInsert.push({ costType: "bonus_sale", amount: bsVal, kpiRate: 0, kpiAmount: 0 });
+    }
+    if (bmVal > 0) {
+      rowsToInsert.push({ costType: "bonus_manager", amount: bmVal, kpiRate: 0, kpiAmount: 0 });
+    }
+    if (kpiCeoAmt > 0) {
+      rowsToInsert.push({ costType: "kpi_ceo", amount: kpiCeoAmt, kpiRate: kpiCeoRate, kpiAmount: kpiCeoAmt });
+    }
+    if (kpiTpkdAmt > 0) {
+      rowsToInsert.push({ costType: "kpi_tpkd", amount: kpiTpkdAmt, kpiRate: kpiTpkdRate, kpiAmount: kpiTpkdAmt });
+    }
+    if (kpiAdminAmt > 0) {
+      rowsToInsert.push({ costType: "kpi_admin", amount: kpiAdminAmt, kpiRate: kpiAdminPct, kpiAmount: kpiAdminAmt });
+    }
+    // Fallback: nếu không detect được component nào nhưng có totalAmount → sale_commission
+    if (rowsToInsert.length === 0 && totalAmount !== 0) {
       rowsToInsert.push({
-        costType: "kpi_ceo",
+        costType: "sale_commission",
         amount: totalAmount,
-        kpiRate: kpiCeoRate,
-        kpiAmount: toNum(row[31]),
+        kpiRate: 0,
+        kpiAmount: 0,
       });
-    } else if (kpiTpkdRate > 0) {
-      rowsToInsert.push({
-        costType: "kpi_tpkd",
-        amount: totalAmount,
-        kpiRate: kpiTpkdRate,
-        kpiAmount: toNum(row[35]),
-      });
-    } else if (kpiAdminPct > 0) {
-      rowsToInsert.push({
-        costType: "kpi_admin",
-        amount: totalAmount,
-        kpiRate: kpiAdminPct,
-        kpiAmount: toNum(row[37]),
-      });
-    } else {
-      // Bonus / HH sale group
-      // Split nếu có cả PMG phải trả (HH sale) + CĐT/CTY thưởng
-      if (pmgPayable > 0) {
-        rowsToInsert.push({
-          costType: "sale_commission",
-          amount: pmgPayable,
-          kpiRate: 0,
-          kpiAmount: 0,
-        });
-      }
-      if (cdtBonusSaleVal > 0) {
-        rowsToInsert.push({
-          costType: "cdt_bonus_sale",
-          amount: cdtBonusSaleVal,
-          kpiRate: 0,
-          kpiAmount: 0,
-        });
-      }
-      if (cdtBonusMgrVal > 0) {
-        rowsToInsert.push({
-          costType: "cdt_bonus_manager",
-          amount: cdtBonusMgrVal,
-          kpiRate: 0,
-          kpiAmount: 0,
-        });
-      }
-      if (bsVal > 0) {
-        rowsToInsert.push({
-          costType: "bonus_sale",
-          amount: bsVal,
-          kpiRate: 0,
-          kpiAmount: 0,
-        });
-      }
-      if (bmVal > 0) {
-        rowsToInsert.push({
-          costType: "bonus_manager",
-          amount: bmVal,
-          kpiRate: 0,
-          kpiAmount: 0,
-        });
-      }
-      // Fallback: nếu không detect được nhưng có tổng phải trả → gán sale_commission
-      if (rowsToInsert.length === 0 && totalAmount !== 0) {
-        rowsToInsert.push({
-          costType: "sale_commission",
-          amount: totalAmount,
-          kpiRate: 0,
-          kpiAmount: 0,
-        });
-      }
     }
 
     for (const [idx, ins] of rowsToInsert.entries()) {
@@ -216,7 +183,9 @@ async function main() {
           costType: ins.costType,
           pmgBasePriceSale: toNum(row[11]),
           pmgLkSaleRate: toNum(row[12]),
-          pmgProgressAmount: toNum(row[13]),
+          // Cột N Excel = "Tiến độ PMG đã thu tiền (%)" — đây là N (khách
+          // trả CĐT), map vào paymentProgressPct chứ KHÔNG pmgProgressAmount.
+          paymentProgressPct: toNum(row[13]),
           pmgCumulativePctSale: toNum(row[14]),
           commissionRate: toNum(row[15]),
           adminFeeSale: toNum(row[16]),
