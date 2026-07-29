@@ -61,7 +61,7 @@ const NAV: NavEntry[] = [
       { href: "/reports/partners", label: "Đối tác", resource: "reports.overview", section: "Thị trường" },
       // NỘI BỘ
       { href: "/reports/people", label: "Theo nhân sự", resource: "reports.people", section: "Nội bộ" },
-      { href: "/reports/hr-checks", label: "Kiểm tra HR", resource: "reports.hr-checks", section: "Nội bộ" },
+      { href: "/reports/hr-checks", label: "Đối chiếu giá vốn", resource: "reports.hr-checks", section: "Nội bộ" },
       { href: "/reports/time", label: "Theo thời gian", resource: "reports.overview", section: "Nội bộ" },
     ],
   },

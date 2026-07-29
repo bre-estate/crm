@@ -27,7 +27,7 @@ export const RESOURCES = {
   "reports.cash-flow-statement": "Lưu chuyển tiền tệ",
   "reports.unit-profitability": "Lãi/lỗ per căn",
   "reports.segments": "Phân khúc căn",
-  "reports.hr-checks": "Kiểm tra HR hàng tháng",
+  "reports.hr-checks": "Đối chiếu giá vốn",
   "alerts": "Cảnh báo",
   "admin.users": "Quản lý user",
   "admin.activity": "Nhật ký hoạt động",

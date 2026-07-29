@@ -69,6 +69,8 @@ async function main() {
       revenueThisTime: revenueReconciliations.revenueThisTime,
       paymentProgressPct: revenueReconciliations.paymentProgressPct,
       pmgCumulativePct: revenueReconciliations.pmgCumulativePct,
+      cdtBonusSale: revenueReconciliations.cdtBonusSale,
+      cdtBonusManager: revenueReconciliations.cdtBonusManager,
     }).from(revenueReconciliations),
     db.select({
       productId: costReconciliations.productId, costType: costReconciliations.costType,
@@ -105,8 +107,8 @@ async function main() {
       revenueThisTime: Number(r.revenueThisTime ?? 0),
       paymentProgressPct: Number(r.paymentProgressPct ?? 0),
       pmgCumulativePct: Number(r.pmgCumulativePct ?? 0),
-      cdtBonusSale: 0,
-      cdtBonusManager: 0,
+      cdtBonusSale: Number(r.cdtBonusSale ?? 0),
+      cdtBonusManager: Number(r.cdtBonusManager ?? 0),
     })),
     costRows.map((c) => ({
       productId: c.productId, costType: c.costType,

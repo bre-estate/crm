@@ -146,9 +146,10 @@ export default async function HrChecksPage({
             ← Báo cáo
           </Link>
         </div>
-        <h1 className="text-2xl font-bold mt-1">🧾 Kiểm tra HR hàng tháng</h1>
+        <h1 className="text-2xl font-bold mt-1">🧾 Đối chiếu giá vốn</h1>
         <p className="text-sm text-slate-500 mt-1">
-          13 loại chỉ số per căn, khớp cột W → AI trong sheet Excel &quot;3_BC DOANH THU
+          13 loại chỉ số per căn để HR/kế toán kiểm tra hàng tháng khi chi lương +
+          thưởng cho sale/team. Khớp cột W → AI trong sheet Excel &quot;3_BC DOANH THU
           - GIA VON&quot;. Chỉ hiển thị căn có |giá trị| &gt; 1.000 VND (hoặc 0,1% với cột Z).
         </p>
       </div>
