@@ -50,37 +50,35 @@ export default function HrChecksClient({ rows, activeField, countByField, sumByF
 
   return (
     <div className="space-y-4">
-      {/* Tabs 13 loại */}
-      <div className="overflow-x-auto">
-        <div className="flex gap-1 min-w-max border-b border-slate-200">
-          {FIELDS.map((f) => {
-            const active = f === activeField;
-            const cnt = countByField[f];
-            return (
-              <Link
-                key={f}
-                href={`/reports/hr-checks?field=${f}`}
-                className={`px-3 py-2 text-xs whitespace-nowrap border-b-2 transition-colors ${
-                  active
-                    ? "border-orange-500 text-orange-700 font-semibold bg-orange-50"
-                    : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                }`}
-              >
-                <span className="font-mono text-[10px] text-slate-400">{f}.</span>{" "}
-                {HR_CHECK_LABELS[f]}
-                {cnt > 0 && (
-                  <span
-                    className={`ml-1.5 inline-flex items-center justify-center w-5 h-5 text-[10px] font-semibold rounded-full ${
-                      active ? "bg-orange-500 text-white" : "bg-slate-200 text-slate-700"
-                    }`}
-                  >
-                    {cnt}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-        </div>
+      {/* Tabs 13 loại — wrap xuống dòng, không scroll */}
+      <div className="flex flex-wrap gap-1.5">
+        {FIELDS.map((f) => {
+          const active = f === activeField;
+          const cnt = countByField[f];
+          return (
+            <Link
+              key={f}
+              href={`/reports/hr-checks?field=${f}`}
+              className={`px-3 py-1.5 text-xs whitespace-nowrap rounded-lg border transition-colors ${
+                active
+                  ? "border-orange-500 text-orange-700 font-semibold bg-orange-50"
+                  : "border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 bg-white"
+              }`}
+            >
+              <span className="font-mono text-[10px] text-slate-400">{f}.</span>{" "}
+              {HR_CHECK_LABELS[f]}
+              {cnt > 0 && (
+                <span
+                  className={`ml-1.5 inline-flex items-center justify-center min-w-5 h-5 px-1.5 text-[10px] font-semibold rounded-full ${
+                    active ? "bg-orange-500 text-white" : "bg-slate-200 text-slate-700"
+                  }`}
+                >
+                  {cnt}
+                </span>
+              )}
+            </Link>
+          );
+        })}
       </div>
 
       {/* Header info */}
