@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { invoices, revenueReconciliations, paymentsIn, partners } from "@/lib/schema";
+import { invoices, revenueReconciliations, paymentsIn, partners, products, projects } from "@/lib/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import InvoicesTable from "./InvoicesTable";
 
@@ -56,15 +56,45 @@ export default async function InvoicesPage() {
   for (const p of paymentAgg)
     if (p.invoiceId) paidByInv.set(p.invoiceId, Number(p.totalPaid ?? 0));
 
+  // Với invoice không có partner_id (thường là recons từ nhiều CĐT), suy partners
+  // qua recon → product → project → partner. Nếu có nhiều partner → hiển thị list.
+  const invsMissingPartner = invRows.filter((i) => !i.partnerName).map((i) => i.id);
+  const partnersFromRecon = new Map<number, Set<string>>(); // invoiceId → partnerName set
+  if (invsMissingPartner.length > 0) {
+    const rows = await db
+      .select({
+        invoiceId: revenueReconciliations.invoiceId,
+        partnerName: partners.name,
+      })
+      .from(revenueReconciliations)
+      .leftJoin(products, eq(products.id, revenueReconciliations.productId))
+      .leftJoin(projects, eq(projects.id, products.projectId))
+      .leftJoin(partners, eq(partners.id, projects.partnerId));
+    for (const r of rows) {
+      if (r.invoiceId == null || !r.partnerName) continue;
+      const set = partnersFromRecon.get(r.invoiceId) ?? new Set<string>();
+      set.add(r.partnerName);
+      partnersFromRecon.set(r.invoiceId, set);
+    }
+  }
+
   const rows = invRows.map((inv) => {
     const total = Number(inv.totalAmountVat ?? 0);
     const paid = paidByInv.get(inv.id) ?? 0;
     const recon = reconByInv.get(inv.id) ?? { cnt: 0, totalRecon: 0 };
+    let partnerLabel: string | null = inv.partnerName ?? null;
+    if (!partnerLabel) {
+      const set = partnersFromRecon.get(inv.id);
+      if (set && set.size > 0) {
+        const names = [...set].sort();
+        partnerLabel = names.length === 1 ? names[0] : names.join(" + ");
+      }
+    }
     return {
       id: inv.id,
       number: inv.invoiceNumber,
       date: inv.invoiceDate,
-      partnerName: inv.partnerName ?? null,
+      partnerName: partnerLabel,
       total,
       paid,
       remaining: total - paid,
