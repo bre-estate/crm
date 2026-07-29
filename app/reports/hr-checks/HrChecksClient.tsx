@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import ExpandToggle from "@/components/ExpandToggle";
 import {
   HR_CHECK_LABELS,
   HR_CHECK_DESCRIPTIONS,
@@ -126,7 +127,7 @@ export default function HrChecksClient({ rows, activeField, countByField, sumByF
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs text-slate-600">
               <tr>
-                <th className="text-left p-2 w-8"></th>
+                <th className="text-left p-2 w-12"></th>
                 <th className="text-left p-2 w-10">#</th>
                 <th className="text-left p-2">Căn</th>
                 <th className="text-left p-2">Dự án</th>
@@ -155,14 +156,10 @@ export default function HrChecksClient({ rows, activeField, countByField, sumByF
                       }`}
                     >
                       <td className="p-2">
-                        <button
-                          type="button"
+                        <ExpandToggle
+                          isOpen={isOpen}
                           onClick={() => setExpanded(isOpen ? null : r.productId)}
-                          className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-200 rounded"
-                          aria-label={isOpen ? "Thu gọn" : "Xem chi tiết"}
-                        >
-                          {isOpen ? "▾" : "▸"}
-                        </button>
+                        />
                       </td>
                       <td className="p-2 text-xs text-slate-400 tabular-nums">{i + 1}</td>
                       <td className="p-2 font-mono text-xs">

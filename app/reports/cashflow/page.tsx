@@ -374,7 +374,7 @@ export default async function ReportsCashflowPage({ searchParams }: { searchPara
       <div>
         <h2 className="text-lg font-semibold mb-1">Tuổi nợ theo đối tác</h2>
         <p className="text-xs text-slate-500 mb-3">
-          Mỗi CĐT/F1 chia theo nhóm tuổi nợ (0-30 / 31-60 / 61-90 / {">"}90 ngày kể từ ngày đối chiếu). Xếp: đối tác có nhiều tiền quá hạn ({">"}30 ngày) lên trước. <b>Bấm ▶ để xem danh sách căn cụ thể</b>.
+          Mỗi CĐT/F1 chia theo nhóm tuổi nợ (0-30 / 31-60 / 61-90 / {">"}90 ngày kể từ ngày đối chiếu). Xếp: đối tác có nhiều tiền quá hạn ({">"}30 ngày) lên trước. <b>Bấm nút chevron để xem danh sách căn cụ thể</b>.
         </p>
         <div className="space-y-2">
           {partnerAgingRows.map((r) => {
@@ -391,12 +391,27 @@ export default async function ReportsCashflowPage({ searchParams }: { searchPara
             return (
               <details
                 key={r.name}
-                className="bg-white border border-slate-200 rounded-xl overflow-hidden"
+                className="group bg-white border border-slate-200 rounded-xl overflow-hidden"
               >
                 <summary className="cursor-pointer list-none p-3 hover:bg-slate-50">
                   <div className="grid grid-cols-12 gap-3 items-center text-sm">
-                    <div className="col-span-3 font-medium">
-                      <span className="mr-2 text-slate-400 inline-block transition-transform group-open:rotate-90">▶</span>
+                    <div className="col-span-3 font-medium flex items-center gap-2">
+                      <span className="w-6 h-6 flex items-center justify-center rounded border border-slate-300 bg-white text-slate-600 group-hover:bg-slate-100">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="transition-transform group-open:rotate-90"
+                        >
+                          <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                      </span>
                       {r.name}
                     </div>
                     <div className="col-span-1 text-center tabular-nums text-xs text-slate-500">
