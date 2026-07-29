@@ -16,7 +16,7 @@ import fs from "fs";
 import * as dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 
-const EXCEL_PATH = path.join(process.cwd(), "BAO CAO DOANH THU.xlsx");
+const EXCEL_PATH = path.join(process.cwd(), "data-excel", "BAO CAO DOANH THU.xlsx");
 if (!fs.existsSync(EXCEL_PATH)) {
   console.error("Old Excel file not found:", EXCEL_PATH);
   process.exit(1);

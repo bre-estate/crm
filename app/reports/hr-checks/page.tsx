@@ -37,6 +37,7 @@ export default async function HrChecksPage({
         partnerName: partners.name,
         salesPerson: products.salesPerson,
         deptLeaderName: products.deptLeaderName,
+        totalRevenue: products.totalRevenue,
         pmgBasePrice: products.pmgBasePrice,
         pmgSaleRate: products.pmgSaleRate,
         pmgRate: products.pmgRate,
@@ -60,6 +61,7 @@ export default async function HrChecksPage({
         productId: revenueReconciliations.productId,
         invoiceId: revenueReconciliations.invoiceId,
         totalReceivableThisTime: revenueReconciliations.totalReceivableThisTime,
+        revenueThisTime: revenueReconciliations.revenueThisTime,
         pmgCumulativePct: revenueReconciliations.pmgCumulativePct,
       })
       .from(revenueReconciliations),
@@ -81,6 +83,7 @@ export default async function HrChecksPage({
   const rows = computeHrChecks(
     productRows.map((p) => ({
       ...p,
+      totalRevenue: p.totalRevenue == null ? null : Number(p.totalRevenue),
       pmgBasePrice: p.pmgBasePrice == null ? null : Number(p.pmgBasePrice),
       pmgSaleRate: p.pmgSaleRate == null ? null : Number(p.pmgSaleRate),
       pmgRate: p.pmgRate == null ? null : Number(p.pmgRate),
@@ -100,6 +103,7 @@ export default async function HrChecksPage({
       productId: r.productId,
       invoiceId: r.invoiceId,
       totalReceivableThisTime: Number(r.totalReceivableThisTime ?? 0),
+      revenueThisTime: Number(r.revenueThisTime ?? 0),
       pmgCumulativePct: Number(r.pmgCumulativePct ?? 0),
     })),
     costRows.map((c) => ({

@@ -80,6 +80,7 @@ export type ProductInput = {
   partnerName: string | null;
   salesPerson: string | null;
   deptLeaderName: string | null;
+  totalRevenue: number | null; // Excel col F (gồm VAT + cdt bonuses)
   pmgBasePrice: number | null;
   pmgSaleRate: number | null;
   pmgRate: number | null;
@@ -98,7 +99,8 @@ export type ProductInput = {
 export type RevReconInput = {
   productId: number;
   invoiceId: number | null;
-  totalReceivableThisTime: number;
+  totalReceivableThisTime: number; // gồm cdtBonus
+  revenueThisTime: number; // chỉ phần PMG (để compute N)
   pmgCumulativePct: number;
 };
 
@@ -156,18 +158,19 @@ export function computeHrChecks(
     const X = totalReceivable - totalPaid;
 
     // === Y: DT còn lại chưa ĐC ===
-    // Target DT (gồm VAT) = pmgBasePrice × pmgRate. Đây là total_revenue expected.
+    // Dùng product.totalRevenue (khớp Excel col F: đã cộng cdtBonus + adminFee)
+    // thay pmgBase × pmgRate (chỉ là PMG_LK component, thiếu bonuses).
     const pmgBase = Number(p.pmgBasePrice ?? 0);
-    const pmgRate = Number(p.pmgRate ?? 0);
-    const targetRev = pmgBase * pmgRate;
+    const targetRev = Number(p.totalRevenue ?? 0);
     const Y = targetRev - totalReceivable;
 
     // === Z + AA: % và tiền HH sale còn phải ĐC ===
-    // N = tiến độ khách trả CĐT = tổng đã ĐC DT / tổng DT target.
-    // Không dùng field pmgCumulativePct vì field đó lưu %PMG_LK sale rate (snapshot),
-    // không phải N (khách trả %). Cap 100% để tránh vượt trong trường hợp
-    // off-progress hoặc rebate làm SUM > target.
-    const maxN = targetRev > 0 ? Math.min(1, totalReceivable / targetRev) : 0;
+    // N = tiến độ khách trả CĐT theo PMG = SUM(revenueThisTime — chỉ phần PMG,
+    // KHÔNG gồm cdtBonus) / (pmgBase × pmgRate — target PMG thuần).
+    // Không dùng totalReceivable / totalRevenue vì cả 2 gồm cdtBonus → sai N.
+    const pmgTargetOnly = pmgBase * Number(p.pmgRate ?? 0);
+    const revPmgOnly = recs.reduce((s, r) => s + Number(r.revenueThisTime ?? 0), 0);
+    const maxN = pmgTargetOnly > 0 ? Math.min(1, revPmgOnly / pmgTargetOnly) : 0;
 
     const cfg: ProductConfig = {
       pmgBasePrice: pmgBase,

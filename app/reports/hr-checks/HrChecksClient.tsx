@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   HR_CHECK_LABELS,
@@ -34,7 +34,14 @@ type Props = {
   sumByField: Record<HrCheckField, number>;
 };
 
+const ALL_FIELDS: HrCheckField[] = [
+  "W", "X", "Y", "Z", "AA",
+  "AB", "AC", "AD", "AE", "AF",
+  "AG", "AH", "AI",
+];
+
 export default function HrChecksClient({ rows, activeField, countByField, sumByField }: Props) {
+  const [expanded, setExpanded] = useState<number | null>(null);
   const filtered = useMemo(() => {
     const list = filterByField(rows, activeField);
     // Sort desc theo |value|
@@ -119,6 +126,7 @@ export default function HrChecksClient({ rows, activeField, countByField, sumByF
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs text-slate-600">
               <tr>
+                <th className="text-left p-2 w-8"></th>
                 <th className="text-left p-2 w-10">#</th>
                 <th className="text-left p-2">Căn</th>
                 <th className="text-left p-2">Dự án</th>
@@ -137,46 +145,131 @@ export default function HrChecksClient({ rows, activeField, countByField, sumByF
                   ? `/costs/new?productId=${r.productId}&costType=${relatedCostType}`
                   : `/products/${r.productId}`;
                 const linkLabel = relatedCostType ? "+ Tạo ĐC" : "Xem căn";
+                const isOpen = expanded === r.productId;
                 return (
-                  <tr
-                    key={r.productId}
-                    className="border-t border-slate-100 hover:bg-slate-50"
-                  >
-                    <td className="p-2 text-xs text-slate-400 tabular-nums">{i + 1}</td>
-                    <td className="p-2 font-mono text-xs">
-                      <Link
-                        href={`/products/${r.productId}`}
-                        className="text-blue-600 hover:underline"
-                      >
-                        {r.unitCode}
-                      </Link>
-                    </td>
-                    <td className="p-2 text-slate-700">{r.projectName ?? "—"}</td>
-                    <td className="p-2 text-slate-500 text-xs">{r.partnerName ?? "—"}</td>
-                    <td className="p-2 text-slate-700 text-xs">{r.salesPerson ?? "—"}</td>
-                    <td className="p-2 text-slate-500 text-xs">{r.deptLeaderName ?? "—"}</td>
-                    <td
-                      className={`p-2 text-right tabular-nums font-semibold ${
-                        v >= 0 ? "text-orange-700" : "text-blue-700"
+                  <>
+                    <tr
+                      key={r.productId}
+                      className={`border-t border-slate-100 hover:bg-slate-50 ${
+                        isOpen ? "bg-slate-50" : ""
                       }`}
                     >
-                      {displayVal}
-                    </td>
-                    <td className="p-2 text-right">
-                      <Link
-                        href={linkTarget}
-                        className="text-blue-600 hover:underline text-xs whitespace-nowrap"
+                      <td className="p-2">
+                        <button
+                          type="button"
+                          onClick={() => setExpanded(isOpen ? null : r.productId)}
+                          className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-200 rounded"
+                          aria-label={isOpen ? "Thu gọn" : "Xem chi tiết"}
+                        >
+                          {isOpen ? "▾" : "▸"}
+                        </button>
+                      </td>
+                      <td className="p-2 text-xs text-slate-400 tabular-nums">{i + 1}</td>
+                      <td className="p-2 font-mono text-xs">
+                        <Link
+                          href={`/products/${r.productId}`}
+                          className="text-blue-600 hover:underline"
+                        >
+                          {r.unitCode}
+                        </Link>
+                      </td>
+                      <td className="p-2 text-slate-700">{r.projectName ?? "—"}</td>
+                      <td className="p-2 text-slate-500 text-xs">{r.partnerName ?? "—"}</td>
+                      <td className="p-2 text-slate-700 text-xs">{r.salesPerson ?? "—"}</td>
+                      <td className="p-2 text-slate-500 text-xs">{r.deptLeaderName ?? "—"}</td>
+                      <td
+                        className={`p-2 text-right tabular-nums font-semibold ${
+                          v >= 0 ? "text-orange-700" : "text-blue-700"
+                        }`}
                       >
-                        {linkLabel}
-                      </Link>
-                    </td>
-                  </tr>
+                        {displayVal}
+                      </td>
+                      <td className="p-2 text-right">
+                        <Link
+                          href={linkTarget}
+                          className="text-blue-600 hover:underline text-xs whitespace-nowrap"
+                        >
+                          {linkLabel}
+                        </Link>
+                      </td>
+                    </tr>
+                    {isOpen && (
+                      <tr key={`${r.productId}-detail`} className="bg-slate-50/70 border-t border-slate-100">
+                        <td colSpan={9} className="p-4">
+                          <DetailPanel row={r} activeField={activeField} />
+                        </td>
+                      </tr>
+                    )}
+                  </>
                 );
               })}
             </tbody>
           </table>
         </div>
       )}
+    </div>
+  );
+}
+
+function DetailPanel({ row, activeField }: { row: HrCheckRow; activeField: HrCheckField }) {
+  return (
+    <div className="space-y-3">
+      <div className="text-xs text-slate-500 font-medium">
+        Chi tiết 13 chỉ số cho <span className="font-mono">{row.unitCode}</span> —{" "}
+        {row.projectName}
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2">
+        {ALL_FIELDS.map((f) => {
+          const v = row.values[f];
+          const isPct = PERCENT_FIELDS.has(f);
+          const isActive = f === activeField;
+          const isZero = Math.abs(v) < (isPct ? 0.001 : 1000);
+          return (
+            <div
+              key={f}
+              className={`rounded border p-2 ${
+                isActive
+                  ? "border-orange-400 bg-orange-50"
+                  : isZero
+                    ? "border-slate-200 bg-white text-slate-400"
+                    : v >= 0
+                      ? "border-slate-200 bg-white"
+                      : "border-blue-200 bg-blue-50"
+              }`}
+            >
+              <div className="text-[10px] text-slate-500 font-mono">{f}</div>
+              <div className="text-[11px] text-slate-700 leading-tight mt-0.5">
+                {HR_CHECK_LABELS[f]}
+              </div>
+              <div
+                className={`text-sm font-semibold tabular-nums mt-1 ${
+                  isZero
+                    ? "text-slate-400"
+                    : v >= 0
+                      ? "text-orange-700"
+                      : "text-blue-700"
+                }`}
+              >
+                {isPct ? fmtPct(v) : fmtM(v)}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex gap-3 pt-1 text-xs">
+        <Link
+          href={`/products/${row.productId}`}
+          className="text-blue-600 hover:underline"
+        >
+          → Xem trang căn
+        </Link>
+        <Link
+          href={`/costs/new?productId=${row.productId}`}
+          className="text-blue-600 hover:underline"
+        >
+          → Tạo ĐC giá vốn (chọn loại)
+        </Link>
+      </div>
     </div>
   );
 }
