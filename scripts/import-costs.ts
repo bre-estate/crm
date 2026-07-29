@@ -136,32 +136,38 @@ async function main() {
     const kpiTpkdAmt = toNum(row[35]); // AJ = KPI TPKD còn đợt này
     const kpiAdminAmt = toNum(row[37]); // AL = KPI Admin
 
-    if (pmgPayable > 0) {
+    // Fix 2026-07-29: !== 0 thay > 0 để handle số âm (điều chỉnh giảm).
+    if (pmgPayable !== 0) {
       rowsToInsert.push({ costType: "sale_commission", amount: pmgPayable, kpiRate: 0, kpiAmount: 0 });
     }
-    if (csVal > 0) {
+    if (csVal !== 0) {
       rowsToInsert.push({ costType: "customer_support", amount: csVal, kpiRate: 0, kpiAmount: 0 });
     }
-    if (cdtBonusSaleVal > 0) {
+    if (cdtBonusSaleVal !== 0) {
       rowsToInsert.push({ costType: "cdt_bonus_sale", amount: cdtBonusSaleVal, kpiRate: 0, kpiAmount: 0 });
     }
-    if (cdtBonusMgrVal > 0) {
+    if (cdtBonusMgrVal !== 0) {
       rowsToInsert.push({ costType: "cdt_bonus_manager", amount: cdtBonusMgrVal, kpiRate: 0, kpiAmount: 0 });
     }
-    if (bsVal > 0) {
+    if (bsVal !== 0) {
       rowsToInsert.push({ costType: "bonus_sale", amount: bsVal, kpiRate: 0, kpiAmount: 0 });
     }
-    if (bmVal > 0) {
+    if (bmVal !== 0) {
       rowsToInsert.push({ costType: "bonus_manager", amount: bmVal, kpiRate: 0, kpiAmount: 0 });
     }
-    if (kpiCeoAmt > 0) {
+    if (kpiCeoAmt !== 0) {
       rowsToInsert.push({ costType: "kpi_ceo", amount: kpiCeoAmt, kpiRate: kpiCeoRate, kpiAmount: kpiCeoAmt });
     }
-    if (kpiTpkdAmt > 0) {
+    if (kpiTpkdAmt !== 0) {
       rowsToInsert.push({ costType: "kpi_tpkd", amount: kpiTpkdAmt, kpiRate: kpiTpkdRate, kpiAmount: kpiTpkdAmt });
     }
-    if (kpiAdminAmt > 0) {
+    if (kpiAdminAmt !== 0) {
       rowsToInsert.push({ costType: "kpi_admin", amount: kpiAdminAmt, kpiRate: kpiAdminPct, kpiAmount: kpiAdminAmt });
+    }
+    // Ưu tiên Kim's adjustment: nếu chỉ 1 component và AM ≠ AL → dùng AM.
+    // VD row 245 (B.31.20): AL=253,401, AM=231,559 (Kim adjust tay -21,842).
+    if (rowsToInsert.length === 1 && Math.abs(totalAmount - rowsToInsert[0].amount) > 1) {
+      rowsToInsert[0].amount = totalAmount;
     }
     // Fallback: nếu không detect được component nào nhưng có totalAmount → sale_commission
     if (rowsToInsert.length === 0 && totalAmount !== 0) {
