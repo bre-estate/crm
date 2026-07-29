@@ -163,8 +163,11 @@ export function computeHrChecks(
     const Y = targetRev - totalReceivable;
 
     // === Z + AA: % và tiền HH sale còn phải ĐC ===
-    // N = MAX(pmgCumulativePct) từ các revenue recon
-    const maxN = recs.reduce((mx, r) => Math.max(mx, Number(r.pmgCumulativePct ?? 0)), 0);
+    // N = tiến độ khách trả CĐT = tổng đã ĐC DT / tổng DT target.
+    // Không dùng field pmgCumulativePct vì field đó lưu %PMG_LK sale rate (snapshot),
+    // không phải N (khách trả %). Cap 100% để tránh vượt trong trường hợp
+    // off-progress hoặc rebate làm SUM > target.
+    const maxN = targetRev > 0 ? Math.min(1, totalReceivable / targetRev) : 0;
 
     const cfg: ProductConfig = {
       pmgBasePrice: pmgBase,
