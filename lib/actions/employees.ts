@@ -1,5 +1,6 @@
 "use server";
 
+import { requirePermission } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { employees } from "@/lib/schema";
 import { eq, sql } from "drizzle-orm";
@@ -28,6 +29,7 @@ function formToObject(fd: FormData): Record<string, unknown> {
 }
 
 export async function createEmployeeNoRedirect(fd: FormData) {
+  await requirePermission("employees", "edit");
   const raw = formToObject(fd);
   const data = EmployeeSchema.parse(raw);
   await db.insert(employees).values({
@@ -42,6 +44,7 @@ export async function createEmployeeNoRedirect(fd: FormData) {
 }
 
 export async function updateEmployeeNoRedirect(id: number, fd: FormData) {
+  await requirePermission("employees", "edit");
   const raw = formToObject(fd);
   const data = EmployeeSchema.parse(raw);
   await db
@@ -60,6 +63,7 @@ export async function updateEmployeeNoRedirect(id: number, fd: FormData) {
 }
 
 export async function deleteEmployeeNoRedirect(id: number) {
+  await requirePermission("employees", "delete");
   // Guard: có product/cost recon nào đang tham chiếu text name không?
   const [emp] = await db.select().from(employees).where(eq(employees.id, id));
   if (!emp) throw new Error("Không tìm thấy nhân viên");

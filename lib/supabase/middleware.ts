@@ -47,7 +47,9 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Permission check: nếu path yêu cầu resource → user phải có 'view'.
+  // Permission check: GET yêu cầu 'view'; POST/PUT/PATCH/DELETE yêu cầu 'edit'.
+  // (Next.js server actions luôn POST → middleware chỉ phân biệt được coarse
+  // GET vs non-GET; server action tự requirePermission cho delete.)
   // Owner qua thẳng. Anonymous và public đã handle ở trên.
   if (user && !isPublic && path !== "/") {
     const resource = resourceOfPath(path);
@@ -70,11 +72,12 @@ export async function updateSession(request: NextRequest) {
           perm.role as Role,
           (perm.permissions as Record<string, Action[]>) ?? {},
         );
+        const required: Action = request.method === "GET" ? "view" : "edit";
         // Wildcard /reports → allow nếu có ANY reports.* permission
         const allowed =
           resource === "reports.*"
             ? Object.keys(perms).some((r) => r.startsWith("reports."))
-            : (perms[resource]?.includes("view") ?? false);
+            : (perms[resource]?.includes(required) ?? false);
         if (!allowed) {
           const url = request.nextUrl.clone();
           url.pathname = "/";

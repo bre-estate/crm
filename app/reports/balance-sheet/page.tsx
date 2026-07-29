@@ -170,6 +170,15 @@ export default async function BalanceSheetPage() {
           là số cân đối (= Nợ phải trả + Vốn CSH − Tài sản khác). Sẽ chính xác hơn
           khi có sổ nhật ký + sao kê.
         </p>
+        {tienMat < 0 && (
+          <div className="mt-3 p-3 rounded-lg border border-red-200 bg-red-50 text-sm text-red-900">
+            <b>⚠️ Cảnh báo:</b> Tiền mặt cân đối âm{" "}
+            <b>{fmt(Math.round(tienMat))}</b> — Nợ phải trả + Vốn CSH thấp hơn
+            các tài sản khác. Nghĩa là có tài sản (phải thu, tạm ứng, TSCĐ, ký
+            quỹ) chưa được nguồn vốn hoặc lãi lũy kế cover. Rà lại: bổ sung vốn
+            góp còn thiếu, hoặc kiểm tra công nợ khách thực tế.
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

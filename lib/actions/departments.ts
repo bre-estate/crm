@@ -1,5 +1,6 @@
 "use server";
 
+import { requirePermission } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { departments, products, employees } from "@/lib/schema";
 import { eq, sql } from "drizzle-orm";
@@ -20,6 +21,7 @@ function formToObject(fd: FormData): Record<string, unknown> {
 }
 
 export async function createDepartmentNoRedirect(fd: FormData) {
+  await requirePermission("departments", "edit");
   const raw = formToObject(fd);
   const data = DeptSchema.parse(raw);
   await db.insert(departments).values({
@@ -32,6 +34,7 @@ export async function createDepartmentNoRedirect(fd: FormData) {
 }
 
 export async function updateDepartmentNoRedirect(id: number, fd: FormData) {
+  await requirePermission("departments", "edit");
   const raw = formToObject(fd);
   const data = DeptSchema.parse(raw);
   await db
@@ -47,6 +50,7 @@ export async function updateDepartmentNoRedirect(id: number, fd: FormData) {
 }
 
 export async function deleteDepartmentNoRedirect(id: number) {
+  await requirePermission("departments", "delete");
   // Guard: nếu có căn hoặc NV ref → không xoá
   const [{ prodCount }] = await db
     .select({ prodCount: sql<number>`COUNT(*)::int` })

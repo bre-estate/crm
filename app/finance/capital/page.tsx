@@ -1,7 +1,6 @@
 import { db } from "@/lib/db";
 import { financialTransactions } from "@/lib/schema";
-import { getOwnerEmail } from "@/lib/auth";
-import { notFound } from "next/navigation";
+import { requirePermission } from "@/lib/auth";
 import { sql, inArray, desc, and, ne, isNotNull } from "drizzle-orm";
 import Link from "next/link";
 
@@ -10,8 +9,7 @@ export const dynamic = "force-dynamic";
 const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
 
 export default async function CapitalPage() {
-  const owner = await getOwnerEmail();
-  if (!owner) notFound();
+  await requirePermission("finance");
 
   // Framework 2026-07-24: Vốn góp founder = TOÀN BỘ tiền Triết/Bách chi cá nhân
   // hộ cty (kể cả không hóa đơn), TRỪ chi phí thứ cấp (nhóm 10 — Bách chi ngoài

@@ -135,7 +135,14 @@ export default async function ManagementReportPage({
   // ===== 2. Lãi/lỗ theo tháng — Kim confirm 2026-07-27: theo NGÀY ĐC =====
   // Dồn tích theo ngày đối chiếu (recon date), KHÔNG dùng ngày cọc căn.
   // Ngày cọc chỉ dùng cho tính thưởng NVKD ở /reports/people.
-  const allProducts = await db.select({ id: products.id, depositDate: products.depositDate }).from(products);
+  const allProducts = await db
+    .select({
+      id: products.id,
+      depositDate: products.depositDate,
+      totalRevenue: products.totalRevenue,
+      totalCost: products.totalCost,
+    })
+    .from(products);
 
   const [revs, costs] = await Promise.all([
     db.select({
@@ -177,18 +184,13 @@ export default async function ManagementReportPage({
     .sort((a, b) => b.month.localeCompare(a.month));
 
   // ===== 3. Break-even =====
-  // Lãi gộp TB / căn (toàn bộ căn)
-  const productStats = await db
-    .select({
-      revExp: sql<number>`coalesce(sum(total_revenue), 0)::float8`,
-      costExp: sql<number>`coalesce(sum(total_cost), 0)::float8`,
-      n: sql<number>`count(*)::int`,
-    })
-    .from(products);
-  const totalRev = Number(productStats[0]?.revExp ?? 0);
-  const totalCost = Number(productStats[0]?.costExp ?? 0);
-  const numUnits = Number(productStats[0]?.n ?? 0);
-  const avgGrossProfitPerUnit = numUnits > 0 ? (totalRev / 1.1 - totalCost) / numUnits : 0;
+  // Lãi gộp TB / căn — chỉ tính căn YTD (nhất quán vs avgFixedMonth YTD).
+  // Trước đây dùng all-time → BE lệch vì margin cũ khác chi phí hiện tại.
+  const ytdProducts = allProducts.filter((p) => p.depositDate?.startsWith(currentYear));
+  const ytdTotalRev = ytdProducts.reduce((s, p) => s + Number(p.totalRevenue ?? 0), 0);
+  const ytdTotalCost = ytdProducts.reduce((s, p) => s + Number(p.totalCost ?? 0), 0);
+  const numUnits = ytdProducts.length;
+  const avgGrossProfitPerUnit = numUnits > 0 ? (ytdTotalRev / 1.1 - ytdTotalCost) / numUnits : 0;
   // BE dùng chi phí CỐ ĐỊNH (avgFixedMonth), không dùng OPEX toàn bộ
   // (đã loại 6417 chứa HH sale — vì lãi gộp/căn đã trừ HH sale rồi)
   const breakEvenUnits = avgGrossProfitPerUnit > 0 && avgFixedMonth > 0

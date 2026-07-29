@@ -1,12 +1,10 @@
-import { getOwnerEmail } from "@/lib/auth";
-import { notFound } from "next/navigation";
+import { requirePermission } from "@/lib/auth";
 import ImportClient from "./ImportClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function FinanceImportPage() {
-  const owner = await getOwnerEmail();
-  if (!owner) notFound();
+  await requirePermission("finance", "edit");
 
   return (
     <div className="max-w-5xl space-y-4">

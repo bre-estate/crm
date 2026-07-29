@@ -293,7 +293,7 @@ export default async function ActivityAdminPage({
                     minute: "2-digit",
                   })
                 : "?";
-              const actor = a.actorEmail ?? a.actorIp ?? "(anonymous)";
+              const actor = a.actorEmail ?? a.actorIp ?? "(chưa xác định)";
               const actionColor =
                 a.action === "create"
                   ? "text-green-700 bg-green-50 border-green-200"

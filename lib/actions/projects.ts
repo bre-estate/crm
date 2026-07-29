@@ -1,5 +1,6 @@
 "use server";
 
+import { requirePermission } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { projects, products } from "@/lib/schema";
 import { eq } from "drizzle-orm";
@@ -77,6 +78,7 @@ async function uniqueFullCode(base: string, excludeId?: number): Promise<string>
 }
 
 export async function createProject(fd: FormData) {
+  await requirePermission("products", "edit");
   const data = buildProjectData(fd);
   if (!data.code || !data.name) throw new Error("Thiếu mã hoặc tên dự án");
   if (data.defaultSaleType === "primary" && !data.partnerId) {
@@ -89,6 +91,7 @@ export async function createProject(fd: FormData) {
 }
 
 export async function updateProject(id: number, fd: FormData) {
+  await requirePermission("products", "edit");
   const data = buildProjectData(fd);
   if (!data.code || !data.name) throw new Error("Thiếu mã hoặc tên dự án");
   if (data.defaultSaleType === "primary" && !data.partnerId) {
@@ -102,6 +105,7 @@ export async function updateProject(id: number, fd: FormData) {
 }
 
 export async function deleteProject(id: number) {
+  await requirePermission("products", "delete");
   const used = await db.select({ id: products.id }).from(products).where(eq(products.projectId, id));
   if (used.length > 0) {
     throw new Error(`Dự án đang có ${used.length} giao dịch — không xóa được.`);
@@ -121,6 +125,7 @@ export async function refreshProjectFromBatdongsan(id: number): Promise<{
   updated: Record<string, unknown>;
   message: string;
 }> {
+  await requirePermission("products", "edit");
   const [proj] = await db.select().from(projects).where(eq(projects.id, id));
   if (!proj) throw new Error("Không tìm thấy dự án");
   if (!proj.batdongsanUrl) throw new Error("Dự án chưa có URL Batdongsan — nhập vào section '🔗 Nguồn tham chiếu'");

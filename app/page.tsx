@@ -60,7 +60,7 @@ export default async function Home({
         <div>
           <h1 className="text-2xl font-bold">Tổng quan</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Dashboard theo dõi doanh thu, giá vốn, lợi nhuận toàn công ty.
+            Bảng theo dõi doanh thu, giá vốn, lợi nhuận toàn công ty.
           </p>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">

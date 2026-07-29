@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { fmtMoney, fmtPctRaw, displayPartnerName } from "@/lib/format";
-import { hasReportsAccess } from "@/lib/auth";
 import { getOwnerEmail } from "@/lib/auth";
 import { loadReportData, parseFilters } from "@/lib/reports";
 import { Card, ReportsHeader } from "../_shared";
@@ -13,7 +12,6 @@ type SearchParams = Promise<{ year?: string; range?: string }>;
 
 // Chỉ owner mới xem được page này vì có info nhạy cảm (công nợ, risk).
 export default async function ReportsCashflowPage({ searchParams }: { searchParams: SearchParams }) {
-  if (!(await hasReportsAccess())) redirect("/");
   if (!(await getOwnerEmail())) redirect("/reports/overview");
 
   const sp = await searchParams;

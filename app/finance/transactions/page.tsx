@@ -1,7 +1,6 @@
 import { db } from "@/lib/db";
 import { financialTransactions, accountingCategories } from "@/lib/schema";
-import { getOwnerEmail } from "@/lib/auth";
-import { notFound } from "next/navigation";
+import { requirePermission } from "@/lib/auth";
 import { desc, and, eq, gte, lte, ilike, sql, type SQL } from "drizzle-orm";
 import Link from "next/link";
 
@@ -21,8 +20,7 @@ export default async function TransactionsPage({
 }: {
   searchParams: SearchParams;
 }) {
-  const owner = await getOwnerEmail();
-  if (!owner) notFound();
+  await requirePermission("finance");
   const sp = await searchParams;
   const filterMonth = sp.month?.trim() || null;
   const filterCat = sp.category?.trim() || null;

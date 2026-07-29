@@ -1,5 +1,6 @@
 "use server";
 
+import { requirePermission } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { revenueReconciliations, invoices, paymentsIn, products, projects } from "@/lib/schema";
 import { and, eq, sql, isNull } from "drizzle-orm";
@@ -131,6 +132,7 @@ async function applyConfigToProduct(
 }
 
 export async function createRevenue(fd: FormData) {
+  await requirePermission("revenues", "edit");
   const data = buildRevenueData(fd);
   if (!data.productId) throw new Error("Chọn căn (sản phẩm)");
 
@@ -179,6 +181,7 @@ function safeReturnTo(fd: FormData): string | null {
 }
 
 export async function updateRevenue(id: number, fd: FormData) {
+  await requirePermission("revenues", "edit");
   const data = buildRevenueData(fd);
   if (!data.productId) throw new Error("Chọn căn (sản phẩm)");
 
@@ -219,6 +222,7 @@ export async function updateRevenue(id: number, fd: FormData) {
 }
 
 export async function deleteRevenue(id: number) {
+  await requirePermission("revenues", "delete");
   const [before] = await db
     .select()
     .from(revenueReconciliations)
@@ -244,6 +248,7 @@ export async function deleteRevenue(id: number) {
  * là detail phụ của recon; xóa recon = xóa payment gắn kèm).
  */
 export async function deleteRevenueBulk(ids: number[]) {
+  await requirePermission("revenues", "delete");
   const errors: { id: number; message: string }[] = [];
   const deletedIds: number[] = [];
   const affectedInvoices = new Set<number>();
@@ -279,6 +284,7 @@ export async function deleteRevenueBulk(ids: number[]) {
 }
 
 export async function addPaymentIn(reconciliationId: number, fd: FormData) {
+  await requirePermission("revenues", "edit");
   const paymentDate = toStrOrNull(fd.get("paymentDate"));
   const amount = toNum(fd.get("amount"));
   if (!amount && !paymentDate) throw new Error("Nhập ngày hoặc số tiền");
@@ -292,6 +298,7 @@ export async function addPaymentIn(reconciliationId: number, fd: FormData) {
 }
 
 export async function deletePaymentIn(id: number) {
+  await requirePermission("revenues", "delete");
   await db.delete(paymentsIn).where(eq(paymentsIn.id, id));
   revalidatePath("/revenues");
 }
@@ -312,6 +319,7 @@ export type BulkRevenueRow = {
 };
 
 export async function createRevenueBulk(rows: BulkRevenueRow[]) {
+  await requirePermission("revenues", "edit");
   const createdIds: number[] = [];
   const errors: Array<{ index: number; message: string }> = [];
   const affectedInvoices = new Set<number>();
@@ -368,6 +376,7 @@ export async function createRevenueBulk(rows: BulkRevenueRow[]) {
 }
 
 export async function updatePaymentIn(id: number, fd: FormData) {
+  await requirePermission("revenues", "edit");
   await db
     .update(paymentsIn)
     .set({

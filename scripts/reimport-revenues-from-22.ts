@@ -172,8 +172,21 @@ async function main() {
     console.log(`  Deleted ${oldReconIds.length} recons + payments`);
   }
 
-  // Invoice cache
-  const invoiceCache = new Map<string, number>(); // `${number}|${date}` → id
+  // Invoice cache — key gồm partnerId để đúng shape uniqueness (1 số HĐ có thể
+  // dùng ở nhiều CĐT khác nhau).
+  const invoiceCache = new Map<string, number>(); // `${partnerId}|${number}|${date}` → id
+  // Product → partnerId map (product.projectId → projects.partnerId)
+  const partnerByProduct = new Map<number, number | null>();
+  const prodRows = await db
+    .select({ id: schema.products.id, projectId: schema.products.projectId })
+    .from(schema.products);
+  const projRows = await db
+    .select({ id: schema.projects.id, partnerId: schema.projects.partnerId })
+    .from(schema.projects);
+  const partnerByProject = new Map(projRows.map((p) => [p.id, p.partnerId]));
+  for (const p of prodRows) {
+    partnerByProduct.set(p.id, p.projectId ? (partnerByProject.get(p.projectId) ?? null) : null);
+  }
 
   // Insert
   console.log("\nInserting new recons + payments...");
@@ -183,7 +196,8 @@ async function main() {
     // Match/create invoice
     let invoiceId: number | null = null;
     if (r.invoiceNumber) {
-      const key = `${r.invoiceNumber}|${r.invoiceDate ?? ""}`;
+      const partnerId = partnerByProduct.get(r.productId) ?? null;
+      const key = `${partnerId ?? "null"}|${r.invoiceNumber}|${r.invoiceDate ?? ""}`;
       const cached = invoiceCache.get(key);
       if (cached) {
         invoiceId = cached;
@@ -197,6 +211,9 @@ async function main() {
               r.invoiceDate
                 ? eq(schema.invoices.invoiceDate, r.invoiceDate)
                 : eq(schema.invoices.invoiceNumber, r.invoiceNumber),
+              partnerId === null
+                ? eq(schema.invoices.invoiceNumber, r.invoiceNumber)
+                : eq(schema.invoices.partnerId, partnerId),
             ),
           );
         if (existing) {
@@ -207,6 +224,7 @@ async function main() {
             .values({
               invoiceNumber: r.invoiceNumber,
               invoiceDate: r.invoiceDate,
+              partnerId,
               totalAmountVat: r.invoiceTotalVat,
             })
             .returning({ id: schema.invoices.id });

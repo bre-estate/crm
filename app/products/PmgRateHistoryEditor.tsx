@@ -134,7 +134,7 @@ export default function PmgRateHistoryEditor({
               onClick={() => remove(i)}
               className="text-red-500 hover:bg-red-50 rounded px-1 col-span-1 text-lg"
               disabled={entries.length === 1}
-              title="Xoá mốc"
+              title="Xóa mốc"
             >
               ×
             </button>

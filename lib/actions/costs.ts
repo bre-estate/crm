@@ -1,5 +1,6 @@
 "use server";
 
+import { requirePermission } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { costReconciliations, paymentsOut } from "@/lib/schema";
 import { toTitleCase } from "@/lib/format";
@@ -75,6 +76,7 @@ function buildCostData(fd: FormData) {
 }
 
 export async function createCost(fd: FormData) {
+  await requirePermission("costs", "edit");
   const data = buildCostData(fd);
   if (!data.productId) throw new Error("Chọn căn (sản phẩm)");
   if (!data.employeeName) throw new Error("Nhập tên người được đối chiếu");
@@ -133,6 +135,7 @@ function buildReturnUrl(returnTo: string | null | undefined, flag: string, id: n
 }
 
 export async function updateCost(id: number, fd: FormData, returnTo?: string | null) {
+  await requirePermission("costs", "edit");
   const data = buildCostData(fd);
   if (!data.productId) throw new Error("Chọn căn (sản phẩm)");
   if (!data.employeeName) throw new Error("Nhập tên người được đối chiếu");
@@ -158,6 +161,7 @@ export async function updateCost(id: number, fd: FormData, returnTo?: string | n
 }
 
 export async function deleteCost(id: number, returnTo?: string | null) {
+  await requirePermission("costs", "delete");
   const [before] = await db
     .select()
     .from(costReconciliations)
@@ -180,6 +184,7 @@ export async function deleteCost(id: number, returnTo?: string | null) {
  * Bulk xóa nhiều ĐC giá vốn. Xóa luôn payments_out gắn kèm mỗi recon.
  */
 export async function deleteCostBulk(ids: number[]) {
+  await requirePermission("costs", "delete");
   const errors: { id: number; message: string }[] = [];
   const deletedIds: number[] = [];
   for (const id of ids) {
@@ -212,6 +217,7 @@ export async function deleteCostBulk(ids: number[]) {
 }
 
 export async function addPaymentOut(costReconciliationId: number, fd: FormData) {
+  await requirePermission("costs", "edit");
   const paymentDate = toStrOrNull(fd.get("paymentDate"));
   const amount = toNum(fd.get("amount"));
   if (!amount && !paymentDate) throw new Error("Nhập ngày hoặc số tiền");
@@ -225,6 +231,7 @@ export async function addPaymentOut(costReconciliationId: number, fd: FormData) 
 }
 
 export async function updatePaymentOut(id: number, fd: FormData) {
+  await requirePermission("costs", "edit");
   await db
     .update(paymentsOut)
     .set({
@@ -237,6 +244,7 @@ export async function updatePaymentOut(id: number, fd: FormData) {
 }
 
 export async function deletePaymentOut(id: number) {
+  await requirePermission("costs", "delete");
   await db.delete(paymentsOut).where(eq(paymentsOut.id, id));
   revalidatePath("/costs");
 }
@@ -253,6 +261,7 @@ export type BulkCostRow = {
 };
 
 export async function createCostBulk(rows: BulkCostRow[]) {
+  await requirePermission("costs", "edit");
   const errors: { index: number; message: string }[] = [];
   let ok = 0;
   for (let i = 0; i < rows.length; i++) {

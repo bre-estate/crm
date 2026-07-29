@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
 import { fmtMoney, fmtPctRaw } from "@/lib/format";
-import { hasReportsAccess } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { loadReportData, parseFilters } from "@/lib/reports";
 import { ReportsHeader } from "../_shared";
 import { db } from "@/lib/db";
@@ -11,7 +10,7 @@ export const dynamic = "force-dynamic";
 type SearchParams = Promise<{ year?: string; range?: string }>;
 
 export default async function ReportsPeoplePage({ searchParams }: { searchParams: SearchParams }) {
-  if (!(await hasReportsAccess())) redirect("/");
+  await requirePermission("reports.people");
   const sp = await searchParams;
   const filters = parseFilters(sp);
   const data = await loadReportData(filters);

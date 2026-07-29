@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
 import { fmtMoney, fmtPctRaw, displayPartnerName, isSecondaryPartner } from "@/lib/format";
-import { hasReportsAccess } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { loadReportData, parseFilters, effectiveYM } from "@/lib/reports";
 import { ReportsHeader } from "../_shared";
 
@@ -9,7 +8,7 @@ export const dynamic = "force-dynamic";
 type SearchParams = Promise<{ year?: string; range?: string }>;
 
 export default async function ReportsProjectsPage({ searchParams }: { searchParams: SearchParams }) {
-  if (!(await hasReportsAccess())) redirect("/");
+  await requirePermission("reports.overview");
   const sp = await searchParams;
   const filters = parseFilters(sp);
   const data = await loadReportData(filters);

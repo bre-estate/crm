@@ -44,7 +44,7 @@ const SECTIONS: Section[] = [
       {
         href: "/reports/segments",
         title: "Phân khúc",
-        desc: "Số PN + tầm giá + diện tích, matrix bedroom × dự án",
+        desc: "Số phòng ngủ + tầm giá + diện tích, bảng chéo số phòng × dự án",
         gate: "segments",
       },
       {
@@ -76,7 +76,7 @@ const SECTIONS: Section[] = [
       {
         href: "/reports/time",
         title: "Theo thời gian",
-        desc: "Ghi nhận DT theo tháng + mùa vụ cross-year",
+        desc: "Ghi nhận doanh thu theo tháng + mùa vụ nhiều năm",
         gate: "reports",
       },
     ],
@@ -166,7 +166,7 @@ export default async function ReportsIndexPage({ searchParams }: { searchParams:
                   <div className="flex items-baseline gap-2">
                     <div className="font-medium text-sm">{r.title}</div>
                     {r.gate === "owner" && (
-                      <span className="text-[10px] text-amber-600">owner-only</span>
+                      <span className="text-[10px] text-amber-600">chỉ chủ</span>
                     )}
                   </div>
                   <div className="text-xs text-slate-500 mt-1">{r.desc}</div>

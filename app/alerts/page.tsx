@@ -4,19 +4,19 @@ import {
   employees,
   revenueReconciliations,
   paymentsIn,
-  paymentsOut,
+  costReconciliations,
   financialTransactions,
 } from "@/lib/schema";
 import { getOwnerEmail } from "@/lib/auth";
 import { notFound } from "next/navigation";
-import { sql, inArray, eq, and, lt, isNotNull } from "drizzle-orm";
+import { sql, inArray, eq, and, lt, gte, isNotNull } from "drizzle-orm";
 import Link from "next/link";
+import { OPEX_CATEGORIES, FIXED_COST_CATEGORIES } from "@/lib/accounting/categories";
+import { fmtMoney } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-const OPEX_CATEGORIES = ["6421", "6427-rent", "6427-svc", "6417", "6428", "6425", "635"];
-
-const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
+const fmt = fmtMoney;
 
 // Số tháng giữa 2 YYYY-MM (b - a)
 function monthDiff(a: string, b: string): number {
@@ -52,15 +52,17 @@ export default async function AlertsPage() {
   const monthsSoFar = Number(nowMonth.slice(5));
 
   // ============================================================
-  // ALERT 1: 3 tháng liền bán dưới BE
+  // ALERT 1: 3 tháng liền bán dưới điểm hòa vốn
   // ============================================================
-  // BE = OPEX YTD/monthsSoFar + KH TSCĐ ÷ avgGrossPerUnit
+  // Điểm hòa vốn = CP cố định YTD/monthsSoFar + KH TSCĐ ÷ lãi gộp TB căn.
+  // Dùng FIXED_COST_CATEGORIES (KHÔNG có 6417) — 6417 đã trừ trong totalCost/căn,
+  // include lại là double count → BE thổi phồng.
   const opexYtdRows = await db
     .select({ s: sql<number>`coalesce(sum(amount), 0)::float8` })
     .from(financialTransactions)
     .where(
       and(
-        inArray(financialTransactions.categoryCode, OPEX_CATEGORIES),
+        inArray(financialTransactions.categoryCode, FIXED_COST_CATEGORIES),
         sql`transaction_month LIKE ${currentYear + "-%"}`,
       ),
     );
@@ -135,108 +137,84 @@ export default async function AlertsPage() {
   }
 
   // ============================================================
-  // ALERT 2: Sức khỏe tài chính < 3 tháng
+  // ALERT 2: Runway (sức khỏe tài chính) — TẮT
   // ============================================================
-  // Cash cty (ước tính) = topup (411) + paymentsIn − paymentsOut − chi thanh-toan
-  // KHÔNG cộng MERGED cá nhân (đó là Bách/Triết chi cá nhân, không qua TK cty)
-  const [topup] = await db
-    .select({ s: sql<number>`coalesce(sum(amount), 0)::float8` })
-    .from(financialTransactions)
-    .where(
-      and(
-        eq(financialTransactions.categoryCode, "411"),
-        eq(financialTransactions.sourceFile, "thanh-toan"),
-      ),
-    );
-  // Note: chi tại TK cty = tất cả rows source='thanh-toan' TRỪ rows là topup thu vào
-  // Nhưng em không có track direction. Approximate: tất cả thanh-toan là chi ra.
-  const [chiTkCty] = await db
-    .select({ s: sql<number>`coalesce(sum(amount), 0)::float8` })
-    .from(financialTransactions)
-    .where(eq(financialTransactions.sourceFile, "thanh-toan"));
-  const [payIn] = await db
-    .select({ s: sql<number>`coalesce(sum(amount), 0)::float8` })
-    .from(paymentsIn);
-  const [payOut] = await db
-    .select({ s: sql<number>`coalesce(sum(amount), 0)::float8` })
-    .from(paymentsOut);
-
-  // Cash cty estimate — có thể âm nếu chưa track đầy đủ vốn góp/thu
-  // Note: em bỏ topup vì nó nằm trong chi thanh-toan (không phải separate)
-  const estimatedCash = Number(payIn.s) - Number(payOut.s) - Number(chiTkCty.s) + Number(topup.s) * 2;
-  // Adjust: topup được cộng 2 lần (1 lần trong chi thanh-toan, 1 lần bổ sung để reverse)
-  const runway = cpQlMonth > 0 ? estimatedCash / cpQlMonth : Infinity;
-
-  if (runway < 3 && cpQlMonth > 0) {
-    alerts.push({
-      id: "cash-runway",
-      severity: "critical",
-      title: `Sức khỏe tài chính thấp: còn ~${runway.toFixed(1)} tháng`,
-      description: `Ước tính tiền mặt tài khoản công ty: ${fmt(estimatedCash)} VND. Chi phí hoạt động trung bình ${fmt(cpQlMonth)} VND/tháng. Có thể chỉ chạy được ${runway.toFixed(1)} tháng nữa.`,
-      detail: (
-        <div className="text-[11px] mt-1 text-slate-600">
-          ⚠️ Đây là ước tính — chưa track sao kê ngân hàng thực. Số thực có thể chênh.
-          Nên: rà lại sao kê + đối chiếu công nợ.
-        </div>
-      ),
-      action: { href: "/reports/balance-sheet", label: "Xem Bảng cân đối kế toán" },
-    });
-  } else if (runway < 6 && cpQlMonth > 0) {
-    alerts.push({
-      id: "cash-runway-warn",
-      severity: "warning",
-      title: `Sức khỏe tài chính cần theo dõi: ~${runway.toFixed(1)} tháng`,
-      description: `Chi phí hoạt động ${fmt(cpQlMonth)} VND/tháng, tiền mặt ước tính ${fmt(estimatedCash)} VND. Cần lên kế hoạch doanh thu hoặc bổ sung vốn.`,
-      action: { href: "/reports/balance-sheet", label: "Xem Bảng cân đối kế toán" },
-    });
-  }
+  // Trước: ước tính tiền mặt = payIn − payOut − chiTkCty + topup×2 → sai vì:
+  //   - payOut trùng phần HH sale trong chiTkCty → trừ 2 lần
+  //   - topup nằm trong chiTkCty nhưng không track direction → cộng bù bằng ×2 là hack
+  // Kết quả: cty có lãi mà alert báo "runway thấp" → misleading.
+  // Đợi có sao kê ngân hàng thực (import từng dòng credit/debit) mới đánh giá
+  // được cash on hand. Cho tới lúc đó, KHÔNG alert.
 
   // ============================================================
   // ALERT 5: NVKD 0 căn > 3 tháng liền
   // ============================================================
-  const emps = await db
-    .select({ id: employees.id, name: employees.name, active: employees.active })
-    .from(employees)
-    .where(eq(employees.active, true));
-
-  // Last sale date per employee
-  const salesByEmp = new Map<string, string>();
-  for (const p of allProducts) {
-    if (!p.depositDate) continue;
-    // Need salesPerson field
-  }
-  const salesRows = await db
-    .select({ salesPerson: products.salesPerson, depositDate: products.depositDate })
-    .from(products)
-    .where(isNotNull(products.depositDate));
-  for (const r of salesRows) {
-    if (!r.salesPerson || !r.depositDate) continue;
-    const cur = salesByEmp.get(r.salesPerson);
-    if (!cur || r.depositDate > cur) salesByEmp.set(r.salesPerson, r.depositDate);
-  }
-
+  // Fix 2026-07-30: trước match products.salesPerson === employees.name, không:
+  //   - Resolve alias (aliasOfId): 1 người có nhiều tên → mismatch → false idle
+  //   - Skip position ≠ nvkd: CTV/TPKD/CEO/Admin cũng bị coi idle sai
+  // Giờ dùng cost_reconciliations HH sale (cost_type=sale_commission) làm proxy
+  // "đã bán trong 3 tháng qua" — bảng này là ground truth cho ai thực nhận HH.
+  // Match name lowercase để tránh sai capitalization.
   const threeMonthsAgo = daysAgo(90);
+  const emps = await db
+    .select({
+      id: employees.id,
+      name: employees.name,
+      position: employees.position,
+      aliasOfId: employees.aliasOfId,
+    })
+    .from(employees)
+    .where(and(eq(employees.active, true), eq(employees.position, "nvkd")));
+
+  // Ai đã có HH sale ĐC trong 90 ngày qua (theo employee_name lowercase).
+  const recentSaleRows = await db
+    .select({ name: costReconciliations.employeeName })
+    .from(costReconciliations)
+    .where(
+      and(
+        eq(costReconciliations.costType, "sale_commission"),
+        gte(costReconciliations.reconciliationDate, threeMonthsAgo),
+      ),
+    );
+  const activeNames = new Set(
+    recentSaleRows
+      .map((r) => (r.name ?? "").trim().toLowerCase())
+      .filter(Boolean),
+  );
+
+  // Lần HH sale cuối cùng của mỗi NVKD (all-time) — để show trong detail.
+  const lastSaleRows = await db
+    .select({
+      name: costReconciliations.employeeName,
+      d: sql<string>`max(reconciliation_date)`,
+    })
+    .from(costReconciliations)
+    .where(eq(costReconciliations.costType, "sale_commission"))
+    .groupBy(costReconciliations.employeeName);
+  const lastSaleByName = new Map<string, string>();
+  for (const r of lastSaleRows) {
+    if (r.name && r.d) lastSaleByName.set(r.name.trim().toLowerCase(), r.d);
+  }
+
   const idleEmps: Array<{ name: string; lastSale: string | null }> = [];
   for (const e of emps) {
-    // Skip founders / admin roles
-    if (["Đoàn Lê Bách", "Danh Hoàng Thị Tường Vi"].includes(e.name)) continue;
-    const lastSale = salesByEmp.get(e.name) ?? null;
-    if (!lastSale || lastSale < threeMonthsAgo) {
-      idleEmps.push({ name: e.name, lastSale });
-    }
+    if (e.aliasOfId != null) continue; // alias record — skip, người thật đếm ở owner
+    const key = e.name.trim().toLowerCase();
+    if (activeNames.has(key)) continue; // có HH sale gần đây → active
+    idleEmps.push({ name: e.name, lastSale: lastSaleByName.get(key) ?? null });
   }
 
   if (idleEmps.length > 0) {
     alerts.push({
       id: "idle-sale",
       severity: "warning",
-      title: `${idleEmps.length} NVKD không có căn cọc trong 3 tháng qua`,
-      description: `Cân nhắc cho nghỉ việc, đào tạo lại, hoặc điều chuyển sang phòng ban khác.`,
+      title: `${idleEmps.length} NVKD không có đợt hoa hồng sale trong 3 tháng qua`,
+      description: `Cân nhắc cho nghỉ việc, đào tạo lại, hoặc điều chuyển sang phòng ban khác. Chỉ tính NVKD active có vị trí "nvkd" — CTV/TPKD/Admin không đưa vào.`,
       detail: (
         <ul className="list-disc list-inside text-xs mt-1 space-y-0.5">
           {idleEmps.slice(0, 10).map((e) => (
             <li key={e.name}>
-              <b>{e.name}</b> — lần cọc cuối: {e.lastSale ?? "chưa có căn nào"}
+              <b>{e.name}</b> — lần đối chiếu hoa hồng cuối: {e.lastSale ?? "chưa có"}
             </li>
           ))}
           {idleEmps.length > 10 && <li className="italic">... và {idleEmps.length - 10} người khác</li>}

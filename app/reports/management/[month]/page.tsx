@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { eq, inArray, desc, and, sql, like } from "drizzle-orm";
 import Link from "next/link";
 import { OPEX_CATEGORIES } from "@/lib/accounting/categories";
+import { costTypeLabel } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -224,7 +225,7 @@ export default async function MonthDetailPage({ params }: { params: Params }) {
                           `#${c.productId}`
                         )}
                       </td>
-                      <td className="p-2 text-xs">{c.costType}</td>
+                      <td className="p-2 text-xs">{costTypeLabel(c.costType)}</td>
                       <td className="p-2 text-xs">{c.employeeName}</td>
                       <td className="p-2 text-right tabular-nums">{fmt(Number(c.payable ?? 0))}</td>
                     </tr>

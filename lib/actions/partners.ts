@@ -6,6 +6,7 @@ import { eq, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { requirePermission } from "@/lib/auth";
 
 const PartnerSchema = z.object({
   code: z.string().trim().min(1, "Mã đối tác bắt buộc").max(8),
@@ -30,6 +31,7 @@ function formToObject(formData: FormData): Record<string, string> {
 }
 
 export async function createPartner(formData: FormData) {
+  await requirePermission("partners", "edit");
   const raw = formToObject(formData);
   const data = PartnerSchema.parse(raw);
   await db.insert(partners).values({ ...data });
@@ -38,6 +40,7 @@ export async function createPartner(formData: FormData) {
 }
 
 export async function updatePartner(id: number, formData: FormData) {
+  await requirePermission("partners", "edit");
   const raw = formToObject(formData);
   const data = PartnerSchema.parse(raw);
   await db.update(partners).set(data).where(eq(partners.id, id));
@@ -46,6 +49,7 @@ export async function updatePartner(id: number, formData: FormData) {
 }
 
 export async function deletePartner(id: number) {
+  await requirePermission("partners", "delete");
   // cascade check
   const used = await db
     .select({ id: projects.id })
@@ -61,6 +65,7 @@ export async function deletePartner(id: number) {
 
 // Variants không redirect — dùng cho dialog inline. Client tự router.refresh().
 export async function createPartnerNoRedirect(formData: FormData) {
+  await requirePermission("partners", "edit");
   const raw = formToObject(formData);
   const data = PartnerSchema.parse(raw);
   await db.insert(partners).values({ ...data });
@@ -68,6 +73,7 @@ export async function createPartnerNoRedirect(formData: FormData) {
 }
 
 export async function updatePartnerNoRedirect(id: number, formData: FormData) {
+  await requirePermission("partners", "edit");
   const raw = formToObject(formData);
   const data = PartnerSchema.parse(raw);
   await db.update(partners).set(data).where(eq(partners.id, id));
@@ -75,6 +81,7 @@ export async function updatePartnerNoRedirect(id: number, formData: FormData) {
 }
 
 export async function deletePartnerNoRedirect(id: number) {
+  await requirePermission("partners", "delete");
   const used = await db
     .select({ id: projects.id })
     .from(projects)

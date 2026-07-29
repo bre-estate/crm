@@ -14,6 +14,7 @@ import { eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { logActivity } from "@/lib/audit";
+import { requirePermission } from "@/lib/auth";
 
 import { toNum, toStr, toStrOrNull, toPct, safeReturnTo as safeReturnToShared } from "@/lib/parse";
 
@@ -113,6 +114,7 @@ function buildProductData(fd: FormData) {
 }
 
 export async function createProduct(fd: FormData) {
+  await requirePermission("products", "edit");
   const data = buildProductData(fd);
   if (!data.projectId || !data.unitCode) throw new Error("Chọn dự án và nhập mã căn");
   const productCode = await buildProductCode(data.projectId, data.unitCode);
@@ -136,6 +138,7 @@ export async function createProduct(fd: FormData) {
 }
 
 export async function updateProduct(id: number, fd: FormData) {
+  await requirePermission("products", "edit");
   const data = buildProductData(fd);
   if (!data.projectId || !data.unitCode) throw new Error("Chọn dự án và nhập mã căn");
   const productCode = await buildProductCode(data.projectId, data.unitCode);
@@ -239,6 +242,7 @@ export type BulkProductRow = {
 };
 
 export async function createProductBulk(rows: BulkProductRow[]) {
+  await requirePermission("products", "edit");
   const errors: { index: number; message: string }[] = [];
   const createdIds: number[] = [];
   for (let i = 0; i < rows.length; i++) {
@@ -293,6 +297,7 @@ export type BulkProductEditRow = {
 };
 
 export async function updateProductBulk(rows: BulkProductEditRow[]) {
+  await requirePermission("products", "edit");
   const errors: { index: number; message: string }[] = [];
   let ok = 0;
   for (let i = 0; i < rows.length; i++) {
@@ -318,6 +323,7 @@ export async function updateProductBulk(rows: BulkProductEditRow[]) {
 }
 
 export async function deleteProduct(id: number) {
+  await requirePermission("products", "delete");
   const usedRev = await db
     .select({ id: revenueReconciliations.id })
     .from(revenueReconciliations)
@@ -351,6 +357,7 @@ export async function deleteProduct(id: number) {
  * Chấp nhận partial success.
  */
 export async function deleteProductBulk(ids: number[]) {
+  await requirePermission("products", "delete");
   const errors: { id: number; unitCode: string; message: string }[] = [];
   const deletedIds: number[] = [];
   for (const id of ids) {
@@ -442,6 +449,7 @@ async function insertAdjustmentAndApply(
  * Insert vào product_adjustments (giữ history) + update product với value mới.
  */
 export async function createProductAdjustment(productId: number, fd: FormData) {
+  await requirePermission("products", "edit");
   const effectiveDate = toStr(fd.get("effectiveDate"));
   if (!effectiveDate) throw new Error("Nhập ngày điều chỉnh");
   const note = toStrOrNull(fd.get("note"));
@@ -594,6 +602,7 @@ export async function recomputeDerived(productId: number) {
 }
 
 export async function deleteProductAdjustment(productId: number, adjId: number) {
+  await requirePermission("products", "delete");
   const [before] = await db
     .select()
     .from(productAdjustments)
@@ -619,6 +628,7 @@ export async function updateProductAdjustmentNote(
   adjId: number,
   note: string,
 ) {
+  await requirePermission("products", "edit");
   await db
     .update(productAdjustments)
     .set({ note: note.trim() || null })

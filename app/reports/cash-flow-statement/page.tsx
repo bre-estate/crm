@@ -61,7 +61,9 @@ export default async function CashFlowStatementPage({
     .from(paymentsOut)
     .where(and(gte(paymentsOut.paymentDate, yearStart), lte(paymentsOut.paymentDate, yearEnd)));
 
-  // Chi OPEX trong năm (financial_transactions nhóm 1-8 trong tháng năm này)
+  // Chi OPEX trong năm — LOẠI 6417 vì HH sale đã có trong payments_out (traNCC).
+  // Include 6417 lại → double count HH sale trong LCTT.
+  const OPEX_FOR_LCTT = OPEX_CATEGORIES.filter((c) => c !== "6417");
   const opexRows = await db
     .select({
       code: financialTransactions.categoryCode,
@@ -70,7 +72,7 @@ export default async function CashFlowStatementPage({
     .from(financialTransactions)
     .where(
       and(
-        inArray(financialTransactions.categoryCode, OPEX_CATEGORIES),
+        inArray(financialTransactions.categoryCode, OPEX_FOR_LCTT),
         sql`transaction_month LIKE ${yearMonthPrefix + "%"}`,
       ),
     )

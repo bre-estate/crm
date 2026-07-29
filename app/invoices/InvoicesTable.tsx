@@ -79,7 +79,7 @@ export default function InvoicesTable({ rows }: { rows: InvoiceRow[] }) {
             onClick={clearAll}
             className="px-3 py-2 text-xs text-blue-600 hover:underline"
           >
-            Xoá lọc
+            Xóa lọc
           </button>
         )}
         <div className="text-xs text-slate-500 ml-auto">

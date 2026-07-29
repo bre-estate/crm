@@ -264,7 +264,7 @@ export default function BulkCostForm({
                   type="button"
                   onClick={() => removeRow(idx)}
                   className="shrink-0 rounded-md w-9 h-9 flex items-center justify-center text-lg leading-none text-red-500 border border-transparent hover:bg-red-50 hover:border-red-200"
-                  title="Xoá dòng"
+                  title="Xóa dòng"
                 >
                   ×
                 </button>

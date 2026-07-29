@@ -1,8 +1,7 @@
 import { db } from "@/lib/db";
 import { products, projects, partners, financialTransactions } from "@/lib/schema";
-import { hasReportsAccess } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { eq, sql, inArray } from "drizzle-orm";
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { displayPartnerName } from "@/lib/format";
 
@@ -33,7 +32,7 @@ export default async function UnitProfitabilityPage({
 }: {
   searchParams: SearchParams;
 }) {
-  if (!(await hasReportsAccess())) redirect("/");
+  await requirePermission("reports.unit-profitability");
   const sp = await searchParams;
   const sortKey: SortKey = (sp.sort as SortKey) in SORT_LABELS ? (sp.sort as SortKey) : "net";
   const order: SortOrder = sp.order === "asc" ? "asc" : "desc";

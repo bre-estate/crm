@@ -10,7 +10,7 @@ import * as XLSX from "xlsx";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "../lib/schema";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import path from "path";
 import fs from "fs";
 import * as dotenv from "dotenv";
@@ -69,13 +69,38 @@ async function main() {
   }
   console.log(`Loaded ${productByUnitCode.size} products`);
 
-  // Clear existing cost recons + payments_out
-  console.log("Clearing existing cost reconciliations...");
-  await db.delete(schema.paymentsOut);
-  await db.delete(schema.costReconciliations);
-
   console.log("\n=== Reading sheet 2.3_Gia von ===");
   const rows = sheet("2.3_Gia von");
+
+  // Collect productIds that will be re-imported → chỉ delete phạm vi đó.
+  // Tránh nuke manual recons cho products không có trong Excel.
+  const affectedProductIds = new Set<number>();
+  for (let i = 4; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row) continue;
+    const unitCode = toStr(row[4]);
+    if (!unitCode) continue;
+    const pid = productByUnitCode.get(normalizeUnit(unitCode));
+    if (pid) affectedProductIds.add(pid);
+  }
+  console.log(`Clearing cost reconciliations cho ${affectedProductIds.size} products...`);
+  if (affectedProductIds.size > 0) {
+    const pidArr = [...affectedProductIds];
+    // xóa payments_out trước (FK ref cost_reconciliations)
+    const recIds = await db
+      .select({ id: schema.costReconciliations.id })
+      .from(schema.costReconciliations)
+      .where(inArray(schema.costReconciliations.productId, pidArr));
+    if (recIds.length > 0) {
+      await db.delete(schema.paymentsOut).where(
+        inArray(schema.paymentsOut.costReconciliationId, recIds.map((r) => r.id)),
+      );
+    }
+    await db
+      .delete(schema.costReconciliations)
+      .where(inArray(schema.costReconciliations.productId, pidArr));
+  }
+
   // header row 4 (idx 3), data row 5+ (idx 4+)
   let costRecCount = 0;
   let paymentOutCount = 0;

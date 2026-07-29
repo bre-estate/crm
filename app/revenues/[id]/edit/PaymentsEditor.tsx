@@ -105,11 +105,11 @@ export default function PaymentsEditor({ payments, onUpdate, onDelete, onAdd }: 
               type="button"
               disabled={pending}
               onClick={() => {
-                if (confirm("Xoá thanh toán này?")) safeRun(() => onDelete(p.id));
+                if (confirm("Xóa thanh toán này?")) safeRun(() => onDelete(p.id));
               }}
               className="text-red-600 text-xs px-2 py-2 border border-red-300 rounded hover:bg-red-50 disabled:opacity-50"
             >
-              Xoá
+              Xóa
             </button>
           </div>
         </form>

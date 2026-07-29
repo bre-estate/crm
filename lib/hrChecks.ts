@@ -183,10 +183,15 @@ export function computeHrChecks(
     const Y = targetRev - totalReceivable;
 
     // === Z + AA: replicate Excel R formula exact ===
-    // N = MAX(paymentProgressPct) từ revenue recons (cột P sheet 2.2)
-    const maxN = recs.reduce(
-      (mx, r) => Math.max(mx, Number(r.paymentProgressPct ?? 0)),
-      0,
+    // N = MAX(paymentProgressPct) từ revenue recons (cột P sheet 2.2).
+    // Clamp <= 1: Excel formulas assume 0-1; recon nhập >1 (VD 1.05) sẽ
+    // thổi R lên > actual chi phí.
+    const maxN = Math.min(
+      1,
+      recs.reduce(
+        (mx, r) => Math.max(mx, Number(r.paymentProgressPct ?? 0)),
+        0,
+      ),
     );
     // T = MAX(paymentProgressPct) từ cost recons SALE_COMMISSION only.
     // Khớp Excel: MAXIFS N sheet 2.3 với U (PMG LK dot nay) > 0 — chỉ HH sale
@@ -204,7 +209,10 @@ export function computeHrChecks(
     //   + ((AJ*AM*N - AO)/1.1 - AP)*(AS+AT)      # KPI CEO + TPKD (theo N)
     //   + ((AJ*AM - AO)/1.1 - AP)*AU             # KPI Admin (không N)
     const AJ_ = pmgBase; // pmgBasePrice
-    const AM_ = Number(p.pmgSaleRate ?? p.pmgRate ?? 0); // pmgSaleRate
+    // KHÔNG fallback về pmgRate — pmgRate là %HH gộp CTY giữ + thưởng, còn
+    // pmgSaleRate riêng phần sale nhận (base HH + KPI). Fallback silent trước
+    // đây làm R lệch âm. Missing → 0 → operator thấy delta lớn để phát hiện.
+    const AM_ = Number(p.pmgSaleRate ?? 0); // pmgSaleRate
     const AO_ = Number(p.adminFeeSale ?? 0); // adminFeeSale
     const AP_ = Number(p.customerSupport ?? 0); // customerSupport
     const AN_ = Number(p.saleCommissionRate ?? 0); // saleCommissionRate
@@ -262,7 +270,8 @@ export function computeHrChecks(
     // KPI CEO / TPKD / Admin: Excel formula dùng FULL target (không nhân N):
     // AG = ((AJ*AM - AO)/1.1 - AP)*AS - SUM cost recon kpi_ceo (mỗi đợt tính theo N)
     // Ý nghĩa: target FULL cho tới khi khách trả 100%, trừ đã ĐC lũy kế.
-    const AG = baseAtFull * AS_ - costSum(p.id, "kpi_ceo");
+    // AG: rate=0 → không có KPI CEO cho căn → skip (không phải "âm tiền đã ĐC")
+    const AG = AS_ > 0 ? baseAtFull * AS_ - costSum(p.id, "kpi_ceo") : 0;
     const AH = AT_ > 0
       ? baseAtFull * AT_ - costSum(p.id, "kpi_tpkd")
       : 0;

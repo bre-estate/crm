@@ -58,7 +58,7 @@ export default function DepartmentsManager({
   };
 
   const del = (d: Department) => {
-    if (!confirm(`Xoá phòng "${d.name}"? Hành động không hoàn tác được.`)) return;
+    if (!confirm(`Xóa phòng "${d.name}"? Hành động không hoàn tác được.`)) return;
     start(async () => {
       try {
         await onDelete(d.id);
@@ -133,10 +133,10 @@ export default function DepartmentsManager({
                     title={
                       d.prodCount > 0 || d.empCount > 0
                         ? `Không xoá được — có ${d.prodCount} căn + ${d.empCount} NV`
-                        : "Xoá phòng"
+                        : "Xóa phòng"
                     }
                   >
-                    Xoá
+                    Xóa
                   </button>
                 </td>
               </tr>

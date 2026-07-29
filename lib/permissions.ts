@@ -165,6 +165,8 @@ export function resourceOfPath(path: string): Resource | "reports.*" | null {
 
   // Top-level
   if (p.startsWith("/products")) return "products";
+  // /projects dùng chung permission với products (đều là danh mục căn/dự án)
+  if (p.startsWith("/projects")) return "products";
   if (p.startsWith("/revenues")) return "revenues";
   // /costs-report phải check TRƯỚC /costs (startsWith conflict)
   if (p.startsWith("/costs-report")) return "costs-report";

@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { fmtMoney, fmtPctRaw } from "@/lib/format";
-import { hasReportsAccess, getOwnerEmail } from "@/lib/auth";
+import { requirePermission, getOwnerEmail } from "@/lib/auth";
 import { loadReportData, parseFilters, effectiveYM } from "@/lib/reports";
 import { Card, ReportsHeader } from "../_shared";
 import { db } from "@/lib/db";
@@ -24,7 +23,7 @@ function monthDiff(m: string, now: string): number {
 }
 
 export default async function ReportsOverviewPage({ searchParams }: { searchParams: SearchParams }) {
-  if (!(await hasReportsAccess())) redirect("/");
+  await requirePermission("reports.overview");
   const sp = await searchParams;
   const filters = parseFilters(sp);
   const data = await loadReportData(filters);
@@ -122,12 +121,17 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
     );
     avgMonthlyExpense = opexPureAvg + monthlyDepTotal;
 
-    // avgProfitPerUnit từ toàn bộ data hiện có (không lọc period)
-    const totalGrossProfit = data.aggregatedProjects.reduce(
-      (s, p) => s + (p.totalRevenueExpected / 1.1 - p.totalCostExpected),
+    // avgProfitPerUnit — YTD (nhất quán vs avgMonthlyExpense).
+    // Lọc căn theo depositDate năm hiện tại. Không dùng aggregatedProjects
+    // vì đó là all-time; scope mismatch → BE bị lệch.
+    const ytdProducts = data.prodRowsAll.filter((p) =>
+      p.depositDate?.startsWith(currentYear),
+    );
+    const totalGrossProfit = ytdProducts.reduce(
+      (s, p) => s + (Number(p.totalRevenue ?? 0) / 1.1 - Number(p.totalCost ?? 0)),
       0,
     );
-    const totalUnits = data.aggregatedProjects.reduce((s, p) => s + p.numProducts, 0);
+    const totalUnits = ytdProducts.length;
     avgProfitPerUnit = totalUnits > 0 ? totalGrossProfit / totalUnits : 0;
 
     if (avgProfitPerUnit > 0 && avgMonthlyExpense > 0) {

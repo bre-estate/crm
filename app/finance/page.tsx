@@ -1,7 +1,6 @@
 import { db } from "@/lib/db";
 import { financialTransactions, companySettings } from "@/lib/schema";
-import { getOwnerEmail } from "@/lib/auth";
-import { notFound } from "next/navigation";
+import { requirePermission } from "@/lib/auth";
 import { sql, eq, inArray, and, ne } from "drizzle-orm";
 import Link from "next/link";
 import SettingsForm from "./SettingsForm";
@@ -12,8 +11,7 @@ export const dynamic = "force-dynamic";
 const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
 
 export default async function FinanceLandingPage() {
-  const owner = await getOwnerEmail();
-  if (!owner) notFound();
+  await requirePermission("finance");
 
   // Stat cards data
   const [txSummary] = await db

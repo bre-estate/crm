@@ -1,7 +1,6 @@
 import { db } from "@/lib/db";
 import { financialTransactions } from "@/lib/schema";
-import { getOwnerEmail } from "@/lib/auth";
-import { notFound } from "next/navigation";
+import { requirePermission } from "@/lib/auth";
 import { eq, desc } from "drizzle-orm";
 import Link from "next/link";
 import {
@@ -17,8 +16,7 @@ export const dynamic = "force-dynamic";
 const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
 
 export default async function AssetsPage() {
-  const owner = await getOwnerEmail();
-  if (!owner) notFound();
+  await requirePermission("finance");
 
   const nowMonth = new Date().toISOString().slice(0, 7);
 
