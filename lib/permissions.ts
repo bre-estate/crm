@@ -27,6 +27,7 @@ export const RESOURCES = {
   "reports.cash-flow-statement": "Lưu chuyển tiền tệ",
   "reports.unit-profitability": "Lãi/lỗ per căn",
   "reports.segments": "Phân khúc căn",
+  "reports.hr-checks": "Kiểm tra HR hàng tháng",
   "alerts": "Cảnh báo",
   "admin.users": "Quản lý user",
   "admin.activity": "Nhật ký hoạt động",
@@ -69,6 +70,7 @@ const PRESETS: Record<Exclude<Role, "owner" | "custom">, Partial<Record<Resource
     "reports.cash-flow-statement": ["view"],
     "reports.unit-profitability": ["view"],
     "reports.segments": ["view", "edit"],
+    "reports.hr-checks": ["view"],
     alerts: ["view"],
     "admin.activity": ["view"],
   },
@@ -90,6 +92,7 @@ const PRESETS: Record<Exclude<Role, "owner" | "custom">, Partial<Record<Resource
     employees: ["view", "edit"],
     departments: ["view"],
     "reports.people": ["view"],
+    "reports.hr-checks": ["view"],
   },
   viewer: {
     "reports.overview": ["view"],
