@@ -23,7 +23,7 @@ const SORT_LABELS: Record<SortKey, string> = {
   grossPct: "Biên gộp %",
   revenue: "Doanh thu",
   cost: "Giá vốn",
-  opex: "CP HĐ phân bổ",
+  opex: "Chi phí HĐ phân bổ",
   unitCode: "Mã căn",
   date: "Ngày cọc",
 };
@@ -167,9 +167,9 @@ export default async function UnitProfitabilityPage({
         </div>
         <h1 className="text-2xl font-bold mt-1">Lợi nhuận từng căn</h1>
         <p className="text-sm text-slate-500 mt-1">
-          {filtered.length} căn · <b>Lãi gộp</b> = DT/1.1 − Giá vốn · <b>CP HĐ phân bổ</b> chia đều
-          bình quân toàn kỳ ({fmt(Math.round(opexPerUnit))} VND/căn = {fmt(Math.round(totalOpexAllTime))} tổng CP HĐ ÷ {totalUnitsAllTime} căn)
-          · <b>Lãi thuần</b> = Lãi gộp − CP HĐ phân bổ. Click header cột để sort.
+          {filtered.length} căn · <b>Lãi gộp</b> = Doanh thu/1,1 − Giá vốn · <b>Chi phí hoạt động phân bổ</b> chia đều
+          bình quân toàn kỳ ({fmt(Math.round(opexPerUnit))} VND/căn = {fmt(Math.round(totalOpexAllTime))} tổng chi phí hoạt động ÷ {totalUnitsAllTime} căn)
+          · <b>Lãi thuần</b> = Lãi gộp − Chi phí hoạt động phân bổ. Bấm tiêu đề cột để sắp xếp.
         </p>
       </div>
 
@@ -178,7 +178,7 @@ export default async function UnitProfitabilityPage({
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
           <Stat label="Tổng DT (gồm VAT)" value={fmt(totalRev)} />
           <Stat label="Tổng Giá vốn" value={fmt(totalCost)} warn />
-          <Stat label="Tổng CP HĐ phân bổ" value={fmt(Math.round(totalOpex))} warn />
+          <Stat label="Tổng chi phí HĐ phân bổ" value={fmt(Math.round(totalOpex))} warn />
           <Stat
             label={`Lãi gộp TB / căn · biên ${avgGrossPct.toFixed(1)}%`}
             value={fmt(Math.round(avgGross))}
@@ -257,7 +257,7 @@ export default async function UnitProfitabilityPage({
               </th>
               <th className="text-right p-2 whitespace-nowrap">
                 <Link href={sortLink("opex")} className="hover:underline">
-                  CP HĐ {sortIcon("opex")}
+                  Chi phí HĐ {sortIcon("opex")}
                 </Link>
               </th>
               <th className="text-right p-2 whitespace-nowrap">
@@ -345,10 +345,10 @@ export default async function UnitProfitabilityPage({
 
       <div className="text-xs text-slate-500 italic space-y-1">
         <p>
-          <b>Cách phân bổ CP HĐ</b>: chia đều bình quân toàn kỳ. Mọi căn gánh cùng
+          <b>Cách phân bổ chi phí hoạt động</b>: chia đều bình quân toàn kỳ. Mọi căn gánh cùng
           {" "}{fmt(Math.round(opexPerUnit))} VND. Đơn giản, không bị outlier tháng cao thấp.
         </p>
-        <p>Số tô đỏ = lãi thuần âm (căn có lãi gộp thấp hơn CP HĐ phân bổ). Số tô xanh = biên thuần ≥ 15%. Click "Mã căn" xem breakdown chi tiết.</p>
+        <p>Số tô đỏ = lãi thuần âm (căn có lãi gộp thấp hơn chi phí hoạt động phân bổ). Số tô xanh = biên thuần ≥ 15%. Bấm &quot;Mã căn&quot; để xem chi tiết.</p>
       </div>
     </div>
   );

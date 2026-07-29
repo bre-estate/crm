@@ -215,7 +215,7 @@ export default async function ManagementReportPage({
         </div>
         <h1 className="text-2xl font-bold mt-1">Báo cáo quản trị</h1>
         <p className="text-sm text-slate-500 mt-1">
-          3 chỉ số then chốt cho chủ cty: <b>Điểm hòa vốn</b>, <b>Cơ cấu CP HĐ</b>,
+          3 chỉ số then chốt cho chủ công ty: <b>Điểm hòa vốn</b>, <b>Cơ cấu chi phí hoạt động</b>,
           <b> Lãi/lỗ theo tháng</b>. Tính theo Năm {currentYear} đến hiện tại ({monthsSoFar} tháng).
         </p>
         <div className="mt-3 flex items-center gap-3 text-xs">
@@ -267,7 +267,7 @@ export default async function ManagementReportPage({
               </>
             ) : (
               <>
-                ⚠️ Đang <b>dưới điểm hòa vốn</b> {(breakEvenUnits - avgUnitsPerMonth).toFixed(1)} căn/tháng — cần bán thêm để cover CP HĐ.
+                ⚠️ Đang <b>dưới điểm hòa vốn</b> {(breakEvenUnits - avgUnitsPerMonth).toFixed(1)} căn/tháng — cần bán thêm để bù đắp chi phí hoạt động.
               </>
             )}
           </div>
@@ -277,7 +277,7 @@ export default async function ManagementReportPage({
       {/* ===== SECTION 2: CP HĐ breakdown theo nhóm × tháng (tabs năm) ===== */}
       <section>
         <div className="flex items-baseline justify-between mb-1">
-          <h2 className="text-lg font-semibold">💼 CP HĐ — phân tích theo nhóm × tháng</h2>
+          <h2 className="text-lg font-semibold">💼 Chi phí hoạt động — phân tích theo nhóm × tháng</h2>
           <YearTabs years={yearList} selected={selectedYear} />
         </div>
         <p className="text-xs text-slate-500 mb-3">
@@ -330,14 +330,14 @@ export default async function ManagementReportPage({
               {groupList.length === 0 && (
                 <tr>
                   <td colSpan={4} className="p-6 text-center text-slate-500">
-                    Chưa có CP HĐ trong năm {selectedYear}.
+                    Chưa có chi phí hoạt động trong năm {selectedYear}.
                   </td>
                 </tr>
               )}
             </tbody>
             <tfoot className="bg-slate-100 font-bold">
               <tr>
-                <td className="p-2 sticky left-0 bg-slate-100">TỔNG CP HĐ</td>
+                <td className="p-2 sticky left-0 bg-slate-100">TỔNG CHI PHÍ HOẠT ĐỘNG</td>
                 {monthList.map((m) => {
                   const monthTotal = [...grid.values()].reduce(
                     (s, mm) => s + (mm.get(m) ?? 0),
@@ -364,8 +364,8 @@ export default async function ManagementReportPage({
           <h2 className="text-lg font-semibold">📈 Lãi/lỗ theo tháng — {selectedYear}</h2>
         </div>
         <p className="text-xs text-slate-500 mb-3">
-          Dồn tích theo ngày đối chiếu (chuẩn kế toán VN — Kim confirm 2026-07-27). CP HĐ gộp theo tháng phát sinh.
-          Lãi thuần = DT/1.1 − Giá vốn − CP HĐ.
+          Dồn tích theo ngày đối chiếu (chuẩn kế toán VN — Kim xác nhận 2026-07-27). Chi phí hoạt động gộp theo tháng phát sinh.
+          Lãi thuần = Doanh thu/1,1 − Giá vốn − Chi phí hoạt động.
         </p>
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
           <table className="w-full text-sm">
@@ -374,7 +374,7 @@ export default async function ManagementReportPage({
                 <th className="text-left p-2">Tháng</th>
                 <th className="text-right p-2">DT (gồm VAT)</th>
                 <th className="text-right p-2">Giá vốn</th>
-                <th className="text-right p-2">CP HĐ</th>
+                <th className="text-right p-2">Chi phí HĐ</th>
                 <th className="text-right p-2">Lãi gộp</th>
                 <th className="text-right p-2 w-64">Lãi thuần</th>
               </tr>

@@ -172,22 +172,22 @@ export default async function AlertsPage() {
       id: "cash-runway",
       severity: "critical",
       title: `Sức khỏe tài chính thấp: còn ~${runway.toFixed(1)} tháng`,
-      description: `Ước tính cash TK cty: ${fmt(estimatedCash)} VND. CP HĐ trung bình ${fmt(cpQlMonth)} VND/tháng. Có thể chỉ chạy được ${runway.toFixed(1)} tháng nữa.`,
+      description: `Ước tính tiền mặt tài khoản công ty: ${fmt(estimatedCash)} VND. Chi phí hoạt động trung bình ${fmt(cpQlMonth)} VND/tháng. Có thể chỉ chạy được ${runway.toFixed(1)} tháng nữa.`,
       detail: (
         <div className="text-[11px] mt-1 text-slate-600">
           ⚠️ Đây là ước tính — chưa track sao kê ngân hàng thực. Số thực có thể chênh.
           Nên: rà lại sao kê + đối chiếu công nợ.
         </div>
       ),
-      action: { href: "/reports/balance-sheet", label: "Xem BCĐKT" },
+      action: { href: "/reports/balance-sheet", label: "Xem Bảng cân đối kế toán" },
     });
   } else if (runway < 6 && cpQlMonth > 0) {
     alerts.push({
       id: "cash-runway-warn",
       severity: "warning",
       title: `Sức khỏe tài chính cần theo dõi: ~${runway.toFixed(1)} tháng`,
-      description: `CP HĐ ${fmt(cpQlMonth)} VND/tháng, cash ước ${fmt(estimatedCash)} VND. Nên plan revenue/vốn.`,
-      action: { href: "/reports/balance-sheet", label: "Xem BCĐKT" },
+      description: `Chi phí hoạt động ${fmt(cpQlMonth)} VND/tháng, tiền mặt ước tính ${fmt(estimatedCash)} VND. Cần lên kế hoạch doanh thu hoặc bổ sung vốn.`,
+      action: { href: "/reports/balance-sheet", label: "Xem Bảng cân đối kế toán" },
     });
   }
 
@@ -231,7 +231,7 @@ export default async function AlertsPage() {
       id: "idle-sale",
       severity: "warning",
       title: `${idleEmps.length} NVKD không có căn cọc trong 3 tháng qua`,
-      description: `Cân nhắc turnover / retrain / re-assign phòng ban.`,
+      description: `Cân nhắc cho nghỉ việc, đào tạo lại, hoặc điều chuyển sang phòng ban khác.`,
       detail: (
         <ul className="list-disc list-inside text-xs mt-1 space-y-0.5">
           {idleEmps.slice(0, 10).map((e) => (
@@ -247,7 +247,7 @@ export default async function AlertsPage() {
   }
 
   // ============================================================
-  // ALERT 6: CP HĐ tháng bất thường > 1.5× TB 6 tháng
+  // ALERT 6: Chi phí hoạt động tháng bất thường > 1.5× trung bình 6 tháng
   // ============================================================
   // Query OPEX per month cho 6 tháng gần nhất (không tính tháng hiện tại)
   const opexPerMonthRows = await db
@@ -283,13 +283,13 @@ export default async function AlertsPage() {
     alerts.push({
       id: "opex-spike",
       severity: "warning",
-      title: `${spikeMonths.length} tháng có CP HĐ bất thường`,
-      description: `CP HĐ cao > 1.5× TB 6 tháng gần. Cần rà check lý do (thưởng lớn, thuế, mua sắm bất thường).`,
+      title: `${spikeMonths.length} tháng có chi phí hoạt động bất thường`,
+      description: `Chi phí hoạt động cao hơn 1,5 lần trung bình 6 tháng gần đây. Cần rà soát lý do (thưởng lớn, thuế, mua sắm bất thường).`,
       detail: (
         <ul className="list-disc list-inside text-xs mt-1 space-y-0.5">
           {spikeMonths.map((s) => (
             <li key={s.month}>
-              <b>{s.month}</b>: {fmt(s.amount)} VND ({s.ratio.toFixed(1)}× TB)
+              <b>{s.month}</b>: {fmt(s.amount)} VND ({s.ratio.toFixed(1)} lần trung bình)
               {" · "}
               <Link
                 href={`/reports/management/${s.month}`}
@@ -369,14 +369,14 @@ export default async function AlertsPage() {
       id: "overdue-receivables",
       severity: "warning",
       title: `${overdueByProduct.size} căn có công nợ phải thu > 60 ngày`,
-      description: `Tổng công nợ quá hạn: ${fmt(overdueTotalAmount)} VND. Cần đòi CĐT hoặc rà lại tình trạng.`,
+      description: `Tổng công nợ quá hạn: ${fmt(overdueTotalAmount)} VND. Cần đòi chủ đầu tư hoặc rà soát lại tình trạng.`,
       detail: (
         <table className="w-full text-xs mt-2">
           <thead className="bg-slate-100">
             <tr>
               <th className="text-left p-1">Căn</th>
               <th className="text-right p-1">Còn phải thu</th>
-              <th className="text-left p-1">ĐC cũ nhất</th>
+              <th className="text-left p-1">Đối chiếu cũ nhất</th>
               <th className="text-center p-1">Số đợt</th>
             </tr>
           </thead>
@@ -396,7 +396,7 @@ export default async function AlertsPage() {
           </tbody>
         </table>
       ),
-      action: { href: "/reports/cashflow", label: "Xem dòng tiền HH" },
+      action: { href: "/reports/cashflow", label: "Xem dòng tiền hoa hồng" },
     });
   }
 
@@ -413,7 +413,7 @@ export default async function AlertsPage() {
         <h1 className="text-2xl font-bold">🔔 Cảnh báo</h1>
         <p className="text-sm text-slate-500 mt-1">
           {alerts.length === 0
-            ? "✅ Không có cảnh báo nào — cty đang chạy ổn."
+            ? "✅ Không có cảnh báo nào — công ty đang chạy ổn."
             : `${alerts.length} cảnh báo cần chú ý. Nguy cấp trước, cảnh báo sau.`}
         </p>
       </div>
@@ -431,7 +431,7 @@ export default async function AlertsPage() {
           <div className="text-4xl mb-2">✅</div>
           <div className="text-green-800 font-semibold">Không có cảnh báo nào</div>
           <div className="text-sm text-green-700 mt-1">
-            Cty đang chạy ổn — không có metric nào vượt ngưỡng cần chú ý.
+            Công ty đang chạy ổn — không có chỉ số nào vượt ngưỡng cần chú ý.
           </div>
         </div>
       )}

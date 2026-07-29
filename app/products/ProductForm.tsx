@@ -455,7 +455,7 @@ export default function ProductForm({
               </Field>
             </div>
             <div className="text-xs text-slate-500 mt-2">
-              Giao dịch thứ cấp = mua bán lại, không có %PMG_LK từ CĐT. Nhập số cty thực nhận.
+              Giao dịch thứ cấp = mua bán lại, không có %PMG_LK từ chủ đầu tư. Nhập số công ty thực nhận.
             </div>
             {/* Hidden fields để BE luôn nhận đủ shape — set 0 khi thứ cấp */}
             <input type="hidden" name="sellPrice" value={0} />
@@ -547,7 +547,7 @@ export default function ProductForm({
                 onValueChange={setAdminFeeSaleLive}
               />
               <div className="text-[10px] text-slate-500 mt-1">
-                Số ghi trong công thức HH sale. Chênh cty tự chịu.
+                Số ghi trong công thức hoa hồng sale. Chênh công ty tự chịu.
               </div>
             </Field>
             <Field label="CĐT thưởng nóng cho sale">

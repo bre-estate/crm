@@ -71,11 +71,11 @@ export default async function AssetsPage() {
             ← Tài chính
           </Link>
         </div>
-        <h1 className="text-2xl font-bold mt-1">Tài sản cố định (TSCĐ / CCDC)</h1>
+        <h1 className="text-2xl font-bold mt-1">Tài sản cố định (TSCĐ) / Công cụ dụng cụ (CCDC)</h1>
         <p className="text-sm text-slate-500 mt-1">
           Danh sách TSCĐ nhóm 5 (thiết bị/máy móc). Khấu hao đường thẳng đều
-          <b> {DEFAULT_LIFE_MONTHS} tháng</b> (3 năm) — theo TT45/2013 cho thiết bị VP.
-          Khấu hao tháng cộng vào CP HĐ trong /reports/management.
+          <b> {DEFAULT_LIFE_MONTHS} tháng</b> (3 năm) — theo TT45/2013 cho thiết bị văn phòng.
+          Khấu hao tháng cộng vào Chi phí hoạt động trong Báo cáo quản trị.
         </p>
       </div>
 
@@ -186,16 +186,16 @@ export default async function AssetsPage() {
             (giá trị net = 0 sổ sách)
           </li>
           <li>
-            <b>Cộng vào CP HĐ</b>: Khấu hao/tháng hiện tại = {fmt(totalMonthlyDep)} VND — sẽ
-            add vào CP HĐ trong /reports/management và /reports/overview
+            <b>Cộng vào chi phí hoạt động</b>: Khấu hao/tháng hiện tại = {fmt(totalMonthlyDep)} VND — sẽ
+            thêm vào chi phí hoạt động trong Báo cáo quản trị và Báo cáo tổng hợp
           </li>
           <li>
-            <b>BCĐKT</b>: TS 153/211 hiển thị Giá gốc − Khấu hao lũy kế = Giá trị còn lại{" "}
+            <b>Bảng cân đối kế toán</b>: Tài sản 153/211 hiển thị Giá gốc − Khấu hao lũy kế = Giá trị còn lại{" "}
             <b>({fmt(totalNet)} VND)</b>
           </li>
           <li>
-            <b>Custom tuổi khấu hao per TSCĐ</b>: chưa hỗ trợ MVP. Hiện dùng 3 năm blanket.
-            Có thể thêm bảng override sau khi cty có TSCĐ đắt tiền (VD ô tô 6-10 năm).
+            <b>Tùy chỉnh thời gian khấu hao cho từng tài sản</b>: chưa hỗ trợ. Hiện dùng 3 năm cho tất cả.
+            Có thể thêm bảng ghi đè sau khi công ty có tài sản đắt tiền (ví dụ ô tô 6-10 năm).
           </li>
         </ul>
       </div>

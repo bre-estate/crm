@@ -207,7 +207,7 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
           )}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Card
-              label={`CP HĐ trong kỳ (${financial.monthsInPeriod} tháng)`}
+              label={`Chi phí hoạt động trong kỳ (${financial.monthsInPeriod} tháng)`}
               value={fmtMoney(financial.totalExpense)}
               sub={`${financial.filteredExpensesCount} dòng chi phí`}
               warn
@@ -269,11 +269,11 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
           <div>
             <h2 className="text-lg font-semibold mb-1">⚖️ Điểm hòa vốn</h2>
             <p className="text-xs text-slate-500 mb-3">
-              Số căn/tháng cần bán để cover CP quản lý. TB CP HĐ + căn bán tính theo năm hiện tại YTD (chốt 2026-07-25).
+              Số căn/tháng cần bán để bù đắp chi phí quản lý. Trung bình chi phí hoạt động + căn bán tính theo năm hiện tại (từ đầu năm đến hiện tại).
             </p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <Card
-                label="CP HĐ TB / tháng"
+                label="Chi phí HĐ TB / tháng"
                 value={fmtMoney(avgMonthlyExpense)}
                 sub="Năm hiện tại YTD"
                 warn
@@ -290,7 +290,7 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
                     ? `${breakEvenUnits.toFixed(1)} căn/tháng`
                     : "—"
                 }
-                sub="CP HĐ / Lãi TB/căn"
+                sub="Chi phí HĐ / Lãi TB/căn"
                 warn
               />
               <Card
@@ -324,7 +324,7 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
                 ) : (
                   <>
                     ⚠️ Đang <b>dưới điểm hòa vốn</b> {(breakEvenUnits - avgUnitsPerMonth).toFixed(1)} căn/tháng.
-                    Cần bán thêm để cover CP HĐ.
+                    Cần bán thêm để bù đắp chi phí hoạt động.
                   </>
                 )}
               </div>
@@ -335,7 +335,7 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
             <h2 className="text-lg font-semibold mb-1">📈 Lãi/lỗ theo tháng</h2>
             <p className="text-xs text-slate-500 mb-3">
               Dồn tích theo ngày đối chiếu (chuẩn kế toán VN — Kim confirm 2026-07-27).
-              CP HĐ gộp theo tháng phát sinh.
+              Chi phí hoạt động gộp theo tháng phát sinh.
             </p>
             <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
               <table className="w-full text-sm min-w-[700px]">
@@ -344,7 +344,7 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
                     <th className="text-left p-2">Tháng</th>
                     <th className="text-right p-2">DT ĐC (gồm VAT)</th>
                     <th className="text-right p-2">Giá vốn ĐC</th>
-                    <th className="text-right p-2">CP HĐ</th>
+                    <th className="text-right p-2">Chi phí HĐ</th>
                     <th className="text-right p-2">Lãi gộp</th>
                     <th className="text-right p-2 w-56">Lãi thuần</th>
                   </tr>

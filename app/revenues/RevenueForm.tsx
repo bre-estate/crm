@@ -450,7 +450,7 @@ export default function RevenueForm({
 
       {/* ===== 4. Thanh toán (chỉ khi tạo mới) ===== */}
       {!isEdit && (
-        <Section title="🏦 Đã nhận tiền vào TK cty chưa? (tùy chọn)">
+        <Section title="🏦 Đã nhận tiền vào tài khoản công ty chưa? (tùy chọn)">
           <div className="grid grid-cols-2 gap-4">
             <Field label="Ngày nhận tiền">
               <input

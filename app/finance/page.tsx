@@ -121,9 +121,9 @@ export default async function FinanceLandingPage() {
 
         <SectionCard
           title="Tài sản cố định"
-          desc="TSCĐ / CCDC (máy móc, thiết bị VP) với khấu hao đường thẳng 3 năm. Khấu hao/tháng cộng vào CP HĐ."
+          desc="Tài sản cố định / công cụ dụng cụ (máy móc, thiết bị văn phòng) với khấu hao đường thẳng 3 năm. Khấu hao/tháng cộng vào chi phí hoạt động."
           href="/finance/assets"
-          badge="TSCĐ"
+          badge="Tài sản cố định"
         />
       </div>
 

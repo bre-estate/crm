@@ -53,9 +53,9 @@ const NAV: NavEntry[] = [
       { href: "/reports/management", label: "Quản trị", resource: "reports.management", section: "Tổng quan" },
       { href: "/reports/unit-profitability", label: "Lãi từng căn", resource: "reports.unit-profitability", section: "Tổng quan" },
       // TÀI CHÍNH
-      { href: "/reports/balance-sheet", label: "BCĐKT", resource: "reports.balance-sheet", section: "Tài chính" },
-      { href: "/reports/cash-flow-statement", label: "LCTT", resource: "reports.cash-flow-statement", section: "Tài chính" },
-      { href: "/reports/cashflow", label: "Dòng tiền HH", ownerOnly: true, section: "Tài chính" },
+      { href: "/reports/balance-sheet", label: "Bảng cân đối kế toán", resource: "reports.balance-sheet", section: "Tài chính" },
+      { href: "/reports/cash-flow-statement", label: "Lưu chuyển tiền tệ", resource: "reports.cash-flow-statement", section: "Tài chính" },
+      { href: "/reports/cashflow", label: "Dòng tiền hoa hồng", ownerOnly: true, section: "Tài chính" },
       // THỊ TRƯỜNG
       { href: "/reports/segments", label: "Phân khúc", resource: "reports.segments", section: "Thị trường" },
       { href: "/reports/projects", label: "Theo dự án", resource: "reports.overview", section: "Thị trường" },

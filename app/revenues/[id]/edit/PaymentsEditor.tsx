@@ -42,7 +42,7 @@ export default function PaymentsEditor({ payments, onUpdate, onDelete, onAdd }: 
     <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-3">
       <div className="flex justify-between items-center pb-2 border-b border-slate-100">
         <div className="text-base font-semibold text-slate-800">
-          🏦 Đã nhận tiền vào TK cty chưa?{payments.length > 0 ? ` · ✅ ${payments.length} lần` : ""}
+          🏦 Đã nhận tiền vào tài khoản công ty chưa?{payments.length > 0 ? ` · ✅ ${payments.length} lần` : ""}
         </div>
         {!showAdd && (
           <button

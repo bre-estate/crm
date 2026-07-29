@@ -75,7 +75,7 @@ export default async function CapitalPage() {
         </div>
         <h1 className="text-2xl font-bold mt-1">Vốn góp founder</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Toàn bộ tiền Triết + Bách bỏ cá nhân ra cho hoạt động cty (kể cả
+          Toàn bộ tiền Triết + Bách bỏ cá nhân ra cho hoạt động công ty (kể cả
           không hóa đơn), TRỪ chi ngoài phục vụ thứ cấp. Bao gồm: nộp TK
           cty, ký quỹ, chi hộ (mua thiết bị, thuê VP, lương, quảng cáo...).
         </p>
@@ -85,7 +85,7 @@ export default async function CapitalPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard label="Tổng vốn góp" value={fmt(totalCapital)} sub={`${rows.length} giao dịch`} />
         <StatCard
-          label="Nộp thẳng TK cty (411)"
+          label="Nộp thẳng tài khoản công ty (411)"
           value={fmt(totalDirectVon)}
           sub="Topup / nộp tiền TK cty"
         />

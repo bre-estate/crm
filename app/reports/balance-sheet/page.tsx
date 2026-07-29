@@ -274,7 +274,7 @@ export default async function BalanceSheetPage() {
             <b>TSCĐ/CCDC</b> chưa trừ khấu hao — số thực tế thấp hơn (khấu hao 3-5 năm).
           </li>
           <li>
-            <b>Lãi/lỗ lũy kế</b> = DT ĐC/1.1 − Giá vốn ĐC − CP QL (dùng số ĐC, chưa phân biệt đã
+            <b>Lãi/lỗ lũy kế</b> = Doanh thu đối chiếu/1,1 − Giá vốn đối chiếu − Chi phí quản lý (dùng số đã đối chiếu, chưa phân biệt đã
             thu/chưa thu).
           </li>
           <li>
