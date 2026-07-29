@@ -8,7 +8,7 @@ import { displayPartnerName } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-import { OPEX_CATEGORIES } from "@/lib/accounting/categories";
+import { FIXED_COST_CATEGORIES } from "@/lib/accounting/categories";
 
 const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
 
@@ -59,15 +59,14 @@ export default async function UnitProfitabilityPage({
     .leftJoin(projects, eq(products.projectId, projects.id))
     .leftJoin(partners, eq(projects.partnerId, partners.id));
 
-  // ===== Phân bổ CP HĐ — Cách A' (chia đều bình quân toàn kỳ) =====
-  // CP HĐ / căn = Tổng CP HĐ lũy kế / Tổng số căn (all time).
-  // Mọi căn gánh cùng 1 con số cố định — không bị outlier do tháng
-  // bất thường (VD T2/2026 thưởng tết 856M, T7/2026 chỉ 87M).
-  // Reflect "cost trung bình của cty" — công bằng theo hoạt động chung.
+  // ===== Phân bổ chi phí cố định — Cách A' (chia đều bình quân toàn kỳ) =====
+  // Dùng FIXED_COST_CATEGORIES (loại TK 6417 — HH sale đã nằm trong
+  // products.totalCost). Nếu dùng OPEX_CATEGORIES sẽ double count HH sale
+  // → lãi thuần âm bất hợp lý.
   const [opexAll] = await db
     .select({ sum: sql<number>`coalesce(sum(amount), 0)::float8` })
     .from(financialTransactions)
-    .where(inArray(financialTransactions.categoryCode, OPEX_CATEGORIES));
+    .where(inArray(financialTransactions.categoryCode, FIXED_COST_CATEGORIES));
   const totalOpexAllTime = Number(opexAll.sum);
   const totalUnitsAllTime = rows.length;
   const opexPerUnit = totalUnitsAllTime > 0 ? totalOpexAllTime / totalUnitsAllTime : 0;
