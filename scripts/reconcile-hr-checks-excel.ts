@@ -93,6 +93,7 @@ async function main() {
       salesPerson: products.salesPerson,
       deptLeaderName: products.deptLeaderName,
       totalRevenue: products.totalRevenue,
+      otherCosts: products.otherCosts,
       pmgBasePrice: products.pmgBasePrice,
       pmgSaleRate: products.pmgSaleRate,
       pmgRate: products.pmgRate,
@@ -117,6 +118,8 @@ async function main() {
       revenueThisTime: revenueReconciliations.revenueThisTime,
       paymentProgressPct: revenueReconciliations.paymentProgressPct,
       pmgCumulativePct: revenueReconciliations.pmgCumulativePct,
+      cdtBonusSale: revenueReconciliations.cdtBonusSale,
+      cdtBonusManager: revenueReconciliations.cdtBonusManager,
     }).from(revenueReconciliations),
     db.select({
       productId: costReconciliations.productId,
@@ -134,6 +137,7 @@ async function main() {
     productRows.map((p) => ({
       ...p,
       totalRevenue: p.totalRevenue == null ? null : Number(p.totalRevenue),
+      otherCosts: p.otherCosts == null ? null : Number(p.otherCosts),
       pmgBasePrice: p.pmgBasePrice == null ? null : Number(p.pmgBasePrice),
       pmgSaleRate: p.pmgSaleRate == null ? null : Number(p.pmgSaleRate),
       pmgRate: p.pmgRate == null ? null : Number(p.pmgRate),
@@ -156,6 +160,8 @@ async function main() {
       revenueThisTime: Number(r.revenueThisTime ?? 0),
       paymentProgressPct: Number(r.paymentProgressPct ?? 0),
       pmgCumulativePct: Number(r.pmgCumulativePct ?? 0),
+      cdtBonusSale: Number(r.cdtBonusSale ?? 0),
+      cdtBonusManager: Number(r.cdtBonusManager ?? 0),
     })),
     costRows.map((c) => ({
       productId: c.productId,

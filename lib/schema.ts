@@ -154,6 +154,8 @@ export const products = pgTable("products", {
   pmgBasePrice: doublePrecision("pmg_base_price").default(0),
   totalRevenue: doublePrecision("total_revenue").default(0),
   totalCost: doublePrecision("total_cost").default(0),
+  // CP giá vốn khác (Excel sheet 2.1 col AL) — dùng trong công thức R hr-checks
+  otherCosts: doublePrecision("other_costs").notNull().default(0),
 
   pmgRate: doublePrecision("pmg_rate").default(0),
   // Lịch sử thay đổi %PMG_LK (khi CĐT/F1 offer nâng bậc HH theo KPI).

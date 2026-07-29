@@ -81,6 +81,7 @@ export type ProductInput = {
   salesPerson: string | null;
   deptLeaderName: string | null;
   totalRevenue: number | null; // Excel col F (gồm VAT + cdt bonuses)
+  otherCosts: number | null; // Excel sheet 2.1 col AL — CP giá vốn khác
   pmgBasePrice: number | null;
   pmgSaleRate: number | null;
   pmgRate: number | null;
@@ -103,6 +104,8 @@ export type RevReconInput = {
   revenueThisTime: number;
   paymentProgressPct: number; // N — tiến độ khách trả CĐT (cột P sheet 2.2)
   pmgCumulativePct: number;
+  cdtBonusSale: number; // CĐT thưởng sale thực nhận từ CĐT (cột Y sheet 2.2)
+  cdtBonusManager: number; // CĐT thưởng QL thực nhận (cột Z sheet 2.2)
 };
 
 export type CostReconInput = {
@@ -209,7 +212,7 @@ export function computeHrChecks(
     const AL_ = Number(p.cdtBonusManager ?? 0); // CĐT bonus manager (gồm VAT)
     const AQ_ = Number(p.bonusSale ?? 0);
     const AR_ = Number(p.bonusManager ?? 0);
-    const AV_ = 0; // "CP giá vốn khác" — chưa map trong app
+    const AV_ = Number(p.otherCosts ?? 0); // CP giá vốn khác (sheet 2.1 col AL)
     const AS_ = Number(p.kpiCeoRate ?? 0);
     const AT_ = Number(p.kpiTpkdRate ?? 0);
     const AU_ = Number(p.kpiAdminRate ?? 0);
@@ -247,8 +250,12 @@ export function computeHrChecks(
       cdtBonusSale: AK_,
       cdtBonusManager: AL_,
     };
-    const AB = computeLuyKe(cfg, "cdt_bonus_sale", 1) - costSum(p.id, "cdt_bonus_sale");
-    const AC = computeLuyKe(cfg, "cdt_bonus_manager", 1) - costSum(p.id, "cdt_bonus_manager");
+    // AB/AC: Excel dùng CĐT thưởng thực nhận từ revenue recon (không phải config)
+    // AB = SUMIF sheet 2.2 col Y / 1.1 - SUMIF sheet 2.3 col Y
+    const cdtSaleReceived = recs.reduce((s, r) => s + Number(r.cdtBonusSale ?? 0), 0);
+    const cdtMgrReceived = recs.reduce((s, r) => s + Number(r.cdtBonusManager ?? 0), 0);
+    const AB = cdtSaleReceived / 1.1 - costSum(p.id, "cdt_bonus_sale");
+    const AC = cdtMgrReceived / 1.1 - costSum(p.id, "cdt_bonus_manager");
     const AD = computeLuyKe(cfg, "bonus_sale", 1) - costSum(p.id, "bonus_sale");
     const AE = computeLuyKe(cfg, "bonus_manager", 1) - costSum(p.id, "bonus_manager");
     const AF = computeLuyKe(cfg, "customer_support", 1) - costSum(p.id, "customer_support");

@@ -38,6 +38,7 @@ export default async function HrChecksPage({
         salesPerson: products.salesPerson,
         deptLeaderName: products.deptLeaderName,
         totalRevenue: products.totalRevenue,
+        otherCosts: products.otherCosts,
         pmgBasePrice: products.pmgBasePrice,
         pmgSaleRate: products.pmgSaleRate,
         pmgRate: products.pmgRate,
@@ -64,6 +65,8 @@ export default async function HrChecksPage({
         revenueThisTime: revenueReconciliations.revenueThisTime,
         paymentProgressPct: revenueReconciliations.paymentProgressPct,
         pmgCumulativePct: revenueReconciliations.pmgCumulativePct,
+        cdtBonusSale: revenueReconciliations.cdtBonusSale,
+        cdtBonusManager: revenueReconciliations.cdtBonusManager,
       })
       .from(revenueReconciliations),
     db
@@ -86,6 +89,7 @@ export default async function HrChecksPage({
     productRows.map((p) => ({
       ...p,
       totalRevenue: p.totalRevenue == null ? null : Number(p.totalRevenue),
+      otherCosts: p.otherCosts == null ? null : Number(p.otherCosts),
       pmgBasePrice: p.pmgBasePrice == null ? null : Number(p.pmgBasePrice),
       pmgSaleRate: p.pmgSaleRate == null ? null : Number(p.pmgSaleRate),
       pmgRate: p.pmgRate == null ? null : Number(p.pmgRate),
@@ -108,6 +112,8 @@ export default async function HrChecksPage({
       revenueThisTime: Number(r.revenueThisTime ?? 0),
       paymentProgressPct: Number(r.paymentProgressPct ?? 0),
       pmgCumulativePct: Number(r.pmgCumulativePct ?? 0),
+      cdtBonusSale: Number(r.cdtBonusSale ?? 0),
+      cdtBonusManager: Number(r.cdtBonusManager ?? 0),
     })),
     costRows.map((c) => ({
       productId: c.productId,
