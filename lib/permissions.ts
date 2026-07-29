@@ -27,7 +27,7 @@ export const RESOURCES = {
   "reports.cash-flow-statement": "Lưu chuyển tiền tệ",
   "reports.unit-profitability": "Lãi/lỗ per căn",
   "reports.segments": "Phân khúc căn",
-  "reports.hr-checks": "Đối chiếu giá vốn",
+  "costs-report": "Đối chiếu giá vốn",
   "alerts": "Cảnh báo",
   "admin.users": "Quản lý user",
   "admin.activity": "Nhật ký hoạt động",
@@ -70,7 +70,7 @@ const PRESETS: Record<Exclude<Role, "owner" | "custom">, Partial<Record<Resource
     "reports.cash-flow-statement": ["view"],
     "reports.unit-profitability": ["view"],
     "reports.segments": ["view", "edit"],
-    "reports.hr-checks": ["view"],
+    "costs-report": ["view"],
     alerts: ["view"],
     "admin.activity": ["view"],
   },
@@ -92,7 +92,7 @@ const PRESETS: Record<Exclude<Role, "owner" | "custom">, Partial<Record<Resource
     employees: ["view", "edit"],
     departments: ["view"],
     "reports.people": ["view"],
-    "reports.hr-checks": ["view"],
+    "costs-report": ["view"],
   },
   viewer: {
     "reports.overview": ["view"],
@@ -166,6 +166,8 @@ export function resourceOfPath(path: string): Resource | "reports.*" | null {
   // Top-level
   if (p.startsWith("/products")) return "products";
   if (p.startsWith("/revenues")) return "revenues";
+  // /costs-report phải check TRƯỚC /costs (startsWith conflict)
+  if (p.startsWith("/costs-report")) return "costs-report";
   if (p.startsWith("/costs")) return "costs";
   if (p.startsWith("/invoices")) return "invoices";
   if (p.startsWith("/partners")) return "partners";

@@ -20,7 +20,7 @@ export default async function HrChecksPage({
 }: {
   searchParams: Promise<{ field?: string }>;
 }) {
-  await requirePermission("reports.hr-checks");
+  await requirePermission("costs-report");
   const sp = await searchParams;
   const activeField = (sp.field && sp.field in HR_CHECK_LABELS
     ? sp.field

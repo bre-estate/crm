@@ -66,7 +66,7 @@ export default function HrChecksClient({ rows, activeField, countByField, sumByF
           return (
             <Link
               key={f}
-              href={`/reports/hr-checks?field=${f}`}
+              href={`/costs-report?field=${f}`}
               className={`px-3 py-1.5 text-xs whitespace-nowrap rounded-lg border transition-colors ${
                 active
                   ? "border-orange-500 text-orange-700 font-semibold bg-orange-50"
