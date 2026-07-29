@@ -219,6 +219,9 @@ export const revenueReconciliations = pgTable("revenue_reconciliations", {
   phaseNumber: integer("phase_number"),
   phasePctThisTime: doublePrecision("phase_pct_this_time").default(0),
   pmgCumulativePct: doublePrecision("pmg_cumulative_pct").default(0),
+  // N = tiến độ khách trả PMG CĐT (cột P sheet 2.2 Excel). Dùng trong công thức
+  // tính HH sale target: ((L×M×N − Q)/1.1 − R) × P
+  paymentProgressPct: doublePrecision("payment_progress_pct").notNull().default(0),
   pmgSupportPct: doublePrecision("pmg_support_pct").default(0),
   otherRevenuePct: doublePrecision("other_revenue_pct").default(0),
 

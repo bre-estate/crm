@@ -94,6 +94,7 @@ async function main() {
     invoiceTotalVat: number;
     pmgBasePrice: number;
     pmgCumulativePct: number;
+    paymentProgressPct: number;
     phaseNumber: number | null;
     revenueThisTime: number;
     totalReceivableThisTime: number;
@@ -130,6 +131,8 @@ async function main() {
       invoiceTotalVat: toNum(r[5]),
       pmgBasePrice: toNum(r[11]),
       pmgCumulativePct: toNum(r[12]),
+      // Cột P sheet 2.2 = index 15 = "Ty le % thu PMG LK dot nay" (N thực)
+      paymentProgressPct: toNum(r[15]),
       phaseNumber: parsePhase(r[17]),
       revenueThisTime: toNum(r[19]),
       totalReceivableThisTime: toNum(r[26]),
@@ -223,6 +226,7 @@ async function main() {
         invoiceId,
         phaseNumber: r.phaseNumber,
         pmgCumulativePct: r.pmgCumulativePct,
+        paymentProgressPct: r.paymentProgressPct,
         pmgBasePrice: r.pmgBasePrice,
         revenueThisTime: r.revenueThisTime,
         revenueReduction: r.revenueReduction,

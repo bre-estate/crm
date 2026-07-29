@@ -100,7 +100,8 @@ export type RevReconInput = {
   productId: number;
   invoiceId: number | null;
   totalReceivableThisTime: number; // gồm cdtBonus
-  revenueThisTime: number; // chỉ phần PMG (để compute N)
+  revenueThisTime: number;
+  paymentProgressPct: number; // N — tiến độ khách trả CĐT (cột P sheet 2.2)
   pmgCumulativePct: number;
 };
 
@@ -165,12 +166,12 @@ export function computeHrChecks(
     const Y = targetRev - totalReceivable;
 
     // === Z + AA: % và tiền HH sale còn phải ĐC ===
-    // N = tiến độ khách trả CĐT theo PMG = SUM(revenueThisTime — chỉ phần PMG,
-    // KHÔNG gồm cdtBonus) / (pmgBase × pmgRate — target PMG thuần).
-    // Không dùng totalReceivable / totalRevenue vì cả 2 gồm cdtBonus → sai N.
-    const pmgTargetOnly = pmgBase * Number(p.pmgRate ?? 0);
-    const revPmgOnly = recs.reduce((s, r) => s + Number(r.revenueThisTime ?? 0), 0);
-    const maxN = pmgTargetOnly > 0 ? Math.min(1, revPmgOnly / pmgTargetOnly) : 0;
+    // N = MAX(paymentProgressPct) — cột P sheet 2.2 Excel, do HR nhập tay khi
+    // ĐC doanh thu (biết khách đã trả CĐT bao nhiêu %).
+    const maxN = recs.reduce(
+      (mx, r) => Math.max(mx, Number(r.paymentProgressPct ?? 0)),
+      0,
+    );
 
     const cfg: ProductConfig = {
       pmgBasePrice: pmgBase,

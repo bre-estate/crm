@@ -62,6 +62,7 @@ export default async function HrChecksPage({
         invoiceId: revenueReconciliations.invoiceId,
         totalReceivableThisTime: revenueReconciliations.totalReceivableThisTime,
         revenueThisTime: revenueReconciliations.revenueThisTime,
+        paymentProgressPct: revenueReconciliations.paymentProgressPct,
         pmgCumulativePct: revenueReconciliations.pmgCumulativePct,
       })
       .from(revenueReconciliations),
@@ -104,6 +105,7 @@ export default async function HrChecksPage({
       invoiceId: r.invoiceId,
       totalReceivableThisTime: Number(r.totalReceivableThisTime ?? 0),
       revenueThisTime: Number(r.revenueThisTime ?? 0),
+      paymentProgressPct: Number(r.paymentProgressPct ?? 0),
       pmgCumulativePct: Number(r.pmgCumulativePct ?? 0),
     })),
     costRows.map((c) => ({
