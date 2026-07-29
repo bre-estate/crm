@@ -40,6 +40,7 @@ const NAV: NavEntry[] = [
       { href: "/products", label: "Danh sách căn", resource: "products" },
       { href: "/revenues", label: "Doanh thu", resource: "revenues" },
       { href: "/costs", label: "Giá vốn", resource: "costs" },
+      { href: "/reports/hr-checks", label: "Đối chiếu giá vốn", resource: "reports.hr-checks" },
       { href: "/invoices", label: "Hóa đơn", resource: "invoices" },
     ],
   },
@@ -61,7 +62,6 @@ const NAV: NavEntry[] = [
       { href: "/reports/partners", label: "Đối tác", resource: "reports.overview", section: "Thị trường" },
       // NỘI BỘ
       { href: "/reports/people", label: "Theo nhân sự", resource: "reports.people", section: "Nội bộ" },
-      { href: "/reports/hr-checks", label: "Đối chiếu giá vốn", resource: "reports.hr-checks", section: "Nội bộ" },
       { href: "/reports/time", label: "Theo thời gian", resource: "reports.overview", section: "Nội bộ" },
     ],
   },
