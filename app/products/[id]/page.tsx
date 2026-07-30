@@ -288,7 +288,7 @@ export default async function ProductDetailPage({
   const effAdminFeeSale = derivedAdminFeeSaleFromRecons || Number(p.adminFeeSale ?? 0);
 
   return (
-    <div className="space-y-6 max-w-6xl">
+    <div className="space-y-4 max-w-6xl">
       {/* Breadcrumb + title */}
       <div className="flex items-center justify-between gap-2 text-sm">
         <div className="flex items-center gap-2">
@@ -308,7 +308,7 @@ export default async function ProductDetailPage({
             <span className="text-slate-400 mx-2">·</span>
             {row.project?.name}
           </h1>
-          <div className="flex gap-2 mt-2 text-xs items-center flex-wrap">
+          <div className="flex gap-2 mt-1.5 text-xs items-center flex-wrap">
             <Badge color={isSecondary ? "orange" : "sky"}>
               {isSecondary ? "Thứ cấp" : "Sơ cấp"}
             </Badge>
@@ -455,42 +455,37 @@ export default async function ProductDetailPage({
 
       {/* === 1. THÔNG TIN CĂN === */}
       <SectionCard title="1. Thông tin căn" icon="🏠">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          <Info label="Mã căn" value={p.unitCode} mono />
-          <Info label="Mã SP" value={p.productCode} mono small />
-          <Info label="Loại giao dịch" value={isSecondary ? "Thứ cấp" : "Sơ cấp"} />
-          <Info label="Dự án" value={row.project?.name ?? "—"} />
-          {!isSecondary && <Info label="Đối tác (CĐT/F1)" value={row.partner?.name ?? "—"} />}
-          <Info label="Mô tả căn" value={p.unitDescription ?? "—"} />
-          <Info label="Tên khách" value={toTitleCase(p.customerName) || "—"} />
-          <Info
-            label="NVKD"
-            value={
-              (toTitleCase(p.salesPerson) || "—") +
-              (isNvkdCtv ? " · CTV" : "")
-            }
-          />
-          <Info
-            label="Trưởng phòng (TPKD)"
-            value={
-              // CTV chưa gán phòng → không show text Excel legacy (VD Bách hiện là CEO,
-              // không còn là TPKD của group Freelancer).
-              nvkdCtvUnassigned
-                ? "—"
-                : toTitleCase(p.deptLeaderName) ||
-                  toTitleCase(row.department?.leaderName) ||
-                  "—"
-            }
-          />
-          <Info
-            label="Phòng KD"
-            value={
-              row.department?.name ??
-              (nvkdCtvUnassigned ? "CTV (chưa phân phòng)" : p.deptName ?? "—")
-            }
-          />
-          <Info label="Ngày cọc" value={fmtDate(p.depositDate)} />
-        </div>
+        {(() => {
+          const tpkdName = nvkdCtvUnassigned
+            ? null
+            : toTitleCase(p.deptLeaderName) || toTitleCase(row.department?.leaderName) || null;
+          const deptName =
+            row.department?.name ??
+            (nvkdCtvUnassigned ? "CTV (chưa phân phòng)" : p.deptName ?? null);
+          const deptCombo = deptName
+            ? tpkdName
+              ? `${deptName} · TPKD ${tpkdName}`
+              : deptName
+            : "—";
+          const nvkdCombo =
+            (toTitleCase(p.salesPerson) || "—") + (isNvkdCtv ? " · CTV" : "");
+          return (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
+              <Field label="Mã căn" value={p.unitCode} mono />
+              <Field label="Mã SP" value={p.productCode} mono />
+              <Field label="Loại giao dịch" value={isSecondary ? "Thứ cấp" : "Sơ cấp"} />
+              <Field label="Dự án" value={row.project?.name ?? "—"} />
+              {!isSecondary && (
+                <Field label="Đối tác (CĐT/F1)" value={row.partner?.name ?? "—"} />
+              )}
+              <Field label="Mô tả căn" value={p.unitDescription ?? "—"} />
+              <Field label="Tên khách" value={toTitleCase(p.customerName) || "—"} />
+              <Field label="Ngày cọc" value={fmtDate(p.depositDate) || "—"} />
+              <Field label="NVKD" value={nvkdCombo} />
+              <Field label="Phòng KD" value={deptCombo} />
+            </div>
+          );
+        })()}
         {p.note && p.note.trim() && (
           <div className="mt-3 pt-3 border-t border-slate-100">
             <div className="text-xs text-slate-500 uppercase font-semibold mb-1">Ghi chú</div>
@@ -1453,10 +1448,37 @@ function Card({
   if (warn) cls = "bg-orange-50 border-orange-300";
   else if (highlight) cls = "bg-green-50 border-green-300";
   return (
-    <div className={`border rounded-xl p-4 ${cls}`}>
+    <div className={`border rounded-xl px-3 py-2.5 ${cls}`}>
       <div className="text-xs text-slate-500">{label}</div>
-      <div className="text-lg font-bold mt-1 tabular-nums">{value}</div>
-      {sub && <div className="text-xs text-slate-500 mt-1">{sub}</div>}
+      <div className="text-base font-bold mt-0.5 tabular-nums">{value}</div>
+      {sub && <div className="text-[11px] text-slate-500 mt-0.5">{sub}</div>}
+    </div>
+  );
+}
+
+/**
+ * Compact 1-dòng cho các field text ngắn (metadata căn):
+ *   [label ......................... value]
+ * Dùng ở Section "Thông tin căn". Section số liệu vẫn dùng Info (2-dòng, ô có bg).
+ */
+function Field({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
+  return (
+    <div className="flex items-baseline gap-3 py-1.5 border-b border-slate-100 last:border-0">
+      <span className="text-xs text-slate-500 shrink-0">{label}</span>
+      <span
+        className={`ml-auto text-right text-sm text-slate-800 ${mono ? "font-mono" : "font-medium"} truncate`}
+        title={value}
+      >
+        {value}
+      </span>
     </div>
   );
 }
@@ -1477,7 +1499,7 @@ function Info({
   tooltip?: string;
 }) {
   const valueCls = [
-    "font-medium tabular-nums mt-1",
+    "font-medium tabular-nums mt-0.5",
     small ? "text-xs" : "text-sm",
     mono ? "font-mono" : "",
     accent === "green"
@@ -1493,7 +1515,7 @@ function Info({
     .filter(Boolean)
     .join(" ");
   return (
-    <div className="bg-slate-50 rounded-lg p-3">
+    <div className="bg-slate-50 rounded-lg px-3 py-2">
       <div className="text-xs text-slate-500 flex items-center gap-1">
         <span>{label}</span>
         {tooltip && (
@@ -1520,9 +1542,9 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-3">
-      <div className="text-base font-semibold text-slate-800 pb-2 border-b border-slate-100">
-        {icon && <span className="mr-2">{icon}</span>}
+    <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-2">
+      <div className="text-sm font-semibold text-slate-800 pb-1.5 border-b border-slate-100">
+        {icon && <span className="mr-1.5">{icon}</span>}
         {title}
       </div>
       {children}
