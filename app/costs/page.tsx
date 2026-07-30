@@ -241,14 +241,25 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
         salesPersonParam={salesPerson}
         statusParam={status}
         stats={[
-          { label: "Số dòng", value: String(rows.length) },
-          { label: "Tổng phải trả", value: fmtMoney(totalPayable) },
-          { label: "Đã trả", value: fmtMoney(totalPaid), color: "text-green-700" },
+          { label: "Số dòng ĐC", value: String(rows.length) },
           {
-            label: "Còn phải trả",
+            label: "Tổng đã ĐC",
+            value: fmtMoney(totalPayable),
+            tooltip: "Tổng số tiền BRE đã lập biên bản đối chiếu với NV/sale.",
+          },
+          {
+            label: "Đã trả",
+            value: fmtMoney(totalPaid),
+            color: "text-green-700",
+            tooltip: "Tổng số tiền BRE đã thực chi (payments_out).",
+          },
+          {
+            label: "Chưa trả (BRE nợ NV)",
             value: fmtMoney(totalPayable - totalPaid),
             color:
               Math.abs(totalPayable - totalPaid) < 1000 ? "text-slate-400" : "text-red-600",
+            tooltip:
+              "= Tổng đã ĐC − Đã trả. Số BRE còn nợ NV/sale trên các đợt đã lập biên bản. Nếu = 0 nghĩa là đã chi hết những gì đã ĐC.",
           },
         ]}
       />
@@ -660,12 +671,25 @@ async function AggregatedCostsView(props: AggregatedProps) {
         statusParam={props.statusParam}
         stats={[
           { label: "Số (căn × loại)", value: String(filtered.length) },
-          { label: "Tổng target", value: fmtMoney(sumTarget) },
-          { label: "Đã chi", value: fmtMoney(sumPayable), color: "text-green-700" },
           {
-            label: "Còn thiếu",
+            label: "Target đầy đủ",
+            value: fmtMoney(sumTarget),
+            tooltip:
+              "Tổng số tiền BRE PHẢI chi cho các loại giá vốn của căn này, khi khách trả CĐT 100%. Tính theo công thức Excel col R.",
+          },
+          {
+            label: "Đã ĐC",
+            value: fmtMoney(sumPayable),
+            color: "text-green-700",
+            tooltip:
+              "Tổng số tiền đã lập biên bản đối chiếu (cost_recon). Chưa tính có trả tiền hay chưa.",
+          },
+          {
+            label: "Còn phải ĐC",
             value: fmtMoney(sumRemaining),
             color: sumRemaining < 1000 ? "text-slate-400" : "text-red-600",
+            tooltip:
+              "= Target − Đã ĐC. Phần chưa được ghi biên bản đối chiếu (chưa phải chưa trả tiền — số chưa trả tiền xem ở view Theo dòng).",
           },
         ]}
       />
@@ -824,7 +848,7 @@ type PageChromeProps = {
   unitCodeParam?: string;
   salesPersonParam?: string;
   statusParam?: string;
-  stats: { label: string; value: string; color?: string }[];
+  stats: { label: string; value: string; color?: string; tooltip?: string }[];
 };
 
 function PageChrome(props: PageChromeProps) {
@@ -979,7 +1003,17 @@ function PageChrome(props: PageChromeProps) {
         <div className="flex gap-6 text-sm ml-auto">
           {stats.map((s, i) => (
             <div key={i}>
-              <div className="text-xs text-slate-500">{s.label}</div>
+              <div className="text-xs text-slate-500 flex items-center gap-1">
+                <span>{s.label}</span>
+                {s.tooltip && (
+                  <span
+                    title={s.tooltip}
+                    className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-300 text-white text-[9px] cursor-help select-none"
+                  >
+                    ?
+                  </span>
+                )}
+              </div>
               <div className={`font-bold tabular-nums ${s.color ?? ""}`}>{s.value}</div>
             </div>
           ))}
