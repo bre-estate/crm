@@ -24,7 +24,7 @@ export default async function EditProjectPage({
     .from(products)
     .where(eq(products.projectId, id))
   return (
-    <div className="space-y-4 max-w-4xl">
+    <div className="space-y-4">
       <div className="flex items-center gap-2 text-sm">
         <Link href="/projects" className="text-blue-600 hover:underline">
           ← Dự án

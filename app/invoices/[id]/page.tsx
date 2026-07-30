@@ -98,7 +98,7 @@ export default async function InvoiceDetailPage({
   const hasMultiplePartners = partnerGroups.length > 1;
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-6">
       <div className="flex items-center gap-2 text-sm">
         <Link href="/invoices" className="text-blue-600 hover:underline">
           ← Hóa đơn

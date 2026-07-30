@@ -50,7 +50,7 @@ export default async function FinanceLandingPage() {
   const settings = settingsRows[0] ?? { id: 1, taxRate: 0.2, businessStartDate: null };
 
   return (
-    <div className="max-w-5xl space-y-5">
+    <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-bold">Tài chính công ty</h1>
         <p className="text-sm text-slate-500 mt-1">

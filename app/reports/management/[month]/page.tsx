@@ -108,7 +108,7 @@ export default async function MonthDetailPage({ params }: { params: Params }) {
   const monthNum = Number(month.slice(5));
 
   return (
-    <div className="max-w-7xl space-y-6">
+    <div className="space-y-6">
       <div>
         <div className="text-xs">
           <Link href={`/reports/management?year=${year}`} className="text-blue-600 hover:underline">

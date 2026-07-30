@@ -17,7 +17,7 @@ export default async function AdminUsersPage() {
     .orderBy(desc(userPermissions.invitedAt));
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-6">
       <div>
         <div className="text-xs">
           <Link href="/" className="text-blue-600 hover:underline">

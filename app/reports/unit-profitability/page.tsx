@@ -156,7 +156,7 @@ export default async function UnitProfitabilityPage({
   };
 
   return (
-    <div className="max-w-7xl space-y-4">
+    <div className="space-y-4">
       <div>
         <div className="text-xs">
           <Link href="/reports" className="text-blue-600 hover:underline">

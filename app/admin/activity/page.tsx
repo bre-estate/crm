@@ -165,7 +165,7 @@ export default async function ActivityAdminPage({
   }).length;
 
   return (
-    <div className="space-y-4 max-w-7xl">
+    <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-bold">Lịch sử hoạt động</h1>
         <p className="text-sm text-slate-500 mt-1">

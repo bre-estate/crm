@@ -62,7 +62,7 @@ export default async function AssetsPage() {
   const activeCount = assets.filter((a) => a.active).length;
 
   return (
-    <div className="max-w-6xl space-y-5">
+    <div className="space-y-5">
       <div>
         <div className="text-xs">
           <Link href="/finance" className="text-blue-600 hover:underline">

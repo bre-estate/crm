@@ -129,7 +129,7 @@ export default async function EditProductPage({
   const reconCdtBonusMgrSum = Number(reconBonusSums?.sumBonusMgr ?? 0);
 
   return (
-    <div className="space-y-4 max-w-4xl">
+    <div className="space-y-4">
       <div className="flex items-center gap-2 text-sm">
         <Link href={returnTo ?? "/products"} className="text-blue-600 hover:underline">
           ← Giao dịch

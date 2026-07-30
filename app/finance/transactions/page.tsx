@@ -84,7 +84,7 @@ export default async function TransactionsPage({
   const payerOptions = distinctPayers.map((r) => r.p).filter((p): p is string => !!p);
 
   return (
-    <div className="max-w-7xl space-y-4">
+    <div className="space-y-4">
       <div className="flex justify-between items-start">
         <div>
           <h1 className="text-2xl font-bold">Giao dịch tài chính</h1>

@@ -156,7 +156,7 @@ export default async function BalanceSheetPage() {
   const totalVCSH = liabEquity.filter((l) => l[3] === "vcsh").reduce((s, l) => s + l[2], 0);
 
   return (
-    <div className="max-w-6xl space-y-5">
+    <div className="space-y-5">
       <div>
         <div className="text-xs">
           <Link href="/reports" className="text-blue-600 hover:underline">

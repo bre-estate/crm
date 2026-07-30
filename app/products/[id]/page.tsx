@@ -288,7 +288,7 @@ export default async function ProductDetailPage({
   const effAdminFeeSale = derivedAdminFeeSaleFromRecons || Number(p.adminFeeSale ?? 0);
 
   return (
-    <div className="space-y-4 max-w-6xl">
+    <div className="space-y-4">
       {/* Breadcrumb + title */}
       <div className="flex items-center justify-between gap-2 text-sm">
         <div className="flex items-center gap-2">
@@ -453,7 +453,8 @@ export default async function ProductDetailPage({
         );
       })()}
 
-      {/* === 1. THÔNG TIN CĂN === */}
+      {/* === 1. THÔNG TIN CĂN === (bỏ mã căn/mã SP/loại giao dịch/dự án/đối tác
+           vì đã hiện ở header title/breadcrumb/badge) */}
       <SectionCard title="1. Thông tin căn" icon="🏠">
         {(() => {
           const tpkdName = nvkdCtvUnassigned
@@ -471,13 +472,6 @@ export default async function ProductDetailPage({
             (toTitleCase(p.salesPerson) || "—") + (isNvkdCtv ? " · CTV" : "");
           return (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
-              <Field label="Mã căn" value={p.unitCode} mono />
-              <Field label="Mã SP" value={p.productCode} mono />
-              <Field label="Loại giao dịch" value={isSecondary ? "Thứ cấp" : "Sơ cấp"} />
-              <Field label="Dự án" value={row.project?.name ?? "—"} />
-              {!isSecondary && (
-                <Field label="Đối tác (CĐT/F1)" value={row.partner?.name ?? "—"} />
-              )}
               <Field label="Mô tả căn" value={p.unitDescription ?? "—"} />
               <Field label="Tên khách" value={toTitleCase(p.customerName) || "—"} />
               <Field label="Ngày cọc" value={fmtDate(p.depositDate) || "—"} />

@@ -154,17 +154,17 @@ export default function HrChecksClient({ rows, activeField, countByField, sumByF
         </div>
       </div>
 
-      {/* Filters: Mã căn / Dự án / NVKD */}
-      <div className="bg-white border border-slate-200 rounded-lg p-3 flex flex-wrap gap-3 items-end">
+      {/* Filters: Mã căn / Dự án / NVKD — dùng cùng style với /costs, /revenues */}
+      <div className="bg-white border border-slate-200 rounded-xl p-4 flex gap-2 items-end flex-wrap">
         <div>
-          <label className="block text-[11px] text-slate-500 mb-1">Mã căn</label>
+          <label className="block text-xs text-slate-600 mb-1">Mã căn</label>
           <input
             type="text"
             value={qUnit}
             onChange={(e) => setQUnit(e.target.value)}
             list="dl-unit"
             placeholder="A.25.06 …"
-            className="input min-w-40 h-9 text-sm"
+            className="input min-w-32"
           />
           <datalist id="dl-unit">
             {suggestions.unit.map((s) => (
@@ -173,14 +173,14 @@ export default function HrChecksClient({ rows, activeField, countByField, sumByF
           </datalist>
         </div>
         <div>
-          <label className="block text-[11px] text-slate-500 mb-1">Dự án</label>
+          <label className="block text-xs text-slate-600 mb-1">Dự án</label>
           <input
             type="text"
             value={qProject}
             onChange={(e) => setQProject(e.target.value)}
             list="dl-project"
-            placeholder="Ví dụ: Emerald…"
-            className="input min-w-56 h-9 text-sm"
+            placeholder="Emerald …"
+            className="input min-w-72"
           />
           <datalist id="dl-project">
             {suggestions.project.map((s) => (
@@ -189,14 +189,14 @@ export default function HrChecksClient({ rows, activeField, countByField, sumByF
           </datalist>
         </div>
         <div>
-          <label className="block text-[11px] text-slate-500 mb-1">NVKD</label>
+          <label className="block text-xs text-slate-600 mb-1">NVKD</label>
           <input
             type="text"
             value={qSale}
             onChange={(e) => setQSale(e.target.value)}
             list="dl-sale"
-            placeholder="Ví dụ: Hồ Gia…"
-            className="input min-w-48 h-9 text-sm"
+            placeholder="Hồ Gia …"
+            className="input min-w-40"
           />
           <datalist id="dl-sale">
             {suggestions.sale.map((s) => (
@@ -212,14 +212,11 @@ export default function HrChecksClient({ rows, activeField, countByField, sumByF
               setQProject("");
               setQSale("");
             }}
-            className="h-9 px-3 rounded-lg text-sm border border-slate-300 hover:bg-slate-50"
+            className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200"
           >
             Xóa lọc
           </button>
         )}
-        <div className="ml-auto text-xs text-slate-500 self-center">
-          Gõ vài ký tự — có gợi ý tên có sẵn.
-        </div>
       </div>
 
       {/* Table */}

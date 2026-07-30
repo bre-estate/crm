@@ -386,7 +386,7 @@ export default async function AlertsPage() {
   const info = alerts.filter((a) => a.severity === "info");
 
   return (
-    <div className="max-w-5xl space-y-5">
+    <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-bold">🔔 Cảnh báo</h1>
         <p className="text-sm text-slate-500 mt-1">
