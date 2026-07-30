@@ -233,12 +233,16 @@ async function main() {
         .returning({ id: schema.costReconciliations.id });
       costRecCount++;
 
-      // Payment out chỉ attach vào dòng đầu (Excel gốc 1 dòng = 1 payment)
-      if (idx === 0 && (payDate || payAmount > 0)) {
+      // Payment per recon = amount RIÊNG của recon đó (KHÔNG phải tổng payAmount
+      // của cả row Excel — làm vậy sẽ dồn hết vào recon đầu, các recon anh em
+      // paid=0 → "còn nợ" âm/dương lệch dù batch tổng cân).
+      // Chỉ ghi payment khi row Excel có payDate hoặc payAmount ≠ 0
+      // (nghĩa là NV được trả đợt đó).
+      if (payDate || payAmount > 0) {
         await db.insert(schema.paymentsOut).values({
           costReconciliationId: rec.id,
           paymentDate: payDate,
-          amount: payAmount,
+          amount: ins.amount,
         });
         paymentOutCount++;
       }

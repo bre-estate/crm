@@ -294,7 +294,6 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-xs text-slate-600">
             <tr>
-              <th className="p-2 w-10"></th>
               <th className="p-2 w-8"></th>
               <th className="text-left p-2">Ngày ĐC</th>
               <th className="text-left p-2">Người</th>
@@ -305,6 +304,7 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
               <th className="text-right p-2">Đã trả</th>
               <th className="text-right p-2" title="Phải trả − Đã trả">Còn nợ</th>
               <th className="text-right p-2"></th>
+              <th className="p-2 w-10"></th>
             </tr>
           </thead>
           <tbody>

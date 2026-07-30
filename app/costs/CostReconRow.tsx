@@ -47,9 +47,6 @@ export default function CostReconRow({ row: r, paid, payments, editHref }: Props
         data-bulk-row-id={r.id}
         className={`border-t border-slate-100 hover:bg-slate-50 ${open ? "bg-slate-50" : ""}`}
       >
-        <td className="p-2">
-          <ExpandToggle isOpen={open} onClick={() => setOpen((v) => !v)} />
-        </td>
         <td className="p-2 text-center">
           <input
             type="checkbox"
@@ -113,6 +110,9 @@ export default function CostReconRow({ row: r, paid, payments, editHref }: Props
           <Link href={editHref} className="text-blue-600 hover:underline text-xs">
             Sửa
           </Link>
+        </td>
+        <td className="p-2 text-right">
+          <ExpandToggle isOpen={open} onClick={() => setOpen((v) => !v)} />
         </td>
       </tr>
       {open && (
