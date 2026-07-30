@@ -68,7 +68,7 @@ export default async function NewCostPage({ searchParams }: { searchParams: Sear
   const backLabel = defaultProductId ? "← Về căn" : "← Giá vốn";
 
   return (
-    <div className="space-y-4 max-w-4xl">
+    <div className="space-y-4">
       <div className="flex items-center gap-2 text-sm">
         <Link href={backHref} className="text-blue-600 hover:underline">
           {backLabel}

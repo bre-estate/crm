@@ -504,6 +504,66 @@ export default function CostForm({
           )}
         </div>
 
+        {/* Progress bar trực quan cho loại chi phí đang chọn */}
+        {product && targetForType > 0 && (() => {
+          const beforePct = Math.min(100, paidBeforePct);
+          const thisPctVal = targetForType > 0 ? (thisAmountFromN / targetForType) * 100 : 0;
+          const thisPct = Math.min(100 - beforePct, thisPctVal);
+          const totalAfterPct = beforePct + thisPct;
+          const isDone = paidBefore + thisAmountFromN >= targetForType - 1000;
+          const isZero = paidBefore < 1000 && thisAmountFromN < 1000;
+          const label = isZero
+            ? "Chưa chi đợt nào"
+            : isDone
+              ? "Đã chi đủ target"
+              : `Đã chi ${paidBeforePct.toFixed(0)}%` +
+                (thisAmountFromN > 0 ? ` (+${thisPctVal.toFixed(0)}% đợt này)` : "");
+          const badgeCls = isDone
+            ? "bg-green-100 text-green-700 border-green-300"
+            : isZero
+              ? "bg-amber-100 text-amber-700 border-amber-300"
+              : "bg-blue-100 text-blue-700 border-blue-300";
+          return (
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="text-xs font-semibold text-slate-700">
+                  Tiến độ chi cho <span className="text-orange-700">{costTypeLabel(costType)}</span> của căn này
+                </div>
+                <span
+                  className={`text-[11px] px-2 py-0.5 rounded border font-medium ${badgeCls}`}
+                >
+                  {label}
+                </span>
+              </div>
+              <div className="h-3 rounded-full bg-slate-100 border border-slate-200 overflow-hidden flex">
+                <div
+                  className="bg-green-500 h-full transition-all"
+                  style={{ width: `${beforePct}%` }}
+                  title={`Đã chi trước: ${fmtMoney(paidBefore)} (${paidBeforePct.toFixed(1)}%)`}
+                />
+                {thisAmountFromN > 0 && (
+                  <div
+                    className="bg-blue-400 h-full transition-all"
+                    style={{ width: `${thisPct}%` }}
+                    title={`Đợt này: ${fmtMoney(thisAmountFromN)} (${thisPctVal.toFixed(1)}%)`}
+                  />
+                )}
+              </div>
+              <div className="flex justify-between text-[10px] text-slate-500 mt-1 tabular-nums">
+                <span>
+                  {fmtMoney(paidBefore + thisAmountFromN)} / {fmtMoney(targetForType)}
+                </span>
+                <span>
+                  còn {fmtMoney(Math.max(0, targetForType - paidBefore - thisAmountFromN))}
+                </span>
+              </div>
+              <div className="text-[10px] text-slate-400 mt-0.5">
+                Xanh lá = đã chi các đợt trước · Xanh dương = đợt này (dự tính theo N nhập)
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Progress cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
           {(() => {

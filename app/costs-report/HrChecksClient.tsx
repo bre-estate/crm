@@ -43,18 +43,49 @@ const ALL_FIELDS: HrCheckField[] = [
 
 export default function HrChecksClient({ rows, activeField, countByField, sumByField }: Props) {
   const [expanded, setExpanded] = useState<number | null>(null);
+  const [qUnit, setQUnit] = useState("");
+  const [qProject, setQProject] = useState("");
+  const [qSale, setQSale] = useState("");
+
+  // Match text-search: case-insensitive, bỏ dấu tiếng Việt.
+  const norm = (s: string | null | undefined) =>
+    (s ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+
   const filtered = useMemo(() => {
-    const list = filterByField(rows, activeField);
-    // Sort desc theo |value|
+    const byField = filterByField(rows, activeField);
+    const u = norm(qUnit).trim();
+    const pj = norm(qProject).trim();
+    const sl = norm(qSale).trim();
+    const list = byField.filter((r) => {
+      if (u && !norm(r.unitCode).includes(u)) return false;
+      if (pj && !norm(r.projectName).includes(pj)) return false;
+      if (sl && !norm(r.salesPerson).includes(sl)) return false;
+      return true;
+    });
     return list.sort(
       (a, b) => Math.abs(b.values[activeField]) - Math.abs(a.values[activeField]),
     );
-  }, [rows, activeField]);
+  }, [rows, activeField, qUnit, qProject, qSale]);
 
   const isPct = PERCENT_FIELDS.has(activeField);
   const totalSum = sumByField[activeField];
   const totalCount = countByField[activeField];
   const relatedCostType = FIELD_TO_COST_TYPE[activeField];
+
+  // Autocomplete datalists (dedup + sort). Chỉ include các căn khớp active field
+  // để dropdown gợi ý có nghĩa (không lôi cả trăm căn khác không thuộc mục hiện tại).
+  const suggestions = useMemo(() => {
+    const inField = filterByField(rows, activeField);
+    const uniq = (arr: (string | null | undefined)[]) =>
+      [...new Set(arr.filter((x): x is string => !!x && x.trim() !== ""))].sort();
+    return {
+      unit: uniq(inField.map((r) => r.unitCode)),
+      project: uniq(inField.map((r) => r.projectName)),
+      sale: uniq(inField.map((r) => r.salesPerson)),
+    };
+  }, [rows, activeField]);
+
+  const filterActive = qUnit || qProject || qSale;
 
   return (
     <div className="space-y-4">
@@ -97,14 +128,20 @@ export default function HrChecksClient({ rows, activeField, countByField, sumByF
         <div className="text-xs text-slate-500 mt-1">
           {HR_CHECK_DESCRIPTIONS[activeField]}
         </div>
-        <div className="flex gap-6 mt-3 text-sm">
+        <div className="flex gap-6 mt-3 text-sm flex-wrap">
           <div>
-            <span className="text-slate-500">Số căn cần xử lý: </span>
+            <span className="text-slate-500">Tổng cần xử lý: </span>
             <span className="font-semibold text-slate-900">{totalCount}</span>
           </div>
+          {filterActive && (
+            <div>
+              <span className="text-slate-500">Sau lọc: </span>
+              <span className="font-semibold text-slate-900">{filtered.length}</span>
+            </div>
+          )}
           {!isPct && (
             <div>
-              <span className="text-slate-500">Tổng tiền: </span>
+              <span className="text-slate-500">Tổng tiền (chưa lọc): </span>
               <span
                 className={`font-semibold tabular-nums ${
                   totalSum >= 0 ? "text-orange-700" : "text-blue-700"
@@ -114,6 +151,74 @@ export default function HrChecksClient({ rows, activeField, countByField, sumByF
               </span>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Filters: Mã căn / Dự án / NVKD */}
+      <div className="bg-white border border-slate-200 rounded-lg p-3 flex flex-wrap gap-3 items-end">
+        <div>
+          <label className="block text-[11px] text-slate-500 mb-1">Mã căn</label>
+          <input
+            type="text"
+            value={qUnit}
+            onChange={(e) => setQUnit(e.target.value)}
+            list="dl-unit"
+            placeholder="A.25.06 …"
+            className="input min-w-40 h-9 text-sm"
+          />
+          <datalist id="dl-unit">
+            {suggestions.unit.map((s) => (
+              <option key={s} value={s} />
+            ))}
+          </datalist>
+        </div>
+        <div>
+          <label className="block text-[11px] text-slate-500 mb-1">Dự án</label>
+          <input
+            type="text"
+            value={qProject}
+            onChange={(e) => setQProject(e.target.value)}
+            list="dl-project"
+            placeholder="Ví dụ: Emerald…"
+            className="input min-w-56 h-9 text-sm"
+          />
+          <datalist id="dl-project">
+            {suggestions.project.map((s) => (
+              <option key={s} value={s} />
+            ))}
+          </datalist>
+        </div>
+        <div>
+          <label className="block text-[11px] text-slate-500 mb-1">NVKD</label>
+          <input
+            type="text"
+            value={qSale}
+            onChange={(e) => setQSale(e.target.value)}
+            list="dl-sale"
+            placeholder="Ví dụ: Hồ Gia…"
+            className="input min-w-48 h-9 text-sm"
+          />
+          <datalist id="dl-sale">
+            {suggestions.sale.map((s) => (
+              <option key={s} value={s} />
+            ))}
+          </datalist>
+        </div>
+        {filterActive && (
+          <button
+            type="button"
+            onClick={() => {
+              setQUnit("");
+              setQProject("");
+              setQSale("");
+            }}
+            className="h-9 px-3 rounded-lg text-sm border border-slate-300 hover:bg-slate-50"
+          >
+            Xóa lọc
+          </button>
+        )}
+        <div className="ml-auto text-xs text-slate-500 self-center">
+          Gõ vài ký tự — có gợi ý tên có sẵn.
         </div>
       </div>
 
