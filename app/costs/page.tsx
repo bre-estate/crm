@@ -5,10 +5,11 @@ import {
   projects,
   partners,
   paymentsOut,
+  employees,
 } from "@/lib/schema";
 import { fmtMoney, fmtDate, costTypeLabel, fmtPct, toTitleCase } from "@/lib/format";
 import { computeLuyKe } from "@/lib/costCalc";
-import { eq, desc, sum } from "drizzle-orm";
+import { eq, desc, sum, and } from "drizzle-orm";
 import Link from "next/link";
 import SearchableSelect from "@/components/SearchableSelect";
 import BulkDeleteBar from "../BulkDeleteBar";
@@ -26,6 +27,30 @@ type SearchParams = Promise<{
   deleted?: string;
   updated?: string;
 }>;
+
+// Cost types dùng chung cho cả 2 view
+const COST_TYPE_OPTIONS = [
+  { v: "sale_commission", l: "Hoa hồng sale" },
+  { v: "customer_support", l: "Hỗ trợ khách" },
+  { v: "bonus_sale", l: "Thưởng NVKD (CTY)" },
+  { v: "bonus_manager", l: "Thưởng TPKD (CTY)" },
+  { v: "cdt_bonus_sale", l: "Thưởng nóng CĐT (NVKD)" },
+  { v: "cdt_bonus_manager", l: "Thưởng nóng CĐT (TPKD)" },
+  { v: "kpi_ceo", l: "KPI CEO" },
+  { v: "kpi_tpkd", l: "KPI TPKD" },
+  { v: "kpi_admin", l: "KPI Admin" },
+];
+
+// Load list NVKD dùng cho SearchableSelect ở filter cả 2 view.
+// Chỉ lấy role=nvkd + active, skip alias (aliasOfId=null) để không lặp tên.
+async function loadNvkdOptions(): Promise<{ value: string; label: string; sublabel?: string }[]> {
+  const rows = await db
+    .select({ name: employees.name, position: employees.position })
+    .from(employees)
+    .where(and(eq(employees.active, true), eq(employees.position, "nvkd")))
+    .orderBy(employees.name);
+  return rows.map((r) => ({ value: r.name, label: r.name, sublabel: "NVKD" }));
+}
 
 export default async function CostsPage({ searchParams }: { searchParams: SearchParams }) {
   const { projectId, costType, unitCode, salesPerson, status, view, deleted, updated } =
@@ -53,11 +78,18 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
   const returnTo = `/costs${returnToQS ? "?" + returnToQS : ""}`;
   const filterProjectId = projectId ? Number(projectId) : null;
   const filterUnitCode = unitCode?.trim().toLowerCase() || null;
+  const filterSalesPerson = salesPerson?.trim().toLowerCase() || null;
 
-  const allProjects = await db
-    .select({ id: projects.id, name: projects.name, fullCode: projects.fullCode })
-    .from(projects)
-    .orderBy(projects.name);
+  const [allProjects, nvkdOptions] = await Promise.all([
+    db
+      .select({ id: projects.id, name: projects.name, fullCode: projects.fullCode })
+      .from(projects)
+      .orderBy(projects.name),
+    loadNvkdOptions(),
+  ]);
+
+  // Cần salesPerson của căn để filter (từ products.salesPerson)
+  const prodSalesPersonMap = new Map<number, string | null>();
 
   const allRows = await db
     .select({
@@ -88,12 +120,16 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
       productCdtBonusSale: products.cdtBonusSale,
       productCdtBonusMgr: products.cdtBonusManager,
       productAdminFeeSale: products.adminFeeSale,
+      salesPerson: products.salesPerson,
     })
     .from(costReconciliations)
     .leftJoin(products, eq(costReconciliations.productId, products.id))
     .leftJoin(projects, eq(products.projectId, projects.id))
     .leftJoin(partners, eq(projects.partnerId, partners.id))
     .orderBy(desc(costReconciliations.reconciliationDate));
+
+  // Cache productId → salesPerson để filter view khác cùng dữ liệu
+  for (const r of allRows) prodSalesPersonMap.set(r.productId, r.salesPerson);
 
   const filterProjectName = filterProjectId
     ? (allProjects.find((p) => p.id === filterProjectId)?.name ?? null)
@@ -102,6 +138,8 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
     if (filterProjectName && r.projectName !== filterProjectName) return false;
     if (costType && r.costType !== costType) return false;
     if (filterUnitCode && !(r.unitCode ?? "").toLowerCase().includes(filterUnitCode)) return false;
+    if (filterSalesPerson && !(r.salesPerson ?? "").toLowerCase().includes(filterSalesPerson))
+      return false;
     return true;
   });
 
@@ -176,15 +214,7 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
   const totalPayable = rows.reduce((s, r) => s + Number(r.amountPayable ?? 0), 0);
   const totalPaid = rows.reduce((s, r) => s + (paidMap.get(r.id) ?? 0), 0);
 
-  const costTypes = [
-    { v: "sale_commission", l: "HH sale" },
-    { v: "customer_support", l: "Hỗ trợ khách" },
-    { v: "bonus_sale", l: "Thưởng NVKD" },
-    { v: "bonus_manager", l: "Thưởng TPKD" },
-    { v: "kpi_ceo", l: "KPI CEO" },
-    { v: "kpi_tpkd", l: "KPI TPKD" },
-    { v: "kpi_admin", l: "KPI Admin" },
-  ];
+  const costTypes = COST_TYPE_OPTIONS;
 
   return (
     <div className="space-y-4">
@@ -201,118 +231,27 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
             : `Đã cập nhật đối chiếu #${updated}.`}
         </div>
       )}
-      <div className="flex justify-between items-center flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Đối chiếu giá vốn</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Tương ứng sheet 2.3_Gia von. Mỗi dòng = 1 cá nhân × 1 căn × 1 lần đối chiếu.{" "}
-            <span className="text-red-600">Số âm = điều chỉnh / hoàn trả</span> (vd thưởng đã trả thừa).
-          </p>
-        </div>
-        <div className="flex gap-2 items-center flex-wrap">
-          {/* View toggle */}
-          <div className="inline-flex rounded-lg border border-slate-300 overflow-hidden">
-            <span className="px-3 py-2 text-sm font-medium bg-orange-500 text-white">
-              Theo dòng
-            </span>
-            <Link
-              href={`/costs?view=byUnit${projectId ? "&projectId=" + projectId : ""}${costType ? "&costType=" + costType : ""}${unitCode ? "&unitCode=" + encodeURIComponent(unitCode) : ""}`}
-              className="px-3 py-2 text-sm font-medium bg-white text-slate-600 hover:bg-slate-50 border-l border-slate-300"
-              title="Xem gộp theo căn × loại (list căn nào chưa chi)"
-            >
-              Theo căn × loại
-            </Link>
-          </div>
-          <Link
-            href="/costs/bulk"
-            className="bg-slate-100 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-slate-200"
-          >
-            📊 Nhập hàng loạt
-          </Link>
-          <Link
-            href="/costs/new"
-            className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600"
-          >
-            + Thêm dòng đối chiếu
-          </Link>
-        </div>
-      </div>
-
-      <div className="bg-white border border-slate-200 rounded-xl p-4 flex gap-4 items-end flex-wrap">
-        <form className="flex gap-2 items-end flex-wrap">
-          <div>
-            <label className="block text-xs text-slate-600 mb-1">Mã căn</label>
-            <input
-              type="text"
-              name="unitCode"
-              defaultValue={unitCode ?? ""}
-              className="input min-w-32"
-              placeholder="vd: A.25.26"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-slate-600 mb-1">Dự án</label>
-            <SearchableSelect
-              name="projectId"
-              defaultValue={projectId ?? ""}
-              emptyOption="— Tất cả —"
-              placeholder="Gõ tên dự án..."
-              className="min-w-72"
-              options={allProjects.map((p) => ({
-                value: p.id,
-                label: p.name,
-                sublabel: p.fullCode,
-              }))}
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-slate-600 mb-1">Loại chi phí</label>
-            <select name="costType" defaultValue={costType ?? ""} className="input min-w-40">
-              <option value="">— Tất cả —</option>
-              {costTypes.map((t) => (
-                <option key={t.v} value={t.v}>
-                  {t.l}
-                </option>
-              ))}
-            </select>
-          </div>
-          <button className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200">
-            Lọc
-          </button>
-          {(filterProjectId || costType || filterUnitCode) && (
-            <Link
-              href="/costs"
-              className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200"
-            >
-              Reset
-            </Link>
-          )}
-        </form>
-        <div className="flex gap-6 text-sm ml-auto">
-          <div>
-            <div className="text-xs text-slate-500">Số dòng</div>
-            <div className="font-bold">{rows.length}</div>
-          </div>
-          <div>
-            <div className="text-xs text-slate-500">Tổng phải trả</div>
-            <div className="font-bold tabular-nums">{fmtMoney(totalPayable)}</div>
-          </div>
-          <div>
-            <div className="text-xs text-slate-500">Đã trả</div>
-            <div className="font-bold tabular-nums text-green-700">{fmtMoney(totalPaid)}</div>
-          </div>
-          <div>
-            <div className="text-xs text-slate-500">Còn phải trả</div>
-            <div
-              className={`font-bold tabular-nums ${
-                totalPayable - totalPaid < 1000 ? "text-slate-400" : "text-red-600"
-              }`}
-            >
-              {fmtMoney(totalPayable - totalPaid)}
-            </div>
-          </div>
-        </div>
-      </div>
+      <PageChrome
+        viewMode="recon"
+        allProjects={allProjects}
+        nvkdOptions={nvkdOptions}
+        projectIdParam={projectId}
+        costTypeParam={costType}
+        unitCodeParam={unitCode}
+        salesPersonParam={salesPerson}
+        statusParam={status}
+        stats={[
+          { label: "Số dòng", value: String(rows.length) },
+          { label: "Tổng phải trả", value: fmtMoney(totalPayable) },
+          { label: "Đã trả", value: fmtMoney(totalPaid), color: "text-green-700" },
+          {
+            label: "Còn phải trả",
+            value: fmtMoney(totalPayable - totalPaid),
+            color:
+              Math.abs(totalPayable - totalPaid) < 1000 ? "text-slate-400" : "text-red-600",
+          },
+        ]}
+      />
 
       <BulkDeleteBar
         entityLabel="đối chiếu giá vốn"
@@ -680,24 +619,21 @@ async function AggregatedCostsView(props: AggregatedProps) {
   });
   for (const r of scopeRows) statusCounts[r.status] = (statusCounts[r.status] ?? 0) + 1;
 
-  const costTypes = [
-    { v: "sale_commission", l: "Hoa hồng sale" },
-    { v: "customer_support", l: "Hỗ trợ khách" },
-    { v: "bonus_sale", l: "Thưởng NVKD (CTY)" },
-    { v: "bonus_manager", l: "Thưởng TPKD (CTY)" },
-    { v: "cdt_bonus_sale", l: "Thưởng nóng CĐT (NVKD)" },
-    { v: "cdt_bonus_manager", l: "Thưởng nóng CĐT (TPKD)" },
-    { v: "kpi_ceo", l: "KPI CEO" },
-    { v: "kpi_tpkd", l: "KPI TPKD" },
-    { v: "kpi_admin", l: "KPI Admin" },
-  ];
-
   const statusLabels: Record<string, { label: string; cls: string }> = {
     not_started: { label: "Chưa chi", cls: "bg-amber-100 text-amber-700 border-amber-300" },
     partial: { label: "Đang chi", cls: "bg-blue-100 text-blue-700 border-blue-300" },
     done: { label: "Đã đủ", cls: "bg-green-100 text-green-700 border-green-300" },
     over: { label: "Chi quá", cls: "bg-purple-100 text-purple-700 border-purple-300" },
   };
+
+  // Load NVKD options song song với dữ liệu chính
+  const nvkdOptions = await loadNvkdOptions();
+
+  // Stats từ filtered rows (matching stats slots của recon view để switch view
+  // không nhảy layout)
+  const sumTarget = filtered.reduce((s, r) => s + r.target, 0);
+  const sumPayable = filtered.reduce((s, r) => s + r.payable, 0);
+  const sumRemaining = filtered.reduce((s, r) => s + r.remaining, 0);
 
   // Build query preserving current filters when switching status
   const buildStatusHref = (s: string | null) => {
@@ -713,93 +649,26 @@ async function AggregatedCostsView(props: AggregatedProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-start flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Đối chiếu giá vốn</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            View <b>Theo căn × loại</b>: mỗi dòng = 1 căn × 1 loại chi phí. Hiện đủ căn dù chưa
-            có đối chiếu nào — tiện lọc &quot;căn nào loại X chưa chi&quot;.
-          </p>
-        </div>
-        <div className="flex gap-2 items-center flex-wrap">
-          <div className="inline-flex rounded-lg border border-slate-300 overflow-hidden">
-            <Link
-              href={`/costs${filterProjectId ? "?projectId=" + filterProjectId : ""}`}
-              className="px-3 py-2 text-sm font-medium bg-white text-slate-600 hover:bg-slate-50"
-            >
-              Theo dòng
-            </Link>
-            <span className="px-3 py-2 text-sm font-medium bg-orange-500 text-white border-l border-slate-300">
-              Theo căn × loại
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Filter bar */}
-      <div className="bg-white border border-slate-200 rounded-xl p-4 flex gap-3 items-end flex-wrap">
-        <form className="flex gap-2 items-end flex-wrap">
-          <input type="hidden" name="view" value="byUnit" />
-          <div>
-            <label className="block text-xs text-slate-600 mb-1">Mã căn</label>
-            <input
-              type="text"
-              name="unitCode"
-              defaultValue={props.unitCodeParam ?? ""}
-              className="input min-w-32"
-              placeholder="A.25.06 …"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-slate-600 mb-1">Dự án</label>
-            <SearchableSelect
-              name="projectId"
-              defaultValue={props.projectIdParam ?? ""}
-              emptyOption="— Tất cả —"
-              placeholder="Gõ tên dự án..."
-              className="min-w-72"
-              options={allProjects.map((p) => ({ value: p.id, label: p.name, sublabel: p.fullCode }))}
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-slate-600 mb-1">NVKD</label>
-            <input
-              type="text"
-              name="salesPerson"
-              defaultValue={props.salesPersonParam ?? ""}
-              className="input min-w-40"
-              placeholder="Hồ Gia …"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-slate-600 mb-1">Loại chi phí</label>
-            <select
-              name="costType"
-              defaultValue={filterCostType ?? ""}
-              className="input min-w-48"
-            >
-              <option value="">— Tất cả —</option>
-              {costTypes.map((t) => (
-                <option key={t.v} value={t.v}>
-                  {t.l}
-                </option>
-              ))}
-            </select>
-          </div>
-          {filterStatus && <input type="hidden" name="status" value={filterStatus} />}
-          <button className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200">
-            Lọc
-          </button>
-          {(filterProjectId || filterCostType || filterUnitCode || filterSalesPerson || filterStatus) && (
-            <Link
-              href="/costs?view=byUnit"
-              className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200"
-            >
-              Reset
-            </Link>
-          )}
-        </form>
-      </div>
+      <PageChrome
+        viewMode="byUnit"
+        allProjects={allProjects}
+        nvkdOptions={nvkdOptions}
+        projectIdParam={props.projectIdParam}
+        costTypeParam={props.costTypeParam}
+        unitCodeParam={props.unitCodeParam}
+        salesPersonParam={props.salesPersonParam}
+        statusParam={props.statusParam}
+        stats={[
+          { label: "Số (căn × loại)", value: String(filtered.length) },
+          { label: "Tổng target", value: fmtMoney(sumTarget) },
+          { label: "Đã chi", value: fmtMoney(sumPayable), color: "text-green-700" },
+          {
+            label: "Còn thiếu",
+            value: fmtMoney(sumRemaining),
+            color: sumRemaining < 1000 ? "text-slate-400" : "text-red-600",
+          },
+        ]}
+      />
 
       {/* Status chips (click để filter theo trạng thái) */}
       <div className="flex gap-2 flex-wrap items-center">
@@ -941,3 +810,182 @@ async function AggregatedCostsView(props: AggregatedProps) {
     </div>
   );
 }
+
+// ============================================================================
+// PageChrome — header + toggle + action buttons + filter bar + stats.
+// Cả 2 view (recon + byUnit) đều render qua đây → switch view KHÔNG nhảy UI.
+// ============================================================================
+type PageChromeProps = {
+  viewMode: "recon" | "byUnit";
+  allProjects: { id: number; name: string; fullCode: string }[];
+  nvkdOptions: { value: string; label: string; sublabel?: string }[];
+  projectIdParam?: string;
+  costTypeParam?: string;
+  unitCodeParam?: string;
+  salesPersonParam?: string;
+  statusParam?: string;
+  stats: { label: string; value: string; color?: string }[];
+};
+
+function PageChrome(props: PageChromeProps) {
+  const {
+    viewMode,
+    allProjects,
+    nvkdOptions,
+    projectIdParam,
+    costTypeParam,
+    unitCodeParam,
+    salesPersonParam,
+    statusParam,
+    stats,
+  } = props;
+  const hasFilter = !!(
+    projectIdParam ||
+    costTypeParam ||
+    unitCodeParam ||
+    salesPersonParam ||
+    statusParam
+  );
+  const otherViewUrl = (() => {
+    const target = viewMode === "recon" ? "byUnit" : "recon";
+    const qs = new URLSearchParams();
+    if (target === "byUnit") qs.set("view", "byUnit");
+    if (projectIdParam) qs.set("projectId", projectIdParam);
+    if (costTypeParam) qs.set("costType", costTypeParam);
+    if (unitCodeParam) qs.set("unitCode", unitCodeParam);
+    if (salesPersonParam) qs.set("salesPerson", salesPersonParam);
+    return `/costs${qs.toString() ? "?" + qs.toString() : ""}`;
+  })();
+  const resetUrl = viewMode === "byUnit" ? "/costs?view=byUnit" : "/costs";
+
+  return (
+    <>
+      {/* Header: title + toggle + action buttons */}
+      <div className="flex justify-between items-start flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">Đối chiếu giá vốn</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Tương ứng sheet 2.3_Gia von. Mỗi dòng = 1 cá nhân × 1 căn × 1 lần đối chiếu.{" "}
+            <span className="text-red-600">Số âm = điều chỉnh / hoàn trả</span> (vd thưởng đã trả thừa).
+          </p>
+        </div>
+        <div className="flex gap-2 items-center flex-wrap">
+          <div className="inline-flex rounded-lg border border-slate-300 overflow-hidden">
+            {viewMode === "recon" ? (
+              <>
+                <span className="px-3 py-2 text-sm font-medium bg-orange-500 text-white">
+                  Theo dòng
+                </span>
+                <Link
+                  href={otherViewUrl}
+                  className="px-3 py-2 text-sm font-medium bg-white text-slate-600 hover:bg-slate-50 border-l border-slate-300"
+                >
+                  Theo căn × loại
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  href={otherViewUrl}
+                  className="px-3 py-2 text-sm font-medium bg-white text-slate-600 hover:bg-slate-50"
+                >
+                  Theo dòng
+                </Link>
+                <span className="px-3 py-2 text-sm font-medium bg-orange-500 text-white border-l border-slate-300">
+                  Theo căn × loại
+                </span>
+              </>
+            )}
+          </div>
+          <Link
+            href="/costs/bulk"
+            className="bg-slate-100 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-slate-200"
+          >
+            📊 Nhập hàng loạt
+          </Link>
+          <Link
+            href="/costs/new"
+            className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600"
+          >
+            + Thêm dòng đối chiếu
+          </Link>
+        </div>
+      </div>
+
+      {/* Filter bar: cùng field cùng thứ tự cho cả 2 view */}
+      <div className="bg-white border border-slate-200 rounded-xl p-4 flex gap-4 items-end flex-wrap">
+        <form className="flex gap-2 items-end flex-wrap">
+          {viewMode === "byUnit" && <input type="hidden" name="view" value="byUnit" />}
+          {statusParam && <input type="hidden" name="status" value={statusParam} />}
+          <div>
+            <label className="block text-xs text-slate-600 mb-1">Mã căn</label>
+            <input
+              type="text"
+              name="unitCode"
+              defaultValue={unitCodeParam ?? ""}
+              className="input min-w-32"
+              placeholder="vd: A.25.26"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-600 mb-1">Dự án</label>
+            <SearchableSelect
+              name="projectId"
+              defaultValue={projectIdParam ?? ""}
+              emptyOption="— Tất cả —"
+              placeholder="Gõ tên dự án..."
+              className="min-w-72"
+              options={allProjects.map((p) => ({
+                value: p.id,
+                label: p.name,
+                sublabel: p.fullCode,
+              }))}
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-600 mb-1">NVKD</label>
+            <SearchableSelect
+              name="salesPerson"
+              defaultValue={salesPersonParam ?? ""}
+              emptyOption="— Tất cả —"
+              placeholder="Gõ tên NVKD..."
+              className="min-w-56"
+              options={nvkdOptions}
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-600 mb-1">Loại chi phí</label>
+            <select name="costType" defaultValue={costTypeParam ?? ""} className="input min-w-48">
+              <option value="">— Tất cả —</option>
+              {COST_TYPE_OPTIONS.map((t) => (
+                <option key={t.v} value={t.v}>
+                  {t.l}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200">
+            Lọc
+          </button>
+          {hasFilter && (
+            <Link
+              href={resetUrl}
+              className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200"
+            >
+              Reset
+            </Link>
+          )}
+        </form>
+        <div className="flex gap-6 text-sm ml-auto">
+          {stats.map((s, i) => (
+            <div key={i}>
+              <div className="text-xs text-slate-500">{s.label}</div>
+              <div className={`font-bold tabular-nums ${s.color ?? ""}`}>{s.value}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+

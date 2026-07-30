@@ -1,6 +1,10 @@
 export const fmtMoney = (v: number | null | undefined): string => {
   if (v === null || v === undefined || isNaN(Number(v))) return "0";
-  return new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 0 }).format(Number(v));
+  const n = Number(v);
+  // Normalize -0 và giá trị nhỏ dưới ngưỡng làm tròn (VD -0.4 do floating point
+  // → hiển thị "-0" trước đây). Bất kỳ |n| < 0.5 → "0" thẳng.
+  if (Math.abs(n) < 0.5) return "0";
+  return new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 0 }).format(n);
 };
 
 // Compact: drop trailing zeros (7% / 5,5% / 4,45%). VN standard: comma decimal.
