@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import ExpandToggle from "@/components/ExpandToggle";
+import SearchableSelect from "@/components/SearchableSelect";
 import {
   HR_CHECK_LABELS,
   HR_CHECK_DESCRIPTIONS,
@@ -154,7 +155,7 @@ export default function HrChecksClient({ rows, activeField, countByField, sumByF
         </div>
       </div>
 
-      {/* Filters: Mã căn / Dự án / NVKD — dùng cùng style với /costs, /revenues */}
+      {/* Filters: Mã căn / Dự án / NVKD — cùng element type với /costs (SearchableSelect) */}
       <div className="bg-white border border-slate-200 rounded-xl p-4 flex gap-2 items-end flex-wrap">
         <div>
           <label className="block text-xs text-slate-600 mb-1">Mã căn</label>
@@ -162,47 +163,31 @@ export default function HrChecksClient({ rows, activeField, countByField, sumByF
             type="text"
             value={qUnit}
             onChange={(e) => setQUnit(e.target.value)}
-            list="dl-unit"
-            placeholder="A.25.06 …"
+            placeholder="vd: A.25.26"
             className="input min-w-32"
           />
-          <datalist id="dl-unit">
-            {suggestions.unit.map((s) => (
-              <option key={s} value={s} />
-            ))}
-          </datalist>
         </div>
         <div>
           <label className="block text-xs text-slate-600 mb-1">Dự án</label>
-          <input
-            type="text"
+          <SearchableSelect
             value={qProject}
-            onChange={(e) => setQProject(e.target.value)}
-            list="dl-project"
-            placeholder="Emerald …"
-            className="input min-w-72"
+            onChange={setQProject}
+            emptyOption="— Tất cả —"
+            placeholder="Gõ tên dự án..."
+            className="min-w-72"
+            options={suggestions.project.map((s) => ({ value: s, label: s }))}
           />
-          <datalist id="dl-project">
-            {suggestions.project.map((s) => (
-              <option key={s} value={s} />
-            ))}
-          </datalist>
         </div>
         <div>
           <label className="block text-xs text-slate-600 mb-1">NVKD</label>
-          <input
-            type="text"
+          <SearchableSelect
             value={qSale}
-            onChange={(e) => setQSale(e.target.value)}
-            list="dl-sale"
-            placeholder="Hồ Gia …"
-            className="input min-w-40"
+            onChange={setQSale}
+            emptyOption="— Tất cả —"
+            placeholder="Gõ tên NVKD..."
+            className="min-w-56"
+            options={suggestions.sale.map((s) => ({ value: s, label: s }))}
           />
-          <datalist id="dl-sale">
-            {suggestions.sale.map((s) => (
-              <option key={s} value={s} />
-            ))}
-          </datalist>
         </div>
         {filterActive && (
           <button
@@ -214,7 +199,7 @@ export default function HrChecksClient({ rows, activeField, countByField, sumByF
             }}
             className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200"
           >
-            Xóa lọc
+            Reset
           </button>
         )}
       </div>
