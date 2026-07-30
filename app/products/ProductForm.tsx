@@ -266,7 +266,7 @@ export default function ProductForm({
         )}
 
       <Section title="Thông tin căn">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Field label="Loại giao dịch" required>
             <select
               name="saleType"
@@ -445,7 +445,7 @@ export default function ProductForm({
       <Section title={isSecondary ? "Doanh thu" : "Doanh thu (CĐT/F1 trả BRE)"}>
         {isSecondary ? (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <Field label="Doanh thu về cty">
                 <MoneyInput
                   name="totalRevenue"
@@ -470,7 +470,7 @@ export default function ProductForm({
           </>
         ) : (
           <>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Field label="Giá tính PMG (= giá bán)">
               {lockCoreFields ? (
                 <>
@@ -626,7 +626,7 @@ export default function ProductForm({
       </Section>
 
       <Section title={isSecondary ? "Giá vốn (BRE trả NVKD)" : "Giá vốn (BRE trả nội bộ)"}>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {!isSecondary && (
             <Field label="%PMG_LK_sale (base tính HH sale)">
               <input

@@ -491,70 +491,63 @@ export default async function ProductDetailPage({
       {/* === 2. DOANH THU === (chỉ áp dụng sơ cấp) */}
       {!isSecondary && (
         <SectionCard title="2. Doanh thu (CĐT/F1 trả BRE)" icon="💰">
-          {/* Row 1: Giá tính PMG + Lịch sử %PMG_LK */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-            <Info
-              label="Giá tính PMG (= giá bán)"
-              value={fmtMoney(p.pmgBasePrice)}
-            />
-            <div className="bg-slate-50 rounded-lg p-3">
-              <div className="text-xs text-slate-500 mb-1">Lịch sử %PMG_LK</div>
-              <div className="flex flex-wrap gap-1.5 mt-1">
-                {pmgHistory.length === 0 ? (
-                  <span className="text-sm font-medium tabular-nums">
-                    {fmtPctTight(p.pmgRate)}
-                  </span>
-                ) : (
-                  pmgHistory.map((h, i) => (
-                    <span
-                      key={h.rate}
-                      className={`text-xs px-2 py-0.5 rounded ${i === pmgHistory.length - 1 ? "bg-amber-200 text-amber-900 font-semibold" : "bg-slate-200 text-slate-600"}`}
-                    >
-                      {fmtPct(h.rate, 2)}
-                      {h.date && <span className="ml-1 text-[10px] opacity-70">({fmtDate(h.date)})</span>}
-                    </span>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Row 2: Phí admin */}
+          {/* Info blocks: chuẩn grid 1/2/4 responsive — nhất quán với section giá vốn */}
           {(() => {
             const feeReal = Number(p.adminFee ?? 0);
             const feeSale = Number(p.adminFeeSale ?? 0);
             const sameFee = Math.abs(feeReal - feeSale) < 1000;
-            if (sameFee) {
-              return (
-                <div className="grid grid-cols-2 gap-3 mb-3">
+            return (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                <Info
+                  label="Giá tính PMG (= giá bán)"
+                  value={fmtMoney(p.pmgBasePrice)}
+                />
+                {sameFee ? (
                   <Info
                     label="Phí admin"
                     value={fmtMoney(feeReal)}
                     tooltip="Số CĐT trừ khỏi PMG trước khi trả BRE. Đồng thời cũng là số dùng khi tính HH sale."
                   />
-                </div>
-              );
-            }
-            return (
-              <div className="grid grid-cols-2 gap-3 mb-3">
-                <Info
-                  label="Phí admin (CĐT trừ)"
-                  value={fmtMoney(feeReal)}
-                  tooltip="Số CĐT trừ khỏi PMG trước khi trả BRE (VD PMG 100M − admin 8,8M → BRE nhận 91,2M)."
-                />
-                <Info
-                  label="Phí admin (tính HH sale)"
-                  value={fmtMoney(feeSale)}
-                  tooltip={`Số dùng trong công thức tính HH sale — thấp hơn phí thực (${fmtMoney(feeReal)}) để sale nhận HH cao hơn. Chênh ${fmtMoney(feeReal - feeSale)} công ty tự chịu.`}
-                />
+                ) : (
+                  <>
+                    <Info
+                      label="Phí admin (CĐT trừ)"
+                      value={fmtMoney(feeReal)}
+                      tooltip="Số CĐT trừ khỏi PMG trước khi trả BRE (VD PMG 100M − admin 8,8M → BRE nhận 91,2M)."
+                    />
+                    <Info
+                      label="Phí admin (tính HH sale)"
+                      value={fmtMoney(feeSale)}
+                      tooltip={`Số dùng trong công thức tính HH sale — thấp hơn phí thực (${fmtMoney(feeReal)}) để sale nhận HH cao hơn. Chênh ${fmtMoney(feeReal - feeSale)} công ty tự chịu.`}
+                    />
+                  </>
+                )}
+                <Info label="CĐT thưởng nóng cho sale" value={fmtMoney(p.cdtBonusSale)} />
+                <Info label="CĐT thưởng nóng cho QL" value={fmtMoney(p.cdtBonusManager)} />
               </div>
             );
           })()}
 
-          {/* Row 3: CĐT thưởng nóng */}
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <Info label="CĐT thưởng nóng cho sale" value={fmtMoney(p.cdtBonusSale)} />
-            <Info label="CĐT thưởng nóng cho QL" value={fmtMoney(p.cdtBonusManager)} />
+          {/* Lịch sử %PMG_LK — full width block riêng vì chứa nhiều chip */}
+          <div className="bg-slate-50 rounded-lg px-3 py-2 mb-3">
+            <div className="text-xs text-slate-500 mb-1">Lịch sử %PMG_LK</div>
+            <div className="flex flex-wrap gap-1.5">
+              {pmgHistory.length === 0 ? (
+                <span className="text-sm font-medium tabular-nums">
+                  {fmtPctTight(p.pmgRate)}
+                </span>
+              ) : (
+                pmgHistory.map((h, i) => (
+                  <span
+                    key={h.rate}
+                    className={`text-xs px-2 py-0.5 rounded ${i === pmgHistory.length - 1 ? "bg-amber-200 text-amber-900 font-semibold" : "bg-slate-200 text-slate-600"}`}
+                  >
+                    {fmtPct(h.rate, 2)}
+                    {h.date && <span className="ml-1 text-[10px] opacity-70">({fmtDate(h.date)})</span>}
+                  </span>
+                ))
+              )}
+            </div>
           </div>
 
           {/* 3 cards Tổng doanh thu — theo công thức Excel sheet 2.1 col P */}
@@ -613,7 +606,7 @@ export default async function ProductDetailPage({
 
       {/* === 3. GIÁ VỐN === */}
       <SectionCard title={isSecondary ? "2. Giá vốn (BRE trả NVKD)" : "3. Giá vốn (BRE trả nội bộ)"} icon="🏦">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
           {!isSecondary && (
             <Info
               label="%PMG_LK_sale (base HH sale + KPI)"
