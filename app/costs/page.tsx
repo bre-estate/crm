@@ -1,3 +1,4 @@
+import React from "react";
 import { db } from "@/lib/db";
 import {
   costReconciliations,
@@ -14,6 +15,7 @@ import Link from "next/link";
 import SearchableSelect from "@/components/SearchableSelect";
 import BulkDeleteBar from "../BulkDeleteBar";
 import { deleteCostBulk } from "@/lib/actions/costs";
+import CostReconRow, { type CostReconPayment } from "./CostReconRow";
 
 export const dynamic = "force-dynamic";
 
@@ -104,6 +106,8 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
       kpiAmount: costReconciliations.kpiAmount,
       customerSupport: costReconciliations.customerSupport,
       amountPayable: costReconciliations.amountPayableThisTime,
+      paymentProgressPct: costReconciliations.paymentProgressPct,
+      note: costReconciliations.note,
       unitCode: products.unitCode,
       projectName: projects.name,
       partnerName: partners.name,
@@ -162,14 +166,28 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
     return (b.date ?? "").localeCompare(a.date ?? "");
   });
 
-  const paymentAgg = await db
+  // Load raw payments để vừa tính paidMap (total per recon) vừa dựng list
+  // chi tiết payments trong expand row.
+  const paymentRows = await db
     .select({
+      id: paymentsOut.id,
       recId: paymentsOut.costReconciliationId,
-      total: sum(paymentsOut.amount).as("total"),
+      date: paymentsOut.paymentDate,
+      amount: paymentsOut.amount,
+      note: paymentsOut.note,
     })
     .from(paymentsOut)
-    .groupBy(paymentsOut.costReconciliationId);
-  const paidMap = new Map(paymentAgg.map((r) => [r.recId, Number(r.total ?? 0)]));
+    .orderBy(paymentsOut.paymentDate);
+  const paidMap = new Map<number, number>();
+  const paymentsByRecon = new Map<number, CostReconPayment[]>();
+  for (const p of paymentRows) {
+    if (p.recId == null) continue;
+    const amt = Number(p.amount ?? 0);
+    paidMap.set(p.recId, (paidMap.get(p.recId) ?? 0) + amt);
+    const list = paymentsByRecon.get(p.recId) ?? [];
+    list.push({ id: p.id, date: p.date, amount: amt, note: p.note });
+    paymentsByRecon.set(p.recId, list);
+  }
 
   // Tính subtotal per loại + target (target chỉ có nghĩa khi filter về 1 căn)
   const uniqueProdIds = new Set(rows.map((r) => r.productId));
@@ -276,17 +294,16 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-xs text-slate-600">
             <tr>
+              <th className="p-2 w-10"></th>
               <th className="p-2 w-8"></th>
               <th className="text-left p-2">Ngày ĐC</th>
               <th className="text-left p-2">Người</th>
               <th className="text-left p-2">Loại</th>
               <th className="text-left p-2">Dự án / Căn</th>
               <th className="text-right p-2">%HH/%KPI</th>
-              <th className="text-right p-2">PMG đợt</th>
-              <th className="text-right p-2">KPI đợt</th>
-              <th className="text-right p-2">Hỗ trợ khách</th>
               <th className="text-right p-2">Phải trả</th>
               <th className="text-right p-2">Đã trả</th>
+              <th className="text-right p-2" title="Phải trả − Đã trả">Còn nợ</th>
               <th className="text-right p-2"></th>
             </tr>
           </thead>
@@ -296,141 +313,98 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
               const prevType = idx > 0 ? rows[idx - 1].costType : null;
               const isFirstOfGroup = r.costType !== prevType;
               const subtotal = subtotalByType.get(r.costType);
-              return [
-                isFirstOfGroup && subtotal ? (
-                    (() => {
-                      const target = subtotal.target;
-                      const pct = target > 0 ? (subtotal.payable / target) * 100 : 0;
-                      const done = target > 0 && Math.abs(subtotal.payable - target) < 1000;
-                      const over = target > 0 && subtotal.payable - target > 1000;
-                      const under = target > 0 && target - subtotal.payable > 1000;
-                      return (
-                        <tr
-                          key={`hdr-${r.costType}`}
-                          className="bg-slate-50 border-t-2 border-slate-300"
-                        >
-                          <td colSpan={12} className="p-2 text-xs">
-                            <div className="flex items-center gap-3 flex-wrap">
-                              <span className="font-semibold text-slate-700">
-                                {costTypeLabel(r.costType)}
+              const editHref = `/costs/${r.id}/edit${
+                returnToQS ? `?returnTo=${encodeURIComponent(returnTo)}` : ""
+              }`;
+              const payments = paymentsByRecon.get(r.id) ?? [];
+              return (
+                <React.Fragment key={r.id}>
+                  {isFirstOfGroup && subtotal && (() => {
+                    const target = subtotal.target;
+                    const pct = target > 0 ? (subtotal.payable / target) * 100 : 0;
+                    const done = target > 0 && Math.abs(subtotal.payable - target) < 1000;
+                    const over = target > 0 && subtotal.payable - target > 1000;
+                    return (
+                      <tr
+                        key={`hdr-${r.costType}`}
+                        className="bg-slate-50 border-t-2 border-slate-300"
+                      >
+                        <td colSpan={11} className="p-2 text-xs">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <span className="font-semibold text-slate-700">
+                              {costTypeLabel(r.costType)}
+                            </span>
+                            <span className="text-slate-500">
+                              · {subtotal.count} dòng · Tổng đã ĐC:{" "}
+                              <span className="font-semibold tabular-nums text-slate-800">
+                                {fmtMoney(subtotal.payable)}
                               </span>
-                              <span className="text-slate-500">
-                                · {subtotal.count} dòng · Tổng đã chi:{" "}
-                                <span className="font-semibold tabular-nums text-slate-800">
-                                  {fmtMoney(subtotal.payable)}
-                                </span>
-                                {target > 0 && (
-                                  <>
-                                    {" "}
-                                    · Target:{" "}
-                                    <span className="font-semibold tabular-nums text-slate-800">
-                                      {fmtMoney(target)}
-                                    </span>{" "}
-                                    ·{" "}
-                                    <span
-                                      className={`font-bold tabular-nums ${
-                                        done
-                                          ? "text-green-700"
-                                          : over
-                                            ? "text-purple-700"
-                                            : under
-                                              ? "text-amber-700"
-                                              : "text-slate-500"
-                                      }`}
-                                      title={
-                                        done
-                                          ? "Đã chi đủ target"
-                                          : over
-                                            ? `Chi quá ${fmtMoney(subtotal.payable - target)}`
-                                            : `Còn thiếu ${fmtMoney(target - subtotal.payable)}`
-                                      }
-                                    >
-                                      {pct.toFixed(0)}%
-                                    </span>
-                                  </>
-                                )}
-                              </span>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })()
-                ) : null,
-                  <tr
-                    key={r.id}
-                    data-bulk-row-id={r.id}
-                    className="border-t border-slate-100 hover:bg-slate-50"
-                  >
-                  <td className="p-2 text-center">
-                    <input
-                      type="checkbox"
-                      className="js-bulk-check cursor-pointer"
-                      data-bulk-id={r.id}
-                    />
-                  </td>
-                  <td className="p-2 text-xs">{fmtDate(r.date)}</td>
-                  <td className="p-2 text-xs">{toTitleCase(r.employee)}</td>
-                  <td className="p-2">
-                    <span className="text-xs px-2 py-0.5 rounded bg-slate-100">
-                      {costTypeLabel(r.costType)}
-                    </span>
-                  </td>
-                  <td className="p-2">
-                    <div className="text-xs">{r.projectName}</div>
-                    <Link
-                      href={`/products/${r.productId}`}
-                      className="font-mono text-xs text-blue-600 hover:underline"
-                    >
-                      {r.unitCode}
-                    </Link>
-                  </td>
-                  <td className="p-2 text-right tabular-nums text-xs">
-                    {r.kpiRate ? fmtPct(r.kpiRate) : r.commissionRate ? fmtPct(r.commissionRate) : "—"}
-                  </td>
-                  <td className="p-2 text-right tabular-nums">
-                    {r.pmgThis ? fmtMoney(r.pmgThis) : "—"}
-                  </td>
-                  <td
-                    className={`p-2 text-right tabular-nums ${
-                      Number(r.kpiAmount) < 0 ? "text-red-600" : ""
-                    }`}
-                  >
-                    {r.kpiAmount ? fmtMoney(r.kpiAmount) : "—"}
-                  </td>
-                  <td
-                    className={`p-2 text-right tabular-nums ${
-                      Number(r.customerSupport) < 0 ? "text-red-600" : ""
-                    }`}
-                  >
-                    {r.customerSupport ? fmtMoney(r.customerSupport) : "—"}
-                  </td>
-                  <td
-                    className={`p-2 text-right tabular-nums font-semibold ${
-                      Number(r.amountPayable) < 0 ? "text-red-600" : ""
-                    }`}
-                    title={Number(r.amountPayable) < 0 ? "Số âm = điều chỉnh / hoàn trả" : ""}
-                  >
-                    {fmtMoney(r.amountPayable)}
-                  </td>
-                  <td className="p-2 text-right tabular-nums text-green-700">
-                    {paid !== 0 ? fmtMoney(paid) : <span className="text-slate-400">Chưa trả</span>}
-                  </td>
-                  <td className="p-2 text-right">
-                    <Link
-                      href={`/costs/${r.id}/edit${
-                        returnToQS ? `?returnTo=${encodeURIComponent(returnTo)}` : ""
-                      }`}
-                      className="text-blue-600 hover:underline text-xs"
-                    >
-                      Sửa
-                    </Link>
-                  </td>
-                </tr>,
-              ];
+                              {target > 0 && (
+                                <>
+                                  {" "}
+                                  · Target:{" "}
+                                  <span className="font-semibold tabular-nums text-slate-800">
+                                    {fmtMoney(target)}
+                                  </span>{" "}
+                                  ·{" "}
+                                  <span
+                                    className={`font-bold tabular-nums ${
+                                      done
+                                        ? "text-green-700"
+                                        : over
+                                          ? "text-purple-700"
+                                          : "text-amber-700"
+                                    }`}
+                                    title={
+                                      done
+                                        ? "Đã ĐC đủ target"
+                                        : over
+                                          ? `ĐC quá ${fmtMoney(subtotal.payable - target)}`
+                                          : `Còn thiếu ${fmtMoney(target - subtotal.payable)}`
+                                    }
+                                  >
+                                    {pct.toFixed(0)}%
+                                  </span>
+                                </>
+                              )}
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })()}
+                  <CostReconRow
+                    row={{
+                      id: r.id,
+                      productId: r.productId,
+                      date: r.date,
+                      employee: r.employee,
+                      costType: r.costType,
+                      commissionRate:
+                        r.commissionRate == null ? null : Number(r.commissionRate),
+                      kpiRate: r.kpiRate == null ? null : Number(r.kpiRate),
+                      paymentProgressPct:
+                        r.paymentProgressPct == null ? null : Number(r.paymentProgressPct),
+                      pmgThis: r.pmgThis == null ? null : Number(r.pmgThis),
+                      kpiAmount: r.kpiAmount == null ? null : Number(r.kpiAmount),
+                      customerSupport:
+                        r.customerSupport == null ? null : Number(r.customerSupport),
+                      amountPayable:
+                        r.amountPayable == null ? null : Number(r.amountPayable),
+                      unitCode: r.unitCode,
+                      projectName: r.projectName,
+                      note: r.note ?? null,
+                    }}
+                    paid={paid}
+                    payments={payments}
+                    editHref={editHref}
+                  />
+                </React.Fragment>
+              );
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={12} className="p-6 text-center text-slate-500">
+                <td colSpan={11} className="p-6 text-center text-slate-500">
                   Chưa có dòng giá vốn nào.
                 </td>
               </tr>
