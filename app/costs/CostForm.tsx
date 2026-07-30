@@ -167,13 +167,20 @@ export default function CostForm({
   const showSupport = costType === "customer_support";
   const showKpi = costType === "kpi_ceo" || costType === "kpi_tpkd" || costType === "kpi_admin";
   const showBonus = costType === "bonus_sale" || costType === "bonus_manager";
-  // Thưởng nóng (bonus_*, cdt_bonus_*) là số flat — không dùng tiến độ PMG (N)
+  // Chi phí flat — không dùng tiến độ PMG (N):
+  //   - Thưởng nóng CTY (bonus_*) + CĐT (cdt_bonus_*): số cố định
+  //   - Hỗ trợ khách: số cố định
+  //   - KPI CEO/TPKD/Admin: chốt theo target đầy đủ, chi theo đợt tự do (operator
+  //     nhập số tiền từng đợt, không phụ thuộc tiến độ khách trả CĐT).
   const isFlatCost =
     costType === "bonus_sale" ||
     costType === "bonus_manager" ||
     costType === "cdt_bonus_sale" ||
     costType === "cdt_bonus_manager" ||
-    costType === "customer_support";
+    costType === "customer_support" ||
+    costType === "kpi_ceo" ||
+    costType === "kpi_tpkd" ||
+    costType === "kpi_admin";
 
   // === Auto-calc state ===
   const parsePct = (s: string): number => {
@@ -288,16 +295,28 @@ export default function CostForm({
   const thisPctNum = progressNNum;
   const thisAmountFromPct = thisAmountFromN;
 
-  // Auto-sync totalAmt = thisAmountFromN mỗi khi N/product/costType đổi.
+  // Số tiền đợt này gợi ý cho chi phí flat = còn lại (target − đã ĐC trước).
+  // Operator có thể sửa tự do nếu chi ít hơn.
+  const flatDefault = useMemo(
+    () => Math.max(0, targetForType - paidBefore),
+    [targetForType, paidBefore],
+  );
+
+  // Auto-sync totalAmt khi N/product/costType đổi.
   // Trên EDIT: khởi tạo manuallyOverriddenRef = true (giữ giá trị recon cũ, không ghi đè
   //   bằng recompute — vì config M có thể đã đổi từ lúc recon được tạo).
   //   Chỉ khi user chủ động sửa N → mới cho phép sync lại từ formula.
   const manuallyOverriddenRef = useRef(isEdit);
   useEffect(() => {
     if (manuallyOverriddenRef.current) return;
+    if (isFlatCost) {
+      // KPI + thưởng + hỗ trợ khách: default = còn lại target
+      setTotalAmt(flatDefault);
+      return;
+    }
     if (thisAmountFromN > 0) setTotalAmt(thisAmountFromN);
     else if (progressN === "") setTotalAmt(0);
-  }, [thisAmountFromN, progressN]);
+  }, [thisAmountFromN, progressN, isFlatCost, flatDefault]);
 
   // Validate N không được lùi so với đợt trước
   const isNRegression = progressN !== "" && progressNNum < maxPrevN;
@@ -506,18 +525,20 @@ export default function CostForm({
 
         {/* Progress bar trực quan cho loại chi phí đang chọn */}
         {product && targetForType > 0 && (() => {
+          // Với flat cost (KPI + thưởng + hỗ trợ khách) → "đợt này" = totalAmt user nhập
+          // Với sale_commission → "đợt này" = thisAmountFromN (tính từ N)
+          const thisAmountDisplay = isFlatCost ? Math.max(0, totalAmt) : thisAmountFromN;
           const beforePct = Math.min(100, paidBeforePct);
-          const thisPctVal = targetForType > 0 ? (thisAmountFromN / targetForType) * 100 : 0;
+          const thisPctVal = targetForType > 0 ? (thisAmountDisplay / targetForType) * 100 : 0;
           const thisPct = Math.min(100 - beforePct, thisPctVal);
-          const totalAfterPct = beforePct + thisPct;
-          const isDone = paidBefore + thisAmountFromN >= targetForType - 1000;
-          const isZero = paidBefore < 1000 && thisAmountFromN < 1000;
+          const isDone = paidBefore + thisAmountDisplay >= targetForType - 1000;
+          const isZero = paidBefore < 1000 && thisAmountDisplay < 1000;
           const label = isZero
             ? "Chưa chi đợt nào"
             : isDone
               ? "Đã chi đủ target"
               : `Đã chi ${paidBeforePct.toFixed(0)}%` +
-                (thisAmountFromN > 0 ? ` (+${thisPctVal.toFixed(0)}% đợt này)` : "");
+                (thisAmountDisplay > 0 ? ` (+${thisPctVal.toFixed(0)}% đợt này)` : "");
           const badgeCls = isDone
             ? "bg-green-100 text-green-700 border-green-300"
             : isZero
@@ -541,24 +562,26 @@ export default function CostForm({
                   style={{ width: `${beforePct}%` }}
                   title={`Đã chi trước: ${fmtMoney(paidBefore)} (${paidBeforePct.toFixed(1)}%)`}
                 />
-                {thisAmountFromN > 0 && (
+                {thisAmountDisplay > 0 && (
                   <div
                     className="bg-blue-400 h-full transition-all"
                     style={{ width: `${thisPct}%` }}
-                    title={`Đợt này: ${fmtMoney(thisAmountFromN)} (${thisPctVal.toFixed(1)}%)`}
+                    title={`Đợt này: ${fmtMoney(thisAmountDisplay)} (${thisPctVal.toFixed(1)}%)`}
                   />
                 )}
               </div>
               <div className="flex justify-between text-[10px] text-slate-500 mt-1 tabular-nums">
                 <span>
-                  {fmtMoney(paidBefore + thisAmountFromN)} / {fmtMoney(targetForType)}
+                  {fmtMoney(paidBefore + thisAmountDisplay)} / {fmtMoney(targetForType)}
                 </span>
                 <span>
-                  còn {fmtMoney(Math.max(0, targetForType - paidBefore - thisAmountFromN))}
+                  còn {fmtMoney(Math.max(0, targetForType - paidBefore - thisAmountDisplay))}
                 </span>
               </div>
               <div className="text-[10px] text-slate-400 mt-0.5">
-                Xanh lá = đã chi các đợt trước · Xanh dương = đợt này (dự tính theo N nhập)
+                {isFlatCost
+                  ? "Xanh lá = đã chi các đợt trước · Xanh dương = đợt này (số nhập bên dưới)"
+                  : "Xanh lá = đã chi các đợt trước · Xanh dương = đợt này (dự tính theo N nhập)"}
               </div>
             </div>
           );
@@ -626,42 +649,57 @@ export default function CostForm({
               {fmtPctRaw(paidBeforePct, 1)} mức tối đa
             </div>
           </div>
-          <div className="rounded-lg bg-blue-50 border border-blue-200 p-3">
-            <div className="text-xs text-blue-700">Đợt này (dự tính)</div>
-            <div className="text-sm font-semibold tabular-nums mt-1 text-blue-900">
-              {fmtMoney(thisAmountFromN)}
-            </div>
-            <div className="text-[10px] text-blue-500 mt-0.5">
-              {progressN
-                ? `Lũy kế mới ${fmtMoney(luyKeAtN)} − đã ĐC ${fmtMoney(paidBefore)}`
-                : "chưa nhập N"}
-            </div>
-          </div>
-          <div className="rounded-lg bg-slate-50 border border-slate-200 p-3">
-            <div className="text-xs text-slate-500">
-              Còn lại sau đợt này
-              <span
-                className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-300 text-white text-[9px] cursor-help select-none ml-1"
-                title={
-                  isEdit && Math.abs(currentM - effectiveM) > 0.0001
-                    ? `Tính theo M current (${(currentM * 100).toFixed(2)}%) — bao gồm phần hồi tố do M tăng từ ${(effectiveM * 100).toFixed(2)}% lên ${(currentM * 100).toFixed(2)}%`
-                    : "= Mức chi tối đa − Đã ĐC trước − Đợt này. Là số sale sẽ nhận trong các đợt sau."
-                }
-              >
-                ?
-              </span>
-            </div>
-            <div
-              className={`text-sm font-semibold tabular-nums mt-1 ${remainingAfter < 1000 ? "text-slate-400" : "text-red-600"}`}
-            >
-              {fmtMoney(remainingAfter)}
-            </div>
-            {isEdit && Math.abs(currentM - effectiveM) > 0.0001 && remainingAfter > 1000 && (
-              <div className="text-[10px] text-amber-700 mt-0.5">
-                (đã include hồi tố M {(effectiveM * 100).toFixed(2)}% → {(currentM * 100).toFixed(2)}%)
-              </div>
-            )}
-          </div>
+          {(() => {
+            const thisAmountDisplay = isFlatCost ? Math.max(0, totalAmt) : thisAmountFromN;
+            const remainAfter = Math.max(
+              0,
+              targetForType - paidBefore - thisAmountDisplay,
+            );
+            return (
+              <>
+                <div className="rounded-lg bg-blue-50 border border-blue-200 p-3">
+                  <div className="text-xs text-blue-700">Đợt này (dự tính)</div>
+                  <div className="text-sm font-semibold tabular-nums mt-1 text-blue-900">
+                    {fmtMoney(thisAmountDisplay)}
+                  </div>
+                  <div className="text-[10px] text-blue-500 mt-0.5">
+                    {isFlatCost
+                      ? thisAmountDisplay > 0
+                        ? `Số nhập bên dưới`
+                        : "chưa nhập số tiền"
+                      : progressN
+                        ? `Lũy kế mới ${fmtMoney(luyKeAtN)} − đã ĐC ${fmtMoney(paidBefore)}`
+                        : "chưa nhập N"}
+                  </div>
+                </div>
+                <div className="rounded-lg bg-slate-50 border border-slate-200 p-3">
+                  <div className="text-xs text-slate-500">
+                    Còn lại sau đợt này
+                    <span
+                      className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-300 text-white text-[9px] cursor-help select-none ml-1"
+                      title={
+                        isEdit && Math.abs(currentM - effectiveM) > 0.0001
+                          ? `Tính theo M current (${(currentM * 100).toFixed(2)}%) — bao gồm phần hồi tố do M tăng từ ${(effectiveM * 100).toFixed(2)}% lên ${(currentM * 100).toFixed(2)}%`
+                          : "= Mức chi tối đa − Đã ĐC trước − Đợt này. Là số sẽ nhận trong các đợt sau."
+                      }
+                    >
+                      ?
+                    </span>
+                  </div>
+                  <div
+                    className={`text-sm font-semibold tabular-nums mt-1 ${remainAfter < 1000 ? "text-slate-400" : "text-red-600"}`}
+                  >
+                    {fmtMoney(remainAfter)}
+                  </div>
+                  {isEdit && Math.abs(currentM - effectiveM) > 0.0001 && remainAfter > 1000 && (
+                    <div className="text-[10px] text-amber-700 mt-0.5">
+                      (đã include hồi tố M {(effectiveM * 100).toFixed(2)}% → {(currentM * 100).toFixed(2)}%)
+                    </div>
+                  )}
+                </div>
+              </>
+            );
+          })()}
         </div>
 
         {/* Lịch sử đợt trước */}
