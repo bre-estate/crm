@@ -145,27 +145,59 @@ export async function createRevenue(fd: FormData) {
     .values({ ...data, invoiceId })
     .returning({ id: revenueReconciliations.id });
 
-  await recomputeInvoiceTotal(invoiceId);
-
   await applyConfigToProduct(fd, data.productId, data.pmgCumulativePct);
 
-  const paymentDate = toStrOrNull(fd.get("paymentDate"));
-  const paymentAmount = toNum(fd.get("paymentAmount"));
-  if (paymentDate || paymentAmount !== 0) {
-    await db.insert(paymentsIn).values({
-      reconciliationId: rec.id,
-      paymentDate,
-      amount: paymentAmount,
+  // ===== Multi-recon: bonus sale + bonus manager (optional, chỉ CREATE) =====
+  // Cùng ngày ĐC + số BB + invoice với recon hoa hồng chính. Mỗi loại 1 row
+  // riêng trong DB để payment tracking rõ ràng (không dồn chung như Excel cũ).
+  const bonusSaleAmount = toNum(fd.get("bonus_sale_amount"));
+  if (bonusSaleAmount !== 0) {
+    await db.insert(revenueReconciliations).values({
+      productId: data.productId,
+      reconciliationDate: data.reconciliationDate,
+      minutesNumber: data.minutesNumber,
+      phaseNumber: null,
+      pmgCumulativePct: 0,
+      phasePctThisTime: 0,
+      revenueThisTime: 0,
+      cdtBonusSale: bonusSaleAmount,
+      cdtBonusManager: 0,
+      totalReceivableThisTime: bonusSaleAmount,
+      note: toStrOrNull(fd.get("bonus_sale_note")) ?? "Thưởng nóng cho sale",
+      invoiceId,
     });
   }
+  const bonusMgrAmount = toNum(fd.get("bonus_manager_amount"));
+  if (bonusMgrAmount !== 0) {
+    await db.insert(revenueReconciliations).values({
+      productId: data.productId,
+      reconciliationDate: data.reconciliationDate,
+      minutesNumber: data.minutesNumber,
+      phaseNumber: null,
+      pmgCumulativePct: 0,
+      phasePctThisTime: 0,
+      revenueThisTime: 0,
+      cdtBonusSale: 0,
+      cdtBonusManager: bonusMgrAmount,
+      totalReceivableThisTime: bonusMgrAmount,
+      note: toStrOrNull(fd.get("bonus_manager_note")) ?? "Thưởng nóng cho quản lý sàn",
+      invoiceId,
+    });
+  }
+
+  // Recompute SAU khi insert hết N recon (invoice total = sum của mọi recon)
+  await recomputeInvoiceTotal(invoiceId);
 
   await logActivity({
     entityType: "revenue_reconciliation",
     entityId: rec.id,
     productId: data.productId,
     action: "create",
-    after: { ...data, invoiceId } as Record<string, unknown>,
-    summary: `Tạo ĐC doanh thu — ${Number(data.revenueThisTime ?? 0).toLocaleString("vi-VN")}`,
+    after: { ...data, invoiceId, bonusSaleAmount, bonusMgrAmount } as Record<string, unknown>,
+    summary:
+      `Tạo ĐC doanh thu — hoa hồng ${Number(data.revenueThisTime ?? 0).toLocaleString("vi-VN")}` +
+      (bonusSaleAmount ? ` + thưởng sale ${bonusSaleAmount.toLocaleString("vi-VN")}` : "") +
+      (bonusMgrAmount ? ` + thưởng QL ${bonusMgrAmount.toLocaleString("vi-VN")}` : ""),
   });
 
   revalidatePath("/revenues");
