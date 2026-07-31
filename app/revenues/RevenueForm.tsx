@@ -493,10 +493,6 @@ export default function RevenueForm({
                 );
                 const isLast = idx === bonusRows.length - 1;
                 const amtDisplay = row.amount ? row.amount.toLocaleString("vi-VN") : "";
-                const configAmt =
-                  row.type === "bonus_sale"
-                    ? Number(product?.cdtBonusSale ?? 0)
-                    : Number(product?.cdtBonusManager ?? 0);
                 return (
                   <div key={idx} className="flex gap-3 items-end flex-wrap">
                     <div className="w-56">
@@ -533,11 +529,6 @@ export default function RevenueForm({
                         className="input"
                         placeholder="0"
                       />
-                      {configAmt > 0 && (
-                        <div className="text-[10px] text-slate-500 mt-1">
-                          Config căn: {fmtMoney(configAmt)}
-                        </div>
-                      )}
                     </div>
                     <div className="flex-1 min-w-64">
                       <label className="block text-xs text-slate-600 mb-1">
