@@ -240,6 +240,11 @@ export const revenueReconciliations = pgTable("revenue_reconciliations", {
   totalReceivableThisTime: doublePrecision("total_receivable_this_time").default(0),
 
   note: text("note"),
+  // Merge model: 1 record chứa nhiều loại (hoa hồng + thưởng nóng sale + QL) cùng
+  // 1 hóa đơn. Note riêng cho từng loại lưu trong JSONB dạng:
+  //   { "commission": "Đợt 1", "bonus_sale": "Thưởng bán A1-22-09" }
+  // Field `note` cũ giữ làm fallback khi notes JSONB rỗng.
+  notes: jsonb("notes").$type<Record<string, string>>().notNull().default({}),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

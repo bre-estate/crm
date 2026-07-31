@@ -140,44 +140,63 @@ export async function createRevenue(fd: FormData) {
   const invoiceDate = toStrOrNull(fd.get("invoiceDate"));
   const invoiceId = await findOrCreateInvoice(invoiceNumber, invoiceDate, data.productId);
 
-  const [rec] = await db
-    .insert(revenueReconciliations)
-    .values({ ...data, invoiceId })
-    .returning({ id: revenueReconciliations.id });
+  // ===== Merge model: 1 record chứa mọi loại cùng invoice =====
+  // Đọc từ repeater rows (bonus_count + bonus_${i}_*), MERGE vào 1 record duy
+  // nhất với 3 field amounts + notes JSONB per loại.
+  //   revenueThisTime = row nào type=commission (hoặc từ buildRevenueData)
+  //   cdtBonusSale/Manager = row bonus tương ứng
+  //   notes = { commission: "...", bonus_sale: "...", bonus_manager: "..." }
+  const notes: Record<string, string> = {};
 
-  await applyConfigToProduct(fd, data.productId, data.pmgCumulativePct);
+  // Row 0 (commission — main row) — data đã có từ buildRevenueData
+  // Chỉ ghi note khi user điền
+  const mainNote = toStrOrNull(fd.get("note"));
+  if (data.revenueThisTime && mainNote) notes.commission = mainNote;
 
-  // ===== Multi-recon: repeater rows (chỉ CREATE) =====
-  // Cùng ngày ĐC + số BB + invoice với recon hoa hồng chính. Mỗi loại 1 row
-  // riêng trong DB để payment tracking rõ ràng (không dồn chung như Excel cũ).
+  // Bonus rows — merge vào cùng record
+  let cdtBonusSale = 0;
+  let cdtBonusManager = 0;
   const bonusCount = toNum(fd.get("bonus_count"));
-  const bonusInserted: { type: string; amount: number }[] = [];
   for (let i = 0; i < bonusCount; i++) {
     const type = toStr(fd.get(`bonus_${i}_type`));
     const amount = toNum(fd.get(`bonus_${i}_amount`));
     const note = toStrOrNull(fd.get(`bonus_${i}_note`));
     if (amount === 0) continue;
-    if (type !== "bonus_sale" && type !== "bonus_manager") continue;
-    const defaultNote =
-      type === "bonus_sale" ? "Thưởng nóng cho sale" : "Thưởng nóng cho quản lý sàn";
-    await db.insert(revenueReconciliations).values({
-      productId: data.productId,
-      reconciliationDate: data.reconciliationDate,
-      minutesNumber: data.minutesNumber,
-      phaseNumber: null,
-      pmgCumulativePct: 0,
-      phasePctThisTime: 0,
-      revenueThisTime: 0,
-      cdtBonusSale: type === "bonus_sale" ? amount : 0,
-      cdtBonusManager: type === "bonus_manager" ? amount : 0,
-      totalReceivableThisTime: amount,
-      note: note ?? defaultNote,
-      invoiceId,
-    });
-    bonusInserted.push({ type, amount });
+    if (type === "bonus_sale") {
+      cdtBonusSale += amount;
+      if (note) notes.bonus_sale = note;
+    } else if (type === "bonus_manager") {
+      cdtBonusManager += amount;
+      if (note) notes.bonus_manager = note;
+    }
   }
 
-  // Recompute SAU khi insert hết N recon (invoice total = sum của mọi recon)
+  // Special case: nếu user chọn row 0 = bonus (không phải commission), buildRevenueData
+  // đã route amount vào cdtBonusSale hoặc cdtBonusManager. Notes cho loại đó:
+  if (Number(data.cdtBonusSale ?? 0) > 0 && mainNote) notes.bonus_sale = mainNote;
+  if (Number(data.cdtBonusManager ?? 0) > 0 && mainNote) notes.bonus_manager = mainNote;
+
+  const totalReceivable =
+    Number(data.revenueThisTime ?? 0) +
+    Number(data.cdtBonusSale ?? 0) +
+    Number(data.cdtBonusManager ?? 0) +
+    cdtBonusSale +
+    cdtBonusManager;
+
+  const [rec] = await db
+    .insert(revenueReconciliations)
+    .values({
+      ...data,
+      cdtBonusSale: Number(data.cdtBonusSale ?? 0) + cdtBonusSale,
+      cdtBonusManager: Number(data.cdtBonusManager ?? 0) + cdtBonusManager,
+      totalReceivableThisTime: totalReceivable,
+      notes,
+      invoiceId,
+    })
+    .returning({ id: revenueReconciliations.id });
+
+  await applyConfigToProduct(fd, data.productId, data.pmgCumulativePct);
+
   await recomputeInvoiceTotal(invoiceId);
 
   await logActivity({
@@ -185,15 +204,17 @@ export async function createRevenue(fd: FormData) {
     entityId: rec.id,
     productId: data.productId,
     action: "create",
-    after: { ...data, invoiceId, bonusInserted } as Record<string, unknown>,
-    summary:
-      `Tạo ĐC doanh thu — hoa hồng ${Number(data.revenueThisTime ?? 0).toLocaleString("vi-VN")}` +
-      bonusInserted
-        .map(
-          (b) =>
-            ` + ${b.type === "bonus_sale" ? "thưởng sale" : "thưởng QL"} ${b.amount.toLocaleString("vi-VN")}`,
-        )
-        .join(""),
+    after: { ...data, invoiceId, notes, totalReceivable } as Record<string, unknown>,
+    summary: (() => {
+      const parts: string[] = [];
+      const rev = Number(data.revenueThisTime ?? 0);
+      const bs = Number(data.cdtBonusSale ?? 0) + cdtBonusSale;
+      const bm = Number(data.cdtBonusManager ?? 0) + cdtBonusManager;
+      if (rev > 0) parts.push(`hoa hồng ${rev.toLocaleString("vi-VN")}`);
+      if (bs > 0) parts.push(`thưởng sale ${bs.toLocaleString("vi-VN")}`);
+      if (bm > 0) parts.push(`thưởng QL ${bm.toLocaleString("vi-VN")}`);
+      return `Tạo ĐC doanh thu — ${parts.join(" + ")}`;
+    })(),
   });
 
   revalidatePath("/revenues");
@@ -221,9 +242,47 @@ export async function updateRevenue(id: number, fd: FormData) {
     .select()
     .from(revenueReconciliations)
     .where(eq(revenueReconciliations.id, id));
+
+  // ===== Merge model: đọc repeater rows + build notes JSONB =====
+  // Giống createRevenue nhưng UPDATE record hiện có, không insert mới.
+  const notes: Record<string, string> = {};
+  const mainNote = toStrOrNull(fd.get("note"));
+  if (data.revenueThisTime && mainNote) notes.commission = mainNote;
+
+  let cdtBonusSale = 0;
+  let cdtBonusManager = 0;
+  const bonusCount = toNum(fd.get("bonus_count"));
+  for (let i = 0; i < bonusCount; i++) {
+    const type = toStr(fd.get(`bonus_${i}_type`));
+    const amount = toNum(fd.get(`bonus_${i}_amount`));
+    const note = toStrOrNull(fd.get(`bonus_${i}_note`));
+    if (amount === 0) continue;
+    if (type === "bonus_sale") {
+      cdtBonusSale += amount;
+      if (note) notes.bonus_sale = note;
+    } else if (type === "bonus_manager") {
+      cdtBonusManager += amount;
+      if (note) notes.bonus_manager = note;
+    }
+  }
+  if (Number(data.cdtBonusSale ?? 0) > 0 && mainNote) notes.bonus_sale = mainNote;
+  if (Number(data.cdtBonusManager ?? 0) > 0 && mainNote) notes.bonus_manager = mainNote;
+
+  const finalCdtSale = Number(data.cdtBonusSale ?? 0) + cdtBonusSale;
+  const finalCdtMgr = Number(data.cdtBonusManager ?? 0) + cdtBonusManager;
+  const totalReceivable =
+    Number(data.revenueThisTime ?? 0) + finalCdtSale + finalCdtMgr;
+
   await db
     .update(revenueReconciliations)
-    .set({ ...data, invoiceId })
+    .set({
+      ...data,
+      cdtBonusSale: finalCdtSale,
+      cdtBonusManager: finalCdtMgr,
+      totalReceivableThisTime: totalReceivable,
+      notes,
+      invoiceId,
+    })
     .where(eq(revenueReconciliations.id, id));
 
   // Recompute invoice cũ (nếu bị bỏ) + invoice mới (nếu vừa gắn)
@@ -237,7 +296,15 @@ export async function updateRevenue(id: number, fd: FormData) {
     productId: data.productId,
     action: "update",
     before: before as unknown as Record<string, unknown>,
-    after: { ...before, ...data, invoiceId } as unknown as Record<string, unknown>,
+    after: {
+      ...before,
+      ...data,
+      cdtBonusSale: finalCdtSale,
+      cdtBonusManager: finalCdtMgr,
+      totalReceivableThisTime: totalReceivable,
+      notes,
+      invoiceId,
+    } as unknown as Record<string, unknown>,
     summary: `Sửa ĐC doanh thu #${id}`,
   });
 

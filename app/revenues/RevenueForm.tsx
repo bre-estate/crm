@@ -94,25 +94,48 @@ export default function RevenueForm({
   const isEdit = !!recon;
   const isSecondary = product?.saleType === "secondary";
 
-  // Loại đợt: commission (hoa hồng, gộp mọi đợt tiến độ) / bonus_sale / bonus_manager
-  // Đợt cụ thể (1/2/3) admin ghi vào Mô tả.
-  // EDIT mode: hiện dropdown để user chọn loại của recon đang sửa.
-  // CREATE mode: luôn commission (mặc định); thưởng nóng thêm qua "+ Thêm loại" bên dưới.
+  // Merge model: 1 record chứa mọi loại (hoa hồng + thưởng nóng sale + QL).
+  // Row 0 = loại chính, extra rows = bonus type khác chưa dùng. Notes riêng
+  // per loại lưu trong recon.notes JSONB { "commission": "...", "bonus_sale": "...", ... }.
+  type BonusType = "bonus_sale" | "bonus_manager";
+  type BonusRow = { type: BonusType; amount: number; note: string };
+
+  // Recon notes JSONB (khi edit). Với create → {}.
+  const initialNotes: Record<string, string> = (recon?.notes as Record<string, string> | null) ?? {};
+
+  // Init reconType (loại row 0) khi EDIT — dựa vào amount dominant:
+  //   - Có revenueThisTime > 0 → commission (main), bonus (nếu có) ở extra rows
+  //   - Chỉ có cdtBonusSale > 0 → bonus_sale
+  //   - Chỉ có cdtBonusManager > 0 → bonus_manager
   const initialReconType = ((): string => {
-    if (recon) {
-      if (Number(recon.cdtBonusSale ?? 0) > 0) return "bonus_sale";
-      if (Number(recon.cdtBonusManager ?? 0) > 0) return "bonus_manager";
-    }
+    if (!recon) return "commission";
+    if (Number(recon.revenueThisTime ?? 0) > 0) return "commission";
+    if (Number(recon.cdtBonusSale ?? 0) > 0) return "bonus_sale";
+    if (Number(recon.cdtBonusManager ?? 0) > 0) return "bonus_manager";
     return "commission";
   })();
   const [reconType, setReconType] = useState(initialReconType);
 
-  // Multi-recon (chỉ CREATE): repeater rows với row 0 = loại chính (chọn bất
-  // kỳ 3 loại), extra rows = bonus type khác chưa được dùng. Cả N chia sẻ
-  // cùng invoice + ngày ĐC + số BB.
-  type BonusType = "bonus_sale" | "bonus_manager";
-  type BonusRow = { type: BonusType; amount: number; note: string };
-  const [bonusRows, setBonusRows] = useState<BonusRow[]>([]);
+  // Init extra rows khi EDIT: nếu row 0 là commission và recon có cdtBonus* > 0
+  // → chúng thành extra rows để user thấy + edit được.
+  const initialBonusRows = ((): BonusRow[] => {
+    if (!recon) return [];
+    const rows: BonusRow[] = [];
+    if (initialReconType === "commission") {
+      const bs = Number(recon.cdtBonusSale ?? 0);
+      const bm = Number(recon.cdtBonusManager ?? 0);
+      if (bs > 0) rows.push({ type: "bonus_sale", amount: bs, note: initialNotes.bonus_sale ?? "" });
+      if (bm > 0) rows.push({ type: "bonus_manager", amount: bm, note: initialNotes.bonus_manager ?? "" });
+    } else if (initialReconType === "bonus_sale") {
+      const bm = Number(recon.cdtBonusManager ?? 0);
+      if (bm > 0) rows.push({ type: "bonus_manager", amount: bm, note: initialNotes.bonus_manager ?? "" });
+    } else if (initialReconType === "bonus_manager") {
+      const bs = Number(recon.cdtBonusSale ?? 0);
+      if (bs > 0) rows.push({ type: "bonus_sale", amount: bs, note: initialNotes.bonus_sale ?? "" });
+    }
+    return rows;
+  })();
+  const [bonusRows, setBonusRows] = useState<BonusRow[]>(initialBonusRows);
 
   const BONUS_TYPES: BonusType[] = ["bonus_sale", "bonus_manager"];
   const bonusTypeLabel: Record<BonusType, string> = {
@@ -538,12 +561,12 @@ export default function RevenueForm({
                 <label className="block text-xs text-slate-600 mb-1">Mô tả / Ghi chú</label>
                 <input
                   name="note"
-                  defaultValue={recon?.note ?? ""}
+                  defaultValue={initialNotes[initialReconType] ?? recon?.note ?? ""}
                   className="input"
                   placeholder="vd: Đợt 1, Đợt HĐMB, ..."
                 />
               </div>
-              {!isEdit && bonusRows.length === 0 && canAddMoreBonus && (
+              {bonusRows.length === 0 && canAddMoreBonus && (
                 <button
                   type="button"
                   onClick={addBonusRow}
@@ -555,9 +578,8 @@ export default function RevenueForm({
               )}
             </div>
 
-            {/* Bonus rows (create only) */}
-            {!isEdit &&
-              bonusRows.map((row, idx) => {
+            {/* Bonus rows (create + edit) — repeater */}
+            {bonusRows.map((row, idx) => {
                 const rowAvailable = extraRowOptions(idx);
                 const isLast = idx === bonusRows.length - 1;
                 const amtDisplay = row.amount ? row.amount.toLocaleString("vi-VN") : "";
@@ -665,19 +687,15 @@ export default function RevenueForm({
       {/* Payment section đã bỏ khỏi form CREATE — user nhập thanh toán ở trang
           Sửa (PaymentsEditor). Lý do: lúc mới đối chiếu thường chưa thu tiền. */}
 
-      {/* Hidden inputs cho bonus recons (create mode) — serialize repeater rows */}
-      {!isEdit && (
-        <>
-          <input type="hidden" name="bonus_count" value={bonusRows.length} />
-          {bonusRows.map((row, idx) => (
-            <React.Fragment key={idx}>
-              <input type="hidden" name={`bonus_${idx}_type`} value={row.type} />
-              <input type="hidden" name={`bonus_${idx}_amount`} value={row.amount} />
-              <input type="hidden" name={`bonus_${idx}_note`} value={row.note} />
-            </React.Fragment>
-          ))}
-        </>
-      )}
+      {/* Hidden inputs cho bonus rows (cả create + edit) — server merge vào 1 record */}
+      <input type="hidden" name="bonus_count" value={bonusRows.length} />
+      {bonusRows.map((row, idx) => (
+        <React.Fragment key={idx}>
+          <input type="hidden" name={`bonus_${idx}_type`} value={row.type} />
+          <input type="hidden" name={`bonus_${idx}_amount`} value={row.amount} />
+          <input type="hidden" name={`bonus_${idx}_note`} value={row.note} />
+        </React.Fragment>
+      ))}
 
       {/* ===== 5. Hóa đơn (cuối) ===== */}
       <Section title={`📄 Hóa đơn${invoiceInit?.number ? " · ✅ Đã lập" : ""}`}>

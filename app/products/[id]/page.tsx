@@ -1086,34 +1086,46 @@ export default async function ProductDetailPage({
             <tbody>
               {revRecs.map(({ rec, invoice }) => {
                 const hasDate = !!rec.reconciliationDate;
+                const revenueAmt = Number(rec.revenueThisTime ?? 0);
                 const bonusSaleAmt = Number(rec.cdtBonusSale ?? 0);
                 const bonusMgrAmt = Number(rec.cdtBonusManager ?? 0);
-                const isBonusSale = bonusSaleAmt > 0;
-                const isBonusMgr = bonusMgrAmt > 0;
-                const isBonus = isBonusSale || isBonusMgr;
                 const hasInvoice = !!invoice?.invoiceNumber;
+                const notes = (rec.notes as Record<string, string> | null) ?? {};
                 return (
                   <tr key={rec.id} className="border-t border-slate-100">
                     <td className="p-2 text-center font-semibold text-xs">
-                      {rec.note?.trim() ? rec.note : rec.phaseNumber ? `Đợt ${rec.phaseNumber}` : "—"}
+                      {rec.phaseNumber ? `Đợt ${rec.phaseNumber}` : "—"}
                     </td>
                     <td className="p-2">
-                      {isBonus ? (
-                        <span
-                          className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 whitespace-nowrap"
-                          title={
-                            isBonusMgr
-                              ? "Thưởng nóng CĐT cho QL sàn"
-                              : "Thưởng nóng CĐT cho sale"
-                          }
-                        >
-                          Thưởng nóng
-                        </span>
-                      ) : (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 whitespace-nowrap">
-                          HH
-                        </span>
-                      )}
+                      <div className="flex flex-wrap gap-1">
+                        {revenueAmt > 0 && (
+                          <span
+                            className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 whitespace-nowrap"
+                            title={notes.commission ?? "Hoa hồng"}
+                          >
+                            HH: {fmtMoney(revenueAmt)}
+                          </span>
+                        )}
+                        {bonusSaleAmt > 0 && (
+                          <span
+                            className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 whitespace-nowrap"
+                            title={notes.bonus_sale ?? "Thưởng nóng CĐT cho sale"}
+                          >
+                            T.nóng sale: {fmtMoney(bonusSaleAmt)}
+                          </span>
+                        )}
+                        {bonusMgrAmt > 0 && (
+                          <span
+                            className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 whitespace-nowrap"
+                            title={notes.bonus_manager ?? "Thưởng nóng CĐT cho QL sàn"}
+                          >
+                            T.nóng QL: {fmtMoney(bonusMgrAmt)}
+                          </span>
+                        )}
+                        {revenueAmt === 0 && bonusSaleAmt === 0 && bonusMgrAmt === 0 && (
+                          <span className="text-[10px] text-slate-400">—</span>
+                        )}
+                      </div>
                     </td>
                     <td className="p-2 whitespace-nowrap">{fmtDate(rec.reconciliationDate)}</td>
                     <td className="p-2 font-mono">{invoice?.invoiceNumber ?? "—"}</td>
