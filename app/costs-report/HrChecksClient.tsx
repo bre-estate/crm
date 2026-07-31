@@ -214,7 +214,6 @@ export default function HrChecksClient({ rows, activeField, countByField, sumByF
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs text-slate-600">
               <tr>
-                <th className="text-left p-2 w-12"></th>
                 <th className="text-left p-2 w-10">#</th>
                 <th className="text-left p-2">Căn</th>
                 <th className="text-left p-2">Dự án</th>
@@ -223,6 +222,7 @@ export default function HrChecksClient({ rows, activeField, countByField, sumByF
                 <th className="text-left p-2">TPKD</th>
                 <th className="text-right p-2">Giá trị</th>
                 <th className="text-right p-2">Thao tác</th>
+                <th className="p-2 w-10"></th>
               </tr>
             </thead>
             <tbody>
@@ -242,12 +242,6 @@ export default function HrChecksClient({ rows, activeField, countByField, sumByF
                         isOpen ? "bg-slate-50" : ""
                       }`}
                     >
-                      <td className="p-2">
-                        <ExpandToggle
-                          isOpen={isOpen}
-                          onClick={() => setExpanded(isOpen ? null : r.productId)}
-                        />
-                      </td>
                       <td className="p-2 text-xs text-slate-400 tabular-nums">{i + 1}</td>
                       <td className="p-2 font-mono text-xs">
                         <Link
@@ -275,6 +269,12 @@ export default function HrChecksClient({ rows, activeField, countByField, sumByF
                         >
                           {linkLabel}
                         </Link>
+                      </td>
+                      <td className="p-2 text-right">
+                        <ExpandToggle
+                          isOpen={isOpen}
+                          onClick={() => setExpanded(isOpen ? null : r.productId)}
+                        />
                       </td>
                     </tr>
                     {isOpen && (
