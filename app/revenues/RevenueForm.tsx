@@ -426,7 +426,7 @@ export default function RevenueForm({
           </div>
           <div className="space-y-2">
             {/* Row 0 — commission (create) hoặc single recon (edit) */}
-            <div className="flex gap-3 items-end flex-wrap">
+            <div className="flex gap-3 items-start flex-wrap">
               <div className="w-56">
                 <label className="block text-xs text-slate-600 mb-1">
                   Loại đợt <span className="text-red-500">*</span>
@@ -478,7 +478,7 @@ export default function RevenueForm({
                   type="button"
                   onClick={addBonusRow}
                   title="Thêm loại đối chiếu (thưởng nóng)"
-                  className="h-10 w-10 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 hover:border-slate-400 text-xl leading-none flex items-center justify-center"
+                  className="h-10 w-10 mt-5 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 hover:border-slate-400 text-xl leading-none flex items-center justify-center"
                 >
                   +
                 </button>
@@ -554,7 +554,7 @@ export default function RevenueForm({
                       type="button"
                       onClick={() => removeBonusRow(idx)}
                       title="Bỏ khoản này"
-                      className="h-10 w-10 rounded-lg border border-slate-300 text-slate-600 hover:bg-red-50 hover:border-red-300 hover:text-red-600 text-xl leading-none flex items-center justify-center"
+                      className="h-10 w-10 mt-5 rounded-lg border border-slate-300 text-slate-600 hover:bg-red-50 hover:border-red-300 hover:text-red-600 text-xl leading-none flex items-center justify-center"
                     >
                       −
                     </button>
@@ -572,13 +572,6 @@ export default function RevenueForm({
                 );
               })}
           </div>
-          {!isEdit && (
-            <div className="text-[10px] text-slate-500 mt-2">
-              Đợt cụ thể (đợt 1, đợt 2…) ghi vào Mô tả của khoản Hoa hồng. Các khoản
-              thưởng nóng (nếu có) sẽ lưu thành dòng riêng trong DB nhưng dùng chung
-              hóa đơn với Hoa hồng.
-            </div>
-          )}
         </div>
 
 
