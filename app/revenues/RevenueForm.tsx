@@ -478,21 +478,43 @@ export default function RevenueForm({
                   }}
                   className="input"
                 >
-                  {isEdit ? (
-                    <>
-                      <option value="commission">Hoa hồng</option>
-                      <option value="bonus_sale">Thưởng nóng cho sale</option>
-                      <option value="bonus_manager">Thưởng nóng cho quản lý sàn</option>
-                    </>
-                  ) : (
-                    row0Options.map((t) => (
-                      <option key={t} value={t}>
-                        {t === "commission"
-                          ? "Hoa hồng"
-                          : bonusTypeLabel[t as BonusType]}
+                  {(() => {
+                    // Edit mode: cũng filter theo config căn. Giữ current type (dù
+                    // config đã đổi thành 0) để không mất data recon đang sửa.
+                    // Create mode: dùng row0Options (đã có sẵn logic).
+                    if (!isEdit) {
+                      return row0Options.map((t) => (
+                        <option key={t} value={t}>
+                          {t === "commission"
+                            ? "Hoa hồng"
+                            : bonusTypeLabel[t as BonusType]}
+                        </option>
+                      ));
+                    }
+                    const opts: { v: string; label: string }[] = [
+                      { v: "commission", label: "Hoa hồng" },
+                    ];
+                    if (
+                      Number(product?.cdtBonusSale ?? 0) > 0 ||
+                      reconType === "bonus_sale"
+                    ) {
+                      opts.push({ v: "bonus_sale", label: "Thưởng nóng cho sale" });
+                    }
+                    if (
+                      Number(product?.cdtBonusManager ?? 0) > 0 ||
+                      reconType === "bonus_manager"
+                    ) {
+                      opts.push({
+                        v: "bonus_manager",
+                        label: "Thưởng nóng cho quản lý sàn",
+                      });
+                    }
+                    return opts.map((o) => (
+                      <option key={o.v} value={o.v}>
+                        {o.label}
                       </option>
-                    ))
-                  )}
+                    ));
+                  })()}
                 </select>
               </div>
               <div className="w-44">
