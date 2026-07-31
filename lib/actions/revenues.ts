@@ -147,11 +147,19 @@ export async function createRevenue(fd: FormData) {
 
   await applyConfigToProduct(fd, data.productId, data.pmgCumulativePct);
 
-  // ===== Multi-recon: bonus sale + bonus manager (optional, chỉ CREATE) =====
+  // ===== Multi-recon: repeater rows (chỉ CREATE) =====
   // Cùng ngày ĐC + số BB + invoice với recon hoa hồng chính. Mỗi loại 1 row
   // riêng trong DB để payment tracking rõ ràng (không dồn chung như Excel cũ).
-  const bonusSaleAmount = toNum(fd.get("bonus_sale_amount"));
-  if (bonusSaleAmount !== 0) {
+  const bonusCount = toNum(fd.get("bonus_count"));
+  const bonusInserted: { type: string; amount: number }[] = [];
+  for (let i = 0; i < bonusCount; i++) {
+    const type = toStr(fd.get(`bonus_${i}_type`));
+    const amount = toNum(fd.get(`bonus_${i}_amount`));
+    const note = toStrOrNull(fd.get(`bonus_${i}_note`));
+    if (amount === 0) continue;
+    if (type !== "bonus_sale" && type !== "bonus_manager") continue;
+    const defaultNote =
+      type === "bonus_sale" ? "Thưởng nóng cho sale" : "Thưởng nóng cho quản lý sàn";
     await db.insert(revenueReconciliations).values({
       productId: data.productId,
       reconciliationDate: data.reconciliationDate,
@@ -160,29 +168,13 @@ export async function createRevenue(fd: FormData) {
       pmgCumulativePct: 0,
       phasePctThisTime: 0,
       revenueThisTime: 0,
-      cdtBonusSale: bonusSaleAmount,
-      cdtBonusManager: 0,
-      totalReceivableThisTime: bonusSaleAmount,
-      note: toStrOrNull(fd.get("bonus_sale_note")) ?? "Thưởng nóng cho sale",
+      cdtBonusSale: type === "bonus_sale" ? amount : 0,
+      cdtBonusManager: type === "bonus_manager" ? amount : 0,
+      totalReceivableThisTime: amount,
+      note: note ?? defaultNote,
       invoiceId,
     });
-  }
-  const bonusMgrAmount = toNum(fd.get("bonus_manager_amount"));
-  if (bonusMgrAmount !== 0) {
-    await db.insert(revenueReconciliations).values({
-      productId: data.productId,
-      reconciliationDate: data.reconciliationDate,
-      minutesNumber: data.minutesNumber,
-      phaseNumber: null,
-      pmgCumulativePct: 0,
-      phasePctThisTime: 0,
-      revenueThisTime: 0,
-      cdtBonusSale: 0,
-      cdtBonusManager: bonusMgrAmount,
-      totalReceivableThisTime: bonusMgrAmount,
-      note: toStrOrNull(fd.get("bonus_manager_note")) ?? "Thưởng nóng cho quản lý sàn",
-      invoiceId,
-    });
+    bonusInserted.push({ type, amount });
   }
 
   // Recompute SAU khi insert hết N recon (invoice total = sum của mọi recon)
@@ -193,11 +185,15 @@ export async function createRevenue(fd: FormData) {
     entityId: rec.id,
     productId: data.productId,
     action: "create",
-    after: { ...data, invoiceId, bonusSaleAmount, bonusMgrAmount } as Record<string, unknown>,
+    after: { ...data, invoiceId, bonusInserted } as Record<string, unknown>,
     summary:
       `Tạo ĐC doanh thu — hoa hồng ${Number(data.revenueThisTime ?? 0).toLocaleString("vi-VN")}` +
-      (bonusSaleAmount ? ` + thưởng sale ${bonusSaleAmount.toLocaleString("vi-VN")}` : "") +
-      (bonusMgrAmount ? ` + thưởng QL ${bonusMgrAmount.toLocaleString("vi-VN")}` : ""),
+      bonusInserted
+        .map(
+          (b) =>
+            ` + ${b.type === "bonus_sale" ? "thưởng sale" : "thưởng QL"} ${b.amount.toLocaleString("vi-VN")}`,
+        )
+        .join(""),
   });
 
   revalidatePath("/revenues");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition, useState, useMemo } from "react";
+import React, { useTransition, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import type { RevenueReconciliation } from "@/lib/schema";
 import MoneyInput from "@/components/MoneyInput";
@@ -107,17 +107,37 @@ export default function RevenueForm({
   })();
   const [reconType, setReconType] = useState(initialReconType);
 
-  // Multi-recon (chỉ CREATE): thêm thưởng nóng cho sale + thưởng nóng cho QL vào cùng lần submit.
-  // Cả 2 (nếu thêm) chia sẻ cùng invoice + ngày ĐC + số BB với recon chính.
-  const [bonusSaleAdded, setBonusSaleAdded] = useState(false);
-  const [bonusMgrAdded, setBonusMgrAdded] = useState(false);
-  const [bonusSaleAmount, setBonusSaleAmount] = useState<number>(0);
-  const [bonusMgrAmount, setBonusMgrAmount] = useState<number>(0);
-  const [bonusSaleNote, setBonusSaleNote] = useState<string>("");
-  const [bonusMgrNote, setBonusMgrNote] = useState<string>("");
-  const [showAddBonusMenu, setShowAddBonusMenu] = useState(false);
-  const bonusSaleDisplay = bonusSaleAmount ? bonusSaleAmount.toLocaleString("vi-VN") : "";
-  const bonusMgrDisplay = bonusMgrAmount ? bonusMgrAmount.toLocaleString("vi-VN") : "";
+  // Multi-recon (chỉ CREATE): thêm thưởng nóng cho sale + thưởng nóng cho QL
+  // vào cùng lần submit. Repeater pattern — row 0 luôn commission (hoa hồng),
+  // các row sau là bonus_sale hoặc bonus_manager.
+  // Cả N (nếu thêm) chia sẻ cùng invoice + ngày ĐC + số BB.
+  type BonusType = "bonus_sale" | "bonus_manager";
+  type BonusRow = { type: BonusType; amount: number; note: string };
+  const [bonusRows, setBonusRows] = useState<BonusRow[]>([]);
+
+  const BONUS_TYPES: BonusType[] = ["bonus_sale", "bonus_manager"];
+  const bonusTypeLabel: Record<BonusType, string> = {
+    bonus_sale: "Thưởng nóng cho sale",
+    bonus_manager: "Thưởng nóng cho quản lý sàn",
+  };
+  const usedBonusTypes = new Set(bonusRows.map((r) => r.type));
+  const availableBonusTypes = BONUS_TYPES.filter((t) => !usedBonusTypes.has(t));
+
+  const addBonusRow = () => {
+    if (availableBonusTypes.length === 0) return;
+    const nextType = availableBonusTypes[0];
+    const defaultAmt =
+      nextType === "bonus_sale"
+        ? Number(product?.cdtBonusSale ?? 0)
+        : Number(product?.cdtBonusManager ?? 0);
+    setBonusRows([...bonusRows, { type: nextType, amount: defaultAmt, note: "" }]);
+  };
+  const removeBonusRow = (idx: number) => {
+    setBonusRows(bonusRows.filter((_, i) => i !== idx));
+  };
+  const updateBonusRow = (idx: number, patch: Partial<BonusRow>) => {
+    setBonusRows(bonusRows.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
+  };
 
   const initialAmount = ((): number => {
     if (recon) {
@@ -394,51 +414,173 @@ export default function RevenueForm({
               </Field>
             </>
           )}
-          {isEdit ? (
-            <Field label="Loại đợt" required>
-              <select
-                value={reconType}
-                onChange={(e) => setReconType(e.target.value)}
-                className="input"
-              >
-                <option value="commission">Hoa hồng</option>
-                <option value="bonus_sale">Thưởng nóng cho sale</option>
-                <option value="bonus_manager">Thưởng nóng cho quản lý sàn</option>
-              </select>
-            </Field>
-          ) : (
-            <Field label="Loại đợt">
-              <div className="input bg-slate-50 text-slate-700 cursor-not-allowed">
-                Hoa hồng
-              </div>
-              <div className="text-[10px] text-slate-500 mt-1">
-                Đợt cụ thể (đợt 1, đợt 2...) ghi vào Mô tả.
-              </div>
-            </Field>
-          )}
-          <Field label="Số tiền" required>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={amountDisplay}
-              onChange={(e) => {
-                const digits = e.target.value.replace(/\D/g, "");
-                setAmount(digits ? Number(digits) : 0);
-              }}
-              onFocus={(e) => e.currentTarget.select()}
-              className="input"
-              placeholder="0"
-            />
-          </Field>
-          <Field label="Mô tả / Ghi chú" full>
-            <input
-              name="note"
-              defaultValue={recon?.note ?? ""}
-              className="input"
-              placeholder="vd: Đợt 1, Đợt HĐMB, thưởng nóng, ..."
-            />
-          </Field>
         </div>
+
+        {/* ===== Các khoản đối chiếu (repeater) =====
+            Row 0 luôn Hoa hồng (create) hoặc loại của recon (edit).
+            Bonus rows: chọn Thưởng nóng sale / QL, cộng inline vào cùng lần submit.
+            Constraint: mỗi bonus type chỉ được add 1 lần. */}
+        <div className="mt-4 pt-4 border-t border-slate-100">
+          <div className="text-xs font-semibold text-slate-700 uppercase mb-2">
+            Các khoản đối chiếu
+          </div>
+          <div className="space-y-2">
+            {/* Row 0 — commission (create) hoặc single recon (edit) */}
+            <div className="flex gap-3 items-end flex-wrap">
+              <div className="w-56">
+                <label className="block text-xs text-slate-600 mb-1">
+                  Loại đợt <span className="text-red-500">*</span>
+                </label>
+                {isEdit ? (
+                  <select
+                    value={reconType}
+                    onChange={(e) => setReconType(e.target.value)}
+                    className="input"
+                  >
+                    <option value="commission">Hoa hồng</option>
+                    <option value="bonus_sale">Thưởng nóng cho sale</option>
+                    <option value="bonus_manager">Thưởng nóng cho quản lý sàn</option>
+                  </select>
+                ) : (
+                  <div className="input bg-slate-50 text-slate-700 cursor-not-allowed">
+                    Hoa hồng
+                  </div>
+                )}
+              </div>
+              <div className="w-44">
+                <label className="block text-xs text-slate-600 mb-1">
+                  Số tiền <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={amountDisplay}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, "");
+                    setAmount(digits ? Number(digits) : 0);
+                  }}
+                  onFocus={(e) => e.currentTarget.select()}
+                  className="input"
+                  placeholder="0"
+                />
+              </div>
+              <div className="flex-1 min-w-64">
+                <label className="block text-xs text-slate-600 mb-1">Mô tả / Ghi chú</label>
+                <input
+                  name="note"
+                  defaultValue={recon?.note ?? ""}
+                  className="input"
+                  placeholder="vd: Đợt 1, Đợt HĐMB, ..."
+                />
+              </div>
+              {!isEdit && bonusRows.length === 0 && availableBonusTypes.length > 0 && (
+                <button
+                  type="button"
+                  onClick={addBonusRow}
+                  title="Thêm loại đối chiếu (thưởng nóng)"
+                  className="h-10 w-10 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 hover:border-slate-400 text-xl leading-none flex items-center justify-center"
+                >
+                  +
+                </button>
+              )}
+            </div>
+
+            {/* Bonus rows (create only) */}
+            {!isEdit &&
+              bonusRows.map((row, idx) => {
+                const rowAvailable = BONUS_TYPES.filter(
+                  (t) => t === row.type || !usedBonusTypes.has(t),
+                );
+                const isLast = idx === bonusRows.length - 1;
+                const amtDisplay = row.amount ? row.amount.toLocaleString("vi-VN") : "";
+                const configAmt =
+                  row.type === "bonus_sale"
+                    ? Number(product?.cdtBonusSale ?? 0)
+                    : Number(product?.cdtBonusManager ?? 0);
+                return (
+                  <div key={idx} className="flex gap-3 items-end flex-wrap">
+                    <div className="w-56">
+                      <label className="block text-xs text-slate-600 mb-1">
+                        Loại đợt <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={row.type}
+                        onChange={(e) =>
+                          updateBonusRow(idx, { type: e.target.value as BonusType })
+                        }
+                        className="input"
+                      >
+                        {rowAvailable.map((t) => (
+                          <option key={t} value={t}>
+                            {bonusTypeLabel[t]}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="w-44">
+                      <label className="block text-xs text-slate-600 mb-1">
+                        Số tiền <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={amtDisplay}
+                        onChange={(e) => {
+                          const digits = e.target.value.replace(/\D/g, "");
+                          updateBonusRow(idx, { amount: digits ? Number(digits) : 0 });
+                        }}
+                        onFocus={(e) => e.currentTarget.select()}
+                        className="input"
+                        placeholder="0"
+                      />
+                      {configAmt > 0 && (
+                        <div className="text-[10px] text-slate-500 mt-1">
+                          Config căn: {fmtMoney(configAmt)}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-64">
+                      <label className="block text-xs text-slate-600 mb-1">
+                        Mô tả / Ghi chú
+                      </label>
+                      <input
+                        value={row.note}
+                        onChange={(e) => updateBonusRow(idx, { note: e.target.value })}
+                        className="input"
+                        placeholder={`vd: ${bonusTypeLabel[row.type]}`}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeBonusRow(idx)}
+                      title="Bỏ khoản này"
+                      className="h-10 w-10 rounded-lg border border-slate-300 text-slate-600 hover:bg-red-50 hover:border-red-300 hover:text-red-600 text-xl leading-none flex items-center justify-center"
+                    >
+                      −
+                    </button>
+                    {isLast && availableBonusTypes.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={addBonusRow}
+                        title="Thêm loại đối chiếu"
+                        className="h-10 w-10 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 hover:border-slate-400 text-xl leading-none flex items-center justify-center"
+                      >
+                        +
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+          </div>
+          {!isEdit && (
+            <div className="text-[10px] text-slate-500 mt-2">
+              Đợt cụ thể (đợt 1, đợt 2…) ghi vào Mô tả của khoản Hoa hồng. Các khoản
+              thưởng nóng (nếu có) sẽ lưu thành dòng riêng trong DB nhưng dùng chung
+              hóa đơn với Hoa hồng.
+            </div>
+          )}
+        </div>
+
 
         {/* Hidden inputs — route số tiền vào field đúng theo loại */}
         <input type="hidden" name="phaseNumber" value={0} />
@@ -471,174 +613,17 @@ export default function RevenueForm({
       {/* Payment section đã bỏ khỏi form CREATE — user nhập thanh toán ở trang
           Sửa (PaymentsEditor). Lý do: lúc mới đối chiếu thường chưa thu tiền. */}
 
-      {/* ===== 4b. Thưởng nóng (CREATE only, optional multi) =====
-          CĐT thường chuyển 1 lần cho cả hoa hồng + thưởng → gộp trong CÙNG invoice.
-          Server sẽ tạo N dòng recon riêng, tất cả link cùng invoice. */}
-      {!isEdit && (bonusSaleAdded || bonusMgrAdded) && (
-        <Section title="🎁 Thưởng nóng CĐT (kèm cùng lần đối chiếu)">
-          <div className="text-xs text-slate-500 -mt-2 mb-3">
-            Được lưu thành dòng đối chiếu RIÊNG trong DB (không dồn vào cùng dòng hoa hồng),
-            nhưng chia sẻ CÙNG hóa đơn + ngày ĐC + số BB với recon hoa hồng.
-          </div>
-          {bonusSaleAdded && (
-            <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50/60 p-3">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-sm font-semibold text-amber-900">
-                  Thưởng nóng cho sale
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBonusSaleAdded(false);
-                    setBonusSaleAmount(0);
-                    setBonusSaleNote("");
-                  }}
-                  className="text-xs text-slate-500 hover:text-red-600"
-                >
-                  ✕ Bỏ
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Số tiền" required>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={bonusSaleDisplay}
-                    onChange={(e) => {
-                      const digits = e.target.value.replace(/\D/g, "");
-                      setBonusSaleAmount(digits ? Number(digits) : 0);
-                    }}
-                    onFocus={(e) => e.currentTarget.select()}
-                    className="input"
-                    placeholder="0"
-                  />
-                  {product?.cdtBonusSale ? (
-                    <div className="text-[10px] text-slate-500 mt-1">
-                      Config căn: {fmtMoney(product.cdtBonusSale)}
-                    </div>
-                  ) : null}
-                </Field>
-                <Field label="Ghi chú">
-                  <input
-                    value={bonusSaleNote}
-                    onChange={(e) => setBonusSaleNote(e.target.value)}
-                    className="input"
-                    placeholder="vd: Thưởng nóng bán A1-22-09"
-                  />
-                </Field>
-              </div>
-            </div>
-          )}
-          {bonusMgrAdded && (
-            <div className="mb-3 rounded-lg border border-purple-200 bg-purple-50/60 p-3">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-sm font-semibold text-purple-900">
-                  Thưởng nóng cho quản lý sàn
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBonusMgrAdded(false);
-                    setBonusMgrAmount(0);
-                    setBonusMgrNote("");
-                  }}
-                  className="text-xs text-slate-500 hover:text-red-600"
-                >
-                  ✕ Bỏ
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Số tiền" required>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={bonusMgrDisplay}
-                    onChange={(e) => {
-                      const digits = e.target.value.replace(/\D/g, "");
-                      setBonusMgrAmount(digits ? Number(digits) : 0);
-                    }}
-                    onFocus={(e) => e.currentTarget.select()}
-                    className="input"
-                    placeholder="0"
-                  />
-                  {product?.cdtBonusManager ? (
-                    <div className="text-[10px] text-slate-500 mt-1">
-                      Config căn: {fmtMoney(product.cdtBonusManager)}
-                    </div>
-                  ) : null}
-                </Field>
-                <Field label="Ghi chú">
-                  <input
-                    value={bonusMgrNote}
-                    onChange={(e) => setBonusMgrNote(e.target.value)}
-                    className="input"
-                    placeholder="vd: Thưởng nóng QL bán A1-22-09"
-                  />
-                </Field>
-              </div>
-            </div>
-          )}
-        </Section>
-      )}
-
-      {/* Nút "+ Thêm loại" — chỉ show CREATE, chỉ khi còn loại chưa add */}
-      {!isEdit && (!bonusSaleAdded || !bonusMgrAdded) && (
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setShowAddBonusMenu((v) => !v)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-slate-400 text-sm text-slate-600 hover:bg-slate-50 hover:border-slate-500"
-          >
-            <span className="text-lg leading-none">+</span> Thêm loại đối chiếu
-          </button>
-          {showAddBonusMenu && (
-            <div className="absolute left-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-10 min-w-64 overflow-hidden">
-              {!bonusSaleAdded && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBonusSaleAdded(true);
-                    setBonusSaleAmount(Number(product?.cdtBonusSale ?? 0));
-                    setShowAddBonusMenu(false);
-                  }}
-                  className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 border-b border-slate-100"
-                >
-                  🎁 Thưởng nóng cho sale
-                </button>
-              )}
-              {!bonusMgrAdded && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBonusMgrAdded(true);
-                    setBonusMgrAmount(Number(product?.cdtBonusManager ?? 0));
-                    setShowAddBonusMenu(false);
-                  }}
-                  className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50"
-                >
-                  🎁 Thưởng nóng cho quản lý sàn
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Hidden inputs cho bonus recons (create mode) */}
+      {/* Hidden inputs cho bonus recons (create mode) — serialize repeater rows */}
       {!isEdit && (
         <>
-          {bonusSaleAdded && (
-            <>
-              <input type="hidden" name="bonus_sale_amount" value={bonusSaleAmount} />
-              <input type="hidden" name="bonus_sale_note" value={bonusSaleNote} />
-            </>
-          )}
-          {bonusMgrAdded && (
-            <>
-              <input type="hidden" name="bonus_manager_amount" value={bonusMgrAmount} />
-              <input type="hidden" name="bonus_manager_note" value={bonusMgrNote} />
-            </>
-          )}
+          <input type="hidden" name="bonus_count" value={bonusRows.length} />
+          {bonusRows.map((row, idx) => (
+            <React.Fragment key={idx}>
+              <input type="hidden" name={`bonus_${idx}_type`} value={row.type} />
+              <input type="hidden" name={`bonus_${idx}_amount`} value={row.amount} />
+              <input type="hidden" name={`bonus_${idx}_note`} value={row.note} />
+            </React.Fragment>
+          ))}
         </>
       )}
 
