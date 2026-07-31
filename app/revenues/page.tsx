@@ -22,6 +22,7 @@ type SearchParams = Promise<{
   unitCode?: string;
   tab?: string;
   status?: string;
+  age?: string;
   justCreated?: string;
 }>;
 
@@ -33,12 +34,22 @@ const STATUS_OPTIONS = [
   { key: "no_date", label: "Chưa ĐC", icon: "" },
 ] as const;
 
+// Bucket theo số ngày CĐT chưa trả từ ngày ĐC. Chỉ áp dụng cho recon chưa
+// thu đủ (waiting_pay / partial). "done" và "no_date" không có ý nghĩa.
+const AGE_OPTIONS = [
+  { key: "all", label: "Tất cả tuổi" },
+  { key: "0_30", label: "≤ 1 tháng" },
+  { key: "31_90", label: "1–3 tháng" },
+  { key: "90+", label: "> 3 tháng" },
+] as const;
+
 export default async function RevenuesPage({ searchParams }: { searchParams: SearchParams }) {
-  const { projectId, unitCode, tab, status, justCreated } = await searchParams;
+  const { projectId, unitCode, tab, status, age, justCreated } = await searchParams;
   const filterProjectId = projectId ? Number(projectId) : null;
   const filterUnitCode = unitCode?.trim() || null;
   const activeTab: "primary" | "secondary" = tab === "secondary" ? "secondary" : "primary";
   const activeStatus = (STATUS_OPTIONS.find((s) => s.key === status)?.key ?? "all") as (typeof STATUS_OPTIONS)[number]["key"];
+  const activeAge = (AGE_OPTIONS.find((a) => a.key === age)?.key ?? "all") as (typeof AGE_OPTIONS)[number]["key"];
   const justCreatedIds = new Set<number>(
     (justCreated ?? "")
       .split(",")
@@ -51,6 +62,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
   if (unitCode) returnToParams.set("unitCode", String(unitCode));
   if (tab) returnToParams.set("tab", String(tab));
   if (status) returnToParams.set("status", String(status));
+  if (age) returnToParams.set("age", String(age));
   const returnToQs = returnToParams.toString();
   const returnTo = returnToQs ? `/revenues?${returnToQs}` : "/revenues";
   const editQs = `?returnTo=${encodeURIComponent(returnTo)}`;
@@ -137,7 +149,11 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
     .groupBy(paymentsIn.reconciliationId);
   const paidMap = new Map(paymentAgg.map((r) => [r.recId, Number(r.total ?? 0)]));
 
-  // Compute status per recon và filter theo activeStatus
+  // Today for age computation
+  const todayMs = Date.now();
+  const dayMs = 24 * 3600 * 1000;
+
+  // Compute status + age per recon
   const rowsWithStatus = rows.map((r) => {
     const paid = paidMap.get(r.id) ?? 0;
     const receivable = Number(r.totalReceivable ?? 0);
@@ -149,13 +165,33 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
     else if (isFullyPaid) statusKey = "done";
     else if (isPartial) statusKey = "partial";
     else statusKey = "waiting_pay";
-    return { r, paid, status: statusKey };
+
+    // Age = số ngày từ reconciliationDate đến hôm nay (chỉ khi có date + chưa thu đủ)
+    let daysUnpaid = -1;
+    if (hasDate && !isFullyPaid && r.date) {
+      const reconMs = new Date(r.date).getTime();
+      if (Number.isFinite(reconMs)) daysUnpaid = Math.floor((todayMs - reconMs) / dayMs);
+    }
+    let ageKey: (typeof AGE_OPTIONS)[number]["key"] = "all";
+    if (daysUnpaid < 0) ageKey = "all"; // không có age
+    else if (daysUnpaid <= 30) ageKey = "0_30";
+    else if (daysUnpaid <= 90) ageKey = "31_90";
+    else ageKey = "90+";
+
+    return { r, paid, status: statusKey, ageKey, daysUnpaid };
   });
-  const filteredRows = skipFilters || activeStatus === "all"
+
+  const filteredByStatus = skipFilters || activeStatus === "all"
     ? rowsWithStatus
     : rowsWithStatus.filter((x) => x.status === activeStatus);
+
+  const filteredRows = skipFilters || activeAge === "all"
+    ? filteredByStatus
+    : filteredByStatus.filter((x) => x.ageKey === activeAge && x.daysUnpaid >= 0);
+
   const rows2 = filteredRows.map((x) => x.r);
   const statusOf = new Map(filteredRows.map((x) => [x.r.id, x.status]));
+  const ageOf = new Map(filteredRows.map((x) => [x.r.id, x.daysUnpaid]));
 
   const totalReceivable = rows2.reduce((s, r) => s + Number(r.totalReceivable ?? 0), 0);
   const totalPaid = rows2.reduce((s, r) => s + (paidMap.get(r.id) ?? 0), 0);
@@ -166,6 +202,17 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
     statusCounts.set(x.status, (statusCounts.get(x.status) ?? 0) + 1);
   }
   statusCounts.set("all", rowsWithStatus.length);
+
+  // Count per age (từ rows đã filter status — chỉ tính recon có age)
+  const ageCounts = new Map<string, number>();
+  for (const x of filteredByStatus) {
+    if (x.daysUnpaid < 0) continue;
+    ageCounts.set(x.ageKey, (ageCounts.get(x.ageKey) ?? 0) + 1);
+  }
+  ageCounts.set(
+    "all",
+    filteredByStatus.filter((x) => x.daysUnpaid >= 0).length,
+  );
 
   return (
     <div className="space-y-4">
@@ -217,6 +264,8 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
           params.set("tab", t.key);
           if (filterProjectId) params.set("projectId", String(filterProjectId));
           if (filterUnitCode) params.set("unitCode", filterUnitCode);
+          if (activeStatus !== "all") params.set("status", activeStatus);
+          if (activeAge !== "all") params.set("age", activeAge);
           return (
             <Link
               key={t.key}
@@ -249,6 +298,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
           if (filterProjectId) params.set("projectId", String(filterProjectId));
           if (filterUnitCode) params.set("unitCode", filterUnitCode);
           if (s.key !== "all") params.set("status", s.key);
+          if (activeAge !== "all") params.set("age", activeAge);
           return (
             <Link
               key={s.key}
@@ -266,9 +316,52 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
         })}
       </div>
 
+      {/* Age filter pills — chỉ ý nghĩa cho recon chưa thu đủ */}
+      {(activeStatus === "all" || activeStatus === "waiting_pay" || activeStatus === "partial") && (
+        <div className="flex flex-wrap gap-2 items-center">
+          <span className="text-xs text-slate-500 mr-1">CĐT chưa trả trong:</span>
+          {AGE_OPTIONS.map((a) => {
+            const isActive = activeAge === a.key;
+            const count = ageCounts.get(a.key) ?? 0;
+            const params = new URLSearchParams();
+            params.set("tab", activeTab);
+            if (filterProjectId) params.set("projectId", String(filterProjectId));
+            if (filterUnitCode) params.set("unitCode", filterUnitCode);
+            if (activeStatus !== "all") params.set("status", activeStatus);
+            if (a.key !== "all") params.set("age", a.key);
+            const color =
+              a.key === "0_30"
+                ? "text-emerald-700 border-emerald-300"
+                : a.key === "31_90"
+                  ? "text-amber-700 border-amber-300"
+                  : a.key === "90+"
+                    ? "text-red-700 border-red-300"
+                    : "text-slate-700 border-slate-300";
+            return (
+              <Link
+                key={a.key}
+                href={`/revenues?${params.toString()}`}
+                className={`text-xs px-3 py-1 rounded-full border transition ${
+                  isActive
+                    ? "bg-orange-500 text-white border-orange-500"
+                    : `bg-white ${color} hover:bg-slate-50`
+                }`}
+              >
+                {a.label}
+                <span className={`ml-1 ${isActive ? "text-blue-100" : "text-slate-400"}`}>
+                  ({count})
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+
       <div className="bg-white border border-slate-200 rounded-xl p-4 flex gap-4 items-end flex-wrap">
         <form className="flex gap-2 items-end flex-wrap">
           <input type="hidden" name="tab" value={activeTab} />
+          {activeStatus !== "all" && <input type="hidden" name="status" value={activeStatus} />}
+          {activeAge !== "all" && <input type="hidden" name="age" value={activeAge} />}
           <div>
             <label className="block text-xs text-slate-600 mb-1">Mã căn</label>
             <input

@@ -1035,7 +1035,121 @@ export default async function ProductDetailPage({
                   accent={isDone ? "green" : "red"}
                 />
               </div>
-              {/* Breakdown chi tiết */}
+              {/* Breakdown per loại — table gọn, hiển thị explicit không cần hover tooltip */}
+              {(() => {
+                const bonusSaleExpected = Number(p.cdtBonusSale ?? 0);
+                const bonusMgrExpected = Number(p.cdtBonusManager ?? 0);
+                // Build paid map per recon từ revPayments
+                const paidPerRecon = new Map<number, number>();
+                for (const p of revPayments) {
+                  const rid = p.payment.reconciliationId;
+                  if (rid == null) continue;
+                  paidPerRecon.set(rid, (paidPerRecon.get(rid) ?? 0) + Number(p.payment.amount ?? 0));
+                }
+                // Đã nhận per loại: hiện paidHH = payments của HH-recon (revenue > 0),
+                // paidBonus = payments của bonus-recon (cdt > 0, revenue = 0). Với merge
+                // model, 1 recon có thể có cả 2 → payment không phân được. Fallback:
+                // paidHH = paidHHSale (recon dominant HH), paidBonus = paidBonus.
+                type BreakdownRow = { label: string; expected: number; paid: number; cls: string };
+                const breakdown: BreakdownRow[] = [
+                  {
+                    label: "Hoa hồng sale",
+                    expected: expectedHHSale,
+                    paid: paidHHSale,
+                    cls: "text-blue-700",
+                  },
+                ];
+                if (bonusSaleExpected > 0) {
+                  const bsPaid = revRecs
+                    .filter((r) => Number(r.rec.cdtBonusSale ?? 0) > 0)
+                    .reduce((s, r) => {
+                      const p = paidPerRecon.get(r.rec.id) ?? 0;
+                      const totalRec = Number(r.rec.totalReceivableThisTime ?? 0);
+                      const bsShare =
+                        totalRec > 0
+                          ? Number(r.rec.cdtBonusSale ?? 0) / totalRec
+                          : 0;
+                      return s + p * bsShare;
+                    }, 0);
+                  breakdown.push({
+                    label: "Thưởng nóng sale",
+                    expected: bonusSaleExpected,
+                    paid: bsPaid,
+                    cls: "text-amber-700",
+                  });
+                }
+                if (bonusMgrExpected > 0) {
+                  const bmPaid = revRecs
+                    .filter((r) => Number(r.rec.cdtBonusManager ?? 0) > 0)
+                    .reduce((s, r) => {
+                      const p = paidPerRecon.get(r.rec.id) ?? 0;
+                      const totalRec = Number(r.rec.totalReceivableThisTime ?? 0);
+                      const bmShare =
+                        totalRec > 0
+                          ? Number(r.rec.cdtBonusManager ?? 0) / totalRec
+                          : 0;
+                      return s + p * bmShare;
+                    }, 0);
+                  breakdown.push({
+                    label: "Thưởng nóng QL",
+                    expected: bonusMgrExpected,
+                    paid: bmPaid,
+                    cls: "text-purple-700",
+                  });
+                }
+                if (breakdown.length === 1) return null;
+                return (
+                  <div className="bg-white border border-slate-200 rounded-lg overflow-hidden mb-4">
+                    <table className="w-full text-xs">
+                      <thead className="bg-slate-50 text-slate-500">
+                        <tr>
+                          <th className="text-left px-3 py-1.5">Loại</th>
+                          <th className="text-right px-3 py-1.5">Dự kiến</th>
+                          <th className="text-right px-3 py-1.5">Đã nhận</th>
+                          <th className="text-right px-3 py-1.5">Còn phải nhận</th>
+                          <th className="text-right px-3 py-1.5">%</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {breakdown.map((row) => {
+                          const rowRemain = Math.max(0, row.expected - row.paid);
+                          const rowPct =
+                            row.expected > 0 ? (row.paid / row.expected) * 100 : 0;
+                          const rowDone = rowRemain < 1000 && row.expected > 0;
+                          return (
+                            <tr key={row.label} className="border-t border-slate-100">
+                              <td className={`px-3 py-1.5 font-medium ${row.cls}`}>
+                                {row.label}
+                              </td>
+                              <td className="px-3 py-1.5 text-right tabular-nums">
+                                {fmtMoney(row.expected)}
+                              </td>
+                              <td className="px-3 py-1.5 text-right tabular-nums text-green-700">
+                                {fmtMoney(row.paid)}
+                              </td>
+                              <td
+                                className={`px-3 py-1.5 text-right tabular-nums ${
+                                  rowRemain < 1000 ? "text-slate-400" : "text-red-600 font-semibold"
+                                }`}
+                              >
+                                {fmtMoney(rowRemain)}
+                              </td>
+                              <td
+                                className={`px-3 py-1.5 text-right tabular-nums font-semibold ${
+                                  rowDone ? "text-green-700" : "text-slate-600"
+                                }`}
+                              >
+                                {row.expected > 0 ? `${rowPct.toFixed(0)}%` : "—"}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
+              {/* Warning cũ khi có gap giữa ĐC vs chưa ĐC */}
               {(remainDCPending >= 1000 || remainNotDC >= 1000) && (
                 <div className="text-xs text-slate-600 bg-amber-50 border border-amber-200 rounded-lg p-2 mb-4">
                   <span className="font-semibold text-amber-800">Trong phần còn phải nhận:</span>

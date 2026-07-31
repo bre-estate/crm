@@ -531,14 +531,21 @@ export default function CostForm({
           const beforePct = Math.min(100, paidBeforePct);
           const thisPctVal = targetForType > 0 ? (thisAmountDisplay / targetForType) * 100 : 0;
           const thisPct = Math.min(100 - beforePct, thisPctVal);
+          const totalPct = beforePct + thisPct;
           const isDone = paidBefore + thisAmountDisplay >= targetForType - 1000;
           const isZero = paidBefore < 1000 && thisAmountDisplay < 1000;
+          // Edit: "đợt này" = đợt đang sửa (đã tồn tại). Create: đợt sắp lưu.
+          const thisLabel = isEdit ? "đợt đang sửa" : "đợt này";
           const label = isZero
             ? "Chưa chi đợt nào"
             : isDone
               ? "Đã chi đủ target"
-              : `Đã chi ${paidBeforePct.toFixed(0)}%` +
-                (thisAmountDisplay > 0 ? ` (+${thisPctVal.toFixed(0)}% đợt này)` : "");
+              : paidBefore < 1000
+                ? `${thisPctVal.toFixed(0)}% (${thisLabel})`
+                : `Đã chi ${paidBeforePct.toFixed(0)}% các đợt trước` +
+                  (thisAmountDisplay > 0
+                    ? ` (+${thisPctVal.toFixed(0)}% ${thisLabel} · tổng ${totalPct.toFixed(0)}%)`
+                    : "");
           const badgeCls = isDone
             ? "bg-green-100 text-green-700 border-green-300"
             : isZero
@@ -641,7 +648,9 @@ export default function CostForm({
             );
           })()}
           <div className="rounded-lg bg-slate-50 border border-slate-200 p-3">
-            <div className="text-xs text-slate-500">Đã ĐC trước ({previousRecons.length} đợt)</div>
+            <div className="text-xs text-slate-500">
+              {isEdit ? "Đã ĐC các đợt khác" : "Đã ĐC trước"} ({previousRecons.length} đợt)
+            </div>
             <div className="text-sm font-semibold tabular-nums mt-1 text-green-700">
               {fmtMoney(paidBefore)}
             </div>
