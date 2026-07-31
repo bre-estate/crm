@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useTransition, useState, useMemo } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { RevenueReconciliation } from "@/lib/schema";
 import MoneyInput from "@/components/MoneyInput";
@@ -727,20 +728,25 @@ export default function RevenueForm({
                 ? invoiceTotalComputed.toLocaleString("vi-VN")
                 : "—"}
             </div>
-            <div className="text-[10px] text-slate-500 mt-1">
-              Tự tính = tổng các đợt cùng số HĐ.
-              {otherReconsInInvoice.length > 0 &&
-                ` Đang gộp ${otherReconsInInvoice.length} đợt khác (${fmtMoney(
-                  otherReconsInInvoice.reduce(
-                    (s, r) => s + Number(r.totalReceivableThisTime ?? 0),
-                    0,
-                  ),
-                )}) + đợt này.`}
-            </div>
+            {(otherReconsInInvoice.length > 0 || (isEdit && recon?.invoiceId)) && (
+              <div className="mt-1">
+                {isEdit && recon?.invoiceId ? (
+                  <Link
+                    href={`/invoices/${recon.invoiceId}`}
+                    target="_blank"
+                    rel="noopener"
+                    className="text-[11px] text-blue-600 hover:underline inline-flex items-center gap-1"
+                  >
+                    Xem chi tiết HĐ ↗
+                  </Link>
+                ) : (
+                  <span className="text-[10px] text-slate-500">
+                    HĐ đã có {otherReconsInInvoice.length} đợt khác — sẽ gộp cùng
+                  </span>
+                )}
+              </div>
+            )}
           </Field>
-        </div>
-        <div className="text-xs text-slate-500">
-          Số HĐ + ngày HĐ trùng HĐ đã có → hệ thống tự link + cộng dồn giá trị.
         </div>
       </Section>
 

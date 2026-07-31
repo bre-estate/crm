@@ -79,10 +79,20 @@ export default async function InvoiceDetailPage({
   const totalPaid = payments.reduce((s, p) => s + Number(p.amount ?? 0), 0);
   const remaining = totalVat - totalPaid;
 
-  const reconTypeLabel = (r: (typeof recons)[number]): string => {
-    if (Number(r.cdtBonusSale ?? 0) > 0) return "Thưởng sale";
-    if (Number(r.cdtBonusManager ?? 0) > 0) return "Thưởng quản lý";
-    return "Hoa hồng";
+  // Với merge model: 1 recon có thể có cả HH + thưởng nóng sale + QL. Show
+  // đầy đủ loại nào có amount > 0.
+  const reconTypeBadges = (r: (typeof recons)[number]) => {
+    const badges: { label: string; amount: number; cls: string }[] = [];
+    const rev = Number(r.revenueThisTime ?? 0);
+    const bs = Number(r.cdtBonusSale ?? 0);
+    const bm = Number(r.cdtBonusManager ?? 0);
+    if (rev > 0)
+      badges.push({ label: "HH", amount: rev, cls: "bg-blue-100 text-blue-700" });
+    if (bs > 0)
+      badges.push({ label: "T.nóng sale", amount: bs, cls: "bg-amber-100 text-amber-700" });
+    if (bm > 0)
+      badges.push({ label: "T.nóng QL", amount: bm, cls: "bg-purple-100 text-purple-700" });
+    return badges;
   };
 
   // Group recons theo CĐT. Nếu chỉ 1 CĐT → render 1 bảng gộp; nếu nhiều CĐT
@@ -197,7 +207,18 @@ export default async function InvoiceDetailPage({
                         <td className="p-3 text-slate-500">
                           {r.minutesNumber || <span className="text-slate-300">—</span>}
                         </td>
-                        <td className="p-3 text-xs">{reconTypeLabel(r)}</td>
+                        <td className="p-3">
+                          <div className="flex flex-wrap gap-1">
+                            {reconTypeBadges(r).map((b) => (
+                              <span
+                                key={b.label}
+                                className={`text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap ${b.cls}`}
+                              >
+                                {b.label}: {fmtMoney(b.amount)}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
                         <td className="p-3 text-right tabular-nums font-medium">
                           {fmtMoney(r.totalReceivableThisTime)}
                         </td>
