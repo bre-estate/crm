@@ -107,10 +107,9 @@ export default function RevenueForm({
   })();
   const [reconType, setReconType] = useState(initialReconType);
 
-  // Multi-recon (chỉ CREATE): thêm thưởng nóng cho sale + thưởng nóng cho QL
-  // vào cùng lần submit. Repeater pattern — row 0 luôn commission (hoa hồng),
-  // các row sau là bonus_sale hoặc bonus_manager.
-  // Cả N (nếu thêm) chia sẻ cùng invoice + ngày ĐC + số BB.
+  // Multi-recon (chỉ CREATE): repeater rows với row 0 = loại chính (chọn bất
+  // kỳ 3 loại), extra rows = bonus type khác chưa được dùng. Cả N chia sẻ
+  // cùng invoice + ngày ĐC + số BB.
   type BonusType = "bonus_sale" | "bonus_manager";
   type BonusRow = { type: BonusType; amount: number; note: string };
   const [bonusRows, setBonusRows] = useState<BonusRow[]>([]);
@@ -120,12 +119,48 @@ export default function RevenueForm({
     bonus_sale: "Thưởng nóng cho sale",
     bonus_manager: "Thưởng nóng cho quản lý sàn",
   };
+
+  // Loại bonus có config trên căn (>0). Không có config → không hiện trong dropdown.
+  const productAvailableBonusTypes: BonusType[] = BONUS_TYPES.filter((t) => {
+    const cfg =
+      t === "bonus_sale"
+        ? Number(product?.cdtBonusSale ?? 0)
+        : Number(product?.cdtBonusManager ?? 0);
+    return cfg > 0;
+  });
+
   const usedBonusTypes = new Set(bonusRows.map((r) => r.type));
-  const availableBonusTypes = BONUS_TYPES.filter((t) => !usedBonusTypes.has(t));
+  // + button availability: có loại bonus nào (chưa dùng ở row 0 hoặc extras) VÀ có config
+  const canAddMoreBonus = productAvailableBonusTypes.some(
+    (t) => t !== reconType && !usedBonusTypes.has(t),
+  );
+
+  // Row 0 dropdown options: commission luôn có + các bonus có config, filter
+  // các bonus type đã bị extras dùng (nếu có, không cho row 0 pick trùng).
+  const row0Options: string[] = [
+    "commission",
+    ...productAvailableBonusTypes.filter(
+      (t) => t === reconType || !usedBonusTypes.has(t),
+    ),
+  ];
+
+  // Options cho 1 extra row: các bonus có config + chưa được dùng ở row 0 hoặc
+  // extra khác (giữ current row's type để hiển thị).
+  const extraRowOptions = (idx: number): BonusType[] => {
+    const currentType = bonusRows[idx]?.type;
+    return productAvailableBonusTypes.filter(
+      (t) =>
+        t === currentType ||
+        (t !== reconType && !bonusRows.some((r, i) => i !== idx && r.type === t)),
+    );
+  };
 
   const addBonusRow = () => {
-    if (availableBonusTypes.length === 0) return;
-    const nextType = availableBonusTypes[0];
+    const availableForNew = productAvailableBonusTypes.filter(
+      (t) => t !== reconType && !usedBonusTypes.has(t),
+    );
+    if (availableForNew.length === 0) return;
+    const nextType = availableForNew[0];
     const defaultAmt =
       nextType === "bonus_sale"
         ? Number(product?.cdtBonusSale ?? 0)
@@ -431,21 +466,34 @@ export default function RevenueForm({
                 <label className="block text-xs text-slate-600 mb-1">
                   Loại đợt <span className="text-red-500">*</span>
                 </label>
-                {isEdit ? (
-                  <select
-                    value={reconType}
-                    onChange={(e) => setReconType(e.target.value)}
-                    className="input"
-                  >
-                    <option value="commission">Hoa hồng</option>
-                    <option value="bonus_sale">Thưởng nóng cho sale</option>
-                    <option value="bonus_manager">Thưởng nóng cho quản lý sàn</option>
-                  </select>
-                ) : (
-                  <div className="input bg-slate-50 text-slate-700 cursor-not-allowed">
-                    Hoa hồng
-                  </div>
-                )}
+                <select
+                  value={reconType}
+                  onChange={(e) => {
+                    const newType = e.target.value;
+                    setReconType(newType);
+                    // Nếu row 0 chuyển sang bonus type đang được extra dùng → gỡ extra
+                    if (newType === "bonus_sale" || newType === "bonus_manager") {
+                      setBonusRows((rows) => rows.filter((r) => r.type !== newType));
+                    }
+                  }}
+                  className="input"
+                >
+                  {isEdit ? (
+                    <>
+                      <option value="commission">Hoa hồng</option>
+                      <option value="bonus_sale">Thưởng nóng cho sale</option>
+                      <option value="bonus_manager">Thưởng nóng cho quản lý sàn</option>
+                    </>
+                  ) : (
+                    row0Options.map((t) => (
+                      <option key={t} value={t}>
+                        {t === "commission"
+                          ? "Hoa hồng"
+                          : bonusTypeLabel[t as BonusType]}
+                      </option>
+                    ))
+                  )}
+                </select>
               </div>
               <div className="w-44">
                 <label className="block text-xs text-slate-600 mb-1">
@@ -473,11 +521,11 @@ export default function RevenueForm({
                   placeholder="vd: Đợt 1, Đợt HĐMB, ..."
                 />
               </div>
-              {!isEdit && bonusRows.length === 0 && availableBonusTypes.length > 0 && (
+              {!isEdit && bonusRows.length === 0 && canAddMoreBonus && (
                 <button
                   type="button"
                   onClick={addBonusRow}
-                  title="Thêm loại đối chiếu (thưởng nóng)"
+                  title="Thêm loại đối chiếu"
                   className="h-10 w-10 mt-5 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 hover:border-slate-400 text-xl leading-none flex items-center justify-center"
                 >
                   +
@@ -488,9 +536,7 @@ export default function RevenueForm({
             {/* Bonus rows (create only) */}
             {!isEdit &&
               bonusRows.map((row, idx) => {
-                const rowAvailable = BONUS_TYPES.filter(
-                  (t) => t === row.type || !usedBonusTypes.has(t),
-                );
+                const rowAvailable = extraRowOptions(idx);
                 const isLast = idx === bonusRows.length - 1;
                 const amtDisplay = row.amount ? row.amount.toLocaleString("vi-VN") : "";
                 return (
@@ -549,12 +595,12 @@ export default function RevenueForm({
                     >
                       −
                     </button>
-                    {isLast && availableBonusTypes.length > 0 && (
+                    {isLast && canAddMoreBonus && (
                       <button
                         type="button"
                         onClick={addBonusRow}
                         title="Thêm loại đối chiếu"
-                        className="h-10 w-10 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 hover:border-slate-400 text-xl leading-none flex items-center justify-center"
+                        className="h-10 w-10 mt-5 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 hover:border-slate-400 text-xl leading-none flex items-center justify-center"
                       >
                         +
                       </button>
