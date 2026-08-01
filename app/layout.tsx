@@ -2,28 +2,27 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { createClient } from "@/lib/supabase/server";
 import SignOutButton from "./SignOutButton";
-import NavLinks from "./NavLinks";
-import AppShell from "./AppShell";
-import NotificationBell from "@/components/NotificationBell";
+import AppSidebar from "@/components/AppSidebar";
 import { fetchNotifications } from "./actions/notifications";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 import { Toaster } from "sonner";
 import { getCurrentUser } from "@/lib/auth";
 import { resolvePermissions, hasPermission as checkPerm } from "@/lib/permissions";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
   title: "BRE — Quản lý sàn giao dịch BĐS",
   description: "Hệ thống quản lý doanh thu, giá vốn, báo cáo",
-  // Favicon: dùng Next.js file-convention → `app/icon.png` được auto-detect
-  // + generate <link rel="icon"> với hash cache-busting. Không cần config
-  // metadata.icons — nếu set sẽ conflict với auto-detect.
 };
 
-// Viewport riêng theo Next 15 convention (thay vì trong metadata).
 export const viewport = {
   width: "device-width",
   initialScale: 1,
@@ -55,7 +54,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     user.email ??
     "User";
 
-  // Chưa có trong whitelist → force logout để tránh confusion.
   if (!currentUser) {
     return (
       <html lang="vi" className={cn("h-full", "font-sans", geist.variable)}>
@@ -78,37 +76,34 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   const permissions = resolvePermissions(currentUser.role, currentUser.customPermissions);
   const isOwner = currentUser.role === "owner";
-
-  // Load notifications cho bell (chỉ khi user có quyền xem alerts)
   const canSeeAlerts = checkPerm(currentUser.role, currentUser.customPermissions, "alerts");
   const notifications = canSeeAlerts
     ? await fetchNotifications()
     : { items: [], unreadCount: 0 };
-  const bell = canSeeAlerts ? <NotificationBell initial={notifications} /> : null;
-
-  const sidebar = (
-    <>
-      <div className="p-5 flex items-center justify-center">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.png" alt="BRE — Better Real Estate" className="h-14 w-auto" />
-      </div>
-      <NavLinks isOwner={isOwner} permissions={permissions} />
-      <div className="p-3 border-t border-slate-200 space-y-2">
-        <div className="text-xs text-slate-600 truncate" title={displayName}>
-          {displayName}
-        </div>
-        <SignOutButton />
-      </div>
-    </>
-  );
 
   return (
     <html lang="vi" className={cn("h-full", "font-sans", geist.variable)}>
       <body className="bg-slate-50 text-slate-900 min-h-screen antialiased">
         <TooltipProvider>
-          <AppShell sidebar={sidebar} userName={displayName} bell={bell}>
-            {children}
-          </AppShell>
+          <SidebarProvider>
+            <AppSidebar
+              isOwner={isOwner}
+              permissions={permissions}
+              displayName={displayName}
+              email={currentUser.email}
+              notifications={notifications}
+              canSeeAlerts={canSeeAlerts}
+            />
+            <SidebarInset>
+              {/* Mobile top bar với hamburger — desktop ẩn */}
+              <header className="md:hidden sticky top-0 z-20 bg-white border-b border-slate-200 flex items-center gap-2 px-3 py-2">
+                <SidebarTrigger />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/logo.png" alt="BRE" className="h-7 w-auto" />
+              </header>
+              <div className="max-w-7xl mx-auto p-4 md:p-6 w-full">{children}</div>
+            </SidebarInset>
+          </SidebarProvider>
         </TooltipProvider>
         <Toaster position="top-right" richColors closeButton />
       </body>
