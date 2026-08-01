@@ -322,7 +322,7 @@ export default async function ReportsCashflowPage({ searchParams }: { searchPara
           />
         </div>
         {partnerSpeeds.length > 0 && (
-          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+          <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 text-xs text-slate-600">
                 <tr>
@@ -389,7 +389,7 @@ export default async function ReportsCashflowPage({ searchParams }: { searchPara
             return (
               <details
                 key={r.name}
-                className="group bg-white border border-slate-200 rounded-xl overflow-hidden"
+                className="group bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden"
               >
                 <summary className="cursor-pointer list-none p-3 hover:bg-slate-50">
                   <div className="grid grid-cols-12 gap-3 items-center text-sm">
@@ -488,7 +488,7 @@ export default async function ReportsCashflowPage({ searchParams }: { searchPara
             );
           })}
           {partnerAgingRows.length === 0 && (
-            <div className="bg-white border border-slate-200 rounded-xl p-6 text-center text-slate-500 text-sm">
+            <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-6 text-center text-slate-500 text-sm">
               Không có công nợ nào — tất cả CĐT/F1 đã thanh toán đủ.
             </div>
           )}
@@ -503,7 +503,7 @@ export default async function ReportsCashflowPage({ searchParams }: { searchPara
           <b>Sắp thu</b> = đợt đối chiếu doanh thu đã chốt nhưng CĐT/F1 chưa chuyển tiền vào TK BRE.{" "}
           <b>Sắp trả</b> = đợt đối chiếu giá vốn đã chốt nhưng BRE chưa chuyển cho NVKD/CTV/quản lý.
         </p>
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs text-slate-600">
               <tr>
@@ -616,7 +616,7 @@ function AgingTable({ title, aging }: { title: string; aging: { b0: number; b30:
   return (
     <div>
       <h3 className="text-sm font-semibold mb-2">{title}</h3>
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
         <table className="w-full text-sm">
           <tbody>
             {rows.map((r) => {
@@ -653,7 +653,7 @@ function RiskCard({
   riskColor: (lvl: string) => string;
 }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+    <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
       <div className="p-3 bg-slate-50 border-b border-slate-200 text-sm font-semibold">
         {title}
       </div>

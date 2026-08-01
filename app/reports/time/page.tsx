@@ -57,7 +57,7 @@ export default async function ReportsTimePage({ searchParams }: { searchParams: 
         <p className="text-xs text-slate-500 mb-3">
           DT ghi nhận tại thời điểm cọc → group theo tháng của ngày cọc.
         </p>
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs text-slate-600">
               <tr>
@@ -91,7 +91,7 @@ export default async function ReportsTimePage({ searchParams }: { searchParams: 
         <p className="text-xs text-slate-500 mb-3">
           Gộp tất cả năm để thấy pattern theo mùa. Không bị filter năm/quý ảnh hưởng.
         </p>
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-4">
           <div className="space-y-2">
             {buckets.map((b, i) => {
               const pct = maxUnits > 0 ? (b.units / maxUnits) * 100 : 0;

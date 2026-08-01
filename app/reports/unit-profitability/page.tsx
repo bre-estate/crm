@@ -172,7 +172,7 @@ export default async function UnitProfitabilityPage({
       </div>
 
       {/* Filter + stats */}
-      <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+      <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-4 space-y-3">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
           <Stat label="Tổng DT (gồm VAT)" value={fmt(totalRev)} />
           <Stat label="Tổng Giá vốn" value={fmt(totalCost)} warn />
@@ -222,8 +222,8 @@ export default async function UnitProfitabilityPage({
       </div>
 
       {/* Table */}
-      <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
-        <table className="w-full text-sm">
+      <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
+        <table className="min-w-full w-max text-sm">
           <thead className="bg-slate-50 text-xs">
             <tr>
               <th className="text-left p-2 whitespace-nowrap">

@@ -153,7 +153,7 @@ export default async function ReportsPartnersPage({ searchParams }: { searchPara
             </>
           )}
         </p>
-        <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
           <table className="w-full text-sm min-w-[950px]">
             <thead className="bg-slate-50 text-xs text-slate-600">
               <tr>

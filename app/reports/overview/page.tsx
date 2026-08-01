@@ -341,7 +341,7 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
               Dồn tích theo ngày đối chiếu (chuẩn kế toán VN — Kim confirm 2026-07-27).
               Chi phí hoạt động gộp theo tháng phát sinh.
             </p>
-            <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
+            <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
               <table className="w-full text-sm min-w-[700px]">
                 <thead className="bg-slate-50 text-xs text-slate-600">
                   <tr>

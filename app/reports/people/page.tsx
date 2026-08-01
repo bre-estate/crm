@@ -195,7 +195,7 @@ export default async function ReportsPeoplePage({ searchParams }: { searchParams
 
       <div>
         <h2 className="text-lg font-semibold mb-3">Theo phòng — {filterLabel}</h2>
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs text-slate-600">
               <tr>
@@ -257,7 +257,7 @@ export default async function ReportsPeoplePage({ searchParams }: { searchParams
             </>
           )}
         </p>
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs text-slate-600">
               <tr>

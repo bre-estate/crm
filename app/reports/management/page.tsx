@@ -285,11 +285,11 @@ export default async function ManagementReportPage({
         <p className="text-xs text-slate-500 mb-3">
           Đã loại: Thiết bị (chi phí đầu tư riêng), thuế GTGT/TNDN/TNCN (nộp thay), booking hoàn/cọc hộ khách, HH sale (nằm ở giá vốn CRM).
         </p>
-        <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
-          <table className="w-full text-xs">
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
+          <table className="min-w-full w-max text-xs">
             <thead className="bg-slate-50">
               <tr>
-                <th className="text-left p-2 sticky left-0 bg-slate-50 whitespace-nowrap">Nhóm</th>
+                <th className="text-left p-2 sticky left-0 bg-slate-50 whitespace-nowrap z-10">Nhóm</th>
                 {monthList.map((m) => (
                   <th key={m} className="text-right p-2 whitespace-nowrap">
                     <Link
@@ -369,7 +369,7 @@ export default async function ManagementReportPage({
           Dồn tích theo ngày đối chiếu (chuẩn kế toán VN — Kim xác nhận 2026-07-27). Chi phí hoạt động gộp theo tháng phát sinh.
           Lãi thuần = Doanh thu/1,1 − Giá vốn − Chi phí hoạt động.
         </p>
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs">
               <tr>

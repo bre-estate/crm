@@ -202,7 +202,7 @@ export default async function CashFlowStatementPage({
       </div>
 
       {/* Chi tiết */}
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-xs">
             <tr>

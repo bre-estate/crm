@@ -157,8 +157,8 @@ export default async function MonthDetailPage({ params }: { params: Params }) {
       {revs.length > 0 && (
         <section>
           <h2 className="text-lg font-semibold mb-2">💰 Doanh thu ĐC ({fmt(revTotal)} VND)</h2>
-          <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
+            <table className="min-w-full w-max text-sm">
               <thead className="bg-slate-50 text-xs">
                 <tr>
                   <th className="text-left p-2">Ngày ĐC</th>
@@ -199,8 +199,8 @@ export default async function MonthDetailPage({ params }: { params: Params }) {
       {costs.length > 0 && (
         <section>
           <h2 className="text-lg font-semibold mb-2">🏦 Giá vốn ĐC ({fmt(costTotal)} VND)</h2>
-          <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
+            <table className="min-w-full w-max text-sm">
               <thead className="bg-slate-50 text-xs">
                 <tr>
                   <th className="text-left p-2">Ngày ĐC</th>
@@ -314,8 +314,8 @@ function GroupTable({
           {txs.length} khoản · <b>{total.toLocaleString("vi-VN")} VND</b>
         </span>
       </div>
-      <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
-        <table className="w-full text-xs">
+      <div className="bg-card rounded-lg ring-1 ring-foreground/10 overflow-x-auto">
+        <table className="min-w-full w-max text-xs">
           <thead className="bg-slate-50 text-[11px]">
             <tr>
               <th className="text-left p-2">Ngày</th>

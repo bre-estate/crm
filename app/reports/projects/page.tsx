@@ -93,7 +93,7 @@ export default async function ReportsProjectsPage({ searchParams }: { searchPara
       {/* Bảng chi tiết theo dự án */}
       <div>
         <h2 className="text-lg font-semibold mb-3">Chi tiết theo dự án — {filterLabel}</h2>
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs text-slate-600">
               <tr>
@@ -201,7 +201,7 @@ export default async function ReportsProjectsPage({ searchParams }: { searchPara
         <p className="text-xs text-slate-500 mb-3">
           Số căn bán được / tháng, tính từ tháng đầu → tháng cuối có căn của dự án đó. Xếp cao xuống thấp trong khoảng đã chọn.
         </p>
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs text-slate-600">
               <tr>
@@ -257,7 +257,7 @@ export default async function ReportsProjectsPage({ searchParams }: { searchPara
         <p className="text-xs text-slate-500 mb-3">
           Lãi gộp (không VAT) / Doanh thu không VAT. Cao là ăn dày, thấp/âm là ăn mỏng hoặc lỗ.
         </p>
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs text-slate-600">
               <tr>

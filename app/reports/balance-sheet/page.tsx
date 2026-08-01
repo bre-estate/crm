@@ -183,7 +183,7 @@ export default async function BalanceSheetPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* TÀI SẢN */}
-        <div className="bg-white border border-slate-200 rounded-xl">
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10">
           <div className="p-4 border-b border-slate-100 bg-blue-50">
             <h2 className="text-lg font-bold text-blue-900">TÀI SẢN</h2>
           </div>
@@ -211,7 +211,7 @@ export default async function BalanceSheetPage() {
         </div>
 
         {/* NGUỒN VỐN */}
-        <div className="bg-white border border-slate-200 rounded-xl">
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10">
           <div className="p-4 border-b border-slate-100 bg-green-50">
             <h2 className="text-lg font-bold text-green-900">NGUỒN VỐN</h2>
           </div>

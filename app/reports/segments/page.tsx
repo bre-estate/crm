@@ -213,7 +213,7 @@ export default async function ReportsSegmentsPage({
       {/* ===== Bedroom breakdown ===== */}
       <div>
         <h2 className="text-lg font-semibold mb-3">Phân khúc theo số phòng ngủ — {filterLabel}</h2>
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs text-slate-600">
               <tr>
@@ -268,7 +268,7 @@ export default async function ReportsSegmentsPage({
         <p className="text-xs text-slate-500 mb-3">
           Dựa trên <b>Giá tính PMG</b> (giá bán căn cho khách). Cột "Tổng DT" = doanh thu BRE nhận từ CĐT (HH), khác với giá bán.
         </p>
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs text-slate-600">
               <tr>
@@ -312,8 +312,8 @@ export default async function ReportsSegmentsPage({
         <p className="text-xs text-slate-500 mb-3">
           Ma trận chéo: mỗi dự án BRE bán bao nhiêu căn cho từng loại phòng ngủ.
         </p>
-        <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
+          <table className="min-w-full w-max text-sm">
             <thead className="bg-slate-50 text-xs text-slate-600">
               <tr>
                 <th className="text-left p-2">Dự án</th>
@@ -361,7 +361,7 @@ export default async function ReportsSegmentsPage({
           <h2 className="text-lg font-semibold mb-3">Diện tích trung bình theo loại</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {areaByBedroom.map((a) => (
-              <div key={a.label} className="bg-white border border-slate-200 rounded-lg p-3">
+              <div key={a.label} className="bg-card rounded-lg ring-1 ring-foreground/10 p-3">
                 <div className="text-xs text-slate-500">{a.label}</div>
                 <div className="text-lg font-bold tabular-nums mt-1">{a.avg.toFixed(1)} m²</div>
                 <div className="text-xs text-slate-400">({a.count} căn có nhập diện tích)</div>
