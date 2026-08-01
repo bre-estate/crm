@@ -301,6 +301,21 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
 
   const costTypes = COST_TYPE_OPTIONS;
 
+  // Lookup unit code cho banner "Đã cập nhật" — cho user thấy sửa căn nào,
+  // ID không dễ nhớ.
+  let updatedUnitCode: string | null = null;
+  if (updated) {
+    const updatedId = Number(updated);
+    if (Number.isFinite(updatedId)) {
+      const [row] = await db
+        .select({ unitCode: products.unitCode })
+        .from(costReconciliations)
+        .leftJoin(products, eq(costReconciliations.productId, products.id))
+        .where(eq(costReconciliations.id, updatedId));
+      updatedUnitCode = row?.unitCode ?? null;
+    }
+  }
+
   return (
     <div className="space-y-4">
       {(deleted || updated) && (
@@ -313,7 +328,7 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
         >
           {deleted
             ? `Đã xóa đối chiếu #${deleted}.`
-            : `Đã cập nhật đối chiếu #${updated}.`}
+            : `Đã cập nhật đối chiếu #${updated}${updatedUnitCode ? ` (căn ${updatedUnitCode})` : ""}.`}
         </div>
       )}
       <PageChrome

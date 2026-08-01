@@ -100,18 +100,18 @@ export default function CostPaymentsEditor({ payments, onUpdate, onDelete, onAdd
               placeholder="tuỳ chọn"
             />
           </div>
-          <div className="col-span-2 flex gap-2">
+          <div className="col-span-2 flex gap-2 items-center h-[38px]">
             <Button
               type="submit"
-              size="sm"
+              size="lg"
               disabled={pending}
-              className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
+              className="bg-orange-500 hover:bg-orange-600 text-white"
             >
               Lưu
             </Button>
             <Button
               type="button"
-              size="sm"
+              size="lg"
               variant="destructive"
               disabled={pending}
               onClick={() => {
@@ -146,18 +146,18 @@ export default function CostPaymentsEditor({ payments, onUpdate, onDelete, onAdd
             <label className="block text-xs text-slate-600 mb-1">Ghi chú</label>
             <input name="note" className="input" placeholder="tuỳ chọn" />
           </div>
-          <div className="col-span-2 flex gap-2">
+          <div className="col-span-2 flex gap-2 items-center h-[38px]">
             <Button
               type="submit"
-              size="sm"
+              size="lg"
               disabled={pending}
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+              className="bg-green-600 hover:bg-green-700 text-white"
             >
               + Thêm
             </Button>
             <Button
               type="button"
-              size="sm"
+              size="lg"
               variant="outline"
               onClick={() => setShowAdd(false)}
             >
