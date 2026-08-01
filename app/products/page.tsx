@@ -15,6 +15,10 @@ import SearchableSelect from "@/components/SearchableSelect";
 import ProductsTable, { type ProductRow } from "./ProductsTable";
 import { deleteProductBulk } from "@/lib/actions/products";
 import HighlightManager from "../HighlightManager";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -344,55 +348,52 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
           </p>
         </div>
         <div className="flex gap-2">
-          <Link
-            href="/products/bulk"
-            className="bg-slate-100 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-slate-200"
-          >
+          <Button variant="secondary" render={<Link href="/products/bulk" />}>
             📊 Nhập hàng loạt
-          </Link>
-          <Link
-            href="/products/new"
-            className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600"
+          </Button>
+          <Button
+            render={<Link href="/products/new" />}
+            className="bg-orange-500 hover:bg-orange-600 text-white"
           >
             + Thêm giao dịch
-          </Link>
+          </Button>
         </div>
       </div>
 
-      <div className="border-b border-slate-200 flex gap-1">
-        {[
-          { key: "primary", label: "Sơ cấp", count: primaryCount },
-          { key: "secondary", label: "Thứ cấp", count: secondaryCount },
-        ].map((t) => {
-          const isActive = activeTab === t.key;
-          const params = new URLSearchParams();
-          params.set("tab", t.key);
-          if (filterProjectId) params.set("projectId", String(filterProjectId));
-          if (filterDeptId) params.set("departmentId", String(filterDeptId));
-          if (filterSalesPerson) params.set("salesPerson", filterSalesPerson);
-          if (filterUnitCode) params.set("unitCode", filterUnitCode);
-          if (dateFrom) params.set("from", dateFrom);
-          if (dateTo) params.set("to", dateTo);
-          return (
-            <Link
-              key={t.key}
-              href={`/products?${params.toString()}`}
-              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition ${
-                isActive
-                  ? "border-orange-500 text-blue-700"
-                  : "border-transparent text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              {t.label}{" "}
-              <span className={`text-xs ml-1 ${isActive ? "text-blue-500" : "text-slate-400"}`}>
-                ({t.count})
-              </span>
-            </Link>
-          );
-        })}
-      </div>
+      <Tabs value={activeTab} className="border-b border-slate-200">
+        <TabsList variant="line">
+          {[
+            { key: "primary" as const, label: "Sơ cấp", count: primaryCount },
+            { key: "secondary" as const, label: "Thứ cấp", count: secondaryCount },
+          ].map((t) => {
+            const isActive = activeTab === t.key;
+            const params = new URLSearchParams();
+            params.set("tab", t.key);
+            if (filterProjectId) params.set("projectId", String(filterProjectId));
+            if (filterDeptId) params.set("departmentId", String(filterDeptId));
+            if (filterSalesPerson) params.set("salesPerson", filterSalesPerson);
+            if (filterUnitCode) params.set("unitCode", filterUnitCode);
+            if (dateFrom) params.set("from", dateFrom);
+            if (dateTo) params.set("to", dateTo);
+            return (
+              <TabsTrigger
+                key={t.key}
+                value={t.key}
+                render={
+                  isActive ? <span /> : <Link href={`/products?${params.toString()}`} />
+                }
+              >
+                {t.label}
+                <span className={cn("text-xs ml-1", isActive ? "text-blue-500" : "text-slate-400")}>
+                  ({t.count})
+                </span>
+              </TabsTrigger>
+            );
+          })}
+        </TabsList>
+      </Tabs>
 
-      <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+      <Card className="[--card-spacing:1rem] px-4 gap-3">
         <div className="flex gap-6 text-sm flex-wrap">
           <div>
             <div className="text-xs text-slate-500">Số căn</div>
@@ -413,9 +414,10 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
           <div>
             <div className="text-xs text-slate-500" title="= Đã ĐC − Đã thu (giống Excel col AD)">Còn phải thu</div>
             <div
-              className={`font-bold tabular-nums ${
-                totalRecognized - totalPaid > 1000 ? "text-orange-700" : "text-slate-400"
-              }`}
+              className={cn(
+                "font-bold tabular-nums",
+                totalRecognized - totalPaid > 1000 ? "text-orange-700" : "text-slate-400",
+              )}
             >
               {fmtMoney(Math.max(0, totalRecognized - totalPaid))}
             </div>
@@ -493,24 +495,21 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
             />
           </div>
           <input type="hidden" name="tab" value={activeTab} />
-          <button className="bg-slate-100 border border-slate-300 rounded-lg px-3 py-1.5 text-sm hover:bg-slate-200">
+          <Button type="submit" variant="secondary" size="sm">
             Lọc
-          </button>
+          </Button>
           {(filterProjectId ||
             filterDeptId ||
             filterSalesPerson ||
             dateFrom ||
             dateTo ||
             filterUnitCode) && (
-            <Link
-              href={`/products?tab=${activeTab}`}
-              className="bg-slate-100 border border-slate-300 rounded-lg px-3 py-1.5 text-sm hover:bg-slate-200"
-            >
+            <Button variant="outline" size="sm" render={<Link href={`/products?tab=${activeTab}`} />}>
               Reset
-            </Link>
+            </Button>
           )}
         </form>
-      </div>
+      </Card>
 
       {(() => {
         const tableRows: ProductRow[] = rows.map((r) => {

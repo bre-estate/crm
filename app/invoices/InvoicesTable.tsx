@@ -3,6 +3,9 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { fmtMoney } from "@/lib/format";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export type InvoiceRow = {
   id: number;
@@ -42,7 +45,7 @@ export default function InvoicesTable({ rows }: { rows: InvoiceRow[] }) {
 
   return (
     <>
-      <div className="flex items-end gap-3 flex-wrap">
+      <Card className="[--card-spacing:0.75rem] px-4 gap-3 flex-row flex-wrap items-end">
         <div>
           <label className="block text-xs text-slate-600 mb-1">Số HĐ</label>
           <input
@@ -74,20 +77,16 @@ export default function InvoicesTable({ rows }: { rows: InvoiceRow[] }) {
           />
         </div>
         {hasFilter && (
-          <button
-            type="button"
-            onClick={clearAll}
-            className="px-3 py-2 text-xs text-blue-600 hover:underline"
-          >
+          <Button variant="ghost" size="sm" onClick={clearAll}>
             Xóa lọc
-          </button>
+          </Button>
         )}
         <div className="text-xs text-slate-500 ml-auto">
           {filtered.length}/{rows.length} hóa đơn
         </div>
-      </div>
+      </Card>
 
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden mt-3">
+      <Card className="p-0 gap-0 overflow-hidden mt-3">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-xs text-slate-600">
             <tr>
@@ -135,15 +134,12 @@ export default function InvoicesTable({ rows }: { rows: InvoiceRow[] }) {
                   </td>
                   <td className="p-3 text-right tabular-nums">
                     <span
-                      className={
-                        status === "paid"
-                          ? "text-slate-400"
-                          : status === "partial"
-                            ? "text-orange-600 font-medium"
-                            : status === "unpaid"
-                              ? "text-red-600 font-medium"
-                              : "text-slate-300"
-                      }
+                      className={cn(
+                        status === "paid" && "text-slate-400",
+                        status === "partial" && "text-orange-600 font-medium",
+                        status === "unpaid" && "text-red-600 font-medium",
+                        status === "empty" && "text-slate-300",
+                      )}
                     >
                       {status === "empty"
                         ? "—"
@@ -174,7 +170,7 @@ export default function InvoicesTable({ rows }: { rows: InvoiceRow[] }) {
             )}
           </tbody>
         </table>
-      </div>
+      </Card>
     </>
   );
 }
