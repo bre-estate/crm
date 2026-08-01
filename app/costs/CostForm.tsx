@@ -575,8 +575,8 @@ export default function CostForm({
             </div>
             {mChanged && (
               <div className="text-[10px] text-amber-700 mt-2">
-                ⚠️ %PMG_LK_sale đã điều chỉnh từ {fmtPctTight(mAtRecon)} sang {fmtPctTight(mCurrent)}
-                — dòng này lưu snapshot rate cũ, tính toán bên dưới dùng rate mới.
+                ⚠️ %PMG_LK_sale của căn vừa đổi từ {fmtPctTight(mAtRecon)} lên {fmtPctTight(mCurrent)}.
+                Đợt này giữ mức cũ {fmtPctTight(mAtRecon)}; các con số bên dưới đã tính theo mức mới {fmtPctTight(mCurrent)}.
               </div>
             )}
           </Section>
