@@ -5,6 +5,12 @@ import { createUser, updateUser, toggleActive, deleteUser } from "./actions";
 import { RESOURCE_GROUPS, type Action, type Role } from "@/lib/permissions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type User = {
   email: string;
@@ -189,21 +195,14 @@ function UserFormModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div
-        className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <form action={handleSubmit} className="p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">
-              {isNew ? "Mời user mới" : `Sửa ${user?.email}`}
-            </h2>
-            <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600">
-              ✕
-            </button>
-          </div>
-
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-lg font-semibold">
+            {isNew ? "Mời user mới" : `Sửa ${user?.email}`}
+          </DialogTitle>
+        </DialogHeader>
+        <form action={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs text-slate-600 mb-1">Email</label>
             <input
@@ -308,7 +307,7 @@ function UserFormModal({
             </Button>
           </div>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

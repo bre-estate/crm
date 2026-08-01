@@ -6,6 +6,12 @@ import { toast } from "sonner";
 import SearchableSelect from "@/components/SearchableSelect";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type Department = {
   id: number;
@@ -154,16 +160,15 @@ export default function DepartmentsManager({
         </table>
       </Card>
 
-      {isOpen && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-5 border-b border-slate-200">
-              <div className="text-lg font-bold">
-                {editing ? `Sửa phòng — ${editing.name}` : "Thêm phòng KD mới"}
-              </div>
-            </div>
-            <form action={submit} className="p-5 space-y-3">
-              <div className="grid grid-cols-2 gap-4">
+      <Dialog open={isOpen} onOpenChange={(o) => { if (!o) close(); }}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold">
+              {editing ? `Sửa phòng — ${editing.name}` : "Thêm phòng KD mới"}
+            </DialogTitle>
+          </DialogHeader>
+          <form action={submit} className="space-y-3">
+            <div className="grid grid-cols-2 gap-4">
                 <Field label="Mã phòng" required>
                   <input
                     name="code"
@@ -229,9 +234,8 @@ export default function DepartmentsManager({
                 </Button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

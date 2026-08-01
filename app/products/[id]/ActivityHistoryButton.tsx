@@ -2,6 +2,13 @@
 
 import { useState } from "react";
 import type { activityLogs } from "@/lib/schema";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type Activity = typeof activityLogs.$inferSelect;
 
@@ -75,49 +82,31 @@ export default function ActivityHistoryButton({
         )}
       </button>
 
-      {open && (
-        <div
-          className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
-          onClick={() => setOpen(false)}
-        >
-          <div
-            className="bg-white rounded-xl shadow-xl max-w-3xl w-full max-h-[85vh] overflow-hidden flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-5 border-b border-slate-200 flex justify-between items-center">
-              <div>
-                <div className="text-lg font-bold flex items-center gap-2">
-                  🕓 Lịch sử thay đổi
-                </div>
-                <div className="text-xs text-slate-500 mt-0.5">
-                  {activities.length} bản ghi gần nhất trên căn này
-                </div>
+      <Dialog open={open} onOpenChange={(o) => { if (!o) setOpen(false); }}>
+        <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold flex items-center gap-2">
+              🕓 Lịch sử thay đổi
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              {activities.length} bản ghi gần nhất trên căn này
+            </DialogDescription>
+          </DialogHeader>
+          <div>
+            {activities.length === 0 ? (
+              <div className="p-6 text-center text-sm text-slate-500 italic">
+                Chưa có thay đổi nào được ghi nhận.
               </div>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="text-slate-400 hover:text-slate-700 text-2xl leading-none"
-                aria-label="Đóng"
-              >
-                ×
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto">
-              {activities.length === 0 ? (
-                <div className="p-6 text-center text-sm text-slate-500 italic">
-                  Chưa có thay đổi nào được ghi nhận.
-                </div>
-              ) : (
-                <ul className="divide-y divide-slate-100">
-                  {activities.map((a) => (
-                    <ActivityRow key={a.id} activity={a} />
-                  ))}
-                </ul>
-              )}
-            </div>
+            ) : (
+              <ul className="divide-y divide-slate-100">
+                {activities.map((a) => (
+                  <ActivityRow key={a.id} activity={a} />
+                ))}
+              </ul>
+            )}
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

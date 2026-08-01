@@ -5,6 +5,13 @@ import { useRouter } from "next/navigation";
 import { fmtMoney, fmtPct } from "@/lib/format";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type ProductSnapshot = {
   id: number;
@@ -109,129 +116,129 @@ export default function AdjustmentDialog({
       >
         + Thêm
       </Button>
-      {open && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-5 border-b border-slate-200">
-              <div className="text-lg font-bold">Thêm điều chỉnh config căn</div>
-              <div className="text-xs text-slate-500 mt-1">
-                Chọn field muốn đổi, nhập giá trị mới. App sẽ giữ history và cập
-                nhật product config.
+      <Dialog open={open} onOpenChange={(o) => { if (!o) setOpen(false); }}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold">
+              Thêm điều chỉnh config căn
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Chọn field muốn đổi, nhập giá trị mới. App sẽ giữ history và cập
+              nhật product config.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-slate-600 mb-1">
+                  Ngày điều chỉnh *
+                </label>
+                <input
+                  type="date"
+                  value={effectiveDate}
+                  onChange={(e) => setEffectiveDate(e.target.value)}
+                  className="input"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-600 mb-1">
+                  Ghi chú
+                </label>
+                <input
+                  type="text"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  className="input"
+                  placeholder="VD: CĐT tăng %HH sau khi bán 5 căn"
+                />
               </div>
             </div>
-            <div className="p-5 space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-slate-600 mb-1">
-                    Ngày điều chỉnh *
-                  </label>
-                  <input
-                    type="date"
-                    value={effectiveDate}
-                    onChange={(e) => setEffectiveDate(e.target.value)}
-                    className="input"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-600 mb-1">
-                    Ghi chú
-                  </label>
-                  <input
-                    type="text"
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    className="input"
-                    placeholder="VD: CĐT tăng %HH sau khi bán 5 căn"
-                  />
-                </div>
-              </div>
 
-              <div className="border-t border-slate-100 pt-3">
-                <div className="text-xs font-semibold text-slate-600 mb-2">
-                  Trường điều chỉnh
-                </div>
-                <div className="space-y-1.5">
-                  {FIELDS.map((f) => {
-                    const isChecked = checked.has(f.key);
-                    const currentVal = Number(product[f.key] ?? 0);
-                    return (
-                      <div
-                        key={f.key}
-                        className={`flex items-center gap-3 p-2 rounded ${
-                          isChecked ? "bg-blue-50 border border-blue-200" : "hover:bg-slate-50"
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => toggle(f.key)}
-                          className="scale-110 cursor-pointer"
-                        />
-                        <label
-                          className="flex-1 text-sm cursor-pointer"
-                          onClick={() => toggle(f.key)}
-                        >
-                          {f.label}
-                        </label>
-                        <div className="text-xs text-slate-500 tabular-nums min-w-24 text-right">
-                          {fmtValue(currentVal, f.type)}
-                        </div>
-                        <span className="text-slate-400">→</span>
-                        <div className="min-w-32">
-                          {isChecked ? (
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              value={values[f.key] ?? ""}
-                              onChange={(e) =>
-                                setValues((prev) => ({ ...prev, [f.key]: e.target.value }))
-                              }
-                              placeholder={
-                                f.type === "money"
-                                  ? "VD: 25000000"
-                                  : `VD: ${(currentVal * 100).toFixed(2)}`
-                              }
-                              className="input text-xs py-1"
-                              autoComplete="off"
-                              data-1p-ignore
-                              data-lpignore="true"
-                              data-form-type="other"
-                              autoFocus
-                            />
-                          ) : (
-                            <div className="text-xs text-slate-400 italic">
-                              (giữ nguyên)
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+            <div className="border-t border-slate-100 pt-3">
+              <div className="text-xs font-semibold text-slate-600 mb-2">
+                Trường điều chỉnh
               </div>
-            </div>
-            <div className="p-5 border-t border-slate-200 flex justify-end gap-3">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => setOpen(false)}
-                disabled={pending}
-              >
-                Huỷ
-              </Button>
-              <Button
-                type="button"
-                onClick={submit}
-                disabled={pending || checked.size === 0}
-                className="bg-orange-500 hover:bg-orange-600 text-white"
-              >
-                {pending ? "Đang lưu..." : `Lưu điều chỉnh (${checked.size} trường)`}
-              </Button>
+              <div className="space-y-1.5">
+                {FIELDS.map((f) => {
+                  const isChecked = checked.has(f.key);
+                  const currentVal = Number(product[f.key] ?? 0);
+                  return (
+                    <div
+                      key={f.key}
+                      className={`flex items-center gap-3 p-2 rounded ${
+                        isChecked ? "bg-blue-50 border border-blue-200" : "hover:bg-slate-50"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggle(f.key)}
+                        className="scale-110 cursor-pointer"
+                      />
+                      <label
+                        className="flex-1 text-sm cursor-pointer"
+                        onClick={() => toggle(f.key)}
+                      >
+                        {f.label}
+                      </label>
+                      <div className="text-xs text-slate-500 tabular-nums min-w-24 text-right">
+                        {fmtValue(currentVal, f.type)}
+                      </div>
+                      <span className="text-slate-400">→</span>
+                      <div className="min-w-32">
+                        {isChecked ? (
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            value={values[f.key] ?? ""}
+                            onChange={(e) =>
+                              setValues((prev) => ({ ...prev, [f.key]: e.target.value }))
+                            }
+                            placeholder={
+                              f.type === "money"
+                                ? "VD: 25000000"
+                                : `VD: ${(currentVal * 100).toFixed(2)}`
+                            }
+                            className="input text-xs py-1"
+                            autoComplete="off"
+                            data-1p-ignore
+                            data-lpignore="true"
+                            data-form-type="other"
+                            autoFocus
+                          />
+                        ) : (
+                          <div className="text-xs text-slate-400 italic">
+                            (giữ nguyên)
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+          <div className="flex justify-end gap-3 pt-3 border-t border-slate-100 mt-3">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setOpen(false)}
+              disabled={pending}
+            >
+              Huỷ
+            </Button>
+            <Button
+              type="button"
+              onClick={submit}
+              disabled={pending || checked.size === 0}
+              className="bg-orange-500 hover:bg-orange-600 text-white"
+            >
+              {pending ? "Đang lưu..." : `Lưu điều chỉnh (${checked.size} trường)`}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

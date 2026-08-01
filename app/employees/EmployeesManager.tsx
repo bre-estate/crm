@@ -6,6 +6,12 @@ import { toast } from "sonner";
 import SearchableSelect from "@/components/SearchableSelect";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type Employee = {
   id: number;
@@ -256,16 +262,15 @@ export default function EmployeesManager({
         </table>
       </Card>
 
-      {isOpen && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-5 border-b border-slate-200">
-              <div className="text-lg font-bold">
-                {editing ? `Sửa — ${editing.name}` : "Thêm nhân viên mới"}
-              </div>
-            </div>
-            <form action={submit} className="p-5 space-y-3">
-              <div className="grid grid-cols-2 gap-4">
+      <Dialog open={isOpen} onOpenChange={(o) => { if (!o) close(); }}>
+        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold">
+              {editing ? `Sửa — ${editing.name}` : "Thêm nhân viên mới"}
+            </DialogTitle>
+          </DialogHeader>
+          <form action={submit} className="space-y-3">
+            <div className="grid grid-cols-2 gap-4">
                 <Field label="Tên đầy đủ" required>
                   <input
                     name="name"
@@ -378,9 +383,8 @@ export default function EmployeesManager({
                 </Button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

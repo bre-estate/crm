@@ -31,13 +31,19 @@ button:disabled,
   cursor: not-allowed;
 }
 
+/* Legacy .input utility — dùng ở 117+ call-sites cho <input>/<select>/<textarea>.
+   Không migrate qua shadcn Input component (rủi ro cao, native <select> phải
+   dùng shadcn Select controlled component). Update CSS này để match shadcn
+   tokens (var(--input), var(--ring), var(--muted-foreground)) → visual đồng
+   nhất với shadcn Input mà không phải sửa 117 file. */
 .input {
   width: 100%;
-  border: 1px solid rgb(203 213 225);
+  border: 1px solid var(--input);
   border-radius: 0.5rem;
   padding: 0.5rem 0.75rem;
   font-size: 0.875rem;
-  background: #fff;
+  background: var(--card);
+  color: var(--foreground);
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
@@ -51,13 +57,14 @@ button:disabled,
     font-size: 16px;
   }
 }
-.input:focus {
-  border-color: rgb(59 130 246);
-  box-shadow: 0 0 0 2px rgb(59 130 246 / 0.2);
+.input:focus, .input:focus-visible {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 50%, transparent);
 }
 .input:disabled, .input[readonly] {
-  background: rgb(248 250 252);
-  color: rgb(71 85 105);
+  background: color-mix(in oklch, var(--muted) 50%, transparent);
+  color: var(--muted-foreground);
+  cursor: not-allowed;
 }
 
 /* Row vừa tạo (bulk) — glow vàng đậm rồi fade về trong 3.5s, giúp mắt

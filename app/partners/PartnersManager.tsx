@@ -6,6 +6,12 @@ import { partnerTypeLabel } from "@/lib/format";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type Partner = {
   id: number;
@@ -149,16 +155,15 @@ export default function PartnersManager({ partners, onCreate, onUpdate, onDelete
         </table>
       </Card>
 
-      {isOpen && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-5 border-b border-slate-200">
-              <div className="text-lg font-bold">
-                {editing ? `Sửa đối tác — ${editing.name}` : "Thêm đối tác mới"}
-              </div>
-            </div>
-            <form action={submit} className="p-5 space-y-3">
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <Dialog open={isOpen} onOpenChange={(o) => { if (!o) closeDialog(); }}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold">
+              {editing ? `Sửa đối tác — ${editing.name}` : "Thêm đối tác mới"}
+            </DialogTitle>
+          </DialogHeader>
+          <form action={submit} className="space-y-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <Field label="Mã đối tác (4 ký tự)" required>
                   <input
                     name="code"
@@ -234,9 +239,8 @@ export default function PartnersManager({ partners, onCreate, onUpdate, onDelete
                 </Button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
