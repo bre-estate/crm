@@ -354,14 +354,13 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
               <th className="text-right p-2" title="Số ĐC đợt này · ✓ = đã trả đủ">
                 Số tiền
               </th>
-              <th className="text-right p-2" title="Target = mức chi tối đa cho loại này của căn">
-                Target căn
+              <th className="text-right p-2" title="Mức chi tối đa cho loại này của căn">
+                Tổng số tiền
               </th>
-              <th className="text-right p-2" title="Tổng đã chi cho loại này / Target">
+              <th className="text-right p-2" title="Tổng đã chi cho loại này / Tổng số tiền">
                 % chi
               </th>
               <th className="text-right p-2"></th>
-              <th className="p-2 w-10"></th>
             </tr>
           </thead>
           <tbody>
@@ -386,7 +385,7 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
                         key={`hdr-${r.costType}`}
                         className="bg-slate-50 border-t-2 border-slate-300"
                       >
-                        <td colSpan={11} className="p-2 text-xs">
+                        <td colSpan={10} className="p-2 text-xs">
                           <div className="flex items-center gap-3 flex-wrap">
                             <span className="font-semibold text-slate-700">
                               {costTypeLabel(r.costType)}
@@ -468,7 +467,7 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={11} className="p-6 text-center text-slate-500">
+                <td colSpan={10} className="p-6 text-center text-slate-500">
                   Chưa có dòng giá vốn nào.
                 </td>
               </tr>
