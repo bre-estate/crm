@@ -21,11 +21,18 @@ export async function fetchNotifications(): Promise<NotificationData> {
   const alerts = await computeAlertSummaries();
   if (alerts.length === 0) return { items: [], unreadCount: 0 };
 
-  const reads = await db
-    .select({ key: notificationReads.notificationKey })
-    .from(notificationReads)
-    .where(eq(notificationReads.email, user.email));
-  const readSet = new Set(reads.map((r) => r.key));
+  // Query read state — graceful fallback nếu table notification_reads chưa
+  // được migrate (VD lần đầu deploy trước khi SQL chạy).
+  let readSet = new Set<string>();
+  try {
+    const reads = await db
+      .select({ key: notificationReads.notificationKey })
+      .from(notificationReads)
+      .where(eq(notificationReads.email, user.email));
+    readSet = new Set(reads.map((r) => r.key));
+  } catch (e) {
+    console.warn("[fetchNotifications] notification_reads chưa tồn tại — skip read state", e);
+  }
 
   const items: NotificationItem[] = alerts.map((a) => ({
     ...a,
@@ -48,14 +55,17 @@ export async function fetchNotifications(): Promise<NotificationData> {
 export async function markNotificationRead(key: string): Promise<void> {
   const user = await getCurrentUser();
   if (!user) return;
-  // Insert if not exists (ON CONFLICT DO NOTHING via unique index)
-  await db
-    .insert(notificationReads)
-    .values({ email: user.email, notificationKey: key })
-    .onConflictDoNothing({
-      target: [notificationReads.email, notificationReads.notificationKey],
-    });
-  revalidatePath("/alerts");
+  try {
+    await db
+      .insert(notificationReads)
+      .values({ email: user.email, notificationKey: key })
+      .onConflictDoNothing({
+        target: [notificationReads.email, notificationReads.notificationKey],
+      });
+    revalidatePath("/alerts");
+  } catch (e) {
+    console.warn("[markNotificationRead] table chưa tồn tại", e);
+  }
 }
 
 export async function markAllNotificationsRead(): Promise<void> {
@@ -63,14 +73,17 @@ export async function markAllNotificationsRead(): Promise<void> {
   if (!user) return;
   const alerts = await computeAlertSummaries();
   if (alerts.length === 0) return;
-  // Bulk insert với on conflict do nothing
-  await db.execute(sql`
-    INSERT INTO notification_reads (email, notification_key)
-    SELECT ${user.email}, unnest(ARRAY[${sql.join(
-      alerts.map((a) => sql`${a.key}`),
-      sql`, `,
-    )}]::text[])
-    ON CONFLICT (email, notification_key) DO NOTHING
-  `);
-  revalidatePath("/alerts");
+  try {
+    await db.execute(sql`
+      INSERT INTO notification_reads (email, notification_key)
+      SELECT ${user.email}, unnest(ARRAY[${sql.join(
+        alerts.map((a) => sql`${a.key}`),
+        sql`, `,
+      )}]::text[])
+      ON CONFLICT (email, notification_key) DO NOTHING
+    `);
+    revalidatePath("/alerts");
+  } catch (e) {
+    console.warn("[markAllNotificationsRead] table chưa tồn tại", e);
+  }
 }
