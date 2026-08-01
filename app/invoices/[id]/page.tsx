@@ -157,7 +157,7 @@ export default async function InvoiceDetailPage({
           )}
         </h2>
         {recons.length === 0 ? (
-          <div className="bg-white border border-slate-200 rounded-xl p-6 text-center text-slate-500 text-sm">
+          <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-6 text-center text-slate-500 text-sm">
             Hóa đơn chưa có đợt đối chiếu nào link vào.
           </div>
         ) : (
@@ -169,7 +169,7 @@ export default async function InvoiceDetailPage({
             return (
               <div
                 key={partnerName}
-                className="bg-white border border-slate-200 rounded-xl overflow-hidden"
+                className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden"
               >
                 {hasMultiplePartners && (
                   <div className="bg-slate-100 px-3 py-2 text-sm font-medium text-slate-800 flex items-center justify-between">
@@ -261,7 +261,7 @@ export default async function InvoiceDetailPage({
         <h2 className="text-sm font-semibold text-slate-700">
           Lịch sử thanh toán ({payments.length})
         </h2>
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs text-slate-600">
               <tr>

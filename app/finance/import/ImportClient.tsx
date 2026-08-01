@@ -105,7 +105,7 @@ export default function ImportClient() {
 
   return (
     <div className="space-y-4">
-      <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+      <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-4 space-y-3">
         <div className="flex gap-3 items-end flex-wrap">
           <div>
             <label className="block text-xs text-slate-600 mb-1">Loại file</label>
@@ -147,7 +147,7 @@ export default function ImportClient() {
       </div>
 
       {preview && (
-        <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-4">
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-4 space-y-4">
           <div className="flex justify-between items-start">
             <div>
               <h2 className="text-lg font-semibold">

@@ -217,7 +217,7 @@ export default function ProductForm({
         });
       }}
       autoComplete="off"
-      className="space-y-6 bg-white border border-slate-200 rounded-xl p-6"
+      className="space-y-6 bg-card rounded-xl ring-1 ring-foreground/10 p-6"
     >
       {/* ===== Top action bar (chỉ hiện khi edit) ===== */}
       {isEdit && (

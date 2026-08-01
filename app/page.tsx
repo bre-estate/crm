@@ -71,7 +71,7 @@ export default async function Home({
           <StatLink label="Dòng đối chiếu GV" value={s.costRec} href="/costs" />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <div className="bg-white border border-slate-200 rounded-xl p-4">
+          <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-4">
             <div className="text-xs text-slate-500">Tổng doanh thu đã đối chiếu</div>
             <div className="text-xl font-bold mt-2 tabular-nums">{fmtMoney(s.totalRev)}</div>
           </div>
@@ -94,7 +94,7 @@ export default async function Home({
             </div>
             <div className="text-xs text-slate-500 mt-1">Biên LN: {fmtPctRaw(margin, 1)}</div>
           </div>
-          <div className="bg-white border border-slate-200 rounded-xl p-4">
+          <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-4">
             <div className="text-xs text-slate-500">Tiền đã nhận từ CĐT/F1</div>
             <div className="text-xl font-bold mt-2 tabular-nums">{fmtMoney(s.totalPaidIn)}</div>
             <div className="text-xs text-slate-500 mt-1">
@@ -153,7 +153,7 @@ export default async function Home({
             <Link
               key={p.href}
               href={p.href}
-              className="bg-white border border-slate-200 rounded-xl p-4 hover:border-orange-400 transition-colors"
+              className="bg-card rounded-xl ring-1 ring-foreground/10 p-4 hover:border-orange-400 transition-colors"
             >
               <div className="text-sm font-medium text-slate-700">{p.label}</div>
               <div className="text-xs text-slate-400 mt-1">{p.href}</div>
@@ -169,7 +169,7 @@ function StatLink({ label, value, href }: { label: string; value: number; href: 
   return (
     <Link
       href={href}
-      className="bg-white border border-slate-200 rounded-xl p-4 hover:border-blue-400 transition-colors"
+      className="bg-card rounded-xl ring-1 ring-foreground/10 p-4 hover:border-blue-400 transition-colors"
     >
       <div className="text-xs text-slate-500">{label}</div>
       <div className="text-2xl font-bold mt-2">{value}</div>

@@ -311,7 +311,7 @@ export default function BulkForm({
   return (
     <div className="space-y-4">
       {/* Top settings — Dự án + Loại đợt + Ngày ĐC */}
-      <div className="bg-white border border-slate-200 rounded-xl p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
         <div>
           <label className="block text-xs text-slate-600 mb-1">
             Dự án <span className="text-red-600">*</span>
@@ -370,7 +370,7 @@ export default function BulkForm({
       </div>
 
       {/* Paste columns */}
-      <div className="bg-white border border-slate-200 rounded-xl p-4">
+      <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <ColTextarea
             label="Mã căn"
@@ -430,7 +430,7 @@ export default function BulkForm({
 
       {/* Preview */}
       {nRows > 0 && (
-        <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="text-sm">
               <b>{nRows}</b> dòng đã paste · <b>{validCount}</b> hợp lệ

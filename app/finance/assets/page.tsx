@@ -91,7 +91,7 @@ export default async function AssetsPage() {
       </div>
 
       {/* Bảng chi tiết */}
-      <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
+      <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-xs">
             <tr>
@@ -216,7 +216,7 @@ function StatCard({
 }) {
   const color = warn ? "text-orange-700" : highlight ? "text-green-700" : "";
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-4">
+    <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-4">
       <div className="text-[10px] text-slate-500 uppercase tracking-wide font-semibold">
         {label}
       </div>

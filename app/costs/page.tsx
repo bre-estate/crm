@@ -791,7 +791,7 @@ async function AggregatedCostsView(props: AggregatedProps) {
       </div>
 
       {/* Table */}
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-xs text-slate-600">
             <tr>

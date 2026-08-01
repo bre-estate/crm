@@ -72,7 +72,7 @@ export function FilterBar({
 }) {
   return (
     <div
-      className={`bg-white border border-slate-200 rounded-xl p-4 flex gap-2 items-end flex-wrap ${className}`}
+      className={`bg-card rounded-xl ring-1 ring-foreground/10 p-4 flex gap-2 items-end flex-wrap ${className}`}
     >
       {children}
     </div>
@@ -117,7 +117,7 @@ export function SectionCard({
 }) {
   return (
     <div
-      className={`bg-white border border-slate-200 rounded-xl p-4 space-y-2 ${className}`}
+      className={`bg-card rounded-xl ring-1 ring-foreground/10 p-4 space-y-2 ${className}`}
     >
       {title && (
         <div className="flex justify-between items-center pb-1.5 border-b border-slate-100">

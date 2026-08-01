@@ -101,7 +101,7 @@ export default async function TransactionsPage({
         </Link>
       </div>
 
-      <form className="bg-white border border-slate-200 rounded-xl p-4 flex gap-2 items-end flex-wrap">
+      <form className="bg-card rounded-xl ring-1 ring-foreground/10 p-4 flex gap-2 items-end flex-wrap">
         <div>
           <label className="block text-[11px] text-slate-600 mb-1">Tháng</label>
           <select name="month" defaultValue={filterMonth ?? ""} className="input w-32 text-sm">
@@ -158,7 +158,7 @@ export default async function TransactionsPage({
         )}
       </form>
 
-      <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
+      <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-xs">
             <tr>

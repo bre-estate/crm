@@ -96,7 +96,7 @@ export default async function CapitalPage() {
       </div>
 
       {/* Per-founder totals */}
-      <div className="bg-white border border-slate-200 rounded-xl p-4">
+      <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-4">
         <h2 className="text-sm font-semibold mb-3">Tổng theo founder</h2>
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-xs">
@@ -130,7 +130,7 @@ export default async function CapitalPage() {
       </div>
 
       {/* Grid founder × month */}
-      <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
+      <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
         <div className="p-4">
           <h2 className="text-sm font-semibold">Vốn góp theo tháng</h2>
           <p className="text-[11px] text-slate-500">
@@ -178,7 +178,7 @@ export default async function CapitalPage() {
       </div>
 
       {/* Chi tiết giao dịch */}
-      <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
+      <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
         <div className="p-4">
           <h2 className="text-sm font-semibold">Chi tiết giao dịch ({rows.length} rows)</h2>
         </div>
@@ -211,7 +211,7 @@ export default async function CapitalPage() {
 
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-4">
+    <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-4">
       <div className="text-[10px] text-slate-500 uppercase tracking-wide font-semibold">
         {label}
       </div>

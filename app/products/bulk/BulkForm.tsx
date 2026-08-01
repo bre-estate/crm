@@ -261,7 +261,7 @@ export default function BulkProductForm({
   return (
     <div className="space-y-4">
       {/* Sale type toggle */}
-      <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-4">
+      <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-4 flex items-center gap-4">
         <div className="text-sm font-semibold">Loại giao dịch:</div>
         <div className="flex gap-2">
           <button
@@ -303,7 +303,7 @@ export default function BulkProductForm({
           </div>
 
           {/* Dự án (bắt buộc, áp cho toàn bộ dòng paste) + Ngày cọc default */}
-          <div className="bg-white border border-slate-200 rounded-xl p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs text-slate-600 mb-1">
                 Dự án <span className="text-red-600">*</span>
@@ -336,7 +336,7 @@ export default function BulkProductForm({
           </div>
 
           {/* Paste columns */}
-          <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-4">
+          <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-4 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
               <ColTextarea
                 label="Mã căn"
@@ -443,7 +443,7 @@ export default function BulkProductForm({
 
           {/* Preview */}
           {nRows > 0 && (
-            <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+            <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="text-sm">
                   <b>{nRows}</b> dòng đã paste · <b>{validCount}</b> hợp lệ ·{" "}

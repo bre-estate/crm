@@ -136,7 +136,7 @@ export default function ProductsTable({
           </button>
         </div>
       )}
-      <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
+      <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-xs text-slate-600">
             <tr>

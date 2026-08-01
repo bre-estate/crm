@@ -156,7 +156,7 @@ export default function HrChecksClient({ rows, activeField, countByField, sumByF
       </div>
 
       {/* Filters: Mã căn / Dự án / NVKD — cùng element type với /costs (SearchableSelect) */}
-      <div className="bg-white border border-slate-200 rounded-xl p-4 flex gap-2 items-end flex-wrap">
+      <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-4 flex gap-2 items-end flex-wrap">
         <div>
           <label className="block text-xs text-slate-600 mb-1">Mã căn</label>
           <input
@@ -206,11 +206,11 @@ export default function HrChecksClient({ rows, activeField, countByField, sumByF
 
       {/* Table */}
       {filtered.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-xl p-12 text-center text-slate-500 text-sm">
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-12 text-center text-slate-500 text-sm">
           ✅ Không có căn nào cần xử lý cho mục này.
         </div>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs text-slate-600">
               <tr>

@@ -161,7 +161,7 @@ export default async function ReportsIndexPage({ searchParams }: { searchParams:
                 <Link
                   key={r.href}
                   href={withQs(r.href)}
-                  className="block bg-white border border-slate-200 rounded-lg p-3 hover:border-slate-400 transition-colors"
+                  className="block bg-card rounded-lg ring-1 ring-foreground/10 p-3 hover:border-slate-400 transition-colors"
                 >
                   <div className="flex items-baseline gap-2">
                     <div className="font-medium text-sm">{r.title}</div>

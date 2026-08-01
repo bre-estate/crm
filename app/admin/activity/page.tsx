@@ -176,15 +176,15 @@ export default async function ActivityAdminPage({
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-4">
           <div className="text-xs text-slate-500">Hôm nay (trong 500 gần nhất)</div>
           <div className="text-2xl font-bold tabular-nums mt-1">{todayCount}</div>
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-4">
           <div className="text-xs text-slate-500">Hiển thị (sau filter)</div>
           <div className="text-2xl font-bold tabular-nums mt-1">{finalRows.length}</div>
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-4">
           <div className="text-xs text-slate-500">Tổng toàn thời gian</div>
           <div className="text-2xl font-bold tabular-nums mt-1">{total}</div>
         </div>
@@ -192,7 +192,7 @@ export default async function ActivityAdminPage({
 
       {/* Filter form */}
       <form
-        className="bg-white border border-slate-200 rounded-xl p-4 grid grid-cols-1 md:grid-cols-6 gap-3 items-end"
+        className="bg-card rounded-xl ring-1 ring-foreground/10 p-4 grid grid-cols-1 md:grid-cols-6 gap-3 items-end"
         autoComplete="off"
       >
         <div>
@@ -271,7 +271,7 @@ export default async function ActivityAdminPage({
       </form>
 
       {/* Table */}
-      <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
+      <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-xs text-slate-600">
             <tr>

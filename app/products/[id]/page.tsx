@@ -1099,7 +1099,7 @@ export default async function ProductDetailPage({
                 }
                 if (breakdown.length === 1) return null;
                 return (
-                  <div className="bg-white border border-slate-200 rounded-lg overflow-hidden mb-4">
+                  <div className="bg-card rounded-lg ring-1 ring-foreground/10 overflow-hidden mb-4">
                     <table className="w-full text-xs">
                       <thead className="bg-slate-50 text-slate-500">
                         <tr>
@@ -1181,7 +1181,7 @@ export default async function ProductDetailPage({
             + Thêm đợt
           </Link>
         </div>
-        <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
+        <div className="bg-card rounded-lg ring-1 ring-foreground/10 overflow-x-auto">
           <table className="w-full text-xs">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
@@ -1303,7 +1303,7 @@ export default async function ProductDetailPage({
                 </span>
               )}
             </div>
-            <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+            <div className="bg-card rounded-lg ring-1 ring-foreground/10 overflow-hidden">
               <table className="w-full text-xs">
                 <thead className="bg-slate-50 text-slate-600">
                   <tr>
@@ -1415,7 +1415,7 @@ export default async function ProductDetailPage({
             + Thêm dòng
           </Link>
         </div>
-        <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
+        <div className="bg-card rounded-lg ring-1 ring-foreground/10 overflow-x-auto">
           <table className="w-full text-xs">
             <thead className="bg-slate-50 text-slate-600">
               <tr>

@@ -42,7 +42,7 @@ export default function ProjectForm({ project, partners, onSave, onDelete, onRef
           }
         });
       }}
-      className="space-y-6 bg-white border border-slate-200 rounded-xl p-6"
+      className="space-y-6 bg-card rounded-xl ring-1 ring-foreground/10 p-6"
     >
       <Section title="Thông tin cơ bản">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">

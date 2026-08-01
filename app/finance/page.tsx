@@ -126,7 +126,7 @@ export default async function FinanceLandingPage() {
       </div>
 
       {/* Cấu hình cty — inline vì đơn giản, ít khi sửa */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5">
+      <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-5">
         <h2 className="text-lg font-semibold">⚙️ Cấu hình</h2>
         <p className="text-xs text-slate-500 mb-3">
           Thuế TNDN (%) + ngày bắt đầu kinh doanh (dùng tính Thời gian hoàn vốn).
@@ -158,7 +158,7 @@ function StatCard({
   sub?: string;
 }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-4">
+    <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-4">
       <div className="text-[10px] text-slate-500 uppercase tracking-wide font-semibold">
         {label}
       </div>
