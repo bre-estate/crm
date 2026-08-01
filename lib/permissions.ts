@@ -35,6 +35,39 @@ export const RESOURCES = {
 
 export type Resource = keyof typeof RESOURCES;
 
+// Nhóm resources theo chức năng — dùng cho UI phân quyền (dễ tick từng nhóm).
+// Khớp với structure menu NavLinks: Giao dịch / Đối tác & Nhân sự / Tài chính / Báo cáo / Hệ thống.
+export const RESOURCE_GROUPS: { label: string; keys: Resource[] }[] = [
+  {
+    label: "Giao dịch",
+    keys: ["products", "revenues", "costs", "costs-report", "invoices"],
+  },
+  {
+    label: "Đối tác & Nhân sự",
+    keys: ["partners", "departments", "employees"],
+  },
+  {
+    label: "Tài chính",
+    keys: ["finance"],
+  },
+  {
+    label: "Báo cáo",
+    keys: [
+      "reports.overview",
+      "reports.management",
+      "reports.people",
+      "reports.balance-sheet",
+      "reports.cash-flow-statement",
+      "reports.unit-profitability",
+      "reports.segments",
+    ],
+  },
+  {
+    label: "Hệ thống",
+    keys: ["alerts", "admin.users", "admin.activity"],
+  },
+];
+
 export const ACTION_LABELS: Record<Action, string> = {
   view: "Xem",
   edit: "Sửa",

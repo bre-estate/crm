@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { createUser, updateUser, toggleActive, deleteUser } from "./actions";
-import type { Action, Role } from "@/lib/permissions";
+import { RESOURCE_GROUPS, type Action, type Role } from "@/lib/permissions";
 
 type User = {
   email: string;
@@ -241,32 +241,54 @@ function UserFormModal({
           {role === "custom" && (
             <div>
               <label className="block text-xs text-slate-600 mb-2">
-                Quyền tùy chỉnh — tick từng resource
+                Quyền tùy chỉnh — tick theo từng nhóm
               </label>
-              <div className="border border-slate-200 rounded-lg divide-y">
-                {Object.entries(resources).map(([key, label]) => {
-                  const current = perms[key] ?? [];
-                  return (
-                    <div key={key} className="flex items-center justify-between p-2">
-                      <div className="text-sm">
-                        {label}{" "}
-                        <span className="text-[10px] text-slate-400 font-mono">{key}</span>
-                      </div>
-                      <div className="flex gap-3">
-                        {ACTIONS.map((a) => (
-                          <label key={a} className="flex items-center gap-1 text-xs">
-                            <input
-                              type="checkbox"
-                              checked={current.includes(a)}
-                              onChange={() => togglePerm(key, a)}
-                            />
-                            {ACTION_LABELS[a]}
-                          </label>
-                        ))}
-                      </div>
+              <div className="space-y-3">
+                {RESOURCE_GROUPS.map((group) => (
+                  <div
+                    key={group.label}
+                    className="border border-slate-200 rounded-lg overflow-hidden"
+                  >
+                    <div className="bg-slate-50 px-3 py-1.5 border-b border-slate-200 text-xs font-semibold text-slate-700 uppercase tracking-wide">
+                      {group.label}
                     </div>
-                  );
-                })}
+                    <div className="divide-y divide-slate-100">
+                      {group.keys.map((key) => {
+                        const label = resources[key];
+                        if (!label) return null;
+                        const current = perms[key] ?? [];
+                        return (
+                          <div
+                            key={key}
+                            className="flex items-center justify-between p-2"
+                          >
+                            <div className="text-sm">
+                              {label}{" "}
+                              <span className="text-[10px] text-slate-400 font-mono">
+                                {key}
+                              </span>
+                            </div>
+                            <div className="flex gap-3">
+                              {ACTIONS.map((a) => (
+                                <label
+                                  key={a}
+                                  className="flex items-center gap-1 text-xs"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={current.includes(a)}
+                                    onChange={() => togglePerm(key, a)}
+                                  />
+                                  {ACTION_LABELS[a]}
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
