@@ -203,48 +203,39 @@ export default async function ProductDetailPage({
     return compacted;
   })();
 
-  // Đã thu tách theo loại: HH sale vs Thưởng nóng
-  // Phân loại recon: có cdtBonus khác 0 và revThis = 0 → là recon thưởng nóng.
-  // Include recon âm (thu hồi tạm ứng) — cùng category, để sum ra 0 khi
-  // đã thu hồi đủ → không hiện warning "chưa nhập config" giả.
-  const isBonusRecon = (rec: (typeof revRecs)[number]["rec"]) => {
-    const cdt =
-      Number(rec.cdtBonusSale ?? 0) + Number(rec.cdtBonusManager ?? 0);
+  // Merge model: 1 recon có thể chứa cả HH + thưởng nóng cùng row.
+  // Split payment theo tỷ lệ trong recon để không lệch "đã thu HH vs thưởng nóng".
+  const paidPerRecon = new Map<number, number>();
+  for (const p of revPayments) {
+    const rid = p.payment.reconciliationId;
+    if (rid == null) continue;
+    paidPerRecon.set(rid, (paidPerRecon.get(rid) ?? 0) + Number(p.payment.amount ?? 0));
+  }
+  let paidHHSale = 0;
+  let paidBonus = 0;
+  let receivedHH = 0;
+  let receivedBonus = 0;
+  let sumReconCdtSale = 0;
+  let sumReconCdtMgr = 0;
+  for (const { rec } of revRecs) {
     const rev = Number(rec.revenueThisTime ?? 0);
-    return cdt !== 0 && rev === 0;
-  };
-  const hhReconIds = new Set(
-    revRecs.filter((r) => !isBonusRecon(r.rec)).map((r) => r.rec.id),
-  );
-  const bonusReconIds = new Set(
-    revRecs.filter((r) => isBonusRecon(r.rec)).map((r) => r.rec.id),
-  );
-
-  const paidHHSale = revPayments
-    .filter((p) => p.payment.reconciliationId && hhReconIds.has(p.payment.reconciliationId))
-    .reduce((s, r) => s + Number(r.payment.amount ?? 0), 0);
-  const paidBonus = revPayments
-    .filter((p) => p.payment.reconciliationId && bonusReconIds.has(p.payment.reconciliationId))
-    .reduce((s, r) => s + Number(r.payment.amount ?? 0), 0);
+    const bs = Number(rec.cdtBonusSale ?? 0);
+    const bm = Number(rec.cdtBonusManager ?? 0);
+    const total = Number(rec.totalReceivableThisTime ?? 0);
+    receivedHH += rev;
+    receivedBonus += bs + bm;
+    sumReconCdtSale += bs;
+    sumReconCdtMgr += bm;
+    const paid = paidPerRecon.get(rec.id) ?? 0;
+    if (total > 0) {
+      paidHHSale += paid * (rev / total);
+      paidBonus += paid * ((bs + bm) / total);
+    } else {
+      // recon rỗng — payment (nếu có) coi như HH mặc định
+      paidHHSale += paid;
+    }
+  }
   const totalPaidInCash = paidHHSale + paidBonus;
-
-  // "Đã nhận" = sum totalReceivable của recons đã có biên bản ĐC.
-  // totalReceivable đã là delta per đợt (đợt hồi tố chỉ chứa 4.795.525, không double count).
-  const receivedHH = revRecs
-    .filter((r) => !isBonusRecon(r.rec))
-    .reduce((s, r) => s + Number(r.rec.totalReceivableThisTime ?? 0), 0);
-  const receivedBonus = revRecs
-    .filter((r) => isBonusRecon(r.rec))
-    .reduce((s, r) => s + Number(r.rec.totalReceivableThisTime ?? 0), 0);
-
-  // Data quality check: recon có CĐT thưởng nhưng config căn không nhập →
-  // hiển thị warning banner để admin biết cần bổ sung config.
-  const sumReconCdtSale = revRecs
-    .filter((r) => isBonusRecon(r.rec))
-    .reduce((s, r) => s + Number(r.rec.cdtBonusSale ?? 0), 0);
-  const sumReconCdtMgr = revRecs
-    .filter((r) => isBonusRecon(r.rec))
-    .reduce((s, r) => s + Number(r.rec.cdtBonusManager ?? 0), 0);
   const missingCfgSale = Math.max(0, sumReconCdtSale - Number(p.cdtBonusSale ?? 0));
   const missingCfgMgr = Math.max(0, sumReconCdtMgr - Number(p.cdtBonusManager ?? 0));
   const hasMissingCdtBonusCfg = missingCfgSale >= 1000 || missingCfgMgr >= 1000;

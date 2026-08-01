@@ -220,10 +220,23 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
     phaseCount: number;
     invoiceIds: Set<number>;
   };
-  // Classify recon: cdtBonus > 0 && revThis == 0 → bonus recon; else HH recon
-  const isBonusRecon = (rec: (typeof recRows)[number]) =>
-    Number(rec.cdtBonusSale ?? 0) + Number(rec.cdtBonusManager ?? 0) > 0 &&
-    Number(rec.revenueThisTime ?? 0) === 0;
+  // Merge model: 1 recon có thể có cả revenue + cdtBonus cùng row. Không dùng
+  // isBonusRecon nhị phân nữa; split per loại theo tỷ lệ trong recon.
+  const splitRecon = (
+    rec: (typeof recRows)[number],
+  ): { hhReceivable: number; bonusReceivable: number; hhShare: number; bonusShare: number } => {
+    const rev = Number(rec.revenueThisTime ?? 0);
+    const bs = Number(rec.cdtBonusSale ?? 0);
+    const bm = Number(rec.cdtBonusManager ?? 0);
+    const total = rev + bs + bm;
+    if (total <= 0) return { hhReceivable: 0, bonusReceivable: 0, hhShare: 0, bonusShare: 0 };
+    return {
+      hhReceivable: rev,
+      bonusReceivable: bs + bm,
+      hhShare: rev / total,
+      bonusShare: (bs + bm) / total,
+    };
+  };
 
   // Compute latestPmgRate per product
   const latestPmgByProduct = new Map<number, number>();
@@ -261,15 +274,12 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
     const s = statsByProduct.get(rec.productId);
     if (!s) continue;
     const paid = paidByRecon.get(rec.id) ?? 0;
-    const receivable = Number(rec.totalReceivable ?? 0);
-    if (isBonusRecon(rec)) {
-      s.receivedBonus += receivable;
-      s.paidBonus += paid;
-    } else {
-      s.receivedHH += receivable;
-      s.paidHH += paid;
-      if (Number(rec.revenueThisTime ?? 0) > 0) s.phaseCount += 1;
-    }
+    const parts = splitRecon(rec);
+    s.receivedHH += parts.hhReceivable;
+    s.receivedBonus += parts.bonusReceivable;
+    s.paidHH += paid * parts.hhShare;
+    s.paidBonus += paid * parts.bonusShare;
+    if (Number(rec.revenueThisTime ?? 0) > 0) s.phaseCount += 1;
     if (rec.invoiceId !== null) s.invoiceIds.add(rec.invoiceId);
   }
 
