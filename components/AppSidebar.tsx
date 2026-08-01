@@ -123,7 +123,7 @@ function isActive(pathname: string, href: string, exact = false): boolean {
 }
 
 // ============================================================================
-// Notification panel — click "Cảnh báo" nav item mở Popover với list này
+// Notification panel — click "Thông báo" nav item mở Popover với list này
 // ============================================================================
 const SEV_STYLE = {
   critical: { icon: "🚨", cls: "border-l-red-500" },
@@ -148,7 +148,7 @@ function NotificationsPanel({
   return (
     <div className="w-96 max-w-[calc(100vw-2rem)]">
       <div className="px-4 py-2.5 border-b border-slate-100 flex justify-between items-center">
-        <div className="font-semibold text-sm">Cảnh báo</div>
+        <div className="font-semibold text-sm">Thông báo</div>
         {data.unreadCount > 0 && (
           <button
             type="button"
@@ -318,7 +318,7 @@ export default function AppSidebar({
                       render={
                         <SidebarMenuButton isActive={pathname.startsWith("/alerts")}>
                           <Bell />
-                          <span>Cảnh báo</span>
+                          <span>Thông báo</span>
                         </SidebarMenuButton>
                       }
                     />
@@ -332,11 +332,23 @@ export default function AppSidebar({
                       />
                     </PopoverContent>
                   </Popover>
-                  {notifData.unreadCount > 0 && (
-                    <SidebarMenuBadge className="bg-red-500 text-white">
-                      {notifData.unreadCount > 9 ? "9+" : notifData.unreadCount}
-                    </SidebarMenuBadge>
-                  )}
+                  {notifData.unreadCount > 0 && (() => {
+                    // Đỏ chỉ khi có critical unread; còn lại xám subtle
+                    const hasCriticalUnread = notifData.items.some(
+                      (i) => !i.read && i.severity === "critical",
+                    );
+                    return (
+                      <SidebarMenuBadge
+                        className={
+                          hasCriticalUnread
+                            ? "bg-red-500 text-white"
+                            : "bg-muted text-muted-foreground"
+                        }
+                      >
+                        {notifData.unreadCount > 9 ? "9+" : notifData.unreadCount}
+                      </SidebarMenuBadge>
+                    );
+                  })()}
                 </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>

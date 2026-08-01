@@ -21,7 +21,7 @@ export default async function AlertsPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold">🔔 Cảnh báo</h1>
+        <h1 className="text-2xl font-bold">🔔 Thông báo</h1>
         <p className="text-sm text-slate-500 mt-1">
           {alerts.length === 0
             ? "✅ Không có cảnh báo nào — công ty đang chạy ổn."
