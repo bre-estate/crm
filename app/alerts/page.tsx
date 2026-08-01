@@ -29,11 +29,19 @@ export default async function AlertsPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        <SummaryCard label="Nguy cấp" count={critical.length} color="red" />
-        <SummaryCard label="Cảnh báo" count={warning.length} color="amber" />
-        <SummaryCard label="Thông tin" count={info.length} color="blue" />
-      </div>
+      {(critical.length > 0 || warning.length > 0 || info.length > 0) && (
+        <div className="grid grid-cols-3 gap-3">
+          {critical.length > 0 && (
+            <SummaryCard label="Nguy cấp" count={critical.length} color="red" />
+          )}
+          {warning.length > 0 && (
+            <SummaryCard label="Cảnh báo" count={warning.length} color="amber" />
+          )}
+          {info.length > 0 && (
+            <SummaryCard label="Thông tin" count={info.length} color="blue" />
+          )}
+        </div>
+      )}
 
       {alerts.length === 0 && (
         <Card className="bg-green-50 ring-green-200 [--card-spacing:1.5rem] px-6 text-center items-center">
