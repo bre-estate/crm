@@ -14,6 +14,15 @@ import {
   employees,
 } from "@/lib/schema";
 import { fmtMoney, fmtDate, fmtPct, fmtPctTight, fmtPctRaw, costTypeLabel, toTitleCase } from "@/lib/format";
+import { Card as ShadCard } from "@/components/ui/card";
+import { Badge as ShadBadge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import { eq, desc } from "drizzle-orm";
 import { asc } from "drizzle-orm";
 import ActivityHistoryButton from "./ActivityHistoryButton";
@@ -319,12 +328,12 @@ export default async function ProductDetailPage({
               await deleteProduct(id);
             }}
           />
-          <Link
-            href={editHref}
-            className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600 whitespace-nowrap"
+          <Button
+            render={<Link href={editHref} />}
+            className="bg-orange-500 hover:bg-orange-600 text-white"
           >
             Sửa giao dịch
-          </Link>
+          </Button>
         </div>
       </div>
 
@@ -1528,11 +1537,11 @@ function Row({
 function Badge({ children, color }: { children: React.ReactNode; color: "sky" | "orange" | "blue" }) {
   const cls =
     color === "sky"
-      ? "bg-sky-100 text-sky-700"
+      ? "bg-sky-100 text-sky-700 border-sky-200"
       : color === "orange"
-        ? "bg-orange-100 text-orange-700"
-        : "bg-blue-100 text-blue-700";
-  return <span className={`px-2 py-0.5 rounded whitespace-nowrap ${cls}`}>{children}</span>;
+        ? "bg-orange-100 text-orange-700 border-orange-200"
+        : "bg-blue-100 text-blue-700 border-blue-200";
+  return <ShadBadge className={cn("rounded px-2 py-0.5", cls)}>{children}</ShadBadge>;
 }
 
 function Card({
@@ -1548,15 +1557,17 @@ function Card({
   highlight?: boolean;
   warn?: boolean;
 }) {
-  let cls = "bg-white border-slate-200";
-  if (warn) cls = "bg-orange-50 border-orange-300";
-  else if (highlight) cls = "bg-green-50 border-green-300";
+  const variantCls = warn
+    ? "bg-orange-50 ring-orange-300"
+    : highlight
+      ? "bg-green-50 ring-green-300"
+      : undefined;
   return (
-    <div className={`border rounded-xl px-3 py-2.5 ${cls}`}>
-      <div className="text-xs text-slate-500">{label}</div>
-      <div className="text-base font-bold mt-0.5 tabular-nums">{value}</div>
-      {sub && <div className="text-[11px] text-slate-500 mt-0.5">{sub}</div>}
-    </div>
+    <ShadCard className={cn("[--card-spacing:0.625rem] px-3 py-2.5 gap-0.5", variantCls)}>
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="text-base font-bold tabular-nums">{value}</div>
+      {sub && <div className="text-[11px] text-muted-foreground">{sub}</div>}
+    </ShadCard>
   );
 }
 
@@ -1623,12 +1634,16 @@ function Info({
       <div className="text-xs text-slate-500 flex items-center gap-1">
         <span>{label}</span>
         {tooltip && (
-          <span
-            title={tooltip}
-            className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-slate-300 text-white text-[10px] cursor-help select-none"
-          >
-            ?
-          </span>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-slate-300 text-white text-[10px] cursor-help select-none">
+                  ?
+                </span>
+              }
+            />
+            <TooltipContent className="max-w-xs">{tooltip}</TooltipContent>
+          </Tooltip>
         )}
       </div>
       <div className={valueCls}>{value}</div>
@@ -1646,12 +1661,12 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-2">
+    <ShadCard className="[--card-spacing:1rem] px-4 gap-2">
       <div className="text-sm font-semibold text-slate-800 pb-1.5 border-b border-slate-100">
         {icon && <span className="mr-1.5">{icon}</span>}
         {title}
       </div>
       {children}
-    </div>
+    </ShadCard>
   );
 }

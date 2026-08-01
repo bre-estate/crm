@@ -6,9 +6,14 @@ import NavLinks from "./NavLinks";
 import AppShell from "./AppShell";
 import NotificationBell from "@/components/NotificationBell";
 import { fetchNotifications } from "./actions/notifications";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "sonner";
 import { getCurrentUser } from "@/lib/auth";
 import { resolvePermissions, hasPermission as checkPerm } from "@/lib/permissions";
+import { Geist } from "next/font/google";
+import { cn } from "@/lib/utils";
+
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
   title: "BRE — Quản lý sàn giao dịch BĐS",
@@ -34,7 +39,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // On /login and /auth routes we render children directly without the shell.
   if (!user) {
     return (
-      <html lang="vi" className="h-full">
+      <html lang="vi" className={cn("h-full", "font-sans", geist.variable)}>
         <body className="bg-slate-50 text-slate-900 min-h-screen antialiased">
           {children}
           <Toaster position="top-right" richColors closeButton />
@@ -53,7 +58,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // Chưa có trong whitelist → force logout để tránh confusion.
   if (!currentUser) {
     return (
-      <html lang="vi" className="h-full">
+      <html lang="vi" className={cn("h-full", "font-sans", geist.variable)}>
         <body className="bg-slate-50 text-slate-900 min-h-screen antialiased">
           <div className="min-h-screen flex items-center justify-center p-6">
             <div className="max-w-md bg-white border border-slate-200 rounded-xl p-6 shadow-sm text-center">
@@ -98,11 +103,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   );
 
   return (
-    <html lang="vi" className="h-full">
+    <html lang="vi" className={cn("h-full", "font-sans", geist.variable)}>
       <body className="bg-slate-50 text-slate-900 min-h-screen antialiased">
-        <AppShell sidebar={sidebar} userName={displayName} bell={bell}>
-          {children}
-        </AppShell>
+        <TooltipProvider>
+          <AppShell sidebar={sidebar} userName={displayName} bell={bell}>
+            {children}
+          </AppShell>
+        </TooltipProvider>
         <Toaster position="top-right" richColors closeButton />
       </body>
     </html>
