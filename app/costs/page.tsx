@@ -232,6 +232,57 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
   const totalPayable = rows.reduce((s, r) => s + Number(r.amountPayable ?? 0), 0);
   const totalPaid = rows.reduce((s, r) => s + (paidMap.get(r.id) ?? 0), 0);
 
+  // Per (productId + costType) — cần cho drawer expand: target + totalPaid/Payable
+  // của LOẠI đó cho căn đó (không bị filter ảnh hưởng).
+  // Compute từ allRows (chưa filter) → aggregate.
+  const targetByProductType = new Map<string, number>();
+  const payableByProductType = new Map<string, number>();
+  const paidByProductType = new Map<string, number>();
+  const seenProductTargets = new Set<number>();
+  for (const r of allRows) {
+    const key = `${r.productId}|${r.costType}`;
+    payableByProductType.set(
+      key,
+      (payableByProductType.get(key) ?? 0) + Number(r.amountPayable ?? 0),
+    );
+    paidByProductType.set(
+      key,
+      (paidByProductType.get(key) ?? 0) + (paidMap.get(r.id) ?? 0),
+    );
+    // Compute target per productId (once) → set target cho tất cả loại của căn đó
+    if (!seenProductTargets.has(r.productId)) {
+      seenProductTargets.add(r.productId);
+      const cfg = {
+        pmgBasePrice: Number(r.productPmgBase ?? 0),
+        pmgSaleRate:
+          Number(r.productPmgSaleRate ?? 0) || Number(r.productPmgRate ?? 0),
+        adminFeeSale: Number(r.productAdminFeeSale ?? 0),
+        customerSupport: Number(r.productCustSupport ?? 0),
+        saleCommissionRate: Number(r.productSaleCommRate ?? 0),
+        kpiCeoRate: Number(r.productKpiCeoRate ?? 0),
+        kpiTpkdRate: Number(r.productKpiTpkdRate ?? 0),
+        kpiAdminRate: Number(r.productKpiAdminRate ?? 0),
+        bonusSale: Number(r.productBonusSale ?? 0),
+        bonusManager: Number(r.productBonusMgr ?? 0),
+        cdtBonusSale: Number(r.productCdtBonusSale ?? 0),
+        cdtBonusManager: Number(r.productCdtBonusMgr ?? 0),
+      };
+      for (const t of [
+        "sale_commission",
+        "customer_support",
+        "bonus_sale",
+        "bonus_manager",
+        "cdt_bonus_sale",
+        "cdt_bonus_manager",
+        "kpi_ceo",
+        "kpi_tpkd",
+        "kpi_admin",
+      ] as const) {
+        targetByProductType.set(`${r.productId}|${t}`, computeLuyKe(cfg, t, 1));
+      }
+    }
+  }
+
   const costTypes = COST_TYPE_OPTIONS;
 
   return (
@@ -300,9 +351,15 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
               <th className="text-left p-2">Loại</th>
               <th className="text-left p-2">Dự án / Căn</th>
               <th className="text-right p-2">%HH/%KPI</th>
-              <th className="text-right p-2">Phải trả</th>
-              <th className="text-right p-2">Đã trả</th>
-              <th className="text-right p-2" title="Phải trả − Đã trả">Còn nợ</th>
+              <th className="text-right p-2" title="Số ĐC đợt này · ✓ = đã trả đủ">
+                Số tiền
+              </th>
+              <th className="text-right p-2" title="Target = mức chi tối đa cho loại này của căn">
+                Target căn
+              </th>
+              <th className="text-right p-2" title="Tổng đã chi cho loại này / Target">
+                % chi
+              </th>
               <th className="text-right p-2"></th>
               <th className="p-2 w-10"></th>
             </tr>
@@ -398,6 +455,13 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
                     paid={paid}
                     payments={payments}
                     editHref={editHref}
+                    target={targetByProductType.get(`${r.productId}|${r.costType}`) ?? 0}
+                    totalPayableForType={
+                      payableByProductType.get(`${r.productId}|${r.costType}`) ?? 0
+                    }
+                    totalPaidForType={
+                      paidByProductType.get(`${r.productId}|${r.costType}`) ?? 0
+                    }
                   />
                 </React.Fragment>
               );
