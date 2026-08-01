@@ -8,6 +8,9 @@ import SearchableSelect from "@/components/SearchableSelect";
 import { costTypeLabel, fmtMoney, fmtPct, fmtPctTight, fmtPctRaw } from "@/lib/format";
 import { computeLuyKe, type ProductConfig, type CostType } from "@/lib/costCalc";
 import { toast } from "sonner";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 type ProductOption = {
   id: number;
@@ -450,7 +453,7 @@ export default function CostForm({
         })
       }
       autoComplete="off"
-      className="space-y-6 bg-white border border-slate-200 rounded-xl p-6"
+      className="space-y-6 bg-card rounded-xl ring-1 ring-foreground/10 p-6"
     >
       {/* ===== 1. Chọn căn + loại chi phí ===== */}
       <Section title="Thông tin đối chiếu">
@@ -1028,8 +1031,10 @@ export default function CostForm({
 
       <div className="flex justify-end gap-3 pt-2">
         {onDelete && (
-          <button
+          <Button
             type="button"
+            variant="destructive"
+            disabled={pending}
             onClick={() => {
               if (confirm("Xóa dòng đối chiếu giá vốn này? (Các thanh toán cũng sẽ bị xóa)")) {
                 start(async () => {
@@ -1048,27 +1053,21 @@ export default function CostForm({
                 });
               }
             }}
-            className="px-4 py-2 text-red-600 border border-red-300 rounded-lg text-sm hover:bg-red-50"
-            disabled={pending}
           >
             Xóa
-          </button>
+          </Button>
         )}
         <div className="flex-1" />
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="px-4 py-2 border border-slate-300 rounded-lg text-sm hover:bg-slate-50"
-        >
+        <Button type="button" variant="outline" onClick={() => router.back()}>
           Hủy
-        </button>
-        <button
+        </Button>
+        <Button
           type="submit"
           disabled={pending}
-          className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm hover:bg-orange-600 disabled:opacity-50"
+          className="bg-orange-500 hover:bg-orange-600 text-white"
         >
           {pending ? "Đang lưu..." : "Lưu"}
-        </button>
+        </Button>
       </div>
     </form>
   );
