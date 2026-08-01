@@ -134,10 +134,41 @@ export default function CostForm({
     return previousRecons.reduce((mx, r) => Math.max(mx, Number(r.progressN ?? 0)), 0);
   }, [previousRecons]);
 
-  // Lọc COST_TYPES: chỉ hiện loại có config > 0 trên căn (giữ costType hiện tại
-  // của recon nếu đang edit, tránh trường hợp config vừa đổi làm mất option).
+  // Tổng đã chi (payable) per (productId, costType) — compute từ allRecons.
+  // Dùng để block loại đã chi đủ 100% khỏi dropdown "Loại chi phí".
+  const paidByType = useMemo(() => {
+    if (!allRecons || !product) return new Map<string, number>();
+    const m = new Map<string, number>();
+    for (const r of allRecons) {
+      if (r.productId !== product.id) continue;
+      const key = r.costType;
+      const amt = typeof r.amount === "number" ? r.amount : Number(r.amount ?? 0);
+      m.set(key, (m.get(key) ?? 0) + amt);
+    }
+    return m;
+  }, [allRecons, product]);
+
+  // Lọc COST_TYPES:
+  //   1. hasValue: config > 0 trên căn (không có loại này thì ẩn)
+  //   2. notFullyPaid: |paid − target| >= 1000 (đã chi đủ 100% → ẩn)
+  // Giữ costType hiện tại của recon nếu đang edit (kể cả done) để không phá option.
   const availableCostTypes = useMemo(() => {
     if (!product) return [...COST_TYPES];
+    const cfg = {
+      pmgBasePrice: Number(product.pmgBasePrice ?? 0),
+      pmgSaleRate:
+        Number(product.pmgSaleRate ?? 0) || Number(product.pmgRate ?? 0),
+      adminFeeSale: Number(product.adminFeeSale ?? 0),
+      customerSupport: Number(product.customerSupport ?? 0),
+      saleCommissionRate: Number(product.saleCommissionRate ?? 0),
+      kpiCeoRate: Number(product.kpiCeoRate ?? 0),
+      kpiTpkdRate: Number(product.kpiTpkdRate ?? 0),
+      kpiAdminRate: Number(product.kpiAdminRate ?? 0),
+      bonusSale: Number(product.bonusSale ?? 0),
+      bonusManager: Number(product.bonusManager ?? 0),
+      cdtBonusSale: Number(product.cdtBonusSale ?? 0),
+      cdtBonusManager: Number(product.cdtBonusManager ?? 0),
+    };
     const hasValue = (t: (typeof COST_TYPES)[number]): boolean => {
       switch (t) {
         case "sale_commission":
@@ -160,8 +191,41 @@ export default function CostForm({
           return Number(product.kpiAdminRate ?? 0) > 0;
       }
     };
-    return COST_TYPES.filter((t) => hasValue(t) || t === costType);
-  }, [product, costType]);
+    const isFullyPaid = (t: (typeof COST_TYPES)[number]): boolean => {
+      // Only block khi ĐÚNG 100% (|diff| < 1000). Nhỏ hoặc lớn hơn vẫn cho tạo.
+      const target = computeLuyKe(cfg, t as CostType, 1);
+      if (target < 1) return false;
+      const paid = paidByType.get(t) ?? 0;
+      return Math.abs(paid - target) < 1000;
+    };
+    return COST_TYPES.filter(
+      (t) => t === costType || (hasValue(t) && !isFullyPaid(t)),
+    );
+  }, [product, costType, paidByType]);
+
+  // Trạng thái "URL param costType đã đủ 100% cho căn này" — show warning banner
+  const currentTypeAlreadyPaid = useMemo(() => {
+    if (!product || isEdit) return false;
+    const cfg = {
+      pmgBasePrice: Number(product.pmgBasePrice ?? 0),
+      pmgSaleRate:
+        Number(product.pmgSaleRate ?? 0) || Number(product.pmgRate ?? 0),
+      adminFeeSale: Number(product.adminFeeSale ?? 0),
+      customerSupport: Number(product.customerSupport ?? 0),
+      saleCommissionRate: Number(product.saleCommissionRate ?? 0),
+      kpiCeoRate: Number(product.kpiCeoRate ?? 0),
+      kpiTpkdRate: Number(product.kpiTpkdRate ?? 0),
+      kpiAdminRate: Number(product.kpiAdminRate ?? 0),
+      bonusSale: Number(product.bonusSale ?? 0),
+      bonusManager: Number(product.bonusManager ?? 0),
+      cdtBonusSale: Number(product.cdtBonusSale ?? 0),
+      cdtBonusManager: Number(product.cdtBonusManager ?? 0),
+    };
+    const target = computeLuyKe(cfg, costType as CostType, 1);
+    if (target < 1) return false;
+    const paid = paidByType.get(costType) ?? 0;
+    return Math.abs(paid - target) < 1000;
+  }, [product, costType, paidByType, isEdit]);
 
   const showCommission = costType === "sale_commission";
   const showSupport = costType === "customer_support";
@@ -431,6 +495,11 @@ export default function CostForm({
                 </option>
               ))}
             </select>
+            {currentTypeAlreadyPaid && (
+              <div className="text-[10px] text-amber-700 mt-1">
+                ⚠ Loại này đã chi đủ 100% target — không nên tạo thêm ĐC.
+              </div>
+            )}
           </Field>
           <Field label="Tên người được đối chiếu" required>
             <SearchableSelect

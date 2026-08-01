@@ -847,12 +847,18 @@ async function AggregatedCostsView(props: AggregatedProps) {
                       </span>
                     </td>
                     <td className="p-2 text-right">
-                      <Link
-                        href={`/costs/new?productId=${r.productId}&costType=${r.costType}`}
-                        className="text-blue-600 hover:underline text-xs whitespace-nowrap"
-                      >
-                        + Tạo ĐC
-                      </Link>
+                      {r.status === "done" ? (
+                        <span className="text-xs text-slate-400" title="Đã chi đủ 100% target">
+                          —
+                        </span>
+                      ) : (
+                        <Link
+                          href={`/costs/new?productId=${r.productId}&costType=${r.costType}`}
+                          className="text-blue-600 hover:underline text-xs whitespace-nowrap"
+                        >
+                          + Tạo ĐC
+                        </Link>
+                      )}
                     </td>
                   </tr>
                 </>
