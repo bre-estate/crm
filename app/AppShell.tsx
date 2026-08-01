@@ -14,10 +14,12 @@ import { usePathname } from "next/navigation";
 export default function AppShell({
   sidebar,
   userName,
+  bell,
   children,
 }: {
   sidebar: React.ReactNode;
   userName: string;
+  bell?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -56,8 +58,11 @@ export default function AppShell({
         </button>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo.png" alt="BRE" className="h-8 w-auto" />
-        <div className="ml-auto text-xs text-slate-600 truncate max-w-[45%]" title={userName}>
-          {userName}
+        <div className="ml-auto flex items-center gap-2">
+          {bell}
+          <div className="text-xs text-slate-600 truncate max-w-32" title={userName}>
+            {userName}
+          </div>
         </div>
       </header>
 
@@ -88,6 +93,11 @@ export default function AppShell({
 
         {/* ============ Main content ============ */}
         <main className="flex-1 min-w-0 overflow-x-auto">
+          {bell && (
+            <div className="hidden md:flex sticky top-0 z-20 bg-white/70 backdrop-blur border-b border-slate-100 h-11 items-center justify-end px-4">
+              {bell}
+            </div>
+          )}
           <div className="max-w-7xl mx-auto p-4 md:p-6">{children}</div>
         </main>
       </div>

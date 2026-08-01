@@ -603,5 +603,14 @@ export type CompanySettings = typeof companySettings.$inferSelect;
 export type Employee = typeof employees.$inferSelect;
 export type NewEmployee = typeof employees.$inferInsert;
 
+// ===================== NOTIFICATIONS =====================
+// Read state per user per notification key. Key format: `${alertId}::${period}`.
+export const notificationReads = pgTable("notification_reads", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull(),
+  notificationKey: text("notification_key").notNull(),
+  readAt: timestamp("read_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Used in raw SQL for profile auto-create trigger
 export const _sql = sql;

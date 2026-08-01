@@ -31,7 +31,7 @@ const isGroup = (n: NavEntry): n is NavGroup => "children" in n;
 
 const NAV: NavEntry[] = [
   { href: "/", label: "Tổng quan" },
-  { href: "/alerts", label: "🔔 Cảnh báo", resource: "alerts" },
+  // "Cảnh báo" đã chuyển sang bell icon top-right (AppShell). Menu item bỏ.
   { href: "/partners", label: "Đối tác", resource: "partners" },
   { href: "/projects", label: "Dự án", resource: "products" },
   {

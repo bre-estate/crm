@@ -4,9 +4,11 @@ import { createClient } from "@/lib/supabase/server";
 import SignOutButton from "./SignOutButton";
 import NavLinks from "./NavLinks";
 import AppShell from "./AppShell";
+import NotificationBell from "@/components/NotificationBell";
+import { fetchNotifications } from "./actions/notifications";
 import { Toaster } from "sonner";
 import { getCurrentUser } from "@/lib/auth";
-import { resolvePermissions } from "@/lib/permissions";
+import { resolvePermissions, hasPermission as checkPerm } from "@/lib/permissions";
 
 export const metadata: Metadata = {
   title: "BRE — Quản lý sàn giao dịch BĐS",
@@ -72,6 +74,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const permissions = resolvePermissions(currentUser.role, currentUser.customPermissions);
   const isOwner = currentUser.role === "owner";
 
+  // Load notifications cho bell (chỉ khi user có quyền xem alerts)
+  const canSeeAlerts = checkPerm(currentUser.role, currentUser.customPermissions, "alerts");
+  const notifications = canSeeAlerts
+    ? await fetchNotifications()
+    : { items: [], unreadCount: 0 };
+  const bell = canSeeAlerts ? <NotificationBell initial={notifications} /> : null;
+
   const sidebar = (
     <>
       <div className="p-5 flex items-center justify-center">
@@ -91,7 +100,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="vi" className="h-full">
       <body className="bg-slate-50 text-slate-900 min-h-screen antialiased">
-        <AppShell sidebar={sidebar} userName={displayName}>
+        <AppShell sidebar={sidebar} userName={displayName} bell={bell}>
           {children}
         </AppShell>
         <Toaster position="top-right" richColors closeButton />
