@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import MoneyInput from "@/components/MoneyInput";
 import { toast } from "sonner";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 type Payment = {
   id: number;
@@ -39,19 +41,20 @@ export default function PaymentsEditor({ payments, onUpdate, onDelete, onAdd }: 
     });
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-3">
+    <Card className="[--card-spacing:1.25rem] px-5 space-y-3">
       <div className="flex justify-between items-center pb-2 border-b border-slate-100">
         <div className="text-base font-semibold text-slate-800">
           🏦 Đã nhận tiền vào tài khoản công ty chưa?{payments.length > 0 ? ` · ✅ ${payments.length} lần` : ""}
         </div>
         {!showAdd && (
-          <button
+          <Button
             type="button"
+            size="sm"
             onClick={() => setShowAdd(true)}
-            className="text-xs bg-orange-500 text-white px-3 py-1.5 rounded hover:bg-orange-600"
+            className="bg-orange-500 hover:bg-orange-600 text-white"
           >
             + Thêm thanh toán
-          </button>
+          </Button>
         )}
       </div>
 
@@ -93,24 +96,26 @@ export default function PaymentsEditor({ payments, onUpdate, onDelete, onAdd }: 
               placeholder="tuỳ chọn"
             />
           </div>
-          <div className="col-span-2 flex gap-2">
-            <button
+          <div className="col-span-2 flex gap-2 items-center h-[38px]">
+            <Button
               type="submit"
+              size="lg"
               disabled={pending}
-              className="flex-1 bg-orange-500 text-white text-xs px-2 py-2 rounded hover:bg-orange-600 disabled:opacity-50"
+              className="bg-orange-500 hover:bg-orange-600 text-white"
             >
               Lưu
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              size="lg"
+              variant="destructive"
               disabled={pending}
               onClick={() => {
                 if (confirm("Xóa thanh toán này?")) safeRun(() => onDelete(p.id));
               }}
-              className="text-red-600 text-xs px-2 py-2 border border-red-300 rounded hover:bg-red-50 disabled:opacity-50"
             >
               Xóa
-            </button>
+            </Button>
           </div>
         </form>
       ))}
@@ -137,24 +142,26 @@ export default function PaymentsEditor({ payments, onUpdate, onDelete, onAdd }: 
             <label className="block text-xs text-slate-600 mb-1">Ghi chú</label>
             <input name="note" className="input" placeholder="tuỳ chọn" />
           </div>
-          <div className="col-span-2 flex gap-2">
-            <button
+          <div className="col-span-2 flex gap-2 items-center h-[38px]">
+            <Button
               type="submit"
+              size="lg"
               disabled={pending}
-              className="flex-1 bg-green-600 text-white text-xs px-2 py-2 rounded hover:bg-green-700 disabled:opacity-50"
+              className="bg-green-600 hover:bg-green-700 text-white"
             >
               + Thêm
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              size="lg"
+              variant="outline"
               onClick={() => setShowAdd(false)}
-              className="text-slate-600 text-xs px-2 py-2 border border-slate-300 rounded hover:bg-slate-50"
             >
               Huỷ
-            </button>
+            </Button>
           </div>
         </form>
       )}
-    </div>
+    </Card>
   );
 }

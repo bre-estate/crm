@@ -4,6 +4,8 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import SearchableSelect from "@/components/SearchableSelect";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 type Department = {
   id: number;
@@ -83,16 +85,16 @@ export default function DepartmentsManager({
             .
           </p>
         </div>
-        <button
+        <Button
           type="button"
           onClick={() => setCreating(true)}
-          className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600"
+          className="bg-orange-500 hover:bg-orange-600 text-white"
         >
           + Thêm phòng
-        </button>
+        </Button>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <Card className="p-0 gap-0 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-xs text-slate-600">
             <tr>
@@ -150,7 +152,7 @@ export default function DepartmentsManager({
             )}
           </tbody>
         </table>
-      </div>
+      </Card>
 
       {isOpen && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
@@ -210,21 +212,21 @@ export default function DepartmentsManager({
               </div>
 
               <div className="flex justify-end gap-3 pt-3 border-t border-slate-100 mt-3">
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
                   onClick={close}
                   disabled={pending}
-                  className="px-4 py-2 text-sm rounded-lg bg-slate-100 hover:bg-slate-200"
                 >
                   Huỷ
-                </button>
-                <button
+                </Button>
+                <Button
                   type="submit"
                   disabled={pending}
-                  className="px-6 py-2 text-sm rounded-lg bg-orange-500 text-white hover:bg-orange-600 disabled:opacity-50"
+                  className="bg-orange-500 hover:bg-orange-600 text-white"
                 >
                   {pending ? "Đang lưu..." : editing ? "Cập nhật" : "Tạo"}
-                </button>
+                </Button>
               </div>
             </form>
           </div>

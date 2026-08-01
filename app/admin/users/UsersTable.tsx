@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { createUser, updateUser, toggleActive, deleteUser } from "./actions";
 import { RESOURCE_GROUPS, type Action, type Role } from "@/lib/permissions";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 type User = {
   email: string;
@@ -34,16 +36,16 @@ export default function UsersTable({ users, resources, roleLabels }: Props) {
   return (
     <>
       <div className="flex justify-end">
-        <button
+        <Button
           type="button"
           onClick={() => setEditing("new")}
-          className="px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded hover:bg-orange-700"
+          className="bg-orange-600 hover:bg-orange-700 text-white"
         >
           + Mời user mới
-        </button>
+        </Button>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <Card className="p-0 gap-0 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-xs text-slate-600">
             <tr>
@@ -125,7 +127,7 @@ export default function UsersTable({ users, resources, roleLabels }: Props) {
             ))}
           </tbody>
         </table>
-      </div>
+      </Card>
 
       {editing && (
         <UserFormModal
@@ -294,20 +296,16 @@ function UserFormModal({
           )}
 
           <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm border border-slate-300 rounded"
-            >
+            <Button type="button" variant="outline" onClick={onClose}>
               Hủy
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               disabled={pending}
-              className="px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded hover:bg-orange-700 disabled:opacity-50"
+              className="bg-orange-600 hover:bg-orange-700 text-white"
             >
               {pending ? "Đang lưu..." : isNew ? "Mời" : "Lưu"}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

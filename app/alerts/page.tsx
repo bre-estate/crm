@@ -2,6 +2,8 @@ import { getOwnerEmail } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { computeAlerts, type Alert } from "@/lib/alerts";
+import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -34,13 +36,13 @@ export default async function AlertsPage() {
       </div>
 
       {alerts.length === 0 && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
+        <Card className="bg-green-50 ring-green-200 [--card-spacing:1.5rem] px-6 text-center items-center">
           <div className="text-4xl mb-2">✅</div>
           <div className="text-green-800 font-semibold">Không có cảnh báo nào</div>
           <div className="text-sm text-green-700 mt-1">
             Công ty đang chạy ổn — không có chỉ số nào vượt ngưỡng cần chú ý.
           </div>
-        </div>
+        </Card>
       )}
 
       {[...critical, ...warning, ...info].map((a) => (
@@ -53,15 +55,15 @@ export default async function AlertsPage() {
 function SummaryCard({ label, count, color }: { label: string; count: number; color: string }) {
   const bg =
     color === "red"
-      ? "bg-red-50 border-red-200 text-red-800"
+      ? "bg-red-50 ring-red-200 text-red-800"
       : color === "amber"
-        ? "bg-amber-50 border-amber-200 text-amber-800"
-        : "bg-blue-50 border-blue-200 text-blue-800";
+        ? "bg-amber-50 ring-amber-200 text-amber-800"
+        : "bg-blue-50 ring-blue-200 text-blue-800";
   return (
-    <div className={`border rounded-xl p-4 ${bg}`}>
+    <Card className={cn("px-4", bg)}>
       <div className="text-xs uppercase font-semibold">{label}</div>
       <div className="text-3xl font-bold tabular-nums mt-1">{count}</div>
-    </div>
+    </Card>
   );
 }
 
@@ -69,30 +71,30 @@ function AlertCard({ alert }: { alert: Alert }) {
   const cfg = {
     critical: {
       icon: "🚨",
-      border: "border-red-300",
+      ring: "ring-red-300",
       bg: "bg-red-50",
       titleColor: "text-red-900",
     },
     warning: {
       icon: "⚠️",
-      border: "border-amber-300",
+      ring: "ring-amber-300",
       bg: "bg-amber-50",
       titleColor: "text-amber-900",
     },
     info: {
       icon: "ℹ️",
-      border: "border-blue-300",
+      ring: "ring-blue-300",
       bg: "bg-blue-50",
       titleColor: "text-blue-900",
     },
   }[alert.severity];
 
   return (
-    <div className={`border ${cfg.border} ${cfg.bg} rounded-xl p-4`}>
+    <Card className={cn("px-4", cfg.ring, cfg.bg)}>
       <div className="flex items-start gap-3">
         <div className="text-2xl">{cfg.icon}</div>
         <div className="flex-1 min-w-0">
-          <div className={`font-semibold ${cfg.titleColor}`}>{alert.title}</div>
+          <div className={cn("font-semibold", cfg.titleColor)}>{alert.title}</div>
           <div className="text-sm text-slate-700 mt-1">{alert.description}</div>
           <AlertDetail alert={alert} />
           {alert.url && (
@@ -107,7 +109,7 @@ function AlertCard({ alert }: { alert: Alert }) {
           )}
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
 
