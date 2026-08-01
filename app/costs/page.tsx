@@ -16,6 +16,22 @@ import SearchableSelect from "@/components/SearchableSelect";
 import BulkDeleteBar from "../BulkDeleteBar";
 import { deleteCostBulk } from "@/lib/actions/costs";
 import CostReconRow, { type CostReconPayment } from "./CostReconRow";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -341,7 +357,7 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
         }}
       />
 
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <Card className="p-0 gap-0 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-xs text-slate-600">
             <tr>
@@ -474,7 +490,7 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
             )}
           </tbody>
         </table>
-      </div>
+      </Card>
     </div>
   );
 }
@@ -937,50 +953,40 @@ function PageChrome(props: PageChromeProps) {
           </p>
         </div>
         <div className="flex gap-2 items-center flex-wrap">
-          <div className="inline-flex rounded-lg border border-slate-300 overflow-hidden">
-            {viewMode === "recon" ? (
-              <>
-                <span className="px-3 py-2 text-sm font-medium bg-orange-500 text-white">
-                  Theo dòng
-                </span>
-                <Link
-                  href={otherViewUrl}
-                  className="px-3 py-2 text-sm font-medium bg-white text-slate-600 hover:bg-slate-50 border-l border-slate-300"
-                >
-                  Theo căn × loại
-                </Link>
-              </>
-            ) : (
-              <>
-                <Link
-                  href={otherViewUrl}
-                  className="px-3 py-2 text-sm font-medium bg-white text-slate-600 hover:bg-slate-50"
-                >
-                  Theo dòng
-                </Link>
-                <span className="px-3 py-2 text-sm font-medium bg-orange-500 text-white border-l border-slate-300">
-                  Theo căn × loại
-                </span>
-              </>
-            )}
-          </div>
-          <Link
-            href="/costs/bulk"
-            className="bg-slate-100 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-slate-200"
-          >
+          <Tabs value={viewMode}>
+            <TabsList>
+              <TabsTrigger
+                value="recon"
+                render={
+                  viewMode === "recon" ? <span /> : <Link href={otherViewUrl} />
+                }
+              >
+                Theo dòng
+              </TabsTrigger>
+              <TabsTrigger
+                value="byUnit"
+                render={
+                  viewMode === "byUnit" ? <span /> : <Link href={otherViewUrl} />
+                }
+              >
+                Theo căn × loại
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <Button variant="secondary" render={<Link href="/costs/bulk" />}>
             📊 Nhập hàng loạt
-          </Link>
-          <Link
-            href="/costs/new"
-            className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600"
+          </Button>
+          <Button
+            render={<Link href="/costs/new" />}
+            className="bg-orange-500 hover:bg-orange-600 text-white"
           >
             + Thêm dòng đối chiếu
-          </Link>
+          </Button>
         </div>
       </div>
 
       {/* Filter bar: cùng field cùng thứ tự cho cả 2 view */}
-      <div className="bg-white border border-slate-200 rounded-xl p-4 flex gap-4 items-end flex-wrap">
+      <Card className="[--card-spacing:1rem] px-4 gap-4 flex-row flex-wrap items-end">
         <form className="flex gap-2 items-end flex-wrap">
           {viewMode === "byUnit" && <input type="hidden" name="view" value="byUnit" />}
           {statusParam && <input type="hidden" name="status" value={statusParam} />}
@@ -1022,6 +1028,7 @@ function PageChrome(props: PageChromeProps) {
           </div>
           <div>
             <label className="block text-xs text-slate-600 mb-1">Loại chi phí</label>
+            {/* Native select cho form submit (shadcn Select là controlled/JS-only) */}
             <select name="costType" defaultValue={costTypeParam ?? ""} className="input min-w-48">
               <option value="">— Tất cả —</option>
               {COST_TYPE_OPTIONS.map((t) => (
@@ -1031,16 +1038,11 @@ function PageChrome(props: PageChromeProps) {
               ))}
             </select>
           </div>
-          <button className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200">
-            Lọc
-          </button>
+          <Button type="submit" variant="secondary">Lọc</Button>
           {hasFilter && (
-            <Link
-              href={resetUrl}
-              className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200"
-            >
+            <Button variant="outline" render={<Link href={resetUrl} />}>
               Reset
-            </Link>
+            </Button>
           )}
         </form>
         <div className="flex gap-6 text-sm ml-auto">
@@ -1049,19 +1051,23 @@ function PageChrome(props: PageChromeProps) {
               <div className="text-xs text-slate-500 flex items-center gap-1">
                 <span>{s.label}</span>
                 {s.tooltip && (
-                  <span
-                    title={s.tooltip}
-                    className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-300 text-white text-[9px] cursor-help select-none"
-                  >
-                    ?
-                  </span>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-300 text-white text-[9px] cursor-help select-none">
+                          ?
+                        </span>
+                      }
+                    />
+                    <TooltipContent className="max-w-xs">{s.tooltip}</TooltipContent>
+                  </Tooltip>
                 )}
               </div>
-              <div className={`font-bold tabular-nums ${s.color ?? ""}`}>{s.value}</div>
+              <div className={cn("font-bold tabular-nums", s.color)}>{s.value}</div>
             </div>
           ))}
         </div>
-      </div>
+      </Card>
     </>
   );
 }
