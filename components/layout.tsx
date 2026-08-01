@@ -1,6 +1,6 @@
 /**
  * Layout primitives dùng chung cho MỌI trang trong app.
- * AppShell đã lo max-w-7xl mx-auto + padding.
+ * SidebarInset trong app/layout.tsx đã lo max-w-7xl mx-auto + padding.
  *
  * Convention:
  *   <PageContainer>
@@ -20,7 +20,7 @@ import React from "react";
 
 /**
  * Wrapper top-level cho mỗi trang.
- * KHÔNG thêm max-w — AppShell đã lo. Chỉ giữ space-y để các section cách đều.
+ * KHÔNG thêm max-w — SidebarInset wrapper đã lo. Chỉ giữ space-y để các section cách đều.
  */
 export function PageContainer({
   children,

@@ -41,7 +41,7 @@ import {
 } from "@/app/actions/notifications";
 
 // ============================================================================
-// Nav definition (giữ nguyên từ NavLinks cũ)
+// Nav definition
 // ============================================================================
 type NavLeaf = {
   href: string;

@@ -59,7 +59,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <html lang="vi" className={cn("h-full", "font-sans", geist.variable)}>
         <body className="bg-slate-50 text-slate-900 min-h-screen antialiased">
           <div className="min-h-screen flex items-center justify-center p-6">
-            <div className="max-w-md bg-white border border-slate-200 rounded-xl p-6 shadow-sm text-center">
+            <div className="max-w-md bg-card ring-1 ring-foreground/10 rounded-xl p-6 shadow-sm text-center">
               <h1 className="text-lg font-semibold mb-2">Chưa được cấp quyền</h1>
               <p className="text-sm text-slate-600 mb-4">
                 Tài khoản <b>{user.email}</b> chưa được thêm vào hệ thống. Liên hệ
@@ -96,7 +96,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             />
             <SidebarInset>
               {/* Mobile top bar với hamburger — desktop ẩn */}
-              <header className="md:hidden sticky top-0 z-20 bg-white border-b border-slate-200 flex items-center gap-2 px-3 py-2">
+              <header className="md:hidden sticky top-0 z-20 bg-card border-b border-foreground/10 flex items-center gap-2 px-3 py-2">
                 <SidebarTrigger />
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/logo.png" alt="BRE" className="h-7 w-auto" />

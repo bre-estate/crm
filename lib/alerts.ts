@@ -14,7 +14,7 @@ import { OPEX_CATEGORIES, FIXED_COST_CATEGORIES } from "@/lib/accounting/categor
 /**
  * Alerts — logic tách khỏi UI để reuse:
  *   - /alerts page (full render với detail React)
- *   - NotificationBell (chỉ cần id + title + severity + url)
+ *   - sidebar notifications panel (chỉ cần id + title + severity + url)
  *
  * Mỗi alert có `key` stable-per-period để track read state per user:
  *   - Monthly alerts: `${id}::${YYYY-MM}` — reset mỗi tháng
@@ -336,7 +336,7 @@ export async function computeAlerts(): Promise<Alert[]> {
 }
 
 /**
- * Summary version — chỉ trả về metadata cần cho NotificationBell.
+ * Summary version — chỉ trả về metadata cần cho sidebar notifications panel.
  * Nhẹ hơn (không expose detail arrays trong response client).
  */
 export type AlertSummary = {
