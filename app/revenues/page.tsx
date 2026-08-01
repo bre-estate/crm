@@ -14,6 +14,10 @@ import SearchableSelect from "@/components/SearchableSelect";
 import HighlightManager from "../HighlightManager";
 import BulkDeleteBar from "../BulkDeleteBar";
 import { deleteRevenueBulk } from "@/lib/actions/revenues";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -239,53 +243,53 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
           </p>
         </div>
         <div className="flex gap-2">
-          <Link
-            href="/revenues/bulk"
-            className="bg-slate-100 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-slate-200"
-          >
+          <Button variant="secondary" render={<Link href="/revenues/bulk" />}>
             📊 Nhập hàng loạt
-          </Link>
-          <Link
-            href="/revenues/new"
-            className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600"
+          </Button>
+          <Button
+            render={<Link href="/revenues/new" />}
+            className="bg-orange-500 hover:bg-orange-600 text-white"
           >
             + Thêm đợt đối chiếu
-          </Link>
+          </Button>
         </div>
       </div>
 
-      <div className="border-b border-slate-200 flex gap-1">
-        {[
-          { key: "primary", label: "Sơ cấp", count: primaryCount },
-          { key: "secondary", label: "Thứ cấp", count: secondaryCount },
-        ].map((t) => {
-          const isActive = activeTab === t.key;
-          const params = new URLSearchParams();
-          params.set("tab", t.key);
-          if (filterProjectId) params.set("projectId", String(filterProjectId));
-          if (filterUnitCode) params.set("unitCode", filterUnitCode);
-          if (activeStatus !== "all") params.set("status", activeStatus);
-          if (activeAge !== "all") params.set("age", activeAge);
-          return (
-            <Link
-              key={t.key}
-              href={`/revenues?${params.toString()}`}
-              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition ${
-                isActive
-                  ? "border-orange-500 text-blue-700"
-                  : "border-transparent text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              {t.label}{" "}
-              <span
-                className={`text-xs ml-1 ${isActive ? "text-blue-500" : "text-slate-400"}`}
+      <Tabs value={activeTab} className="border-b border-slate-200">
+        <TabsList variant="line">
+          {[
+            { key: "primary" as const, label: "Sơ cấp", count: primaryCount },
+            { key: "secondary" as const, label: "Thứ cấp", count: secondaryCount },
+          ].map((t) => {
+            const isActive = activeTab === t.key;
+            const params = new URLSearchParams();
+            params.set("tab", t.key);
+            if (filterProjectId) params.set("projectId", String(filterProjectId));
+            if (filterUnitCode) params.set("unitCode", filterUnitCode);
+            if (activeStatus !== "all") params.set("status", activeStatus);
+            if (activeAge !== "all") params.set("age", activeAge);
+            return (
+              <TabsTrigger
+                key={t.key}
+                value={t.key}
+                render={
+                  isActive ? <span /> : <Link href={`/revenues?${params.toString()}`} />
+                }
               >
-                ({t.count})
-              </span>
-            </Link>
-          );
-        })}
-      </div>
+                {t.label}
+                <span
+                  className={cn(
+                    "text-xs ml-1",
+                    isActive ? "text-blue-500" : "text-slate-400",
+                  )}
+                >
+                  ({t.count})
+                </span>
+              </TabsTrigger>
+            );
+          })}
+        </TabsList>
+      </Tabs>
 
       {/* Status filter pills */}
       <div className="flex flex-wrap gap-2 items-center">
@@ -357,7 +361,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
         </div>
       )}
 
-      <div className="bg-white border border-slate-200 rounded-xl p-4 flex gap-4 items-end flex-wrap">
+      <Card className="[--card-spacing:1rem] px-4 gap-4 flex-row flex-wrap items-end">
         <form className="flex gap-2 items-end flex-wrap">
           <input type="hidden" name="tab" value={activeTab} />
           {activeStatus !== "all" && <input type="hidden" name="status" value={activeStatus} />}
@@ -387,16 +391,11 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
               }))}
             />
           </div>
-          <button className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200">
-            Lọc
-          </button>
+          <Button type="submit" variant="secondary">Lọc</Button>
           {(filterProjectId || filterUnitCode) && (
-            <Link
-              href={`/revenues?tab=${activeTab}`}
-              className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200"
-            >
+            <Button variant="outline" render={<Link href={`/revenues?tab=${activeTab}`} />}>
               Reset
-            </Link>
+            </Button>
           )}
         </form>
         <div className="flex gap-6 text-sm ml-auto">
@@ -415,15 +414,16 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
           <div>
             <div className="text-xs text-slate-500">Còn phải thu</div>
             <div
-              className={`font-bold tabular-nums ${
-                totalReceivable - totalPaid < 1000 ? "text-slate-400" : "text-red-600"
-              }`}
+              className={cn(
+                "font-bold tabular-nums",
+                totalReceivable - totalPaid < 1000 ? "text-slate-400" : "text-red-600",
+              )}
             >
               {fmtMoney(totalReceivable - totalPaid)}
             </div>
           </div>
         </div>
-      </div>
+      </Card>
 
       <BulkDeleteBar
         entityLabel="đợt đối chiếu"
@@ -433,7 +433,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
         }}
       />
 
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <Card className="p-0 gap-0 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-xs text-slate-600">
             <tr>
@@ -592,7 +592,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
             )}
           </tbody>
         </table>
-      </div>
+      </Card>
     </div>
   );
 }

@@ -1,6 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useState } from "react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Check, ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export type SearchableOption = {
   value: string | number;
@@ -21,6 +36,10 @@ type Props = {
   required?: boolean;
 };
 
+/**
+ * Wrapper cho shadcn Popover + Command. API giữ nguyên như legacy SearchableSelect
+ * để mọi call-site không phải sửa. Filter case-insensitive + bỏ dấu tiếng Việt.
+ */
 function stripDiacritics(s: string): string {
   return s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D");
 }
@@ -38,124 +57,103 @@ export default function SearchableSelect({
   required,
 }: Props) {
   const controlled = valueProp !== undefined;
-  const [internal, setInternal] = useState<string>(() =>
-    String(defaultValue ?? ""),
-  );
+  const [internal, setInternal] = useState<string>(() => String(defaultValue ?? ""));
   const currentValue = controlled ? String(valueProp ?? "") : internal;
-
-  const selected = useMemo(
-    () => options.find((o) => String(o.value) === currentValue),
-    [options, currentValue],
-  );
-
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(e: MouseEvent) {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [open]);
-
-  useEffect(() => {
-    if (open) setTimeout(() => inputRef.current?.focus(), 0);
-  }, [open]);
-
-  const filtered = useMemo(() => {
-    const q = stripDiacritics(query.trim().toLowerCase());
-    if (!q) return options;
-    return options.filter((o) => {
-      const hay = stripDiacritics((o.label + " " + (o.sublabel ?? "")).toLowerCase());
-      return hay.includes(q);
-    });
-  }, [options, query]);
+  const selected = options.find((o) => String(o.value) === currentValue);
 
   const select = (val: string) => {
     if (!controlled) setInternal(val);
     onChange?.(val);
     setOpen(false);
-    setQuery("");
   };
 
   return (
-    <div ref={wrapRef} className={`relative ${className ?? ""}`}>
-      {name && <input type="hidden" name={name} value={currentValue} required={required} />}
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => !disabled && setOpen((v) => !v)}
-        className={`input text-left w-full flex justify-between items-center ${
-          disabled ? "bg-slate-100 text-slate-500 cursor-not-allowed" : "cursor-pointer"
-        }`}
-      >
-        <span className="truncate">
-          {selected ? (
-            <>
-              {selected.label}
-              {selected.sublabel && (
-                <span className="text-slate-400 ml-1">· {selected.sublabel}</span>
-              )}
-            </>
-          ) : (
-            <span className="text-slate-400">{emptyOption ?? "— Chọn —"}</span>
-          )}
-        </span>
-        <span className="text-slate-400 ml-2">▾</span>
-      </button>
-      {open && (
-        <div className="absolute z-20 mt-1 min-w-full w-64 bg-white border border-slate-300 rounded-lg shadow-lg max-h-72 overflow-hidden flex flex-col">
-          <input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={placeholder}
-            className="input rounded-none border-0 border-b border-slate-200 focus:outline-none"
-          />
-          <div className="overflow-y-auto flex-1">
-            {emptyOption !== undefined && (
-              <button
-                type="button"
-                onClick={() => select("")}
-                className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 text-slate-500 italic border-b border-slate-100"
-              >
-                {emptyOption}
-              </button>
-            )}
-            {filtered.length === 0 ? (
-              <div className="px-3 py-4 text-sm text-slate-400 text-center">
-                Không có kết quả
-              </div>
-            ) : (
-              filtered.map((o) => {
-                const isSelected = String(o.value) === currentValue;
-                return (
-                  <button
-                    key={o.value}
-                    type="button"
-                    onClick={() => select(String(o.value))}
-                    className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 ${
-                      isSelected ? "bg-blue-100 font-semibold" : ""
-                    }`}
-                  >
-                    <div className="whitespace-nowrap">{o.label}</div>
-                    {o.sublabel && (
-                      <div className="text-xs text-slate-500 whitespace-nowrap">{o.sublabel}</div>
-                    )}
-                  </button>
-                );
-              })
-            )}
-          </div>
-        </div>
+    <>
+      {name && (
+        <input type="hidden" name={name} value={currentValue} required={required} />
       )}
-    </div>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger
+          disabled={disabled}
+          render={
+            <button
+              type="button"
+              aria-haspopup="listbox"
+              className={cn(
+                "input text-left w-full flex justify-between items-center",
+                disabled && "!bg-slate-100 !text-slate-500 !cursor-not-allowed",
+                className,
+              )}
+            >
+              <span className="truncate">
+                {selected ? (
+                  <>
+                    {selected.label}
+                    {selected.sublabel && (
+                      <span className="text-slate-400 ml-1">· {selected.sublabel}</span>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-slate-400">{emptyOption ?? "— Chọn —"}</span>
+                )}
+              </span>
+              <ChevronDown className="h-4 w-4 text-slate-400 ml-2 shrink-0" />
+            </button>
+          }
+        />
+        <PopoverContent className="p-0 w-72" align="start">
+          <Command
+            filter={(value, search) => {
+              // value là composite chuỗi có label + sublabel
+              const norm = (s: string) => stripDiacritics(s.toLowerCase());
+              return norm(value).includes(norm(search)) ? 1 : 0;
+            }}
+          >
+            <CommandInput placeholder={placeholder} />
+            <CommandList>
+              <CommandEmpty>Không có kết quả</CommandEmpty>
+              <CommandGroup>
+                {emptyOption !== undefined && (
+                  <CommandItem
+                    value="__empty__"
+                    onSelect={() => select("")}
+                    className="italic text-slate-500"
+                  >
+                    <span className="w-4 mr-2" />
+                    {emptyOption}
+                  </CommandItem>
+                )}
+                {options.map((o) => {
+                  const isSelected = String(o.value) === currentValue;
+                  return (
+                    <CommandItem
+                      key={o.value}
+                      value={`${o.label} ${o.sublabel ?? ""}`}
+                      onSelect={() => select(String(o.value))}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4 shrink-0",
+                          isSelected ? "opacity-100" : "opacity-0",
+                        )}
+                      />
+                      <div className="min-w-0">
+                        <div className="truncate">{o.label}</div>
+                        {o.sublabel && (
+                          <div className="text-xs text-muted-foreground truncate">
+                            {o.sublabel}
+                          </div>
+                        )}
+                      </div>
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </>
   );
 }
