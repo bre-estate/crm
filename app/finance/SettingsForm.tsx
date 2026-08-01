@@ -3,6 +3,7 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 type Settings = {
   taxRate: number;
@@ -57,13 +58,13 @@ export default function SettingsForm({ settings, onSave }: Props) {
         />
       </div>
       <div>
-        <button
+        <Button
           type="submit"
           disabled={pending}
-          className="px-4 py-2 text-sm bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50"
+          className="bg-orange-500 hover:bg-orange-600 text-white"
         >
           {pending ? "Đang lưu..." : "Lưu cấu hình"}
-        </button>
+        </Button>
       </div>
     </form>
   );

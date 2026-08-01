@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { fmtMoney, fmtPct } from "@/lib/format";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 type ProductSnapshot = {
   id: number;
@@ -100,13 +101,14 @@ export default function AdjustmentDialog({
 
   return (
     <>
-      <button
+      <Button
         type="button"
+        size="sm"
         onClick={() => setOpen(true)}
-        className="text-xs bg-orange-500 text-white px-3 py-1 rounded hover:bg-orange-600 whitespace-nowrap"
+        className="bg-orange-500 hover:bg-orange-600 text-white whitespace-nowrap"
       >
         + Thêm
-      </button>
+      </Button>
       {open && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -210,22 +212,22 @@ export default function AdjustmentDialog({
               </div>
             </div>
             <div className="p-5 border-t border-slate-200 flex justify-end gap-3">
-              <button
+              <Button
                 type="button"
+                variant="secondary"
                 onClick={() => setOpen(false)}
-                className="px-4 py-2 text-sm rounded-lg bg-slate-100 hover:bg-slate-200"
                 disabled={pending}
               >
                 Huỷ
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={submit}
                 disabled={pending || checked.size === 0}
-                className="px-6 py-2 text-sm rounded-lg bg-orange-500 text-white hover:bg-orange-600 disabled:opacity-50"
+                className="bg-orange-500 hover:bg-orange-600 text-white"
               >
                 {pending ? "Đang lưu..." : `Lưu điều chỉnh (${checked.size} trường)`}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

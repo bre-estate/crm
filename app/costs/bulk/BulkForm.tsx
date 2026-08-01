@@ -7,6 +7,7 @@ import SearchableSelect from "@/components/SearchableSelect";
 import { costTypeLabel, fmtMoney, fmtPctTight } from "@/lib/format";
 import { computeLuyKe, computeTargetFull, type ProductConfig, type CostType } from "@/lib/costCalc";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 type ProductOpt = {
   id: number;
@@ -375,13 +376,9 @@ export default function BulkCostForm({
       </div>
 
       <div className="flex items-center gap-3 pt-2">
-        <button
-          type="button"
-          onClick={addRow}
-          className="text-sm bg-slate-100 border border-slate-300 rounded-lg px-3 py-1.5 hover:bg-slate-200"
-        >
+        <Button type="button" variant="secondary" onClick={addRow}>
           + Thêm dòng
-        </button>
+        </Button>
         <button
           type="button"
           onClick={() => setRows([emptyRow(), emptyRow(), emptyRow()])}
@@ -393,14 +390,14 @@ export default function BulkCostForm({
         <span className="text-xs text-slate-500">
           {validCount}/{rows.length} dòng hợp lệ
         </span>
-        <button
+        <Button
           type="button"
           onClick={submit}
           disabled={pending}
-          className="bg-orange-500 text-white rounded-lg px-6 py-2 text-sm hover:bg-orange-600 disabled:opacity-50"
+          className="bg-orange-500 hover:bg-orange-600 text-white"
         >
           {pending ? "Đang lưu..." : "Lưu tất cả"}
-        </button>
+        </Button>
       </div>
     </div>
   );

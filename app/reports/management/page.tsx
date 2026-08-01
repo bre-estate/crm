@@ -4,6 +4,7 @@ import { getOwnerEmail } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import { sql, inArray, gte, eq, ne, and } from "drizzle-orm";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { monthlyDepreciation } from "@/lib/accounting/depreciation";
 import { OPEX_CATEGORIES, FIXED_COST_CATEGORIES, BUCKET_641, BUCKET_642, BUCKET_811, bucketOf, BUCKET_LABELS } from "@/lib/accounting/categories";
 
@@ -452,17 +453,15 @@ function YearTabs({ years, selected }: { years: string[]; selected: string }) {
       {years.map((y) => {
         const active = y === selected;
         return (
-          <Link
+          <Button
             key={y}
-            href={`/reports/management?year=${y}`}
-            className={
-              active
-                ? "px-3 py-1 rounded text-xs font-semibold bg-orange-500 text-white"
-                : "px-3 py-1 rounded text-xs bg-slate-100 text-slate-700 hover:bg-slate-200"
-            }
+            size="sm"
+            variant={active ? "default" : "secondary"}
+            className={active ? "bg-orange-500 hover:bg-orange-600 text-white font-semibold" : ""}
+            render={<Link href={`/reports/management?year=${y}`} />}
           >
             {y}
-          </Link>
+          </Button>
         );
       })}
     </div>

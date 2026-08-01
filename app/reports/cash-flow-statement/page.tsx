@@ -4,6 +4,7 @@ import { getOwnerEmail } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import { sql, inArray, eq, gte, lte, and } from "drizzle-orm";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
@@ -306,17 +307,15 @@ function YearTabs({ years, selected }: { years: string[]; selected: string }) {
       {years.map((y) => {
         const active = y === selected;
         return (
-          <Link
+          <Button
             key={y}
-            href={`/reports/cash-flow-statement?year=${y}`}
-            className={
-              active
-                ? "px-3 py-1 rounded text-xs font-semibold bg-orange-500 text-white"
-                : "px-3 py-1 rounded text-xs bg-slate-100 text-slate-700 hover:bg-slate-200"
-            }
+            size="sm"
+            variant={active ? "default" : "secondary"}
+            className={active ? "bg-orange-500 hover:bg-orange-600 text-white font-semibold" : ""}
+            render={<Link href={`/reports/cash-flow-statement?year=${y}`} />}
           >
             {y}
-          </Link>
+          </Button>
         );
       })}
     </div>

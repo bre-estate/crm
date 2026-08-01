@@ -3,6 +3,7 @@ import { financialTransactions, accountingCategories } from "@/lib/schema";
 import { requirePermission } from "@/lib/auth";
 import { desc, and, eq, gte, lte, ilike, sql, type SQL } from "drizzle-orm";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
@@ -93,12 +94,12 @@ export default async function TransactionsPage({
             {rows.length} rows (giới hạn 1000).
           </p>
         </div>
-        <Link
-          href="/finance/import"
-          className="bg-orange-500 text-white rounded-lg px-4 py-2 text-sm hover:bg-orange-600"
+        <Button
+          className="bg-orange-500 hover:bg-orange-600 text-white"
+          render={<Link href="/finance/import" />}
         >
           + Nạp Excel
-        </Link>
+        </Button>
       </div>
 
       <form className="bg-card rounded-xl ring-1 ring-foreground/10 p-4 flex gap-2 items-end flex-wrap">
@@ -145,16 +146,13 @@ export default async function TransactionsPage({
             placeholder="Từ khoá..."
           />
         </div>
-        <button className="bg-slate-100 border border-slate-300 rounded-lg px-3 py-1.5 text-sm hover:bg-slate-200">
+        <Button type="submit" variant="secondary">
           Lọc
-        </button>
+        </Button>
         {(filterMonth || filterCat || filterPayer || q) && (
-          <Link
-            href="/finance/transactions"
-            className="bg-slate-100 border border-slate-300 rounded-lg px-3 py-1.5 text-sm hover:bg-slate-200"
-          >
+          <Button variant="secondary" render={<Link href="/finance/transactions" />}>
             Reset
-          </Link>
+          </Button>
         )}
       </form>
 

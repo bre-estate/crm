@@ -4,6 +4,7 @@ import { desc, eq, and, gte, lte, sql, inArray } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { getOwnerEmail } from "@/lib/auth";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
@@ -245,18 +246,18 @@ export default async function ActivityAdminPage({
           />
         </div>
         <div className="flex gap-2">
-          <button
+          <Button
             type="submit"
-            className="bg-orange-500 text-white rounded-lg px-4 py-2 text-sm hover:bg-orange-600 flex-1"
+            className="bg-orange-500 hover:bg-orange-600 text-white flex-1"
           >
             Lọc
-          </button>
-          <Link
-            href="/admin/activity"
-            className="border border-slate-300 rounded-lg px-3 py-2 text-sm hover:bg-slate-50"
+          </Button>
+          <Button
+            variant="outline"
+            render={<Link href="/admin/activity" />}
           >
             ↺
-          </Link>
+          </Button>
         </div>
         <div className="md:col-span-6">
           <label className="block text-xs text-slate-600 mb-1">Tìm mô tả</label>

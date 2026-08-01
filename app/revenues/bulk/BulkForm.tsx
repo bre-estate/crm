@@ -6,6 +6,7 @@ import type { BulkRevenueRow } from "@/lib/actions/revenues";
 import { fmtMoney } from "@/lib/format";
 import SearchableSelect from "@/components/SearchableSelect";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 type ProjectOpt = {
   id: number;
@@ -579,22 +580,22 @@ export default function BulkForm({
 
       {/* Submit */}
       <div className="flex justify-end gap-3">
-        <button
+        <Button
           type="button"
+          variant="outline"
           onClick={() => router.push("/revenues")}
           disabled={pending}
-          className="px-4 py-2 border border-slate-300 rounded-lg text-sm hover:bg-slate-50"
         >
           Hủy
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           onClick={submit}
           disabled={pending || validCount === 0}
-          className="px-6 py-2 bg-orange-500 text-white rounded-lg text-sm hover:bg-orange-600 disabled:opacity-50"
+          className="bg-orange-500 hover:bg-orange-600 text-white"
         >
           {pending ? "Đang lưu..." : `Lưu ${validCount} đợt`}
-        </button>
+        </Button>
       </div>
     </div>
   );

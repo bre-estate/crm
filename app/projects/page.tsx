@@ -3,6 +3,7 @@ import { projects, partners, products } from "@/lib/schema";
 import { contractStatusLabel, fmtMoney, fmtPct, fmtPctRaw, displayPartnerName, isSecondaryPartner } from "@/lib/format";
 import Link from "next/link";
 import { eq, asc, count } from "drizzle-orm";
+import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
@@ -56,12 +57,12 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Sea
             Quản lý HĐ ký với CĐT/F1, cấu hình %PMG và biểu PMG theo mốc.
           </p>
         </div>
-        <Link
-          href="/projects/new"
-          className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600"
+        <Button
+          className="bg-orange-500 hover:bg-orange-600 text-white"
+          render={<Link href="/projects/new" />}
         >
           + Thêm dự án
-        </Link>
+        </Button>
       </div>
 
       <div className="border-b border-slate-200 flex gap-1">

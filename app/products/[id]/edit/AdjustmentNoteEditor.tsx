@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 type Props = {
   adjId: number;
@@ -48,8 +49,9 @@ export default function AdjustmentNoteEditor({ adjId: _adjId, initialNote, onSav
           if (e.key === "Escape") setEditing(false);
         }}
       />
-      <button
+      <Button
         type="button"
+        size="sm"
         disabled={pending}
         onClick={() => {
           start(async () => {
@@ -62,10 +64,10 @@ export default function AdjustmentNoteEditor({ adjId: _adjId, initialNote, onSav
             }
           });
         }}
-        className="text-xs bg-orange-500 text-white px-3 py-1.5 rounded hover:bg-orange-600 disabled:opacity-50 whitespace-nowrap"
+        className="bg-orange-500 hover:bg-orange-600 text-white whitespace-nowrap"
       >
         {pending ? "..." : "Lưu"}
-      </button>
+      </Button>
       <button
         type="button"
         onClick={() => setEditing(false)}

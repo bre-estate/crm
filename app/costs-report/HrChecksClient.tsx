@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import ExpandToggle from "@/components/ExpandToggle";
 import SearchableSelect from "@/components/SearchableSelect";
+import { Button } from "@/components/ui/button";
 import {
   HR_CHECK_LABELS,
   HR_CHECK_DESCRIPTIONS,
@@ -190,17 +191,17 @@ export default function HrChecksClient({ rows, activeField, countByField, sumByF
           />
         </div>
         {filterActive && (
-          <button
+          <Button
             type="button"
+            variant="secondary"
             onClick={() => {
               setQUnit("");
               setQProject("");
               setQSale("");
             }}
-            className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200"
           >
             Reset
-          </button>
+          </Button>
         )}
       </div>
 

@@ -8,6 +8,7 @@ import SearchableSelect from "@/components/SearchableSelect";
 import { fmtMoney, fmtDate, fmtPctTight, toTitleCase } from "@/lib/format";
 import AdjustmentDialog from "./[id]/AdjustmentDialog";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 type ProjectWithPartner = Project & {
   partnerName?: string | null;
@@ -223,21 +224,21 @@ export default function ProductForm({
       {isEdit && (
         <div className="sticky top-0 z-20 -mx-6 -mt-6 mb-2 px-6 py-3 bg-white border-b border-slate-200 flex items-center gap-3">
           <div className="text-lg font-bold flex-1">Sửa giao dịch</div>
-          <button
+          <Button
             type="button"
+            variant="outline"
             onClick={() => router.back()}
-            className="px-4 py-2 border border-slate-300 rounded-lg text-sm hover:bg-slate-50"
             disabled={pending}
           >
             Hủy
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
             disabled={pending}
-            className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm hover:bg-orange-600 disabled:opacity-50"
+            className="bg-orange-500 hover:bg-orange-600 text-white"
           >
             {pending ? "Đang lưu..." : "Lưu"}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -918,8 +919,9 @@ export default function ProductForm({
 
       <div className="flex justify-end gap-3 pt-2">
         {onDelete && (
-          <button
+          <Button
             type="button"
+            variant="destructive"
             onClick={() => {
               if (confirm(`Xóa giao dịch "${product?.unitCode}"?`)) {
                 start(async () => {
@@ -932,28 +934,27 @@ export default function ProductForm({
                 });
               }
             }}
-            className="px-4 py-2 text-red-600 border border-red-300 rounded-lg text-sm hover:bg-red-50"
             disabled={pending}
           >
             Xóa
-          </button>
+          </Button>
         )}
         <div className="flex-1" />
         {returnTo && <input type="hidden" name="__returnTo" value={returnTo} />}
-        <button
+        <Button
           type="button"
+          variant="outline"
           onClick={() => router.back()}
-          className="px-4 py-2 border border-slate-300 rounded-lg text-sm hover:bg-slate-50"
         >
           Hủy
-        </button>
-        <button
+        </Button>
+        <Button
           type="submit"
           disabled={pending}
-          className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm hover:bg-orange-600 disabled:opacity-50"
+          className="bg-orange-500 hover:bg-orange-600 text-white"
         >
           {pending ? "Đang lưu..." : "Lưu"}
-        </button>
+        </Button>
       </div>
     </form>
   );

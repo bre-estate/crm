@@ -9,6 +9,7 @@ import {
   clearAllTransactions,
   type ImportPreview,
 } from "@/lib/actions/finance-import";
+import { Button } from "@/components/ui/button";
 
 type SourceType = "thanh-toan" | "merged" | "tam-ung";
 
@@ -135,14 +136,14 @@ export default function ImportClient() {
             />
             {fileName && <div className="text-xs text-slate-500 mt-1">{fileName}</div>}
           </div>
-          <button
+          <Button
             type="button"
+            variant="secondary"
             onClick={doPreview}
             disabled={!fileB64 || pending}
-            className="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 text-sm hover:bg-slate-200 disabled:opacity-50"
           >
             {pending ? "Đang xử lý..." : "Xem thử"}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -157,16 +158,16 @@ export default function ImportClient() {
                 Nguồn: {Object.entries(preview.bySource).map(([k, v]) => `${k}:${v}`).join(", ")}
               </div>
             </div>
-            <button
+            <Button
               type="button"
               onClick={doApply}
               disabled={pending || preview.total === preview.dupCount}
-              className="bg-orange-500 text-white rounded-lg px-6 py-2 text-sm hover:bg-orange-600 disabled:opacity-50"
+              className="bg-orange-500 hover:bg-orange-600 text-white"
             >
               {pending
                 ? "Đang nạp..."
                 : `Nạp ${preview.total - preview.dupCount} dòng mới`}
-            </button>
+            </Button>
           </div>
 
           <div>
@@ -237,14 +238,15 @@ export default function ImportClient() {
           Xóa toàn bộ giao dịch tài chính đã nạp. Dùng khi muốn nạp lại từ đầu
           (VD file Excel có thay đổi cấu trúc).
         </p>
-        <button
+        <Button
           type="button"
+          size="sm"
           onClick={doClearAll}
           disabled={pending}
-          className="bg-red-600 text-white rounded-lg px-4 py-2 text-xs hover:bg-red-700 disabled:opacity-50"
+          className="bg-red-600 hover:bg-red-700 text-white"
         >
           Xóa toàn bộ giao dịch
-        </button>
+        </Button>
       </div>
     </div>
   );

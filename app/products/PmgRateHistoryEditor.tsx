@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 
 type Entry = { rate: string; date: string; note: string };
 
@@ -140,13 +141,14 @@ export default function PmgRateHistoryEditor({
             </button>
           </div>
         ))}
-        <button
+        <Button
           type="button"
+          size="xs"
           onClick={add}
-          className="text-xs bg-orange-500 text-white rounded px-2 py-1 mt-2 hover:bg-orange-600"
+          className="bg-orange-500 hover:bg-orange-600 text-white mt-2"
         >
           + Thêm mốc mới
-        </button>
+        </Button>
       </div>
     </div>
   );
