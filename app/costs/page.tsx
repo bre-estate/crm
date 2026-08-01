@@ -32,6 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import AutoDismissBanner from "@/components/AutoDismissBanner";
 
 export const dynamic = "force-dynamic";
 
@@ -319,17 +320,14 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
   return (
     <div className="space-y-4">
       {(deleted || updated) && (
-        <div
-          className={`border rounded-lg p-3 text-sm ${
-            deleted
-              ? "bg-red-50 border-red-300 text-red-800"
-              : "bg-green-50 border-green-300 text-green-800"
-          }`}
+        <AutoDismissBanner
+          variant={deleted ? "error" : "success"}
+          clearParams={["deleted", "updated"]}
         >
           {deleted
             ? `Đã xóa đối chiếu #${deleted}.`
             : `Đã cập nhật đối chiếu #${updated}${updatedUnitCode ? ` (căn ${updatedUnitCode})` : ""}.`}
-        </div>
+        </AutoDismissBanner>
       )}
       <PageChrome
         viewMode="recon"

@@ -19,6 +19,7 @@ import {
   updatePaymentOut,
   deletePaymentOut,
 } from "@/lib/actions/costs";
+import AutoDismissBanner from "@/components/AutoDismissBanner";
 
 export default async function EditCostPage({
   params,
@@ -120,18 +121,20 @@ export default async function EditCostPage({
       <h1 className="text-2xl font-bold">Sửa đối chiếu giá vốn</h1>
 
       {justCreated && (
-        <div className="bg-green-50 border border-green-300 rounded-lg p-3 text-sm text-green-800 flex items-center justify-between">
-          <span>
-            <span className="font-semibold">Đã tạo đối chiếu #{id}.</span>{" "}
-            Có thể chỉnh sửa tiếp bên dưới hoặc thêm thanh toán.
-          </span>
-          <Link
-            href="/costs"
-            className="text-green-700 hover:underline text-xs"
-          >
-            Về danh sách →
-          </Link>
-        </div>
+        <AutoDismissBanner variant="success" clearParams={["created"]}>
+          <div className="flex items-center justify-between gap-3">
+            <span>
+              <span className="font-semibold">Đã tạo đối chiếu #{id}.</span>{" "}
+              Có thể chỉnh sửa tiếp bên dưới hoặc thêm thanh toán.
+            </span>
+            <Link
+              href="/costs"
+              className="text-green-700 hover:underline text-xs whitespace-nowrap"
+            >
+              Về danh sách →
+            </Link>
+          </div>
+        </AutoDismissBanner>
       )}
 
       <CostForm

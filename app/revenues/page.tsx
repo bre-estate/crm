@@ -18,6 +18,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import AutoDismissBanner from "@/components/AutoDismissBanner";
 
 export const dynamic = "force-dynamic";
 
@@ -222,18 +223,20 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
     <div className="space-y-4">
       <HighlightManager />
       {justCreatedIds.size > 0 && (
-        <div className="bg-green-50 border border-green-300 rounded-lg p-3 text-sm text-green-800 flex items-center justify-between">
-          <span>
-            <span className="font-semibold">Đã tạo {justCreatedIds.size} đợt đối chiếu</span>{" "}
-            (đang highlight ở đầu danh sách, sẽ mờ sau 3s).
-          </span>
-          <Link
-            href="/revenues"
-            className="text-green-700 hover:underline text-xs"
-          >
-            Đóng ×
-          </Link>
-        </div>
+        <AutoDismissBanner variant="success">
+          <div className="flex items-center justify-between gap-3">
+            <span>
+              <span className="font-semibold">Đã tạo {justCreatedIds.size} đợt đối chiếu</span>{" "}
+              (đang highlight ở đầu danh sách, sẽ mờ sau 3s).
+            </span>
+            <Link
+              href="/revenues"
+              className="text-green-700 hover:underline text-xs whitespace-nowrap"
+            >
+              Đóng ×
+            </Link>
+          </div>
+        </AutoDismissBanner>
       )}
       <div className="flex justify-between items-center">
         <div>

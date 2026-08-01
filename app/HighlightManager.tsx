@@ -6,7 +6,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 /**
  * Chạy sau khi trang render có row [data-just-created="1"]:
  *   1. Scroll row đầu tiên vào giữa viewport (nếu ngoài viewport)
- *   2. Sau 4s (dài hơn CSS animation 3.5s) → xóa ?justCreated khỏi URL
+ *   2. Sau 6s (khớp AutoDismissBanner default) → xóa ?justCreated khỏi URL
  *      để F5 không hiện lại highlight
  *
  * Đặt <HighlightManager /> ở top-level của bất kỳ list page nào có
@@ -31,13 +31,13 @@ export default function HighlightManager() {
       }
     }
 
-    // Sau 4s → clean URL (không reload)
+    // Sau 6s → clean URL (không reload), khớp AutoDismissBanner default
     const timer = setTimeout(() => {
       const params = new URLSearchParams(searchParams.toString());
       params.delete("justCreated");
       const qs = params.toString();
       router.replace(`${pathname}${qs ? "?" + qs : ""}`, { scroll: false });
-    }, 4000);
+    }, 6000);
 
     return () => clearTimeout(timer);
   }, [justCreated, router, pathname, searchParams]);
