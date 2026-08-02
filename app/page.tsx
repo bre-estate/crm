@@ -1,12 +1,13 @@
 import { db } from "@/lib/db";
 import { fmtMoney, fmtPctRaw } from "@/lib/format";
-import { partners, projects, products, revenueReconciliations, costReconciliations, paymentsIn } from "@/lib/schema";
-import { count, sum, sql, gte, isNotNull, and } from "drizzle-orm";
+import { partners, projects, products, revenueReconciliations, costReconciliations, paymentsIn, financialTransactions } from "@/lib/schema";
+import { count, sum, sql, gte, isNotNull, and, inArray, eq } from "drizzle-orm";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { resolvePermissions, type Resource, RESOURCES } from "@/lib/permissions";
 import DeniedBanner from "./DeniedBanner";
 import { cn } from "@/lib/utils";
+import { OPEX_CATEGORIES } from "@/lib/accounting/categories";
 
 // Trả về 6 tháng gần nhất tính đến hôm nay, oldest first.
 // VD hôm nay 2026-08-02 → ["2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08"].
@@ -64,6 +65,28 @@ async function getMonthlyCost(startMonth: string): Promise<Map<string, number>> 
   return map;
 }
 
+// OPEX per tháng — dùng accrualMonth (accrual view, khớp reports/management)
+// Lọc theo OPEX_CATEGORIES (641 + 642 + 811 + 635), direction=out.
+async function getMonthlyOpex(startMonth: string): Promise<Map<string, number>> {
+  const rows = await db
+    .select({
+      month: financialTransactions.accrualMonth,
+      total: sum(financialTransactions.amount).as("total"),
+    })
+    .from(financialTransactions)
+    .where(
+      and(
+        eq(financialTransactions.direction, "out"),
+        inArray(financialTransactions.categoryCode, OPEX_CATEGORIES),
+        gte(financialTransactions.accrualMonth, startMonth),
+      ),
+    )
+    .groupBy(financialTransactions.accrualMonth);
+  const map = new Map<string, number>();
+  for (const r of rows) map.set(r.month, Number(r.total ?? 0));
+  return map;
+}
+
 export const dynamic = "force-dynamic";
 
 async function getCounts() {
@@ -116,6 +139,7 @@ export default async function Home({
   const canCost = canView("costs");
   const canProfit = canView("reports.unit-profitability") || canView("finance");
   const canPayIn = canView("finance");
+  const canNet = canView("reports.management") || canView("finance");
   const canAnyMoney = canRevenue || canCost || canProfit || canPayIn;
 
   // Available quick-link pages (dùng cho block cuối, luôn show)
@@ -158,21 +182,26 @@ export default async function Home({
 
   // Query stats — chỉ khi có quyền tương ứng. Parallel để tiết kiệm.
   const monthsWindow = last6Months();
-  const [counts, totalRev, totalCost, totalPaidIn, revByMonth, costByMonth] = await Promise.all([
-    getCounts(),
-    canRevenue || canProfit ? getRevenueTotal() : Promise.resolve(0),
-    canCost || canProfit ? getCostTotal() : Promise.resolve(0),
-    canPayIn ? getPaidInTotal() : Promise.resolve(0),
-    canRevenue || canProfit
-      ? getMonthlyRevenue(monthsWindow[0])
-      : Promise.resolve(new Map<string, number>()),
-    canCost || canProfit
-      ? getMonthlyCost(monthsWindow[0])
-      : Promise.resolve(new Map<string, number>()),
-  ]);
+  const [counts, totalRev, totalCost, totalPaidIn, revByMonth, costByMonth, opexByMonth] =
+    await Promise.all([
+      getCounts(),
+      canRevenue || canProfit ? getRevenueTotal() : Promise.resolve(0),
+      canCost || canProfit ? getCostTotal() : Promise.resolve(0),
+      canPayIn ? getPaidInTotal() : Promise.resolve(0),
+      canRevenue || canProfit
+        ? getMonthlyRevenue(monthsWindow[0])
+        : Promise.resolve(new Map<string, number>()),
+      canCost || canProfit
+        ? getMonthlyCost(monthsWindow[0])
+        : Promise.resolve(new Map<string, number>()),
+      canNet
+        ? getMonthlyOpex(monthsWindow[0])
+        : Promise.resolve(new Map<string, number>()),
+    ]);
 
-  const profit = totalRev - totalCost;
-  const margin = totalRev > 0 ? (profit / totalRev) * 100 : 0;
+  // Lãi gộp chuẩn KT VN: (rev / 1.1) − cost. Rev đã include VAT 10%.
+  const profit = totalRev / 1.1 - totalCost;
+  const margin = totalRev > 0 ? (profit / (totalRev / 1.1)) * 100 : 0;
 
   // Chỉ lấy tháng CÓ dữ liệu (rev > 0 HOẶC cost > 0). Tháng chưa có báo cáo
   // (như tháng hiện tại vừa sang) sẽ bị loại → không hiện cột trống.
@@ -181,15 +210,25 @@ export default async function Home({
   );
   const revPerMonth = monthsShown.map((m) => revByMonth.get(m) ?? 0);
   const costPerMonth = monthsShown.map((m) => costByMonth.get(m) ?? 0);
-  const profitPerMonth = revPerMonth.map((r, i) => r - costPerMonth[i]);
-  const marginPerMonth = revPerMonth.map((r, i) => (r > 0 ? (profitPerMonth[i] / r) * 100 : 0));
+  const opexPerMonth = monthsShown.map((m) => opexByMonth.get(m) ?? 0);
+  // Gross (VAT-adjusted): rev/1.1 - cost
+  const profitPerMonth = revPerMonth.map((r, i) => r / 1.1 - costPerMonth[i]);
+  const marginPerMonth = revPerMonth.map((r, i) => (r > 0 ? (profitPerMonth[i] / (r / 1.1)) * 100 : 0));
+  // Net = Gross - OPEX
+  const netPerMonth = profitPerMonth.map((g, i) => g - opexPerMonth[i]);
+  const netMarginPerMonth = revPerMonth.map((r, i) => (r > 0 ? (netPerMonth[i] / (r / 1.1)) * 100 : 0));
   const revTotalWindow = revPerMonth.reduce((s, x) => s + x, 0);
   const costTotalWindow = costPerMonth.reduce((s, x) => s + x, 0);
-  const profitTotalWindow = revTotalWindow - costTotalWindow;
-  const marginTotalWindow = revTotalWindow > 0 ? (profitTotalWindow / revTotalWindow) * 100 : 0;
+  const opexTotalWindow = opexPerMonth.reduce((s, x) => s + x, 0);
+  const profitTotalWindow = revTotalWindow / 1.1 - costTotalWindow;
+  const marginTotalWindow = revTotalWindow > 0 ? (profitTotalWindow / (revTotalWindow / 1.1)) * 100 : 0;
+  const netTotalWindow = profitTotalWindow - opexTotalWindow;
+  const netMarginTotalWindow = revTotalWindow > 0 ? (netTotalWindow / (revTotalWindow / 1.1)) * 100 : 0;
   const showRev3 = canRevenue;
   const showCost3 = canCost;
   const showProfit3 = canProfit;
+  // Chỉ show Lãi thuần khi có OPEX data (tránh nhìn "0" tưởng lãi = gross)
+  const showNet3 = canNet && opexTotalWindow > 0;
   const showBlock3 = (showRev3 || showCost3 || showProfit3) && monthsShown.length > 0;
 
   // Tháng hiện tại (calendar) — dùng để gắn "*" nếu nó đang được show
@@ -254,7 +293,7 @@ export default async function Home({
                 profit >= 0 ? "ring-green-300 bg-green-50" : "ring-red-300 bg-red-50",
               )}
             >
-              <div className="text-xs text-slate-500">Lợi nhuận gộp</div>
+              <div className="text-xs text-slate-500">Lãi gộp (đã loại VAT)</div>
               <div
                 className={cn(
                   "text-xl font-bold mt-2 tabular-nums",
@@ -263,7 +302,7 @@ export default async function Home({
               >
                 {fmtMoney(profit)}
               </div>
-              <div className="text-xs text-slate-500 mt-1">Biên LN: {fmtPctRaw(margin, 1)}</div>
+              <div className="text-xs text-slate-500 mt-1">Biên gộp: {fmtPctRaw(margin, 1)}</div>
             </div>
           )}
           {canPayIn && (
@@ -357,7 +396,7 @@ export default async function Home({
                       </td>
                     </tr>
                     <tr className="border-t border-slate-100">
-                      <td className="p-3 text-slate-500 text-xs">Biên LN</td>
+                      <td className="p-3 text-slate-500 text-xs">Biên gộp</td>
                       {marginPerMonth.map((v, i) => (
                         <td key={i} className="p-3 text-right tabular-nums text-xs text-slate-500">
                           {revPerMonth[i] > 0 ? fmtPctRaw(v, 1) : "—"}
@@ -365,6 +404,54 @@ export default async function Home({
                       ))}
                       <td className="p-3 text-right tabular-nums text-xs text-slate-500 font-semibold bg-slate-50">
                         {revTotalWindow > 0 ? fmtPctRaw(marginTotalWindow, 1) : "—"}
+                      </td>
+                    </tr>
+                  </>
+                )}
+                {showNet3 && (
+                  <>
+                    <tr className="border-t border-slate-200">
+                      <td className="p-3 text-slate-700">Chi phí HĐ</td>
+                      {opexPerMonth.map((v, i) => (
+                        <td key={i} className="p-3 text-right tabular-nums text-orange-700">
+                          {v > 0 ? fmtMoney(v) : <span className="text-slate-300">—</span>}
+                        </td>
+                      ))}
+                      <td className="p-3 text-right tabular-nums font-semibold text-orange-700 bg-slate-50">
+                        {fmtMoney(opexTotalWindow)}
+                      </td>
+                    </tr>
+                    <tr className="border-t border-slate-100">
+                      <td className="p-3 text-slate-700 font-medium">Lãi thuần</td>
+                      {netPerMonth.map((v, i) => (
+                        <td
+                          key={i}
+                          className={cn(
+                            "p-3 text-right tabular-nums font-medium",
+                            v >= 0 ? "text-green-700" : "text-red-700",
+                          )}
+                        >
+                          {fmtMoney(v)}
+                        </td>
+                      ))}
+                      <td
+                        className={cn(
+                          "p-3 text-right tabular-nums font-bold bg-slate-50",
+                          netTotalWindow >= 0 ? "text-green-700" : "text-red-700",
+                        )}
+                      >
+                        {fmtMoney(netTotalWindow)}
+                      </td>
+                    </tr>
+                    <tr className="border-t border-slate-100">
+                      <td className="p-3 text-slate-500 text-xs">Biên thuần</td>
+                      {netMarginPerMonth.map((v, i) => (
+                        <td key={i} className="p-3 text-right tabular-nums text-xs text-slate-500">
+                          {revPerMonth[i] > 0 ? fmtPctRaw(v, 1) : "—"}
+                        </td>
+                      ))}
+                      <td className="p-3 text-right tabular-nums text-xs text-slate-500 font-semibold bg-slate-50">
+                        {revTotalWindow > 0 ? fmtPctRaw(netMarginTotalWindow, 1) : "—"}
                       </td>
                     </tr>
                   </>
