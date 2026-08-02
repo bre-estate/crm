@@ -227,8 +227,9 @@ export default async function Home({
   const showRev3 = canRevenue;
   const showCost3 = canCost;
   const showProfit3 = canProfit;
-  // Chỉ show Lãi thuần khi có OPEX data (tránh nhìn "0" tưởng lãi = gross)
-  const showNet3 = canNet && opexTotalWindow > 0;
+  // Luôn show nếu có quyền — user cần thấy Chi phí HĐ + Lãi thuần dù tháng
+  // chưa nhập opex (row sẽ hiện "—" thay vì bị ẩn).
+  const showNet3 = canNet;
   const showBlock3 = (showRev3 || showCost3 || showProfit3) && monthsShown.length > 0;
 
   // Tháng hiện tại (calendar) — dùng để gắn "*" nếu nó đang được show
@@ -418,7 +419,7 @@ export default async function Home({
                         </td>
                       ))}
                       <td className="p-3 text-right tabular-nums font-semibold text-orange-700 bg-slate-50">
-                        {fmtMoney(opexTotalWindow)}
+                        {opexTotalWindow > 0 ? fmtMoney(opexTotalWindow) : <span className="text-slate-300">—</span>}
                       </td>
                     </tr>
                     <tr className="border-t border-slate-100">
