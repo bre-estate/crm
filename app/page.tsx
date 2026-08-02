@@ -8,14 +8,14 @@ import { resolvePermissions, type Resource, RESOURCES } from "@/lib/permissions"
 import DeniedBanner from "./DeniedBanner";
 import { cn } from "@/lib/utils";
 
-// Trả về [YYYY-MM, YYYY-MM, YYYY-MM] — 3 tháng gần nhất tính đến hôm nay,
-// oldest first. VD hôm nay 2026-08-02 → ["2026-06", "2026-07", "2026-08"].
-function last3Months(): string[] {
+// Trả về 6 tháng gần nhất tính đến hôm nay, oldest first.
+// VD hôm nay 2026-08-02 → ["2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08"].
+function last6Months(): string[] {
   const now = new Date();
   const y = now.getFullYear();
-  const m = now.getMonth(); // 0-11
+  const m = now.getMonth();
   const months: string[] = [];
-  for (let i = 2; i >= 0; i--) {
+  for (let i = 5; i >= 0; i--) {
     const total = y * 12 + m - i;
     const ny = Math.floor(total / 12);
     const nm = (total % 12) + 1;
@@ -157,33 +157,44 @@ export default async function Home({
   }
 
   // Query stats — chỉ khi có quyền tương ứng. Parallel để tiết kiệm.
-  const months3 = last3Months();
+  const monthsWindow = last6Months();
   const [counts, totalRev, totalCost, totalPaidIn, revByMonth, costByMonth] = await Promise.all([
     getCounts(),
     canRevenue || canProfit ? getRevenueTotal() : Promise.resolve(0),
     canCost || canProfit ? getCostTotal() : Promise.resolve(0),
     canPayIn ? getPaidInTotal() : Promise.resolve(0),
-    canRevenue || canProfit ? getMonthlyRevenue(months3[0]) : Promise.resolve(new Map<string, number>()),
-    canCost || canProfit ? getMonthlyCost(months3[0]) : Promise.resolve(new Map<string, number>()),
+    canRevenue || canProfit
+      ? getMonthlyRevenue(monthsWindow[0])
+      : Promise.resolve(new Map<string, number>()),
+    canCost || canProfit
+      ? getMonthlyCost(monthsWindow[0])
+      : Promise.resolve(new Map<string, number>()),
   ]);
 
   const profit = totalRev - totalCost;
   const margin = totalRev > 0 ? (profit / totalRev) * 100 : 0;
 
-  // 3-month breakdown data
-  const revPerMonth = months3.map((m) => revByMonth.get(m) ?? 0);
-  const costPerMonth = months3.map((m) => costByMonth.get(m) ?? 0);
+  // Chỉ lấy tháng CÓ dữ liệu (rev > 0 HOẶC cost > 0). Tháng chưa có báo cáo
+  // (như tháng hiện tại vừa sang) sẽ bị loại → không hiện cột trống.
+  const monthsShown = monthsWindow.filter(
+    (m) => (revByMonth.get(m) ?? 0) > 0 || (costByMonth.get(m) ?? 0) > 0,
+  );
+  const revPerMonth = monthsShown.map((m) => revByMonth.get(m) ?? 0);
+  const costPerMonth = monthsShown.map((m) => costByMonth.get(m) ?? 0);
   const profitPerMonth = revPerMonth.map((r, i) => r - costPerMonth[i]);
   const marginPerMonth = revPerMonth.map((r, i) => (r > 0 ? (profitPerMonth[i] / r) * 100 : 0));
-  const revTotal3 = revPerMonth.reduce((s, x) => s + x, 0);
-  const costTotal3 = costPerMonth.reduce((s, x) => s + x, 0);
-  const profitTotal3 = revTotal3 - costTotal3;
-  const marginTotal3 = revTotal3 > 0 ? (profitTotal3 / revTotal3) * 100 : 0;
+  const revTotalWindow = revPerMonth.reduce((s, x) => s + x, 0);
+  const costTotalWindow = costPerMonth.reduce((s, x) => s + x, 0);
+  const profitTotalWindow = revTotalWindow - costTotalWindow;
+  const marginTotalWindow = revTotalWindow > 0 ? (profitTotalWindow / revTotalWindow) * 100 : 0;
   const showRev3 = canRevenue;
   const showCost3 = canCost;
   const showProfit3 = canProfit;
-  const showBlock3 = showRev3 || showCost3 || showProfit3;
-  const currentMonth = months3[months3.length - 1];
+  const showBlock3 = (showRev3 || showCost3 || showProfit3) && monthsShown.length > 0;
+
+  // Tháng hiện tại (calendar) — dùng để gắn "*" nếu nó đang được show
+  const now = new Date();
+  const currentCalendarMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
   const canProducts = canView("products");
   const canPartners = canView("partners");
@@ -269,29 +280,31 @@ export default async function Home({
         </div>
       )}
 
-      {/* ===== 3 tháng gần nhất — snapshot bức tranh kinh doanh ===== */}
+      {/* ===== 6 tháng gần nhất — snapshot bức tranh kinh doanh ===== */}
       {showBlock3 && (
         <div>
           <div className="flex items-baseline justify-between mb-2">
             <div className="text-xs uppercase text-slate-500 font-semibold tracking-wider">
-              📊 3 tháng gần nhất
+              📊 6 tháng gần nhất
             </div>
-            <div className="text-[10px] text-slate-400 italic">
-              * {formatMonthLabel(currentMonth)} tính đến hôm nay
-            </div>
+            {monthsShown.includes(currentCalendarMonth) && (
+              <div className="text-[10px] text-slate-400 italic">
+                * {formatMonthLabel(currentCalendarMonth)} tính đến hôm nay
+              </div>
+            )}
           </div>
           <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 text-xs text-slate-600">
                 <tr>
                   <th className="text-left p-3 font-medium"></th>
-                  {months3.map((m, i) => (
+                  {monthsShown.map((m) => (
                     <th key={m} className="text-right p-3 font-medium">
                       {formatMonthLabel(m)}
-                      {i === months3.length - 1 && "*"}
+                      {m === currentCalendarMonth && "*"}
                     </th>
                   ))}
-                  <th className="text-right p-3 font-semibold bg-slate-100">Tổng 3T</th>
+                  <th className="text-right p-3 font-semibold bg-slate-100">Tổng</th>
                 </tr>
               </thead>
               <tbody>
@@ -302,7 +315,7 @@ export default async function Home({
                       <td key={i} className="p-3 text-right tabular-nums">{fmtMoney(v)}</td>
                     ))}
                     <td className="p-3 text-right tabular-nums font-semibold bg-slate-50">
-                      {fmtMoney(revTotal3)}
+                      {fmtMoney(revTotalWindow)}
                     </td>
                   </tr>
                 )}
@@ -315,7 +328,7 @@ export default async function Home({
                       </td>
                     ))}
                     <td className="p-3 text-right tabular-nums font-semibold text-orange-700 bg-slate-50">
-                      {fmtMoney(costTotal3)}
+                      {fmtMoney(costTotalWindow)}
                     </td>
                   </tr>
                 )}
@@ -337,10 +350,10 @@ export default async function Home({
                       <td
                         className={cn(
                           "p-3 text-right tabular-nums font-bold bg-slate-50",
-                          profitTotal3 >= 0 ? "text-green-700" : "text-red-700",
+                          profitTotalWindow >= 0 ? "text-green-700" : "text-red-700",
                         )}
                       >
-                        {fmtMoney(profitTotal3)}
+                        {fmtMoney(profitTotalWindow)}
                       </td>
                     </tr>
                     <tr className="border-t border-slate-100">
@@ -351,7 +364,7 @@ export default async function Home({
                         </td>
                       ))}
                       <td className="p-3 text-right tabular-nums text-xs text-slate-500 font-semibold bg-slate-50">
-                        {revTotal3 > 0 ? fmtPctRaw(marginTotal3, 1) : "—"}
+                        {revTotalWindow > 0 ? fmtPctRaw(marginTotalWindow, 1) : "—"}
                       </td>
                     </tr>
                   </>
