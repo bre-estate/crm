@@ -149,7 +149,16 @@ export default async function CashFlowStatementPage({
       ),
     );
 
-  // Hoàn booking YCTV (nhóm 13, code 3411) — cty chi ra để trả nội bộ
+  // Hoàn cọc YCTV (Yêu Cầu Tư Vấn) — cty chuyển tiếp cọc CĐT hoàn về cho
+  // khách. Đây là pass-through 4 chân: khách → cty → CĐT (cọc), rồi
+  // CĐT → cty → khách (hoàn). Cả 4 leg nên cân, net = 0.
+  //
+  // CRM hiện chỉ có leg 4 (cty → khách) vì Kim import file thanh-toan chỉ
+  // ghi các dòng cty CHI thực; các dòng inflow từ khách/CĐT do admin theo
+  // dõi ở sổ riêng, không sync CRM.
+  //
+  // → Tách riêng để chỉ hiện thông tin, KHÔNG trừ vào Section III (nếu trừ
+  //   sẽ âm giả vì thiếu 3 leg còn lại). Long-term: import sổ admin để đủ.
   const [hoanYctv] = await db
     .select({ s: sql<number>`coalesce(sum(amount), 0)::float8` })
     .from(financialTransactions)
@@ -182,10 +191,12 @@ export default async function CashFlowStatementPage({
       ),
     );
 
+  // KHÔNG trừ hoanYctv vào netFinancing — đây là pass-through 4 leg mà CRM
+  // chỉ có 1 leg (cty → khách), 3 leg còn lại admin theo dõi sổ riêng.
+  // Trừ vào → CFS âm giả. Hiện thành info row riêng.
   const netFinancing =
     Number(vonGop.s) +
     Number(vonGopChiHo.s) -
-    Number(hoanYctv.s) -
     Number(capTU.s) -
     Number(cocHo.s);
 
@@ -269,7 +280,6 @@ export default async function CashFlowStatementPage({
             </tr>
             <Row label="(+) Founder góp vốn (nộp TK cty)" value={Number(vonGop.s)} />
             <Row label="(+) Founder chi hộ OPEX (vốn góp hiện vật)" value={Number(vonGopChiHo.s)} />
-            <Row label="(−) Hoàn tiền booking YCTV (trả nội bộ)" value={-Number(hoanYctv.s)} negative />
             <Row label="(−) Cấp tạm ứng cho HR/Admin" value={-Number(capTU.s)} negative />
             <Row label="(−) Đặt cọc hộ khách" value={-Number(cocHo.s)} negative />
             <tr className="bg-amber-50 font-semibold border-t border-amber-200">
@@ -278,6 +288,25 @@ export default async function CashFlowStatementPage({
                 {fmt(Math.round(netFinancing))}
               </td>
             </tr>
+
+            {/* Info-only: Hoàn cọc YCTV pass-through, KHÔNG tính vào CFS */}
+            {Number(hoanYctv.s) > 0 && (
+              <>
+                <tr className="border-t border-slate-100">
+                  <td colSpan={2} className="p-2 text-xs text-slate-500 italic bg-slate-50">
+                    ℹ Không tính vào CFS (pass-through 4 chân, sổ admin theo dõi riêng):
+                  </td>
+                </tr>
+                <tr className="border-t border-slate-100">
+                  <td className="p-2 pl-6 text-xs text-slate-600">
+                    Hoàn cọc YCTV cho khách (leg 4 trong 4)
+                  </td>
+                  <td className="p-2 text-right tabular-nums text-xs text-slate-600">
+                    {fmt(Math.round(Number(hoanYctv.s)))}
+                  </td>
+                </tr>
+              </>
+            )}
 
             {/* Total */}
             <tr className="bg-slate-100 font-bold text-base border-t-4 border-slate-300">

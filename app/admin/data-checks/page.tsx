@@ -146,6 +146,48 @@ async function runChecks(): Promise<CheckResult[]> {
       : undefined,
   });
 
+  // 2.01 YCTV pass-through — hoàn cọc (leg 4) không có inflow tương ứng
+  // (leg 1-3 do admin theo dõi sổ riêng, chưa import CRM)
+  const [yctvOut] = await db
+    .select({
+      c: sql<number>`count(*)::int`,
+      total: sql<number>`coalesce(sum(amount), 0)::float8`,
+    })
+    .from(financialTransactions)
+    .where(
+      and(
+        eq(financialTransactions.categoryCode, "3411"),
+        eq(financialTransactions.direction, "out"),
+      ),
+    );
+  const [yctvIn] = await db
+    .select({
+      total: sql<number>`coalesce(sum(amount), 0)::float8`,
+    })
+    .from(financialTransactions)
+    .where(
+      and(
+        eq(financialTransactions.categoryCode, "3411"),
+        eq(financialTransactions.direction, "in"),
+      ),
+    );
+  const yctvOutTotal = Number(yctvOut?.total ?? 0);
+  const yctvInTotal = Number(yctvIn?.total ?? 0);
+  const yctvGap = yctvOutTotal - yctvInTotal;
+  checks.push({
+    category: "Double count risk",
+    title: "YCTV pass-through — inflow khớp outflow",
+    status: yctvOutTotal === 0 ? "pass" : yctvGap === 0 ? "pass" : "warn",
+    detail:
+      yctvOutTotal === 0
+        ? "Không có hoàn cọc YCTV nào."
+        : `OUT (hoàn cọc cho khách): ${fmt(yctvOutTotal)}. IN (CĐT hoàn về cty): ${fmt(yctvInTotal)}. Gap: ${fmt(yctvGap)}.`,
+    hint:
+      yctvGap > 0
+        ? "CFS đã loại YCTV out khỏi Section III để không âm giả. Long-term: import sổ admin để có inflow leg 1-3."
+        : undefined,
+  });
+
   // 2.05 Consistency check — tổng tiền vào từ CĐT (payments_in) vs tổng doanh
   // thu đã ĐC (revenue_reconciliations.totalReceivableThisTime). Nếu paid_in
   // << receivable → có tiền chưa về (bình thường, đó là phải thu). Nếu paid_in
