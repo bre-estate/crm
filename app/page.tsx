@@ -1,12 +1,68 @@
 import { db } from "@/lib/db";
 import { fmtMoney, fmtPctRaw } from "@/lib/format";
 import { partners, projects, products, revenueReconciliations, costReconciliations, paymentsIn } from "@/lib/schema";
-import { count, sum } from "drizzle-orm";
+import { count, sum, sql, gte, isNotNull, and } from "drizzle-orm";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { resolvePermissions, type Resource, RESOURCES } from "@/lib/permissions";
 import DeniedBanner from "./DeniedBanner";
 import { cn } from "@/lib/utils";
+
+// Trả về [YYYY-MM, YYYY-MM, YYYY-MM] — 3 tháng gần nhất tính đến hôm nay,
+// oldest first. VD hôm nay 2026-08-02 → ["2026-06", "2026-07", "2026-08"].
+function last3Months(): string[] {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth(); // 0-11
+  const months: string[] = [];
+  for (let i = 2; i >= 0; i--) {
+    const total = y * 12 + m - i;
+    const ny = Math.floor(total / 12);
+    const nm = (total % 12) + 1;
+    months.push(`${ny}-${String(nm).padStart(2, "0")}`);
+  }
+  return months;
+}
+
+// Group by first 7 chars của reconciliationDate (YYYY-MM). Chỉ lấy 3 tháng
+// gần nhất để giảm data scan.
+async function getMonthlyRevenue(startMonth: string): Promise<Map<string, number>> {
+  const rows = await db
+    .select({
+      month: sql<string>`substr(${revenueReconciliations.reconciliationDate}, 1, 7)`.as("month"),
+      total: sum(revenueReconciliations.totalReceivableThisTime).as("total"),
+    })
+    .from(revenueReconciliations)
+    .where(
+      and(
+        isNotNull(revenueReconciliations.reconciliationDate),
+        gte(revenueReconciliations.reconciliationDate, `${startMonth}-01`),
+      ),
+    )
+    .groupBy(sql`substr(${revenueReconciliations.reconciliationDate}, 1, 7)`);
+  const map = new Map<string, number>();
+  for (const r of rows) map.set(r.month, Number(r.total ?? 0));
+  return map;
+}
+
+async function getMonthlyCost(startMonth: string): Promise<Map<string, number>> {
+  const rows = await db
+    .select({
+      month: sql<string>`substr(${costReconciliations.reconciliationDate}, 1, 7)`.as("month"),
+      total: sum(costReconciliations.amountPayableThisTime).as("total"),
+    })
+    .from(costReconciliations)
+    .where(
+      and(
+        isNotNull(costReconciliations.reconciliationDate),
+        gte(costReconciliations.reconciliationDate, `${startMonth}-01`),
+      ),
+    )
+    .groupBy(sql`substr(${costReconciliations.reconciliationDate}, 1, 7)`);
+  const map = new Map<string, number>();
+  for (const r of rows) map.set(r.month, Number(r.total ?? 0));
+  return map;
+}
 
 export const dynamic = "force-dynamic";
 
@@ -101,15 +157,33 @@ export default async function Home({
   }
 
   // Query stats — chỉ khi có quyền tương ứng. Parallel để tiết kiệm.
-  const [counts, totalRev, totalCost, totalPaidIn] = await Promise.all([
+  const months3 = last3Months();
+  const [counts, totalRev, totalCost, totalPaidIn, revByMonth, costByMonth] = await Promise.all([
     getCounts(),
     canRevenue || canProfit ? getRevenueTotal() : Promise.resolve(0),
     canCost || canProfit ? getCostTotal() : Promise.resolve(0),
     canPayIn ? getPaidInTotal() : Promise.resolve(0),
+    canRevenue || canProfit ? getMonthlyRevenue(months3[0]) : Promise.resolve(new Map<string, number>()),
+    canCost || canProfit ? getMonthlyCost(months3[0]) : Promise.resolve(new Map<string, number>()),
   ]);
 
   const profit = totalRev - totalCost;
   const margin = totalRev > 0 ? (profit / totalRev) * 100 : 0;
+
+  // 3-month breakdown data
+  const revPerMonth = months3.map((m) => revByMonth.get(m) ?? 0);
+  const costPerMonth = months3.map((m) => costByMonth.get(m) ?? 0);
+  const profitPerMonth = revPerMonth.map((r, i) => r - costPerMonth[i]);
+  const marginPerMonth = revPerMonth.map((r, i) => (r > 0 ? (profitPerMonth[i] / r) * 100 : 0));
+  const revTotal3 = revPerMonth.reduce((s, x) => s + x, 0);
+  const costTotal3 = costPerMonth.reduce((s, x) => s + x, 0);
+  const profitTotal3 = revTotal3 - costTotal3;
+  const marginTotal3 = revTotal3 > 0 ? (profitTotal3 / revTotal3) * 100 : 0;
+  const showRev3 = canRevenue;
+  const showCost3 = canCost;
+  const showProfit3 = canProfit;
+  const showBlock3 = showRev3 || showCost3 || showProfit3;
+  const currentMonth = months3[months3.length - 1];
 
   const canProducts = canView("products");
   const canPartners = canView("partners");
@@ -195,6 +269,99 @@ export default async function Home({
         </div>
       )}
 
+      {/* ===== 3 tháng gần nhất — snapshot bức tranh kinh doanh ===== */}
+      {showBlock3 && (
+        <div>
+          <div className="flex items-baseline justify-between mb-2">
+            <div className="text-xs uppercase text-slate-500 font-semibold tracking-wider">
+              📊 3 tháng gần nhất
+            </div>
+            <div className="text-[10px] text-slate-400 italic">
+              * {formatMonthLabel(currentMonth)} tính đến hôm nay
+            </div>
+          </div>
+          <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-xs text-slate-600">
+                <tr>
+                  <th className="text-left p-3 font-medium"></th>
+                  {months3.map((m, i) => (
+                    <th key={m} className="text-right p-3 font-medium">
+                      {formatMonthLabel(m)}
+                      {i === months3.length - 1 && "*"}
+                    </th>
+                  ))}
+                  <th className="text-right p-3 font-semibold bg-slate-100">Tổng 3T</th>
+                </tr>
+              </thead>
+              <tbody>
+                {showRev3 && (
+                  <tr className="border-t border-slate-100">
+                    <td className="p-3 text-slate-700">Doanh thu</td>
+                    {revPerMonth.map((v, i) => (
+                      <td key={i} className="p-3 text-right tabular-nums">{fmtMoney(v)}</td>
+                    ))}
+                    <td className="p-3 text-right tabular-nums font-semibold bg-slate-50">
+                      {fmtMoney(revTotal3)}
+                    </td>
+                  </tr>
+                )}
+                {showCost3 && (
+                  <tr className="border-t border-slate-100">
+                    <td className="p-3 text-slate-700">Giá vốn</td>
+                    {costPerMonth.map((v, i) => (
+                      <td key={i} className="p-3 text-right tabular-nums text-orange-700">
+                        {fmtMoney(v)}
+                      </td>
+                    ))}
+                    <td className="p-3 text-right tabular-nums font-semibold text-orange-700 bg-slate-50">
+                      {fmtMoney(costTotal3)}
+                    </td>
+                  </tr>
+                )}
+                {showProfit3 && (
+                  <>
+                    <tr className="border-t border-slate-100">
+                      <td className="p-3 text-slate-700 font-medium">Lãi gộp</td>
+                      {profitPerMonth.map((v, i) => (
+                        <td
+                          key={i}
+                          className={cn(
+                            "p-3 text-right tabular-nums font-medium",
+                            v >= 0 ? "text-green-700" : "text-red-700",
+                          )}
+                        >
+                          {fmtMoney(v)}
+                        </td>
+                      ))}
+                      <td
+                        className={cn(
+                          "p-3 text-right tabular-nums font-bold bg-slate-50",
+                          profitTotal3 >= 0 ? "text-green-700" : "text-red-700",
+                        )}
+                      >
+                        {fmtMoney(profitTotal3)}
+                      </td>
+                    </tr>
+                    <tr className="border-t border-slate-100">
+                      <td className="p-3 text-slate-500 text-xs">Biên LN</td>
+                      {marginPerMonth.map((v, i) => (
+                        <td key={i} className="p-3 text-right tabular-nums text-xs text-slate-500">
+                          {revPerMonth[i] > 0 ? fmtPctRaw(v, 1) : "—"}
+                        </td>
+                      ))}
+                      <td className="p-3 text-right tabular-nums text-xs text-slate-500 font-semibold bg-slate-50">
+                        {revTotal3 > 0 ? fmtPctRaw(marginTotal3, 1) : "—"}
+                      </td>
+                    </tr>
+                  </>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Quick links — non-owner luôn thấy, owner ẩn (đã có sidebar) */}
       {!isOwner && availablePages.length > 0 && (
         <div>
@@ -217,6 +384,12 @@ export default async function Home({
       )}
     </div>
   );
+}
+
+// "2026-08" → "T8/26"
+function formatMonthLabel(ym: string): string {
+  const [y, m] = ym.split("-");
+  return `T${Number(m)}/${y.slice(-2)}`;
 }
 
 function StatLink({ label, value, href }: { label: string; value: number; href: string }) {
