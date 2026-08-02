@@ -612,5 +612,30 @@ export const notificationReads = pgTable("notification_reads", {
   readAt: timestamp("read_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// ===================== ACCOUNTING JOURNAL (Sổ Nhật Ký Kim TT200) =====================
+// Mirror sổ nhật ký chung của Kim. Mỗi row = 1 double-entry entry:
+// Debit TK X = Credit TK Y = amount. Import từ NKC sheet file SO SACH BRE.
+export const accountingJournal = pgTable("accounting_journal", {
+  id: serial("id").primaryKey(),
+  entryDate: text("entry_date").notNull(), // YYYY-MM-DD
+  docType: text("doc_type").notNull(),
+  docNumber: text("doc_number").notNull(),
+  invoiceSeri: text("invoice_seri"),
+  invoiceNumber: text("invoice_number"),
+  invoiceDate: text("invoice_date"),
+  description: text("description").notNull(),
+  debitAccount: text("debit_account").notNull(),
+  creditAccount: text("credit_account").notNull(),
+  amount: doublePrecision("amount").notNull(),
+  sourceFile: text("source_file").notNull(),
+  sourceSheet: text("source_sheet").notNull(),
+  sourceRow: integer("source_row").notNull(),
+  dedupKey: text("dedup_key").notNull().unique(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type AccountingJournalEntry = typeof accountingJournal.$inferSelect;
+export type NewAccountingJournalEntry = typeof accountingJournal.$inferInsert;
+
 // Used in raw SQL for profile auto-create trigger
 export const _sql = sql;
