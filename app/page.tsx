@@ -7,7 +7,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { resolvePermissions, type Resource, RESOURCES } from "@/lib/permissions";
 import DeniedBanner from "./DeniedBanner";
 import { cn } from "@/lib/utils";
-import { OPEX_CATEGORIES } from "@/lib/accounting/categories";
+import { OPEX_MGMT_CATEGORIES } from "@/lib/accounting/categories";
 
 // Trả về 6 tháng gần nhất tính đến hôm nay, oldest first.
 // VD hôm nay 2026-08-02 → ["2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08"].
@@ -66,7 +66,7 @@ async function getMonthlyCost(startMonth: string): Promise<Map<string, number>> 
 }
 
 // OPEX per tháng — dùng accrualMonth (accrual view, khớp reports/management)
-// Lọc theo OPEX_CATEGORIES (641 + 642 + 811 + 635), direction=out.
+// Lọc theo OPEX_MGMT_CATEGORIES (641 + 642 + 811 + 635, loại 6417), direction=out.
 async function getMonthlyOpex(startMonth: string): Promise<Map<string, number>> {
   const rows = await db
     .select({
@@ -77,7 +77,7 @@ async function getMonthlyOpex(startMonth: string): Promise<Map<string, number>> 
     .where(
       and(
         eq(financialTransactions.direction, "out"),
-        inArray(financialTransactions.categoryCode, OPEX_CATEGORIES),
+        inArray(financialTransactions.categoryCode, OPEX_MGMT_CATEGORIES),
         gte(financialTransactions.accrualMonth, startMonth),
       ),
     )

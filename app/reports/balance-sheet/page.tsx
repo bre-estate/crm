@@ -8,7 +8,7 @@ import { netBookValue, accumulatedDepreciation } from "@/lib/accounting/deprecia
 
 export const dynamic = "force-dynamic";
 
-import { OPEX_CATEGORIES } from "@/lib/accounting/categories";
+import { OPEX_MGMT_CATEGORIES } from "@/lib/accounting/categories";
 
 const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
 
@@ -124,7 +124,7 @@ export default async function BalanceSheetPage() {
   const [opexTotal] = await db
     .select({ s: sql<number>`coalesce(sum(amount), 0)::float8` })
     .from(financialTransactions)
-    .where(inArray(financialTransactions.categoryCode, OPEX_CATEGORIES));
+    .where(inArray(financialTransactions.categoryCode, OPEX_MGMT_CATEGORIES));
   const totalOpex = Number(opexTotal.s);
   const laiLoLuyKe = Number(rev.receivable) / 1.1 - Number(cost.payable) - totalOpex;
 

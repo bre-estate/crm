@@ -9,7 +9,7 @@ import {
   financialTransactions,
 } from "@/lib/schema";
 import { sql, inArray, eq, and, lt, gte, isNotNull } from "drizzle-orm";
-import { OPEX_CATEGORIES, FIXED_COST_CATEGORIES } from "@/lib/accounting/categories";
+import { OPEX_MGMT_CATEGORIES, FIXED_COST_CATEGORIES } from "@/lib/accounting/categories";
 
 /**
  * Alerts — logic tách khỏi UI để reuse:
@@ -218,7 +218,7 @@ export async function computeAlerts(): Promise<Alert[]> {
       s: sql<number>`sum(amount)::float8`,
     })
     .from(financialTransactions)
-    .where(inArray(financialTransactions.categoryCode, OPEX_CATEGORIES))
+    .where(inArray(financialTransactions.categoryCode, OPEX_MGMT_CATEGORIES))
     .groupBy(financialTransactions.transactionMonth);
   const opexByMonth = new Map(opexPerMonthRows.map((r) => [r.month, Number(r.s)]));
 

@@ -6,7 +6,7 @@ import { sql, inArray, gte, eq, ne, and } from "drizzle-orm";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { monthlyDepreciation } from "@/lib/accounting/depreciation";
-import { OPEX_CATEGORIES, FIXED_COST_CATEGORIES, BUCKET_641, BUCKET_642, BUCKET_811, bucketOf, BUCKET_LABELS } from "@/lib/accounting/categories";
+import { OPEX_MGMT_CATEGORIES, FIXED_COST_CATEGORIES, BUCKET_641, BUCKET_642, BUCKET_811, bucketOf, BUCKET_LABELS } from "@/lib/accounting/categories";
 
 export const dynamic = "force-dynamic";
 
@@ -58,7 +58,7 @@ export default async function ManagementReportPage({
       n: sql<number>`count(*)::int`,
     })
     .from(financialTransactions)
-    .where(inArray(financialTransactions.categoryCode, OPEX_CATEGORIES))
+    .where(inArray(financialTransactions.categoryCode, OPEX_MGMT_CATEGORIES))
     .groupBy(
       monthCol,
       financialTransactions.categoryCode,

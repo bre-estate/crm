@@ -8,7 +8,7 @@ import { companyExpenses, financialTransactions } from "@/lib/schema";
 import { inArray, sql, eq } from "drizzle-orm";
 import { monthlyDepreciation } from "@/lib/accounting/depreciation";
 
-import { OPEX_CATEGORIES } from "@/lib/accounting/categories";
+import { OPEX_MGMT_CATEGORIES } from "@/lib/accounting/categories";
 
 export const dynamic = "force-dynamic";
 
@@ -62,7 +62,7 @@ export default async function ReportsOverviewPage({ searchParams }: { searchPara
         amount: financialTransactions.amount,
       })
       .from(financialTransactions)
-      .where(inArray(financialTransactions.categoryCode, OPEX_CATEGORIES));
+      .where(inArray(financialTransactions.categoryCode, OPEX_MGMT_CATEGORIES));
     if (txExpenses.length > 0) {
       allExpenses = txExpenses.map((e) => ({
         month: e.month,

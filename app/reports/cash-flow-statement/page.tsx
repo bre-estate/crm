@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
-import { OPEX_CATEGORIES } from "@/lib/accounting/categories";
+import { OPEX_MGMT_CATEGORIES } from "@/lib/accounting/categories";
 
 const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
 
@@ -62,9 +62,8 @@ export default async function CashFlowStatementPage({
     .from(paymentsOut)
     .where(and(gte(paymentsOut.paymentDate, yearStart), lte(paymentsOut.paymentDate, yearEnd)));
 
-  // Chi OPEX trong năm — LOẠI 6417 vì HH sale đã có trong payments_out (traNCC).
-  // Include 6417 lại → double count HH sale trong LCTT.
-  const OPEX_FOR_LCTT = OPEX_CATEGORIES.filter((c) => c !== "6417");
+  // Chi OPEX trong năm — dùng OPEX_MGMT_CATEGORIES (đã loại 6417) vì HH sale
+  // đã có trong payments_out (traNCC). Include 6417 → double count HH sale.
   const opexRows = await db
     .select({
       code: financialTransactions.categoryCode,
@@ -73,7 +72,7 @@ export default async function CashFlowStatementPage({
     .from(financialTransactions)
     .where(
       and(
-        inArray(financialTransactions.categoryCode, OPEX_FOR_LCTT),
+        inArray(financialTransactions.categoryCode, OPEX_MGMT_CATEGORIES),
         sql`transaction_month LIKE ${yearMonthPrefix + "%"}`,
       ),
     )

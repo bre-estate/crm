@@ -475,7 +475,7 @@ export async function loadReportData(filters: ReportFilters): Promise<ReportData
     // Chi phí quản lý (opex) — ưu tiên financial_transactions (Phase 1 new).
     // Fallback company_expenses (legacy) nếu chưa nạp data mới.
     // Framework chốt 2026-07-25:
-    const { OPEX_CATEGORIES } = await import("./accounting/categories");
+    const { OPEX_MGMT_CATEGORIES } = await import("./accounting/categories");
     const [invRows, txOpexRows, expRows, settingsRows] = await Promise.all([
       db.select().from(companyInvestments),
       db
@@ -484,7 +484,7 @@ export async function loadReportData(filters: ReportFilters): Promise<ReportData
           amount: financialTransactions.amount,
         })
         .from(financialTransactions)
-        .where(inArray(financialTransactions.categoryCode, OPEX_CATEGORIES)),
+        .where(inArray(financialTransactions.categoryCode, OPEX_MGMT_CATEGORIES)),
       db.select().from(companyExpenses),
       db.select().from(companySettings),
     ]);

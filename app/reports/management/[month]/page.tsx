@@ -4,7 +4,7 @@ import { getOwnerEmail } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import { eq, inArray, desc, and, sql, like } from "drizzle-orm";
 import Link from "next/link";
-import { OPEX_CATEGORIES } from "@/lib/accounting/categories";
+import { OPEX_CATEGORIES, OPEX_MGMT_CATEGORIES } from "@/lib/accounting/categories";
 import { costTypeLabel } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -80,7 +80,10 @@ export default async function MonthDetailPage({ params }: { params: Params }) {
     .where(like(products.depositDate, `${month}-%`));
 
   // ===== 3. Aggregate =====
-  const opexTxs = txs.filter((t) => OPEX_CATEGORIES.includes(t.categoryCode));
+  // Loại 6417 khỏi OPEX vì HH sale đã có trong cost_reconciliations →
+  // tránh double-count trong netProfit. 6417 rows sẽ không xuất hiện ở
+  // section "Non-OPEX" bên dưới nữa (line 99 vẫn dùng OPEX_CATEGORIES gốc).
+  const opexTxs = txs.filter((t) => OPEX_MGMT_CATEGORIES.includes(t.categoryCode));
   const opexTotal = opexTxs.reduce((s, t) => s + Number(t.amount), 0);
   const revTotal = revs.reduce((s, r) => s + Number(r.receivable ?? 0), 0);
   const costTotal = costs.reduce((s, c) => s + Number(c.payable ?? 0), 0);

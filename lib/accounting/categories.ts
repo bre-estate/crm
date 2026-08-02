@@ -19,13 +19,25 @@ export const CAT_242 = ["242"] as const;
 export const CAT_635 = ["635"] as const;
 
 // TẤT CẢ chi phí HĐ = 641 + 642 + 811 + 635 (không gồm 242 vì phân bổ)
-// Dùng cho: P&L monthly, tổng chi phí BCTC, cash flow statement
+// Dùng cho: BCTC hợp lệ (nộp thuế / kế toán chuẩn TT200).
+// CẢNH BÁO: 6417 hiện gộp HH sale (đã có trong cost_reconciliations). Nếu tính
+// (rev − cost_recon − OPEX_CATEGORIES) → double-count HH sale. Dùng
+// OPEX_MGMT_CATEGORIES bên dưới cho tính lãi thuần / P&L quản trị.
 export const OPEX_CATEGORIES: string[] = [
   ...CAT_641,
   ...CAT_642,
   ...CAT_811,
   ...CAT_635,
 ];
+
+// OPEX cho báo cáo quản trị / tính lãi thuần — LOẠI 6417 vì HH sale đã nằm
+// trong cost_reconciliations (COGS). Không cùng lúc trừ ở cả 2 chỗ.
+// Marketing + tiếp khách + thưởng doanh số cũng ở 6417 → chấp nhận under-count
+// (giống FIXED_COST_CATEGORIES) hơn là double-count. Long-term: split 6417
+// thành 6417-hhsale (COGS) vs 6417-mkt (OPEX thật) qua sub-category.
+export const OPEX_MGMT_CATEGORIES: string[] = OPEX_CATEGORIES.filter(
+  (c) => c !== "6417",
+);
 
 // Chi phí CỐ ĐỊNH (không scale với doanh số) — dùng cho tính Điểm hòa vốn.
 // LOẠI 6417 vì 6417 hiện gộp HH sale (variable, đã trừ trong products.totalCost).
