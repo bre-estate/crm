@@ -121,6 +121,58 @@ async function runChecks(): Promise<CheckResult[]> {
   // Nhóm 2 — Double count risk (6417 bug)
   // ============================================================================
 
+  // 2.0 Missed cash inflow — financial_transactions direction='in'. Nếu > 0 →
+  // có khoản tiền vào ghi nhầm chỗ (nên ở payments_in) → CFS âm giả.
+  const [inTxn] = await db
+    .select({
+      c: sql<number>`count(*)::int`,
+      total: sql<number>`coalesce(sum(amount), 0)::float8`,
+    })
+    .from(financialTransactions)
+    .where(eq(financialTransactions.direction, "in"));
+  const hasInTxn = Number(inTxn?.c ?? 0) > 0;
+  checks.push({
+    category: "Double count risk",
+    title: "financial_transactions direction=in (tiền vào ghi nhầm chỗ?)",
+    status: hasInTxn ? "warn" : "pass",
+    detail: hasInTxn
+      ? `${inTxn?.c} rows, tổng ${fmt(Number(inTxn?.total ?? 0))} VND. Tiền vào từ CĐT phải ghi ở payments_in để CFS Section I catch. Ghi ở financial_transactions direction='in' → CFS undercount inflow → âm giả.`
+      : "Không có row nào direction='in' — tiền vào chỉ ở payments_in (chuẩn).",
+    hint: hasInTxn
+      ? "Nếu là tiền CĐT trả HH → di chuyển sang payments_in link với revenue_reconciliation tương ứng."
+      : undefined,
+    link: hasInTxn
+      ? { href: "/finance/transactions", label: "Xem /finance" }
+      : undefined,
+  });
+
+  // 2.05 Consistency check — tổng tiền vào từ CĐT (payments_in) vs tổng doanh
+  // thu đã ĐC (revenue_reconciliations.totalReceivableThisTime). Nếu paid_in
+  // << receivable → có tiền chưa về (bình thường, đó là phải thu). Nếu paid_in
+  // >> receivable đáng kể → có tiền lẻ không link recon hoặc double record.
+  const [paidInTotal] = await db
+    .select({ s: sql<number>`coalesce(sum(amount), 0)::float8` })
+    .from(paymentsIn);
+  const [revReceivable] = await db
+    .select({ s: sql<number>`coalesce(sum(${revenueReconciliations.totalReceivableThisTime}), 0)::float8` })
+    .from(revenueReconciliations);
+  const paidIn = Number(paidInTotal?.s ?? 0);
+  const receivable = Number(revReceivable?.s ?? 0);
+  const collectionRate = receivable > 0 ? (paidIn / receivable) * 100 : 0;
+  checks.push({
+    category: "Sanity check",
+    title: "Tỷ lệ thu hồi CĐT (payments_in / receivable)",
+    status: receivable === 0 ? "warn" : collectionRate >= 30 ? "pass" : "fail",
+    detail:
+      receivable === 0
+        ? "Chưa có ĐC doanh thu nào."
+        : `Đã thu ${fmt(paidIn)} / phải thu ${fmt(receivable)} = ${collectionRate.toFixed(1)}%. Phải thu còn lại ${fmt(receivable - paidIn)}.`,
+    hint:
+      receivable > 0 && collectionRate < 30
+        ? "Nếu cty đang 'tự nuôi' (không cần founder chi hộ) thì tỷ lệ này phải cao (>60-70%). Thấp = payments_in đang thiếu → CFS âm giả. Verify với sao kê bank."
+        : undefined,
+  });
+
   // 2.1 Số financial_transactions có category=6417 (HH sale). Nếu > 0 → potential double count.
   const [count6417] = await db
     .select({
