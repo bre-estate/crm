@@ -153,12 +153,13 @@ export default async function CashFlowStatementPage({
   // khách. Đây là pass-through 4 chân: khách → cty → CĐT (cọc), rồi
   // CĐT → cty → khách (hoàn). Cả 4 leg nên cân, net = 0.
   //
-  // CRM hiện chỉ có leg 4 (cty → khách) vì Kim import file thanh-toan chỉ
-  // ghi các dòng cty CHI thực; các dòng inflow từ khách/CĐT do admin theo
-  // dõi ở sổ riêng, không sync CRM.
+  // Kim confirm 2026-08-02: Kim CÓ ghi đủ 4 leg trong sổ chính, vào section
+  // "thu hộ - chi hộ" (pass-through account). Nhưng file thanh-toan import
+  // vào CRM đang miss section này → CRM chỉ có leg 4 (cty → khách).
   //
   // → Tách riêng để chỉ hiện thông tin, KHÔNG trừ vào Section III (nếu trừ
-  //   sẽ âm giả vì thiếu 3 leg còn lại). Long-term: import sổ admin để đủ.
+  //   sẽ âm giả vì thiếu 3 leg còn lại). Long-term: xin Kim gửi file
+  //   thanh-toan bao gồm section thu hộ/chi hộ → update import script.
   const [hoanYctv] = await db
     .select({ s: sql<number>`coalesce(sum(amount), 0)::float8` })
     .from(financialTransactions)
@@ -294,7 +295,7 @@ export default async function CashFlowStatementPage({
               <>
                 <tr className="border-t border-slate-100">
                   <td colSpan={2} className="p-2 text-xs text-slate-500 italic bg-slate-50">
-                    ℹ Không tính vào CFS (pass-through 4 chân, sổ admin theo dõi riêng):
+                    ℹ Không tính vào CFS (pass-through 4 chân, CRM thiếu 3 leg inflow từ section &quot;thu hộ/chi hộ&quot; của Kim):
                   </td>
                 </tr>
                 <tr className="border-t border-slate-100">

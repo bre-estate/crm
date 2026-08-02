@@ -184,7 +184,7 @@ async function runChecks(): Promise<CheckResult[]> {
         : `OUT (hoàn cọc cho khách): ${fmt(yctvOutTotal)}. IN (CĐT hoàn về cty): ${fmt(yctvInTotal)}. Gap: ${fmt(yctvGap)}.`,
     hint:
       yctvGap > 0
-        ? "CFS đã loại YCTV out khỏi Section III để không âm giả. Long-term: import sổ admin để có inflow leg 1-3."
+        ? "CFS đã loại YCTV out khỏi Section III để không âm giả. Kim confirm sổ chính có ghi 4 leg trong section 'thu hộ/chi hộ' — xin Kim gửi file thanh-toan bao gồm section này rồi update import script."
         : undefined,
   });
 
