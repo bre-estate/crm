@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { financialTransactions, paymentsIn, paymentsOut, revenueReconciliations, costReconciliations } from "@/lib/schema";
 import { getOwnerEmail } from "@/lib/auth";
 import { notFound } from "next/navigation";
-import { sql, inArray, eq, gte, lte, and } from "drizzle-orm";
+import { sql, inArray, eq, gte, lte, and, ne } from "drizzle-orm";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
@@ -121,13 +121,30 @@ export default async function CashFlowStatementPage({
 
   // ===== III. HĐ TÀI CHÍNH =====
 
-  // Vốn góp founder (nhóm 11, code 411)
+  // Vốn góp founder (nhóm 11, code 411) — chuyển vào TK cty chính thức
   const [vonGop] = await db
     .select({ s: sql<number>`coalesce(sum(amount), 0)::float8` })
     .from(financialTransactions)
     .where(
       and(
         eq(financialTransactions.categoryCode, "411"),
+        sql`transaction_month LIKE ${yearMonthPrefix + "%"}`,
+      ),
+    );
+
+  // Vốn góp bằng chi hộ — Cách A (2026-08-02, ChatOwner confirm): coi tiền
+  // Triết/Bách chi hộ OPEX từ ví cá nhân = vốn góp bằng hiện vật (offset
+  // Section I outflow). Filter khớp /finance/capital: payer IN + category
+  // != 411 (đã tính riêng) + != secondary (Bách hđ cá nhân).
+  const [vonGopChiHo] = await db
+    .select({ s: sql<number>`coalesce(sum(amount), 0)::float8` })
+    .from(financialTransactions)
+    .where(
+      and(
+        inArray(financialTransactions.payer, ["Triết", "Bách"]),
+        eq(financialTransactions.direction, "out"),
+        ne(financialTransactions.categoryCode, "411"),
+        ne(financialTransactions.categoryCode, "secondary"),
         sql`transaction_month LIKE ${yearMonthPrefix + "%"}`,
       ),
     );
@@ -166,7 +183,11 @@ export default async function CashFlowStatementPage({
     );
 
   const netFinancing =
-    Number(vonGop.s) - Number(hoanYctv.s) - Number(capTU.s) - Number(cocHo.s);
+    Number(vonGop.s) +
+    Number(vonGopChiHo.s) -
+    Number(hoanYctv.s) -
+    Number(capTU.s) -
+    Number(cocHo.s);
 
   const netCashFlow = netOperating + netInvesting + netFinancing;
 
@@ -247,6 +268,7 @@ export default async function CashFlowStatementPage({
               <td></td>
             </tr>
             <Row label="(+) Founder góp vốn (nộp TK cty)" value={Number(vonGop.s)} />
+            <Row label="(+) Founder chi hộ OPEX (vốn góp hiện vật)" value={Number(vonGopChiHo.s)} />
             <Row label="(−) Hoàn tiền booking YCTV (trả nội bộ)" value={-Number(hoanYctv.s)} negative />
             <Row label="(−) Cấp tạm ứng cho HR/Admin" value={-Number(capTU.s)} negative />
             <Row label="(−) Đặt cọc hộ khách" value={-Number(cocHo.s)} negative />
