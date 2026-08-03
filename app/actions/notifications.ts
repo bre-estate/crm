@@ -18,7 +18,20 @@ export async function fetchNotifications(): Promise<NotificationData> {
   const user = await getCurrentUser();
   if (!user) return { items: [], unreadCount: 0 };
 
-  const alerts = await computeAlertSummaries();
+  // Timebox 3s — computeAlertSummaries chạy 20+ queries, có thể timeout
+  // trên Vercel serverless (10s limit). Fallback empty để trang load được.
+  let alerts: Awaited<ReturnType<typeof computeAlertSummaries>>;
+  try {
+    alerts = await Promise.race([
+      computeAlertSummaries(),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("alerts timeout 3s")), 3000),
+      ),
+    ]);
+  } catch (e) {
+    console.warn("[fetchNotifications]", e);
+    return { items: [], unreadCount: 0 };
+  }
   if (alerts.length === 0) return { items: [], unreadCount: 0 };
 
   // Query read state — graceful fallback nếu table notification_reads chưa
