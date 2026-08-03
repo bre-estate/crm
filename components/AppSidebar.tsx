@@ -258,9 +258,11 @@ export default function AppSidebar({
   const [notifData, setNotifData] = useState<NotificationData>(notifications);
   const [notifPending, startNotif] = useTransition();
 
-  // Auto-refresh notifications every 5 min
+  // Fetch notifications lần đầu client-side (server không fetch để tránh 504
+  // — computeAlertSummaries chạy 20+ queries). Sau đó auto-refresh 5 min.
   useEffect(() => {
     if (!canSeeAlerts) return;
+    fetchNotifications().then(setNotifData).catch(() => {});
     const int = setInterval(() => {
       fetchNotifications().then(setNotifData).catch(() => {});
     }, 5 * 60 * 1000);

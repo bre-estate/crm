@@ -77,9 +77,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const permissions = resolvePermissions(currentUser.role, currentUser.customPermissions);
   const isOwner = currentUser.role === "owner";
   const canSeeAlerts = checkPerm(currentUser.role, currentUser.customPermissions, "alerts");
-  const notifications = canSeeAlerts
-    ? await fetchNotifications()
-    : { items: [], unreadCount: 0 };
+  // Notifications KHÔNG fetch server-side (chạy 20+ queries, slow → 504).
+  // Bell load empty ban đầu, tự fetch client-side sau khi trang render.
+  const notifications = { items: [], unreadCount: 0 };
 
   return (
     <html lang="vi" className={cn("h-full", "font-sans", geist.variable)}>
