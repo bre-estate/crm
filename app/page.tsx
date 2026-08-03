@@ -40,21 +40,15 @@ async function monthRevenue(month: string): Promise<number> {
 }
 
 async function monthCost(month: string): Promise<number> {
+  // Chỉ dùng cost_reconciliations (breakdown per cost_type). fin_txn 6417 là
+  // GROSS bank transfer SAME khoản → cộng cả 2 = double count.
+  // 2025 baseline có gap vì user chưa nhập đủ ĐC (data quality issue, không
+  // phải logic bug). Cần import từ Kim journal để có 2025 số chuẩn.
   const [rec] = await db
     .select({ s: sql<number>`coalesce(sum(${costReconciliations.amountPayableThisTime}), 0)::float8` })
     .from(costReconciliations)
     .where(sql`substr(${costReconciliations.reconciliationDate}, 1, 7) = ${month}`);
-  const [fin] = await db
-    .select({ s: sql<number>`coalesce(sum(${financialTransactions.amount}), 0)::float8` })
-    .from(financialTransactions)
-    .where(
-      and(
-        eq(financialTransactions.direction, "out"),
-        eq(financialTransactions.categoryCode, "6417"),
-        eq(financialTransactions.accrualMonth, month),
-      ),
-    );
-  return Number(rec?.s ?? 0) + Number(fin?.s ?? 0);
+  return Number(rec?.s ?? 0);
 }
 
 async function monthOpex(month: string): Promise<number> {
