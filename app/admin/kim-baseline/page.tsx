@@ -45,9 +45,12 @@ const TK_META: Record<string, { name: string; type: TKType }> = {
   "4212": { name: "Lãi/lỗ năm nay", type: "equity" },
   "5113": { name: "Doanh thu dịch vụ (HH môi giới)", type: "revenue" },
   "515": { name: "DT hoạt động tài chính", type: "revenue" },
-  "6411": { name: "Lương NVKD", type: "expense" },
+  // Note: Kim gộp NVKD + admin vào 6421 (không tách rõ). CRM tag theo
+  // employee thực tế nên 6411 vs 6421 số khác Kim — không phải bug.
+  // So sánh nên nhìn TỔNG lương (6411+6421+BHXH), không per-TK.
+  "6411": { name: "Lương NVKD (Kim gộp có thể sai TK)", type: "expense" },
   "6417": { name: "HH sale + Marketing + Thưởng doanh số", type: "expense" },
-  "6421": { name: "Lương admin + kế toán", type: "expense" },
+  "6421": { name: "Lương admin (Kim có thể gồm NVKD)", type: "expense" },
   "6423": { name: "Đồ dùng VP", type: "expense" },
   "6425": { name: "Thuế môn bài", type: "expense" },
   "6427": { name: "Thuê VP + tiện ích + dịch vụ", type: "expense" },
