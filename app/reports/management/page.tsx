@@ -145,7 +145,7 @@ export default async function ManagementReportPage({
     })
     .from(products);
 
-  const [revs, costs] = await Promise.all([
+  const [revs, costs, fin6417Rows] = await Promise.all([
     db.select({
       productId: revenueReconciliations.productId,
       reconDate: revenueReconciliations.reconciliationDate,
@@ -156,6 +156,19 @@ export default async function ManagementReportPage({
       reconDate: costReconciliations.reconciliationDate,
       payable: costReconciliations.amountPayableThisTime,
     }).from(costReconciliations),
+    // fin_txn 6417 = HH sale bank chưa ĐC → cần cộng vào giá vốn per month
+    // (Kim baseline verify: cost_recon chỉ 47% Kim TK 6417)
+    db.select({
+      month: financialTransactions.accrualMonth,
+      amount: financialTransactions.amount,
+    })
+      .from(financialTransactions)
+      .where(
+        and(
+          eq(financialTransactions.direction, "out"),
+          eq(financialTransactions.categoryCode, "6417"),
+        ),
+      ),
   ]);
 
   type MonthlyPnL = { month: string; revenue: number; cost: number; opex: number };
@@ -173,6 +186,11 @@ export default async function ManagementReportPage({
     if (!cst.reconDate) continue;
     const m = cst.reconDate.slice(0, 7);
     getM(m).cost += Number(cst.payable ?? 0);
+  }
+  // Cộng fin_txn 6417 per month vào cost (HH sale bank chưa ĐC)
+  for (const f of fin6417Rows) {
+    if (!f.month) continue;
+    getM(f.month).cost += Number(f.amount ?? 0);
   }
   for (const [, mmap] of grid) {
     for (const [m, v] of mmap) {

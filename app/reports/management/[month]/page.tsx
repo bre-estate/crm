@@ -86,7 +86,10 @@ export default async function MonthDetailPage({ params }: { params: Params }) {
   const opexTxs = txs.filter((t) => OPEX_MGMT_CATEGORIES.includes(t.categoryCode));
   const opexTotal = opexTxs.reduce((s, t) => s + Number(t.amount), 0);
   const revTotal = revs.reduce((s, r) => s + Number(r.receivable ?? 0), 0);
-  const costTotal = costs.reduce((s, c) => s + Number(c.payable ?? 0), 0);
+  // Giá vốn = cost_reconciliations + fin_txn 6417 (HH sale bank chưa ĐC).
+  // Kim baseline verify: cost_recon chỉ 47% Kim TK 6417 → cần cộng 6417 mới đủ.
+  const cogs6417 = txs.filter((t) => t.categoryCode === "6417").reduce((s, t) => s + Number(t.amount), 0);
+  const costTotal = costs.reduce((s, c) => s + Number(c.payable ?? 0), 0) + cogs6417;
   const grossProfit = revTotal / 1.1 - costTotal;
   const netProfit = grossProfit - opexTotal;
 

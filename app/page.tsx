@@ -47,7 +47,10 @@ async function getMonthlyRevenue(startMonth: string): Promise<Map<string, number
 }
 
 async function getMonthlyCost(startMonth: string): Promise<Map<string, number>> {
-  const rows = await db
+  // Giá vốn thật = cost_reconciliations + fin_txn 6417 (HH sale bank chưa có
+  // ĐC trong CRM). Kim baseline verify 2025: chỉ cost_recon = 47% Kim TK 6417,
+  // cộng fin_txn 6417 → gap còn 2.4% (khớp).
+  const recRows = await db
     .select({
       month: sql<string>`substr(${costReconciliations.reconciliationDate}, 1, 7)`.as("month"),
       total: sum(costReconciliations.amountPayableThisTime).as("total"),
@@ -60,8 +63,25 @@ async function getMonthlyCost(startMonth: string): Promise<Map<string, number>> 
       ),
     )
     .groupBy(sql`substr(${costReconciliations.reconciliationDate}, 1, 7)`);
+  const fin6417Rows = await db
+    .select({
+      month: financialTransactions.accrualMonth,
+      total: sum(financialTransactions.amount).as("total"),
+    })
+    .from(financialTransactions)
+    .where(
+      and(
+        eq(financialTransactions.direction, "out"),
+        eq(financialTransactions.categoryCode, "6417"),
+        gte(financialTransactions.accrualMonth, startMonth),
+      ),
+    )
+    .groupBy(financialTransactions.accrualMonth);
   const map = new Map<string, number>();
-  for (const r of rows) map.set(r.month, Number(r.total ?? 0));
+  for (const r of recRows) map.set(r.month, Number(r.total ?? 0));
+  for (const r of fin6417Rows) {
+    map.set(r.month, (map.get(r.month) ?? 0) + Number(r.total ?? 0));
+  }
   return map;
 }
 
@@ -112,10 +132,20 @@ async function getRevenueTotal() {
 }
 
 async function getCostTotal() {
-  const [r] = await db
+  // Giá vốn tổng = cost_reconciliations + fin_txn 6417 (khớp Kim baseline)
+  const [rec] = await db
     .select({ s: sum(costReconciliations.amountPayableThisTime) })
     .from(costReconciliations);
-  return Number(r?.s ?? 0);
+  const [fin] = await db
+    .select({ s: sum(financialTransactions.amount) })
+    .from(financialTransactions)
+    .where(
+      and(
+        eq(financialTransactions.direction, "out"),
+        eq(financialTransactions.categoryCode, "6417"),
+      ),
+    );
+  return Number(rec?.s ?? 0) + Number(fin?.s ?? 0);
 }
 
 async function getPaidInTotal() {

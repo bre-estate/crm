@@ -126,7 +126,19 @@ export default async function BalanceSheetPage() {
     .from(financialTransactions)
     .where(inArray(financialTransactions.categoryCode, OPEX_MGMT_CATEGORIES));
   const totalOpex = Number(opexTotal.s);
-  const laiLoLuyKe = Number(rev.receivable) / 1.1 - Number(cost.payable) - totalOpex;
+  // Giá vốn thật = cost_reconciliations + fin_txn 6417 (khớp Kim baseline —
+  // cost_recon chỉ 47% Kim TK 6417 vì user chưa nhập ĐC cho phần còn lại).
+  const [fin6417Total] = await db
+    .select({ s: sql<number>`coalesce(sum(amount), 0)::float8` })
+    .from(financialTransactions)
+    .where(
+      and(
+        eq(financialTransactions.direction, "out"),
+        eq(financialTransactions.categoryCode, "6417"),
+      ),
+    );
+  const totalCogs = Number(cost.payable) + Number(fin6417Total.s);
+  const laiLoLuyKe = Number(rev.receivable) / 1.1 - totalCogs - totalOpex;
 
   // ===== TIỀN (111/112) plug =====
   // Tổng TS = Tổng NPT + VCSH
