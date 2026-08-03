@@ -63,59 +63,72 @@ type NavGroup = {
 type NavEntry = NavLeaf | NavGroup;
 const isGroup = (n: NavEntry): n is NavGroup => "children" in n;
 
+// Nav được reorganize theo tần suất dùng, không phải theo domain:
+// - HÀNG NGÀY: những trang mở nhiều nhất
+// - CƠ SỞ DỮ LIỆU: setup entities (ít khi sửa)
+// - BÁO CÁO: 3 báo cáo chính + 1 group deep dives
+// - KẾ TOÁN: cho owner cần audit
+// - QUẢN TRỊ HỆ THỐNG: chỉ owner
 const NAV: NavEntry[] = [
   { href: "/", label: "Tổng quan" },
-  { href: "/partners", label: "Đối tác", resource: "partners" },
-  { href: "/projects", label: "Dự án", resource: "products" },
   {
-    label: "Giao dịch",
+    label: "Hàng ngày",
     children: [
       { href: "/products", label: "Danh sách căn", resource: "products" },
       { href: "/revenues", label: "Doanh thu", resource: "revenues" },
       { href: "/costs", label: "Giá vốn", resource: "costs" },
-      { href: "/costs-report", label: "Đối chiếu giá vốn", resource: "costs-report" },
       { href: "/invoices", label: "Hóa đơn", resource: "invoices" },
+    ],
+  },
+  {
+    label: "Cơ sở dữ liệu",
+    children: [
+      { href: "/partners", label: "Đối tác (CĐT)", resource: "partners" },
+      { href: "/projects", label: "Dự án", resource: "products" },
+      { href: "/employees", label: "Nhân viên", resource: "employees" },
+      { href: "/departments", label: "Phòng ban", resource: "departments" },
     ],
   },
   {
     label: "Báo cáo",
     href: "/reports",
     children: [
-      { href: "/reports/overview", label: "Tổng hợp", resource: "reports.overview", section: "Tổng quan" },
-      { href: "/reports/management", label: "Quản trị", resource: "reports.management", section: "Tổng quan" },
-      { href: "/reports/unit-profitability", label: "Lãi từng căn", resource: "reports.unit-profitability", section: "Tổng quan" },
-      { href: "/reports/balance-sheet", label: "Bảng cân đối kế toán", resource: "reports.balance-sheet", section: "Tài chính" },
-      { href: "/reports/cash-flow-statement", label: "Lưu chuyển tiền tệ", resource: "reports.cash-flow-statement", section: "Tài chính" },
-      { href: "/reports/cashflow", label: "Dòng tiền hoa hồng", ownerOnly: true, section: "Tài chính" },
-      { href: "/reports/segments", label: "Phân khúc", resource: "reports.segments", section: "Thị trường" },
-      { href: "/reports/projects", label: "Theo dự án", resource: "reports.overview", section: "Thị trường" },
-      { href: "/reports/partners", label: "Đối tác", resource: "reports.overview", section: "Thị trường" },
-      { href: "/reports/people", label: "Theo nhân sự", resource: "reports.people", section: "Nội bộ" },
-      { href: "/reports/time", label: "Theo thời gian", resource: "reports.overview", section: "Nội bộ" },
+      // 3 báo cáo chính — dùng thường xuyên
+      { href: "/reports/management", label: "Lãi/lỗ (P&L)", resource: "reports.management" },
+      { href: "/reports/cash-flow-statement", label: "Lưu chuyển tiền", resource: "reports.cash-flow-statement" },
+      { href: "/reports/balance-sheet", label: "Bảng cân đối", resource: "reports.balance-sheet" },
+      // Deep dives — khi cần soi chi tiết
+      { href: "/reports/unit-profitability", label: "Lãi từng căn", resource: "reports.unit-profitability", section: "Chi tiết" },
+      { href: "/reports/segments", label: "Phân khúc căn", resource: "reports.segments", section: "Chi tiết" },
+      { href: "/reports/people", label: "Theo nhân sự", resource: "reports.people", section: "Chi tiết" },
+      { href: "/reports/projects", label: "Theo dự án", resource: "reports.overview", section: "Chi tiết" },
+      { href: "/reports/partners", label: "Theo đối tác", resource: "reports.overview", section: "Chi tiết" },
+      // Ít dùng — vẫn giữ được nếu cần
+      { href: "/reports/overview", label: "Tổng hợp cũ", resource: "reports.overview", section: "Legacy" },
+      { href: "/reports/time", label: "Theo thời gian", resource: "reports.overview", section: "Legacy" },
+      { href: "/reports/cashflow", label: "Dòng tiền HH", ownerOnly: true, section: "Legacy" },
+      { href: "/costs-report", label: "Đối chiếu giá vốn (HR)", resource: "costs-report", section: "Legacy" },
     ],
   },
   {
-    label: "Tài chính",
+    label: "Kế toán",
     href: "/finance",
     resource: "finance",
     children: [
       { href: "/finance/capital", label: "Vốn góp founder", resource: "finance" },
       { href: "/finance/assets", label: "Tài sản cố định", resource: "finance" },
-      { href: "/finance/transactions", label: "Giao dịch", resource: "finance" },
+      { href: "/finance/transactions", label: "Giao dịch tài chính", resource: "finance" },
     ],
   },
   {
-    label: "Nhân sự",
-    resource: "employees",
+    label: "Quản trị hệ thống",
     children: [
-      { href: "/employees", label: "Nhân viên", resource: "employees" },
-      { href: "/departments", label: "Phòng ban", resource: "departments" },
+      { href: "/admin/users", label: "Quản lý user", ownerOnly: true },
+      { href: "/admin/data-checks", label: "Kiểm tra dữ liệu", ownerOnly: true },
+      { href: "/admin/kim-baseline", label: "Kim baseline", ownerOnly: true },
+      { href: "/admin/activity", label: "Lịch sử hoạt động", resource: "admin.activity" },
     ],
   },
-  { href: "/admin/users", label: "Quản lý user", ownerOnly: true },
-  { href: "/admin/data-checks", label: "Kiểm tra dữ liệu", ownerOnly: true },
-  { href: "/admin/kim-baseline", label: "Kim baseline", ownerOnly: true },
-  { href: "/admin/activity", label: "Lịch sử hoạt động", resource: "admin.activity" },
 ];
 
 function isActive(pathname: string, href: string, exact = false): boolean {
