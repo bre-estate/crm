@@ -247,25 +247,16 @@ export default async function Home({
     );
   }
 
-  // Owner: KPI dashboard
-  const [
-    revCurr, revPrev,
-    costCurr, costPrev,
-    opexCurr,
-    unitsCurr, unitsPrev,
-    receivable, payable,
-    runway,
-  ] = await Promise.all([
-    canRevenue ? monthRevenue(curr) : Promise.resolve(0),
-    canRevenue ? monthRevenue(prev) : Promise.resolve(0),
-    canCost ? monthCost(curr) : Promise.resolve(0),
-    canCost ? monthCost(prev) : Promise.resolve(0),
-    canFinance ? monthOpex(curr) : Promise.resolve(0),
-    monthProductsClosed(curr),
-    monthProductsClosed(prev),
-    canRevenue ? receivableOutstanding() : Promise.resolve(0),
-    canCost ? payableOutstanding() : Promise.resolve(0),
-    canFinance ? cashRunway() : Promise.resolve({ months: null, burnRate: 0 }),
+  // Owner: home tối giản — chỉ 3 KPI (Doanh thu / Số căn / Cash).
+  // Chi tiết P&L, OPEX, receivable/payable, xu hướng 6T ở /reports/management.
+  // safe() bảo đảm 1 query fail không blow up cả trang (cold start Vercel +
+  // Supabase pool timeout có thể xảy ra).
+  const safe = <T,>(p: Promise<T>, fallback: T): Promise<T> =>
+    p.catch((e) => { console.warn("[home]", e); return fallback; });
+  const [revCurr, unitsCurr, runway] = await Promise.all([
+    canRevenue ? safe(monthRevenue(curr), 0) : Promise.resolve(0),
+    safe(monthProductsClosed(curr), 0),
+    canFinance ? safe(cashRunway(), { months: null, burnRate: 0 }) : Promise.resolve({ months: null, burnRate: 0 }),
   ]);
 
   const monthLabel = `T${Number(curr.slice(5))}/${curr.slice(2, 4)}`;
@@ -276,101 +267,49 @@ export default async function Home({
 
       <div>
         <h1 className="text-2xl font-bold">Chào {user?.fullName ?? "bạn"}</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Bức tranh kinh doanh tháng {monthLabel} — so với tháng trước
-        </p>
+        <p className="text-sm text-slate-500 mt-1">Tháng {monthLabel}</p>
       </div>
 
-      {/* 6 KPI cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+      {/* 3 KPI cards — chỉ số cốt lõi */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {canRevenue && (
           <KpiCard
             label="Doanh thu tháng"
             value={fmtMoney(revCurr)}
-            delta={<DeltaText curr={revCurr} prev={revPrev} label={`vs T${Number(prev.slice(5))}`} />}
-            color={revCurr >= revPrev ? "good" : "warn"}
           />
         )}
 
         <KpiCard
           label="Số căn chốt tháng"
           value={`${unitsCurr} căn`}
-          delta={<DeltaText curr={unitsCurr} prev={unitsPrev} label={`vs T${Number(prev.slice(5))}`} />}
-          color={unitsCurr >= unitsPrev ? "good" : "warn"}
         />
-
-        {canRevenue && (
-          <KpiCard
-            label="Còn thu CĐT"
-            value={fmtMoney(receivable)}
-            sub="Nghĩa vụ CĐT còn phải trả cty (theo ĐC)"
-            color={receivable > 3_000_000_000 ? "warn" : "default"}
-          />
-        )}
-
-        {canCost && (
-          <KpiCard
-            label="Giá vốn tháng (HH sale)"
-            value={fmtMoney(costCurr)}
-            delta={<DeltaText curr={costCurr} prev={costPrev} label={`vs T${Number(prev.slice(5))}`} />}
-          />
-        )}
-
-        {canCost && (
-          <KpiCard
-            label="Còn trả sale team"
-            value={fmtMoney(payable)}
-            sub="Nghĩa vụ HH sale + thưởng chưa trả"
-            color={payable > 1_000_000_000 ? "warn" : "default"}
-          />
-        )}
 
         {canFinance && (
           <KpiCard
-            label={runway.months === null ? "Cash flow" : "Cash runway"}
+            label="Cash flow (3T gần nhất)"
             value={
               runway.months === null ? (
                 <span className="text-green-700">Đang lãi ròng</span>
               ) : (
-                `${runway.months} tháng`
+                <span className="text-red-700">Đang burn</span>
               )
             }
             sub={
               runway.months === null
-                ? "Thu > Chi (trailing 3 tháng)"
+                ? "Thu > Chi"
                 : `Burn ${fmtMoney(runway.burnRate)}/tháng`
             }
-            color={runway.months === null ? "good" : runway.months < 3 ? "bad" : "warn"}
+            color={runway.months === null ? "good" : "warn"}
           />
         )}
       </div>
 
-      {/* Xu hướng 6 tháng — link đến báo cáo detail */}
-      <Card className="[--card-spacing:1rem] px-4">
-        <div className="flex items-baseline justify-between">
-          <div>
-            <div className="text-sm font-semibold">Xu hướng 6 tháng</div>
-            <div className="text-xs text-slate-500">
-              Lãi gộp = Doanh thu (excl VAT) − HH sale − Thưởng
-              {" · "}
-              Lãi thuần = Lãi gộp − Chi phí quản lý (thuê, lương admin, thuế…)
-            </div>
-          </div>
-          <Link
-            href="/reports/management"
-            className="text-xs text-blue-600 hover:underline whitespace-nowrap"
-          >
-            Xem chi tiết →
-          </Link>
-        </div>
-        <div className="text-xs text-slate-500 italic mt-2">
-          Biên gộp 6T gần nhất: {revCurr + revPrev > 0
-            ? `${((((revCurr + revPrev) / 1.1) - (costCurr + costPrev)) / ((revCurr + revPrev) / 1.1) * 100).toFixed(1)}%`
-            : "—"}
-          {" · "}
-          OPEX tháng {monthLabel}: {fmtMoney(opexCurr)}
-        </div>
-      </Card>
+      {/* Link đến báo cáo full */}
+      <div className="text-sm">
+        <Link href="/reports/management" className="text-blue-600 hover:underline">
+          Xem báo cáo đầy đủ (P&amp;L, cash flow, xu hướng 6T) →
+        </Link>
+      </div>
 
       {/* Truy cập nhanh */}
       <div>
