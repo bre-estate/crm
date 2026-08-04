@@ -95,8 +95,7 @@ const NAV: NavEntry[] = [
     children: [
       // 5 báo cáo chính quản trị — dùng hàng ngày/tuần
       { href: "/reports/management", label: "Lãi/lỗ (P&L)", resource: "reports.management" },
-      { href: "/reports/cash-flow-bank", label: "Dòng tiền (Sao kê)", resource: "reports.cash-flow-bank" },
-      { href: "/reports/cash-position", label: "Số dư & Runway", resource: "reports.cash-position" },
+      { href: "/reports/cash-flow", label: "Dòng tiền", resource: "reports.cash-flow" },
       { href: "/reports/obligations", label: "Nghĩa vụ tài chính", resource: "reports.obligations" },
       { href: "/reports/balance-sheet", label: "Bảng cân đối", resource: "reports.balance-sheet" },
       // Deep dives — khi cần soi chi tiết

@@ -326,7 +326,7 @@ export async function computeAlerts(): Promise<Alert[]> {
       severity: "warning",
       title: `${overdueByProduct.size} căn có công nợ phải thu > 60 ngày`,
       description: `Tổng công nợ quá hạn: ${Math.round(overdueTotalAmount).toLocaleString("vi-VN")} VND.`,
-      url: "/reports/cash-flow-bank",
+      url: "/reports/cash-flow",
       totalAmount: overdueTotalAmount,
       products: sortedOverdue,
     });

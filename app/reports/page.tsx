@@ -23,7 +23,7 @@ type Section = {
 const SECTIONS: Section[] = [
   {
     key: "core",
-    title: "5 báo cáo quản trị chính",
+    title: "4 báo cáo quản trị chính",
     icon: "⭐",
     color: "bg-orange-50 border-orange-300",
     reports: [
@@ -34,26 +34,20 @@ const SECTIONS: Section[] = [
         gate: "reports",
       },
       {
-        href: "/reports/cash-flow-bank",
-        title: "2. Dòng tiền (Sao kê)",
-        desc: "Vào/ra bank per tháng, phân loại (Sale team / CĐT / Thuế / BHXH / Marketing).",
-        gate: "owner",
-      },
-      {
-        href: "/reports/cash-position",
-        title: "3. Số dư & Runway",
-        desc: "Số dư Techcombank hiện tại + burn rate + còn 'sống' mấy tháng.",
+        href: "/reports/cash-flow",
+        title: "2. Dòng tiền",
+        desc: "Số dư + runway + vào/ra bank per tháng + phân loại + top nhận tiền. Từ sao kê Techcombank.",
         gate: "owner",
       },
       {
         href: "/reports/obligations",
-        title: "4. Nghĩa vụ tài chính",
+        title: "3. Nghĩa vụ tài chính",
         desc: "Còn thu CĐT / Còn nợ sale team / Nợ thuế / BHXH. Vị thế ròng.",
         gate: "owner",
       },
       {
         href: "/reports/balance-sheet",
-        title: "5. Bảng cân đối kế toán",
+        title: "4. Bảng cân đối kế toán",
         desc: "Tài sản = Nợ + Vốn. Theo TT200 Kim NKC.",
         gate: "reports",
       },
