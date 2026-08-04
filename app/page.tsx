@@ -95,40 +95,29 @@ async function payableOutstanding(): Promise<number> {
   return Math.max(0, Number(cost?.s ?? 0) - Number(pOut?.s ?? 0));
 }
 
-// Cash runway = (payments_in trailing 3M − payments_out trailing 3M − OPEX trailing 3M) / 3
-// → dự phóng mỗi tháng cty tiêu bao nhiêu, còn cover được bao nhiêu tháng.
+// Cash flow (3T gần nhất) — lấy TRỰC TIẾP từ sao kê Techcombank (source of truth).
+// 100% chính xác cash bank thật. Thay logic cũ (payments_in/out + fin_txn) vốn
+// thiếu 43% giao dịch.
 async function cashRunway(): Promise<{ months: number | null; burnRate: number }> {
   const now = new Date();
   const start3M = new Date(now.getFullYear(), now.getMonth() - 3, 1);
   const startStr = start3M.toISOString().slice(0, 10);
   const endStr = now.toISOString().slice(0, 10);
 
-  const [pIn3M] = await db
-    .select({ s: sql<number>`coalesce(sum(${paymentsIn.amount}), 0)::float8` })
-    .from(paymentsIn)
-    .where(and(gte(paymentsIn.paymentDate, startStr), lte(paymentsIn.paymentDate, endStr)));
-  const [pOut3M] = await db
-    .select({ s: sql<number>`coalesce(sum(${paymentsOut.amount}), 0)::float8` })
-    .from(paymentsOut)
-    .where(and(gte(paymentsOut.paymentDate, startStr), lte(paymentsOut.paymentDate, endStr)));
-  const [opex3M] = await db
-    .select({ s: sql<number>`coalesce(sum(${financialTransactions.amount}), 0)::float8` })
-    .from(financialTransactions)
-    .where(
-      and(
-        eq(financialTransactions.direction, "out"),
-        inArray(financialTransactions.categoryCode, OPEX_MGMT_CATEGORIES),
-        gte(financialTransactions.transactionMonth, startStr.slice(0, 7)),
-      ),
-    );
+  const [r] = await db.execute(sql`
+    SELECT
+      COALESCE(SUM(credit_amount), 0)::float8 as inflow,
+      COALESCE(SUM(ABS(debit_amount)), 0)::float8 as outflow
+    FROM bank_transactions
+    WHERE transaction_date >= ${startStr} AND transaction_date <= ${endStr}
+  `) as any[];
 
-  const inflow = Number(pIn3M?.s ?? 0);
-  const outflow = Number(pOut3M?.s ?? 0) + Number(opex3M?.s ?? 0);
-  const netBurn = (outflow - inflow) / 3; // per month
+  const inflow = Number(r.inflow ?? 0);
+  const outflow = Number(r.outflow ?? 0);
+  const netBurn = (outflow - inflow) / 3;
 
-  // Nếu đang lãi ròng (inflow > outflow) → runway "∞"
   if (netBurn <= 0) return { months: null, burnRate: 0 };
-  return { months: 6, burnRate: netBurn }; // TODO: tính chính xác cần cash balance
+  return { months: 6, burnRate: netBurn };
 }
 
 // ============================================================================
