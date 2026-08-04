@@ -196,10 +196,10 @@ export default async function CashFlowPage({ searchParams }: { searchParams: SP 
           </div>
         </div>
         <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
-          <table className="min-w-full text-xs">
+          <table className="w-max text-xs">
             <thead className="bg-slate-50">
               <tr>
-                <th className="text-left p-2">Tháng</th>
+                <th className="text-left p-2 sticky left-0 bg-slate-50 z-10">Tháng</th>
                 <th className="text-right p-2">Vào</th>
                 <th className="text-right p-2">Ra</th>
                 <th className="text-right p-2">Net</th>
@@ -214,7 +214,7 @@ export default async function CashFlowPage({ searchParams }: { searchParams: SP 
                 const net = s.inTotal - s.outTotal;
                 return (
                   <tr key={m} className="border-t border-slate-100 hover:bg-slate-50">
-                    <td className="p-2 font-mono">{m}</td>
+                    <td className="p-2 font-mono sticky left-0 bg-white z-10">{m}</td>
                     <td className="p-2 text-right tabular-nums text-green-700">{fmtM(s.inTotal)}</td>
                     <td className="p-2 text-right tabular-nums text-red-700">{fmtM(s.outTotal)}</td>
                     <td className={`p-2 text-right tabular-nums font-semibold ${net >= 0 ? "text-green-700" : "text-red-700"}`}>{fmtM(net)}</td>
@@ -232,7 +232,7 @@ export default async function CashFlowPage({ searchParams }: { searchParams: SP 
             </tbody>
             <tfoot className="bg-slate-100 font-bold">
               <tr>
-                <td className="p-2">TỔNG</td>
+                <td className="p-2 sticky left-0 bg-slate-100 z-10">TỔNG</td>
                 <td className="p-2 text-right tabular-nums text-green-700">{fmt(totalIn)}</td>
                 <td className="p-2 text-right tabular-nums text-red-700">{fmt(totalOut)}</td>
                 <td className={`p-2 text-right tabular-nums ${totalIn - totalOut >= 0 ? "text-green-700" : "text-red-700"}`}>{fmt(totalIn - totalOut)}</td>
