@@ -18,17 +18,19 @@ export type OpexRow = {
   n: number;
 };
 
-// TK code → label hiển thị (nhóm quản trị)
+// TK code → label hiển thị. GỘP 6411 + 6421 → "Lương nhân sự" vì Kim ghi
+// không nhất quán (T1-T8 gộp NVKD vào 6421, T9-T12 mới tách 6411 riêng).
+// Tổng OPEX không đổi, chỉ display gộp cho breakdown đọc được.
 export const TK_LABELS: Record<string, string> = {
-  "6411": "Lương NVKD",
+  "6411": "Lương nhân sự",
+  "6421": "Lương nhân sự", // Gộp cùng 6411
   "6417": "HH sale + marketing",
-  "6421": "Lương admin + kế toán",
   "6423": "Đồ dùng VP",
   "6425": "Thuế phí lệ phí",
   "6427": "Thuê VP + dịch vụ",
   "811": "Chi phí khác",
   "635": "Chi phí tài chính",
-  "BHXH": "BHXH gộp (3383+3384+3386)", // Composite: 3 TK cùng ngày trả bank = 1 row
+  "BHXH": "BHXH gộp (3383+3384+3386)",
   "3383": "BHXH cty đóng",
   "3384": "BHYT cty đóng",
   "3386": "BHTN cty đóng",
