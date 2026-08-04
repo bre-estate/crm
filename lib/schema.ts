@@ -637,5 +637,45 @@ export const accountingJournal = pgTable("accounting_journal", {
 export type AccountingJournalEntry = typeof accountingJournal.$inferSelect;
 export type NewAccountingJournalEntry = typeof accountingJournal.$inferInsert;
 
+// Đề nghị thanh toán (sheet 1.1) — chi tiết per person, dùng breakdown Kim bulk.
+export const paymentRequests = pgTable("payment_requests", {
+  id: serial("id").primaryKey(),
+  stt: integer("stt"),
+  requestDate: text("request_date"),
+  requester: text("requester"),
+  department: text("department"),
+  detail: text("detail"),
+  amount: doublePrecision("amount").notNull(),
+  attachments: text("attachments"),
+  paymentMethod: text("payment_method"),
+  transferContent: text("transfer_content"),
+  recipient: text("recipient"),
+  recipientAccount: text("recipient_account"),
+  recipientBank: text("recipient_bank"),
+  reviewedBy: text("reviewed_by"),
+  reviewedAt: text("reviewed_at"),
+  reviewedStatus: text("reviewed_status"),
+  approvedBy: text("approved_by"),
+  approvedAt: text("approved_at"),
+  paidAt: text("paid_at"),
+  sourceRow: integer("source_row").notNull(),
+  dedupKey: text("dedup_key").notNull().unique(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type PaymentRequest = typeof paymentRequests.$inferSelect;
+
+// Kim entry reconciliation — mark từng entry Kim = done, link DNTT.
+export const kimEntryReconciliation = pgTable("kim_entry_reconciliation", {
+  kimEntryId: integer("kim_entry_id").primaryKey().references(() => accountingJournal.id, { onDelete: "cascade" }),
+  linkedPaymentRequestIds: integer("linked_payment_request_ids").array().notNull().default(sql`'{}'::integer[]`),
+  status: text("status").notNull().default("pending"), // pending | done | needs_kim | orphan
+  note: text("note"),
+  reconciledAt: timestamp("reconciled_at", { withTimezone: true }),
+  reconciledBy: text("reconciled_by"),
+});
+
+export type KimEntryReconciliation = typeof kimEntryReconciliation.$inferSelect;
+
 // Used in raw SQL for profile auto-create trigger
 export const _sql = sql;
