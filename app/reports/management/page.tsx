@@ -220,25 +220,14 @@ export default async function ManagementReportPage({
             ← Báo cáo
           </Link>
         </div>
-        <h1 className="text-2xl font-bold mt-1">Báo cáo quản trị</h1>
+        <div className="flex items-baseline justify-between gap-4 mt-1">
+          <h1 className="text-2xl font-bold">Báo cáo quản trị</h1>
+          <YearTabs years={yearList} selected={selectedYear} />
+        </div>
         <p className="text-sm text-slate-500 mt-1">
           3 chỉ số then chốt cho chủ công ty: <b>Điểm hòa vốn</b>, <b>Cơ cấu chi phí hoạt động</b>,
-          <b> Lãi/lỗ theo tháng</b>. Tính theo Năm {selectedYear} ({monthsSoFar} tháng).
+          <b> Lãi/lỗ theo tháng</b>. Năm {selectedYear} ({monthsSoFar} tháng).
         </p>
-        <div className="mt-3 flex items-center gap-3 text-xs flex-wrap">
-          <span className="text-slate-500">Nguồn:</span>
-          <span className="px-2 py-0.5 rounded bg-slate-100 font-mono">Kim NKC {selectedYear}</span>
-          {opexFallbackYear && (
-            <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800">
-              ⚠️ Kim chưa import {selectedYear} — Fixed cost dùng Kim {opexFallbackYear} làm proxy
-            </span>
-          )}
-          {grossSource === "products" && (
-            <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800">
-              Lãi gộp/căn: fallback từ products (BCDT)
-            </span>
-          )}
-        </div>
       </div>
 
       {/* ===== SECTION 1: Điểm hòa vốn ===== */}
@@ -286,12 +275,9 @@ export default async function ManagementReportPage({
         )}
       </section>
 
-      {/* ===== SECTION 2: CP HĐ breakdown theo nhóm × tháng (tabs năm) ===== */}
+      {/* ===== SECTION 2: CP HĐ breakdown theo nhóm × tháng ===== */}
       <section>
-        <div className="flex items-baseline justify-between mb-1">
-          <h2 className="text-lg font-semibold">💼 Chi phí hoạt động — phân tích theo nhóm × tháng</h2>
-          <YearTabs years={yearList} selected={selectedYear} />
-        </div>
+        <h2 className="text-lg font-semibold mb-1">💼 Chi phí hoạt động — phân tích theo nhóm × tháng</h2>
         <p className="text-xs text-slate-500 mb-3">
           Đã loại: Thiết bị (chi phí đầu tư riêng), thuế GTGT/TNDN/TNCN (nộp thay), booking hoàn/cọc hộ khách, HH sale (nằm ở giá vốn CRM).
         </p>
