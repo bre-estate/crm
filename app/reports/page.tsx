@@ -22,22 +22,46 @@ type Section = {
 
 const SECTIONS: Section[] = [
   {
-    key: "overview",
-    title: "Tổng quan",
-    icon: "📊",
-    color: "bg-blue-50 border-blue-200",
+    key: "core",
+    title: "5 báo cáo quản trị chính",
+    icon: "⭐",
+    color: "bg-orange-50 border-orange-300",
     reports: [
       {
-        href: "/reports/overview",
-        title: "Tổng hợp",
-        desc: "8 KPI cards + Lãi thuần / ROI / Payback (owner)",
+        href: "/reports/management",
+        title: "1. Lãi/lỗ (P&L)",
+        desc: "Doanh thu − Giá vốn − OPEX. Break-even, cơ cấu chi phí. Nguồn: Kim NKC.",
+        gate: "reports",
+      },
+      {
+        href: "/reports/cash-flow-bank",
+        title: "2. Dòng tiền (Sao kê)",
+        desc: "Vào/ra bank per tháng, phân loại (Sale team / CĐT / Thuế / BHXH / Marketing).",
+        gate: "owner",
+      },
+      {
+        href: "/reports/cash-position",
+        title: "3. Số dư & Runway",
+        desc: "Số dư Techcombank hiện tại + burn rate + còn 'sống' mấy tháng.",
+        gate: "owner",
+      },
+      {
+        href: "/reports/obligations",
+        title: "4. Nghĩa vụ tài chính",
+        desc: "Còn thu CĐT / Còn nợ sale team / Nợ thuế / BHXH. Vị thế ròng.",
+        gate: "owner",
+      },
+      {
+        href: "/reports/balance-sheet",
+        title: "5. Bảng cân đối kế toán",
+        desc: "Tài sản = Nợ + Vốn. Theo TT200 Kim NKC.",
         gate: "reports",
       },
     ],
   },
   {
     key: "market",
-    title: "Thị trường",
+    title: "Chi tiết thị trường",
     icon: "🎯",
     color: "bg-emerald-50 border-emerald-200",
     reports: [
@@ -55,15 +79,21 @@ const SECTIONS: Section[] = [
       },
       {
         href: "/reports/partners",
-        title: "Đối tác",
-        desc: "Xếp hạng CĐT/F1: %PMG_LK, %PMG_sale, chênh, biên LN, TB ngày trả",
+        title: "Theo đối tác (CĐT)",
+        desc: "Xếp hạng CĐT: %PMG_LK, %PMG_sale, chênh, biên LN, TB ngày trả",
+        gate: "reports",
+      },
+      {
+        href: "/reports/unit-profitability",
+        title: "Lãi từng căn",
+        desc: "P&L per unit, biên gộp, HH sale, KPI, thưởng chi tiết",
         gate: "reports",
       },
     ],
   },
   {
     key: "internal",
-    title: "Nội bộ",
+    title: "Chi tiết nội bộ",
     icon: "👥",
     color: "bg-indigo-50 border-indigo-200",
     reports: [
@@ -82,16 +112,16 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    key: "finance",
-    title: "Tài chính",
-    icon: "💰",
-    color: "bg-amber-50 border-amber-200",
+    key: "legacy",
+    title: "Legacy",
+    icon: "🗂️",
+    color: "bg-slate-50 border-slate-200",
     reports: [
       {
-        href: "/reports/cashflow",
-        title: "Dòng tiền",
-        desc: "Tuổi nợ theo đối tác + tốc độ CĐT trả + dự báo + rủi ro tập trung",
-        gate: "owner",
+        href: "/reports/overview",
+        title: "Tổng hợp cũ",
+        desc: "8 KPI cards phiên bản cũ. Sẽ thay bằng 5 báo cáo chính trên.",
+        gate: "reports",
       },
     ],
   },

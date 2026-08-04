@@ -93,9 +93,11 @@ const NAV: NavEntry[] = [
     label: "Báo cáo",
     href: "/reports",
     children: [
-      // 3 báo cáo chính — dùng thường xuyên
+      // 5 báo cáo chính quản trị — dùng hàng ngày/tuần
       { href: "/reports/management", label: "Lãi/lỗ (P&L)", resource: "reports.management" },
-      { href: "/reports/cash-flow-statement", label: "Lưu chuyển tiền", resource: "reports.cash-flow-statement" },
+      { href: "/reports/cash-flow-bank", label: "Dòng tiền (Sao kê)", resource: "reports.cash-flow-bank" },
+      { href: "/reports/cash-position", label: "Số dư & Runway", resource: "reports.cash-position" },
+      { href: "/reports/obligations", label: "Nghĩa vụ tài chính", resource: "reports.obligations" },
       { href: "/reports/balance-sheet", label: "Bảng cân đối", resource: "reports.balance-sheet" },
       // Deep dives — khi cần soi chi tiết
       { href: "/reports/unit-profitability", label: "Lãi từng căn", resource: "reports.unit-profitability", section: "Chi tiết" },
@@ -103,10 +105,9 @@ const NAV: NavEntry[] = [
       { href: "/reports/people", label: "Theo nhân sự", resource: "reports.people", section: "Chi tiết" },
       { href: "/reports/projects", label: "Theo dự án", resource: "reports.overview", section: "Chi tiết" },
       { href: "/reports/partners", label: "Theo đối tác", resource: "reports.overview", section: "Chi tiết" },
-      // Ít dùng — vẫn giữ được nếu cần
+      { href: "/reports/time", label: "Theo thời gian", resource: "reports.overview", section: "Chi tiết" },
+      // Ít dùng
       { href: "/reports/overview", label: "Tổng hợp cũ", resource: "reports.overview", section: "Legacy" },
-      { href: "/reports/time", label: "Theo thời gian", resource: "reports.overview", section: "Legacy" },
-      { href: "/reports/cashflow", label: "Dòng tiền HH", ownerOnly: true, section: "Legacy" },
       { href: "/costs-report", label: "Đối chiếu giá vốn (HR)", resource: "costs-report", section: "Legacy" },
     ],
   },
