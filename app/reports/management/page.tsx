@@ -83,9 +83,9 @@ export default async function ManagementReportPage({
   const yearlyTotal = [...groupTotals.values()].reduce((s, v) => s + v, 0);
   const monthsWithData = monthList.length || 1;
 
-  // Break-even dùng năm SELECTED (không phải năm hiện tại), để tránh bug khi
-  // năm hiện tại chưa có data (VD Kim chưa nhập 2026 → OPEX = 0 → BE giả).
-  // monthsSoFar = số tháng có data trong selectedYear (dựa vào opex rows).
+  // Break-even dùng năm SELECTED. Fallback nếu Kim chưa import năm đó:
+  // - OPEX của năm cũ đầy đủ nhất làm proxy (VD 2026 chưa có → dùng 2025)
+  // - Số tháng: năm hiện tại dùng tháng đã trôi qua, năm cũ dùng 12
   const opexSelectedYear = opexRows
     .filter((r) => r.month?.startsWith(selectedYear))
     .reduce((s, r) => s + Number(r.sum), 0);
@@ -93,16 +93,37 @@ export default async function ManagementReportPage({
     opexRows.filter((r) => r.month?.startsWith(selectedYear)).map((r) => r.month),
   ).size;
   const monthsSoFar = selectedYear === currentYear
-    ? Number(nowMonth.slice(5)) // Năm hiện tại: dùng số tháng đã trôi qua
-    : Math.max(monthsWithOpex, 12); // Năm cũ đủ data: 12 tháng; else số tháng có data
-  const opexPureAvg = monthsSoFar > 0 ? opexSelectedYear / monthsSoFar : 0;
+    ? Number(nowMonth.slice(5))
+    : Math.max(monthsWithOpex, 12);
 
-  // ===== BE dùng chi phí CỐ ĐỊNH — cũng lấy từ Kim NKC =====
+  // Kim OPEX fallback: nếu selected year Kim chưa import → dùng năm gần nhất có data.
+  let opexForBE = opexSelectedYear;
+  let opexFallbackYear: string | null = null;
+  if (opexSelectedYear === 0) {
+    const availableYears = new Set(opexRows.map((r) => r.month?.slice(0, 4)));
+    const latestYear = [...availableYears].filter(Boolean).sort().reverse()[0];
+    if (latestYear && latestYear !== selectedYear) {
+      opexFallbackYear = latestYear;
+      opexForBE = opexRows
+        .filter((r) => r.month?.startsWith(latestYear))
+        .reduce((s, r) => s + Number(r.sum), 0);
+    }
+  }
+  const opexMonthsForAvg = opexFallbackYear ? 12 : monthsSoFar;
+  const opexPureAvg = opexMonthsForAvg > 0 ? opexForBE / opexMonthsForAvg : 0;
+
+  // Fixed cost — same fallback
   const fixedRowsFromJournal = await fetchOpexFromJournal(FIXED_COST_CATEGORIES);
   const fixedSelectedYear = fixedRowsFromJournal
     .filter((r) => r.month?.startsWith(selectedYear))
     .reduce((s, r) => s + r.sum, 0);
-  const fixedPureAvg = monthsSoFar > 0 ? fixedSelectedYear / monthsSoFar : 0;
+  let fixedForBE = fixedSelectedYear;
+  if (fixedSelectedYear === 0 && opexFallbackYear) {
+    fixedForBE = fixedRowsFromJournal
+      .filter((r) => r.month?.startsWith(opexFallbackYear!))
+      .reduce((s, r) => s + r.sum, 0);
+  }
+  const fixedPureAvg = opexMonthsForAvg > 0 ? fixedForBE / opexMonthsForAvg : 0;
 
   // ===== Khấu hao TSCĐ (TK 242) — vẫn lấy từ financial_transactions vì
   // Kim NKC ghi 242 rải rác nhiều bút toán (đầu kỳ trả trước, phân bổ...),
@@ -156,10 +177,20 @@ export default async function ManagementReportPage({
   // Trước đây dùng all-time → BE lệch vì margin cũ khác chi phí hiện tại.
   const ytdProducts = allProducts.filter((p) => p.depositDate?.startsWith(selectedYear));
   const numUnits = ytdProducts.length;
-  // Lãi gộp TB/căn = (Kim DT năm − Kim Giá vốn năm) / số căn — nhất quán với P&L
+  // Lãi gộp TB/căn: ưu tiên Kim NKC, fallback products.totalRev/totalCost nếu Kim empty
   const kimRevYear = [...revByMonth].filter(([m]) => m.startsWith(selectedYear)).reduce((s, [, v]) => s + v, 0);
   const kimCogsYear = [...cogsByMonth].filter(([m]) => m.startsWith(selectedYear)).reduce((s, [, v]) => s + v, 0);
-  const avgGrossProfitPerUnit = numUnits > 0 ? (kimRevYear - kimCogsYear) / numUnits : 0;
+  let avgGrossProfitPerUnit = 0;
+  let grossSource: "kim" | "products" = "kim";
+  if (kimRevYear > 0 && numUnits > 0) {
+    avgGrossProfitPerUnit = (kimRevYear - kimCogsYear) / numUnits;
+  } else if (numUnits > 0) {
+    // Fallback: products.totalRevenue (BCDT gross VAT) chia 1.1 − products.totalCost
+    const productsRev = ytdProducts.reduce((s, p) => s + Number(p.totalRevenue ?? 0), 0);
+    const productsCost = ytdProducts.reduce((s, p) => s + Number(p.totalCost ?? 0), 0);
+    avgGrossProfitPerUnit = (productsRev / 1.1 - productsCost) / numUnits;
+    grossSource = "products";
+  }
   // BE dùng chi phí CỐ ĐỊNH (avgFixedMonth), không dùng OPEX toàn bộ
   // (đã loại 6417 chứa HH sale — vì lãi gộp/căn đã trừ HH sale rồi)
   const breakEvenUnits = avgGrossProfitPerUnit > 0 && avgFixedMonth > 0
@@ -189,9 +220,19 @@ export default async function ManagementReportPage({
           3 chỉ số then chốt cho chủ công ty: <b>Điểm hòa vốn</b>, <b>Cơ cấu chi phí hoạt động</b>,
           <b> Lãi/lỗ theo tháng</b>. Tính theo Năm {selectedYear} ({monthsSoFar} tháng).
         </p>
-        <div className="mt-3 flex items-center gap-3 text-xs">
-          <span className="text-slate-500">Nguồn OPEX:</span>
-          <span className="px-2 py-0.5 rounded bg-slate-100 font-mono">Kim NKC (accrual)</span>
+        <div className="mt-3 flex items-center gap-3 text-xs flex-wrap">
+          <span className="text-slate-500">Nguồn:</span>
+          <span className="px-2 py-0.5 rounded bg-slate-100 font-mono">Kim NKC {selectedYear}</span>
+          {opexFallbackYear && (
+            <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800">
+              ⚠️ Kim chưa import {selectedYear} — Fixed cost dùng Kim {opexFallbackYear} làm proxy
+            </span>
+          )}
+          {grossSource === "products" && (
+            <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800">
+              Lãi gộp/căn: fallback từ products (BCDT)
+            </span>
+          )}
         </div>
       </div>
 
