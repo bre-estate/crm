@@ -78,20 +78,26 @@ export default async function ManagementReportPage({
   const yearlyTotal = [...groupTotals.values()].reduce((s, v) => s + v, 0);
   const monthsWithData = monthList.length || 1;
 
-  // Break-even dùng NĂM HIỆN TẠI YTD (2026-01 → nowMonth) — chốt 2026-07-25.
-  // Phản ánh chi tiêu thực tế năm nay, không bị pha loãng bởi tháng cũ.
-  const monthsSoFar = Number(nowMonth.slice(5)); // T7 → 7
-  const opexCurrentYear = opexRows
-    .filter((r) => r.month?.startsWith(currentYear))
+  // Break-even dùng năm SELECTED (không phải năm hiện tại), để tránh bug khi
+  // năm hiện tại chưa có data (VD Kim chưa nhập 2026 → OPEX = 0 → BE giả).
+  // monthsSoFar = số tháng có data trong selectedYear (dựa vào opex rows).
+  const opexSelectedYear = opexRows
+    .filter((r) => r.month?.startsWith(selectedYear))
     .reduce((s, r) => s + Number(r.sum), 0);
-  const opexPureAvg = monthsSoFar > 0 ? opexCurrentYear / monthsSoFar : 0;
+  const monthsWithOpex = new Set(
+    opexRows.filter((r) => r.month?.startsWith(selectedYear)).map((r) => r.month),
+  ).size;
+  const monthsSoFar = selectedYear === currentYear
+    ? Number(nowMonth.slice(5)) // Năm hiện tại: dùng số tháng đã trôi qua
+    : Math.max(monthsWithOpex, 12); // Năm cũ đủ data: 12 tháng; else số tháng có data
+  const opexPureAvg = monthsSoFar > 0 ? opexSelectedYear / monthsSoFar : 0;
 
   // ===== BE dùng chi phí CỐ ĐỊNH — cũng lấy từ Kim NKC =====
   const fixedRowsFromJournal = await fetchOpexFromJournal(FIXED_COST_CATEGORIES);
-  const fixedCurrentYear = fixedRowsFromJournal
-    .filter((r) => r.month?.startsWith(currentYear))
+  const fixedSelectedYear = fixedRowsFromJournal
+    .filter((r) => r.month?.startsWith(selectedYear))
     .reduce((s, r) => s + r.sum, 0);
-  const fixedPureAvg = monthsSoFar > 0 ? fixedCurrentYear / monthsSoFar : 0;
+  const fixedPureAvg = monthsSoFar > 0 ? fixedSelectedYear / monthsSoFar : 0;
 
   // ===== Khấu hao TSCĐ (TK 242) — vẫn lấy từ financial_transactions vì
   // Kim NKC ghi 242 rải rác nhiều bút toán (đầu kỳ trả trước, phân bổ...),
@@ -164,7 +170,7 @@ export default async function ManagementReportPage({
   // ===== 3. Break-even =====
   // Lãi gộp TB / căn — chỉ tính căn YTD (nhất quán vs avgFixedMonth YTD).
   // Trước đây dùng all-time → BE lệch vì margin cũ khác chi phí hiện tại.
-  const ytdProducts = allProducts.filter((p) => p.depositDate?.startsWith(currentYear));
+  const ytdProducts = allProducts.filter((p) => p.depositDate?.startsWith(selectedYear));
   const ytdTotalRev = ytdProducts.reduce((s, p) => s + Number(p.totalRevenue ?? 0), 0);
   const ytdTotalCost = ytdProducts.reduce((s, p) => s + Number(p.totalCost ?? 0), 0);
   const numUnits = ytdProducts.length;
@@ -178,11 +184,11 @@ export default async function ManagementReportPage({
   // Avg units bán / tháng — theo năm hiện tại YTD (nhất quán với avgOpexMonth).
   // Chia cho monthsSoFar (không chia số tháng có bán) để bao gồm cả tháng ế
   // → BE comparison đúng: "TB căn/tháng kể cả tháng 0 căn".
-  const unitsCurrentYear = allProducts.filter((p) =>
-    p.depositDate?.startsWith(currentYear),
+  const unitsSelectedYear = allProducts.filter((p) =>
+    p.depositDate?.startsWith(selectedYear),
   ).length;
   const avgUnitsPerMonth = monthsSoFar > 0
-    ? unitsCurrentYear / monthsSoFar
+    ? unitsSelectedYear / monthsSoFar
     : 0;
 
   return (
@@ -196,7 +202,7 @@ export default async function ManagementReportPage({
         <h1 className="text-2xl font-bold mt-1">Báo cáo quản trị</h1>
         <p className="text-sm text-slate-500 mt-1">
           3 chỉ số then chốt cho chủ công ty: <b>Điểm hòa vốn</b>, <b>Cơ cấu chi phí hoạt động</b>,
-          <b> Lãi/lỗ theo tháng</b>. Tính theo Năm {currentYear} đến hiện tại ({monthsSoFar} tháng).
+          <b> Lãi/lỗ theo tháng</b>. Tính theo Năm {selectedYear} ({monthsSoFar} tháng).
         </p>
         <div className="mt-3 flex items-center gap-3 text-xs">
           <span className="text-slate-500">Nguồn OPEX:</span>
@@ -227,7 +233,7 @@ export default async function ManagementReportPage({
           <StatCard
             label="Thực tế đang bán"
             value={`${avgUnitsPerMonth.toFixed(1)} căn/tháng`}
-            sub={`Năm ${currentYear} YTD`}
+            sub={`Năm ${selectedYear}`}
             highlight={breakEvenUnits !== null && avgUnitsPerMonth >= breakEvenUnits}
           />
         </div>
@@ -409,7 +415,7 @@ export default async function ManagementReportPage({
               {pnlMonths.length === 0 && (
                 <tr>
                   <td colSpan={6} className="p-6 text-center text-slate-500 text-sm">
-                    Chưa có data Năm {currentYear} YTD ({monthsSoFar} tháng).
+                    Chưa có data Năm {selectedYear} ({monthsSoFar} tháng).
                   </td>
                 </tr>
               )}
