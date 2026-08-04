@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { monthlyDepreciation } from "@/lib/accounting/depreciation";
 import { OPEX_MGMT_CATEGORIES, FIXED_COST_CATEGORIES, BUCKET_641, BUCKET_642, BUCKET_811, bucketOf, BUCKET_LABELS } from "@/lib/accounting/categories";
+import { fetchOpexFromJournal } from "@/lib/reports/opex-from-journal";
 
 export const dynamic = "force-dynamic";
 
@@ -41,29 +42,12 @@ export default async function ManagementReportPage({
 
   const sp = await searchParams;
   const nowMonth = new Date().toISOString().slice(0, 7);
-  // Toggle: view=cash (theo tháng chi tiền) hoặc view=accrual (theo tháng phát sinh recon).
-  // Default = accrual (chuẩn kế toán VN — khớp Kim BCTC).
-  const view: "cash" | "accrual" = sp.view === "cash" ? "cash" : "accrual";
-  const monthCol = view === "accrual"
-    ? financialTransactions.accrualMonth
-    : financialTransactions.transactionMonth;
+  // Chỉ 1 view: accrual từ Kim NKC (source of truth). Kim ghi theo TT200 —
+  // toàn accrual. Cash view riêng ở /admin/opex-reconciliation.
+  const view = "accrual" as const;
 
-  // ===== 1. OPEX rows toàn thời gian — filter theo năm cho breakdown table =====
-  const opexRows = await db
-    .select({
-      month: monthCol,
-      code: financialTransactions.categoryCode,
-      group: financialTransactions.managementGroup,
-      sum: sql<number>`sum(amount)::float8`,
-      n: sql<number>`count(*)::int`,
-    })
-    .from(financialTransactions)
-    .where(inArray(financialTransactions.categoryCode, OPEX_MGMT_CATEGORIES))
-    .groupBy(
-      monthCol,
-      financialTransactions.categoryCode,
-      financialTransactions.managementGroup,
-    );
+  // ===== 1. OPEX rows từ Kim NKC (source of truth chốt 2026-08-04) =====
+  const opexRows = await fetchOpexFromJournal(OPEX_MGMT_CATEGORIES);
 
   // Xác định các năm có data
   const yearsSet = new Set<string>();
@@ -102,23 +86,16 @@ export default async function ManagementReportPage({
     .reduce((s, r) => s + Number(r.sum), 0);
   const opexPureAvg = monthsSoFar > 0 ? opexCurrentYear / monthsSoFar : 0;
 
-  // ===== BE dùng chi phí CỐ ĐỊNH (không gồm HH sale 6417) =====
-  // BE = Fixed cost / Lãi gộp per căn. Lãi gộp per căn đã trừ HH sale (products.totalCost).
-  // Nếu Fixed cost cũng gồm 6417 (HH sale) → double count → BE sai lệch lớn.
-  const fixedRows = await db
-    .select({
-      month: monthCol,
-      sum: sql<number>`sum(amount)::float8`,
-    })
-    .from(financialTransactions)
-    .where(inArray(financialTransactions.categoryCode, FIXED_COST_CATEGORIES))
-    .groupBy(monthCol);
-  const fixedCurrentYear = fixedRows
+  // ===== BE dùng chi phí CỐ ĐỊNH — cũng lấy từ Kim NKC =====
+  const fixedRowsFromJournal = await fetchOpexFromJournal(FIXED_COST_CATEGORIES);
+  const fixedCurrentYear = fixedRowsFromJournal
     .filter((r) => r.month?.startsWith(currentYear))
-    .reduce((s, r) => s + Number(r.sum), 0);
+    .reduce((s, r) => s + r.sum, 0);
   const fixedPureAvg = monthsSoFar > 0 ? fixedCurrentYear / monthsSoFar : 0;
 
-  // ===== Khấu hao TSCĐ (chốt 2026-07-26) — cộng vào CP cố định tháng =====
+  // ===== Khấu hao TSCĐ (TK 242) — vẫn lấy từ financial_transactions vì
+  // Kim NKC ghi 242 rải rác nhiều bút toán (đầu kỳ trả trước, phân bổ...),
+  // financial_transactions gộp gọn theo tháng trả trước gốc.
   const tscdRows = await db
     .select({
       month: financialTransactions.transactionMonth,
@@ -222,13 +199,11 @@ export default async function ManagementReportPage({
           <b> Lãi/lỗ theo tháng</b>. Tính theo Năm {currentYear} đến hiện tại ({monthsSoFar} tháng).
         </p>
         <div className="mt-3 flex items-center gap-3 text-xs">
-          <span className="text-slate-500">Ghi nhận theo:</span>
-          <ViewToggle current={view} selectedYear={selectedYear} />
-          <span className="text-slate-400">
-            {view === "accrual"
-              ? "Dồn tích — theo tháng phát sinh recon (chuẩn Kim BCTC)"
-              : "Tiền mặt — theo tháng chi thực tế"}
-          </span>
+          <span className="text-slate-500">Nguồn OPEX:</span>
+          <span className="px-2 py-0.5 rounded bg-slate-100 font-mono">Kim NKC (accrual)</span>
+          <Link href="/admin/opex-reconciliation" className="text-blue-600 hover:underline">
+            Đối chiếu với sổ thanh toán →
+          </Link>
         </div>
       </div>
 
