@@ -195,53 +195,83 @@ export default async function CashFlowPage({ searchParams }: { searchParams: SP 
             Vào <b className="text-green-700 tabular-nums">{fmt(totalIn)}</b> · Ra <b className="text-red-700 tabular-nums">{fmt(totalOut)}</b> · Net <b className={`tabular-nums ${totalIn - totalOut >= 0 ? "text-green-700" : "text-red-700"}`}>{fmt(totalIn - totalOut)}</b>
           </div>
         </div>
-        <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
-          <table className="w-max text-xs">
+        {/* Transposed: rows = category (Vào/Ra/Net/từng nhóm chi), cols = tháng.
+            Compact vừa 12-13 cột, fit desktop, không cần scroll ngang. */}
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
+          <table className="w-full text-xs">
             <thead className="bg-slate-50">
               <tr>
-                <th className="text-left p-2 sticky left-0 bg-slate-50 z-10">Tháng</th>
-                <th className="text-right p-2">Vào</th>
-                <th className="text-right p-2">Ra</th>
-                <th className="text-right p-2">Net</th>
-                {outCatList.map((c) => (
-                  <th key={c} className="text-right p-2 whitespace-nowrap">{c}</th>
+                <th className="text-left p-2 whitespace-nowrap">Nhóm</th>
+                {months.map((m) => (
+                  <th key={m} className="text-right p-2 font-mono">T{Number(m.slice(5))}</th>
                 ))}
+                <th className="text-right p-2 bg-slate-100">Tổng</th>
               </tr>
             </thead>
             <tbody>
-              {months.map((m) => {
-                const s = monthly.get(m)!;
-                const net = s.inTotal - s.outTotal;
-                return (
-                  <tr key={m} className="border-t border-slate-100 hover:bg-slate-50">
-                    <td className="p-2 font-mono sticky left-0 bg-white z-10">{m}</td>
-                    <td className="p-2 text-right tabular-nums text-green-700">{fmtM(s.inTotal)}</td>
-                    <td className="p-2 text-right tabular-nums text-red-700">{fmtM(s.outTotal)}</td>
-                    <td className={`p-2 text-right tabular-nums font-semibold ${net >= 0 ? "text-green-700" : "text-red-700"}`}>{fmtM(net)}</td>
-                    {outCatList.map((c) => {
-                      const v = s.outByCategory.get(c) ?? 0;
+              {/* Vào — 1 row tổng thu */}
+              <tr className="border-t border-slate-200 bg-green-50/40">
+                <td className="p-2 font-semibold text-green-700">💰 VÀO</td>
+                {months.map((m) => (
+                  <td key={m} className="p-2 text-right tabular-nums text-green-700">
+                    {monthly.get(m)!.inTotal > 0 ? fmtM(monthly.get(m)!.inTotal) : "—"}
+                  </td>
+                ))}
+                <td className="p-2 text-right tabular-nums font-bold text-green-700 bg-slate-100">{fmtM(totalIn)}</td>
+              </tr>
+              {/* Ra — 1 row tổng chi */}
+              <tr className="border-t border-slate-100 bg-red-50/40">
+                <td className="p-2 font-semibold text-red-700">💸 RA (tổng)</td>
+                {months.map((m) => (
+                  <td key={m} className="p-2 text-right tabular-nums text-red-700">
+                    {monthly.get(m)!.outTotal > 0 ? fmtM(monthly.get(m)!.outTotal) : "—"}
+                  </td>
+                ))}
+                <td className="p-2 text-right tabular-nums font-bold text-red-700 bg-slate-100">{fmtM(totalOut)}</td>
+              </tr>
+              {/* Net */}
+              <tr className="border-t border-slate-200 bg-slate-50">
+                <td className="p-2 font-semibold">Net</td>
+                {months.map((m) => {
+                  const s = monthly.get(m)!;
+                  const net = s.inTotal - s.outTotal;
+                  return (
+                    <td key={m} className={`p-2 text-right tabular-nums font-semibold ${net >= 0 ? "text-green-700" : "text-red-700"}`}>
+                      {fmtM(net)}
+                    </td>
+                  );
+                })}
+                <td className={`p-2 text-right tabular-nums font-bold bg-slate-100 ${totalIn - totalOut >= 0 ? "text-green-700" : "text-red-700"}`}>
+                  {fmtM(totalIn - totalOut)}
+                </td>
+              </tr>
+              {/* Breakdown Ra theo category — sort desc by total */}
+              <tr className="border-t-2 border-slate-300">
+                <td colSpan={months.length + 2} className="p-2 bg-slate-100 text-[10px] uppercase font-semibold text-slate-500 tracking-wide">
+                  Chi tiết Ra theo nhóm
+                </td>
+              </tr>
+              {outCatList
+                .map((c) => ({
+                  cat: c,
+                  total: [...monthly.values()].reduce((s, m) => s + (m.outByCategory.get(c) ?? 0), 0),
+                }))
+                .sort((a, b) => b.total - a.total)
+                .map(({ cat, total }) => (
+                  <tr key={cat} className="border-t border-slate-100 hover:bg-slate-50">
+                    <td className="p-2 text-slate-700">{cat}</td>
+                    {months.map((m) => {
+                      const v = monthly.get(m)!.outByCategory.get(cat) ?? 0;
                       return (
-                        <td key={c} className="p-2 text-right tabular-nums text-slate-500">
+                        <td key={m} className="p-2 text-right tabular-nums text-slate-500">
                           {v > 0 ? fmtM(v) : "—"}
                         </td>
                       );
                     })}
+                    <td className="p-2 text-right tabular-nums font-semibold bg-slate-100">{fmtM(total)}</td>
                   </tr>
-                );
-              })}
+                ))}
             </tbody>
-            <tfoot className="bg-slate-100 font-bold">
-              <tr>
-                <td className="p-2 sticky left-0 bg-slate-100 z-10">TỔNG</td>
-                <td className="p-2 text-right tabular-nums text-green-700">{fmt(totalIn)}</td>
-                <td className="p-2 text-right tabular-nums text-red-700">{fmt(totalOut)}</td>
-                <td className={`p-2 text-right tabular-nums ${totalIn - totalOut >= 0 ? "text-green-700" : "text-red-700"}`}>{fmt(totalIn - totalOut)}</td>
-                {outCatList.map((c) => {
-                  const total = [...monthly.values()].reduce((s, m) => s + (m.outByCategory.get(c) ?? 0), 0);
-                  return <td key={c} className="p-2 text-right tabular-nums">{fmtM(total)}</td>;
-                })}
-              </tr>
-            </tfoot>
           </table>
         </div>
       </section>
