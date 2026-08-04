@@ -14,20 +14,56 @@ export const dynamic = "force-dynamic";
 const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
 const fmtM = (n: number) => (n / 1_000_000).toFixed(1) + "M";
 
-// Rule-based classify partner_name → nhóm chi
+// Rule-based classifier. ƯU TIÊN description (rõ mục đích) trước partner_name.
+// Chốt 2026-08-04: user báo em bỏ qua description nên hỏi ngu.
 function classifyOut(partnerName: string | null, description: string): string {
   const p = (partnerName ?? "").toUpperCase();
-  const d = description.toUpperCase();
-  // Loại tên trùng nhưng không phải NVKD
-  if (/PHAM NGOC THANH TAM|LE THANH TUNG|VO THI THU THAO/.test(p)) return "CTV/Khác";
-  if (/(BACH|BÁCH|THANH|NHAT|NHẬT|LINH|GIANG|THUY|THÚY|THINH|THỊNH)/.test(p)) return "Sale team NVKD";
-  if (/(HA SANG|TUONG VI|TƯỜNG VI|LUONG THI NGA|LAN KIM)/.test(p)) return "Admin/CTV nội bộ";
-  if (/(BAM LAND|DXMD|DANH KHOI|BCONS|PHU DONG|PHÚ ĐÔNG)/.test(p)) return "CĐT/Đối tác";
+  const d = (description ?? "").toUpperCase();
+
+  // ===== TẦNG 1: description keyword rõ ràng =====
+  if (/HOAN\s+(BOOKING|COC|TIEN)|HOÀN\s+(BOOKING|CỌC|TIỀN)|HOAN.*YCTV|HOÀN.*YCTV|REFUND/i.test(d)) {
+    return "Hoàn booking/YCTV";
+  }
+  if (/HO TRO|HỖ TRỢ|CHIET KHAU|CHIẾT KHẤU|QUY DOI.*VANG|QUY ĐỔI.*VÀNG/i.test(d)) {
+    return "Hỗ trợ/CK khách";
+  }
+  if (/THUE.*VP|THUÊ.*VP|THUE VAN PHONG|THUÊ VĂN PHÒNG|TIEN THUE NHA|TIỀN THUÊ NHÀ/i.test(d)) {
+    return "Thuê VP";
+  }
+  if (/LUONG|LƯƠNG|PHU CAP|PHỤ CẤP|THUONG DOANH SO|THƯỞNG DOANH SỐ|THU LAO|THÙ LAO/i.test(d)) {
+    return "Lương/HH sale";
+  }
+  if (/TAM UNG|TẠM ỨNG/i.test(d)) return "Tạm ứng";
+  if (/BHXH|BAO HIEM|BẢO HIỂM/i.test(d)) return "BHXH";
+  if (/THUE.*(GTGT|TNDN|TNCN|MON BAI)|NTDT|THUẾ/i.test(d)) return "Thuế";
+  if (/QUANG CAO|QUẢNG CÁO|MARKETING|BATDONGSAN|PROPERTYGURU/i.test(d)) return "Marketing";
+  if (/DICH VU KE TOAN|DỊCH VỤ KẾ TOÁN|PHI DICH VU/i.test(d)) return "Phí dịch vụ (Kim)";
+
+  // ===== TẦNG 2: partner-specific mapping =====
+  if (/NGUYEN MINH TRIET|MINH TRIET/.test(p)) return "Owner (Triết) — hoàn/rút vốn";
+  if (/NGUYEN DANG KHIET/.test(p)) return "Thuê VP"; // Landlord VP cũ kỳ 1
+  if (/PHAM NGOC THANH TAM/.test(p)) return "Thuê VP"; // Landlord VP mới kỳ 2
+  if (/BUI HOANG DE/.test(p)) return "Hoàn booking/YCTV";
+  if (/LE THANH TUNG/.test(p)) return "Marketing"; // Content writer
+  if (/HO THI LAN KIM/.test(p)) return "Phí dịch vụ (Kim)";
+  if (/TO THI NGA/.test(p)) return "Hỗ trợ/CK khách"; // KH mua căn Bcons, quy đổi 3 chỉ vàng
+
+  // ===== TẦNG 3: NVKD/Admin cty (khớp employee list) =====
+  // NVKD chính thức
+  if (/^(DOAN LE BACH|HO NGUYEN CONG THANH|TRAN MINH NHAT|TRAN THI KHANH LINH|LE THI CAM GIANG|LE TRINH THANH THUY|VU DUC THINH|DOAN NGOC HA SANG|HUYNH DUY ANH|NGUYEN THI HONG NHUNG|BUI THI HA UYEN|NGUYEN QUY TAI|VO THI THU THAO|TONG THI NHUNG|TONG THI HONG THAM|VU THI NGOC DUYEN|PHAM VAN QUYET|BUI XUAN DAT)/.test(p)) {
+    return "Sale team NVKD";
+  }
+  // Admin
+  if (/DANH HOANG THI TUONG VI|PHAM QUANG TUNG|LUONG THI NGA/.test(p)) return "Admin/HR";
+
+  // ===== TẦNG 4: tổ chức =====
+  if (/^(CTY|CONG TY|CN\s|CTCP)/.test(p) && /(BAM LAND|DXMD|DANH KHOI|BCONS|PHU DONG|PHÚ ĐÔNG)/.test(p)) {
+    return "CĐT/Đối tác";
+  }
   if (/KHO BAC|KBNN/.test(p)) return "Thuế";
   if (/BAO HIEM XA HOI|BHXH/.test(p)) return "BHXH";
-  if (/PROPERTYGURU|MOGI|BATDONGSAN/.test(p) || /QUAN CAO|MARKETING/.test(d)) return "Marketing";
-  if (/NGUYEN MINH TRIET|MINH TRIET/.test(p)) return "Triết CN";
-  if (/THUE VP|THUÊ VP|VAN PHONG/.test(d) || /BCONS POLYGON/.test(p)) return "Thuê VP";
+  if (/PROPERTYGURU|MOGI|BATDONGSAN/.test(p)) return "Marketing";
+
   return "Khác";
 }
 
