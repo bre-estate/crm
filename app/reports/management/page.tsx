@@ -53,12 +53,17 @@ export default async function ManagementReportPage({
 
   // ===== 1. OPEX rows từ Kim NKC (source of truth chốt 2026-08-04) =====
   const opexRows = await fetchOpexFromJournal(OPEX_MGMT_CATEGORIES);
+  // Query năm có căn chốt trong products (BCDT) — để tab năm cover cả 2026
+  // dù Kim NKC chưa import 2026.
+  const productYears = await db.execute(sql`
+    SELECT DISTINCT substr(deposit_date, 1, 4) as year FROM products
+    WHERE deposit_date IS NOT NULL
+  `) as any[];
 
-  // Xác định các năm có data
+  // Xác định các năm có data (Kim NKC HOẶC căn chốt)
   const yearsSet = new Set<string>();
-  for (const r of opexRows) {
-    if (r.month) yearsSet.add(r.month.slice(0, 4));
-  }
+  for (const r of opexRows) if (r.month) yearsSet.add(r.month.slice(0, 4));
+  for (const r of productYears) if (r.year) yearsSet.add(r.year);
   const yearList = [...yearsSet].sort().reverse();
   const currentYear = nowMonth.slice(0, 4);
   const selectedYear = sp.year && yearsSet.has(sp.year) ? sp.year : (yearsSet.has(currentYear) ? currentYear : yearList[0] ?? currentYear);
