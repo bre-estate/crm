@@ -8,7 +8,7 @@
 
 import { db } from "@/lib/db";
 import { accountingJournal } from "@/lib/schema";
-import { sql, inArray, and, ne, notLike } from "drizzle-orm";
+import { sql, inArray, and, ne, eq } from "drizzle-orm";
 
 export type OpexRow = {
   month: string; // "YYYY-MM"
@@ -47,6 +47,10 @@ export function tkLabel(code: string): string {
  * Query OPEX rows từ Kim NKC.
  * @param codes TK codes cần lấy (VD OPEX_MGMT_CATEGORIES)
  * @param yearFilter Optional: chỉ lấy năm nhất định (VD "2025")
+ *
+ * SPECIAL: Marketing được tách khỏi 6417 (6417 chứa cả HH sale). Query riêng
+ * các 6417 rows có description "quảng cáo/marketing/batdongsan/sự kiện/PR"
+ * → gán code=MKT, label="Marketing", tránh double count HH sale.
  */
 export async function fetchOpexFromJournal(
   codes: string[],
@@ -54,7 +58,6 @@ export async function fetchOpexFromJournal(
 ): Promise<OpexRow[]> {
   const conds = [
     inArray(accountingJournal.debitAccount, codes),
-    // Bỏ bút toán đóng sổ cuối năm (Nợ TK / Có 911)
     ne(accountingJournal.creditAccount, "911"),
   ];
   if (yearFilter) {
@@ -82,4 +85,64 @@ export async function fetchOpexFromJournal(
     sum: Number(r.sum),
     n: r.n,
   }));
+}
+
+// Query doanh thu Kim NKC (Có 5113) per month.
+export async function fetchRevenueFromJournal(yearFilter?: string): Promise<Map<string, number>> {
+  const conds = [
+    eq(accountingJournal.creditAccount, "5113"),
+    ne(accountingJournal.debitAccount, "911"),
+  ];
+  if (yearFilter) {
+    conds.push(sql`substr(${accountingJournal.entryDate}, 1, 4) = ${yearFilter}`);
+  }
+  const rows = await db
+    .select({
+      month: sql<string>`substr(${accountingJournal.entryDate}, 1, 7)`,
+      sum: sql<number>`sum(${accountingJournal.amount})::float8`,
+    })
+    .from(accountingJournal)
+    .where(and(...conds))
+    .groupBy(sql`substr(${accountingJournal.entryDate}, 1, 7)`);
+  return new Map(rows.map((r) => [r.month, Number(r.sum)]));
+}
+
+// Query giá vốn Kim NKC (Nợ 6417 — HH sale + Marketing) per month.
+export async function fetchCogsFromJournal(yearFilter?: string): Promise<Map<string, number>> {
+  const conds = [
+    eq(accountingJournal.debitAccount, "6417"),
+    ne(accountingJournal.creditAccount, "911"),
+  ];
+  if (yearFilter) {
+    conds.push(sql`substr(${accountingJournal.entryDate}, 1, 4) = ${yearFilter}`);
+  }
+  const rows = await db
+    .select({
+      month: sql<string>`substr(${accountingJournal.entryDate}, 1, 7)`,
+      sum: sql<number>`sum(${accountingJournal.amount})::float8`,
+    })
+    .from(accountingJournal)
+    .where(and(...conds))
+    .groupBy(sql`substr(${accountingJournal.entryDate}, 1, 7)`);
+  return new Map(rows.map((r) => [r.month, Number(r.sum)]));
+}
+
+// Query Thuế TNDN (Nợ 8211) per month.
+export async function fetchIncomeTaxFromJournal(yearFilter?: string): Promise<Map<string, number>> {
+  const conds = [
+    eq(accountingJournal.debitAccount, "8211"),
+    ne(accountingJournal.creditAccount, "911"),
+  ];
+  if (yearFilter) {
+    conds.push(sql`substr(${accountingJournal.entryDate}, 1, 4) = ${yearFilter}`);
+  }
+  const rows = await db
+    .select({
+      month: sql<string>`substr(${accountingJournal.entryDate}, 1, 7)`,
+      sum: sql<number>`sum(${accountingJournal.amount})::float8`,
+    })
+    .from(accountingJournal)
+    .where(and(...conds))
+    .groupBy(sql`substr(${accountingJournal.entryDate}, 1, 7)`);
+  return new Map(rows.map((r) => [r.month, Number(r.sum)]));
 }

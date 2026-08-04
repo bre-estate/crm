@@ -72,21 +72,19 @@ const isGroup = (n: NavEntry): n is NavGroup => "children" in n;
 const NAV: NavEntry[] = [
   { href: "/", label: "Tổng quan" },
   {
-    label: "Hàng ngày",
+    label: "Giao dịch",
     children: [
-      { href: "/products", label: "Danh sách căn", resource: "products" },
+      { href: "/products", label: "Căn chốt", resource: "products" },
       { href: "/revenues", label: "Doanh thu", resource: "revenues" },
       { href: "/costs", label: "Giá vốn", resource: "costs" },
       { href: "/invoices", label: "Hóa đơn", resource: "invoices" },
     ],
   },
   {
-    label: "Cơ sở dữ liệu",
+    label: "Đối tác & Dự án",
     children: [
       { href: "/partners", label: "Đối tác (CĐT)", resource: "partners" },
       { href: "/projects", label: "Dự án", resource: "products" },
-      { href: "/employees", label: "Nhân viên", resource: "employees" },
-      { href: "/departments", label: "Phòng ban", resource: "departments" },
     ],
   },
   {
@@ -121,11 +119,17 @@ const NAV: NavEntry[] = [
     ],
   },
   {
+    label: "Nhân sự",
+    children: [
+      { href: "/employees", label: "Nhân viên", resource: "employees" },
+      { href: "/departments", label: "Phòng ban", resource: "departments" },
+    ],
+  },
+  {
     label: "Quản trị hệ thống",
     children: [
       { href: "/admin/users", label: "Quản lý user", ownerOnly: true },
       { href: "/admin/data-checks", label: "Kiểm tra dữ liệu", ownerOnly: true },
-      { href: "/admin/kim-baseline", label: "Kim baseline", ownerOnly: true },
       { href: "/help/accounting-basics", label: "📚 Kế toán căn bản" },
       { href: "/admin/activity", label: "Lịch sử hoạt động", resource: "admin.activity" },
     ],

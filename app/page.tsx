@@ -84,15 +84,28 @@ async function receivableOutstanding(): Promise<number> {
   return Math.max(0, Number(rev?.s ?? 0) - Number(pIn?.s ?? 0));
 }
 
-// Còn trả sale = cost_reconciliations.amountPayable − sum(payments_out đã trả)
+// Còn trả sale = cost_reconciliations.amountPayable − cash thực trả cho sale team qua sao kê.
+// KHÔNG dùng payments_out vì bảng đó = mirror của accrual (fake cash) — sẽ ra 0 luôn.
+// Sao kê Techcombank = source of truth cash bank thật.
 async function payableOutstanding(): Promise<number> {
   const [cost] = await db
     .select({ s: sql<number>`coalesce(sum(${costReconciliations.amountPayableThisTime}), 0)::float8` })
     .from(costReconciliations);
-  const [pOut] = await db
-    .select({ s: sql<number>`coalesce(sum(${paymentsOut.amount}), 0)::float8` })
-    .from(paymentsOut);
-  return Math.max(0, Number(cost?.s ?? 0) - Number(pOut?.s ?? 0));
+  // Cash trả cho sale team qua bank (match partner_name NVKD chính thức)
+  const [saleCash] = await db.execute(sql`
+    SELECT COALESCE(SUM(ABS(debit_amount)), 0)::float8 as s
+    FROM bank_transactions
+    WHERE debit_amount IS NOT NULL
+      AND partner_name IN (
+        'DOAN LE BACH', 'HO NGUYEN CONG THANH', 'TRAN MINH NHAT',
+        'TRAN THI KHANH LINH', 'LE THI CAM GIANG', 'LE TRINH THANH THUY',
+        'VU DUC THINH', 'DOAN NGOC HA SANG', 'HUYNH DUY ANH',
+        'NGUYEN THI HONG NHUNG', 'BUI THI HA UYEN', 'NGUYEN QUY TAI',
+        'VO THI THU THAO', 'TONG THI NHUNG', 'TONG THI HONG THAM',
+        'VU THI NGOC DUYEN', 'PHAM VAN QUYET', 'BUI XUAN DAT'
+      )
+  `) as any[];
+  return Math.max(0, Number(cost?.s ?? 0) - Number(saleCash.s ?? 0));
 }
 
 // Cash flow (3T gần nhất) — lấy TRỰC TIẾP từ sao kê Techcombank (source of truth).

@@ -7,7 +7,12 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { monthlyDepreciation } from "@/lib/accounting/depreciation";
 import { OPEX_MGMT_CATEGORIES, FIXED_COST_CATEGORIES, BUCKET_641, BUCKET_642, BUCKET_811, bucketOf, BUCKET_LABELS } from "@/lib/accounting/categories";
-import { fetchOpexFromJournal } from "@/lib/reports/opex-from-journal";
+import {
+  fetchOpexFromJournal,
+  fetchRevenueFromJournal,
+  fetchCogsFromJournal,
+  fetchIncomeTaxFromJournal,
+} from "@/lib/reports/opex-from-journal";
 
 export const dynamic = "force-dynamic";
 
@@ -116,53 +121,32 @@ export default async function ManagementReportPage({
   const avgOpexMonth = opexPureAvg + monthlyDepTotal; // tổng chi phí HĐ TB/tháng
   const avgFixedMonth = fixedPureAvg + monthlyDepTotal; // chi phí cố định TB/tháng (cho BE)
 
-  // ===== 2. Lãi/lỗ theo tháng — Kim confirm 2026-07-27: theo NGÀY ĐC =====
-  // Dồn tích theo ngày đối chiếu (recon date), KHÔNG dùng ngày cọc căn.
-  // Ngày cọc chỉ dùng cho tính thưởng NVKD ở /reports/people.
-  const allProducts = await db
-    .select({
+  // ===== 2. Lãi/lỗ theo tháng — 100% Kim NKC (chốt user 2026-08-04) =====
+  // Doanh thu = 5113, Giá vốn = 6417 (gồm HH sale + Marketing), OPEX = ..., Thuế TNDN = 8211
+  const [revByMonth, cogsByMonth, taxByMonth, allProducts] = await Promise.all([
+    fetchRevenueFromJournal(),
+    fetchCogsFromJournal(),
+    fetchIncomeTaxFromJournal(),
+    db.select({
       id: products.id,
       depositDate: products.depositDate,
       totalRevenue: products.totalRevenue,
       totalCost: products.totalCost,
-    })
-    .from(products);
-
-  const [revs, costs] = await Promise.all([
-    db.select({
-      productId: revenueReconciliations.productId,
-      reconDate: revenueReconciliations.reconciliationDate,
-      receivable: revenueReconciliations.totalReceivableThisTime,
-    }).from(revenueReconciliations),
-    db.select({
-      productId: costReconciliations.productId,
-      reconDate: costReconciliations.reconciliationDate,
-      payable: costReconciliations.amountPayableThisTime,
-    }).from(costReconciliations),
+    }).from(products),
   ]);
 
-  type MonthlyPnL = { month: string; revenue: number; cost: number; opex: number };
+  type MonthlyPnL = { month: string; revenue: number; cost: number; opex: number; tax: number };
   const pnl = new Map<string, MonthlyPnL>();
   const getM = (m: string) => {
-    if (!pnl.has(m)) pnl.set(m, { month: m, revenue: 0, cost: 0, opex: 0 });
+    if (!pnl.has(m)) pnl.set(m, { month: m, revenue: 0, cost: 0, opex: 0, tax: 0 });
     return pnl.get(m)!;
   };
-  for (const r of revs) {
-    if (!r.reconDate) continue;
-    const m = r.reconDate.slice(0, 7);
-    getM(m).revenue += Number(r.receivable ?? 0);
-  }
-  for (const cst of costs) {
-    if (!cst.reconDate) continue;
-    const m = cst.reconDate.slice(0, 7);
-    getM(m).cost += Number(cst.payable ?? 0);
-  }
+  for (const [m, s] of revByMonth) getM(m).revenue = s;
+  for (const [m, s] of cogsByMonth) getM(m).cost = s;
+  for (const [m, s] of taxByMonth) getM(m).tax = s;
   for (const [, mmap] of grid) {
-    for (const [m, v] of mmap) {
-      getM(m).opex += v;
-    }
+    for (const [m, v] of mmap) getM(m).opex += v;
   }
-  // P&L monthly: filter theo năm selected (không dùng 12-month rolling)
   const pnlMonths = [...pnl.values()]
     .filter((p) => p.month.slice(0, 4) === selectedYear)
     .sort((a, b) => b.month.localeCompare(a.month));
@@ -171,10 +155,11 @@ export default async function ManagementReportPage({
   // Lãi gộp TB / căn — chỉ tính căn YTD (nhất quán vs avgFixedMonth YTD).
   // Trước đây dùng all-time → BE lệch vì margin cũ khác chi phí hiện tại.
   const ytdProducts = allProducts.filter((p) => p.depositDate?.startsWith(selectedYear));
-  const ytdTotalRev = ytdProducts.reduce((s, p) => s + Number(p.totalRevenue ?? 0), 0);
-  const ytdTotalCost = ytdProducts.reduce((s, p) => s + Number(p.totalCost ?? 0), 0);
   const numUnits = ytdProducts.length;
-  const avgGrossProfitPerUnit = numUnits > 0 ? (ytdTotalRev / 1.1 - ytdTotalCost) / numUnits : 0;
+  // Lãi gộp TB/căn = (Kim DT năm − Kim Giá vốn năm) / số căn — nhất quán với P&L
+  const kimRevYear = [...revByMonth].filter(([m]) => m.startsWith(selectedYear)).reduce((s, [, v]) => s + v, 0);
+  const kimCogsYear = [...cogsByMonth].filter(([m]) => m.startsWith(selectedYear)).reduce((s, [, v]) => s + v, 0);
+  const avgGrossProfitPerUnit = numUnits > 0 ? (kimRevYear - kimCogsYear) / numUnits : 0;
   // BE dùng chi phí CỐ ĐỊNH (avgFixedMonth), không dùng OPEX toàn bộ
   // (đã loại 6417 chứa HH sale — vì lãi gộp/căn đã trừ HH sale rồi)
   const breakEvenUnits = avgGrossProfitPerUnit > 0 && avgFixedMonth > 0
@@ -207,9 +192,6 @@ export default async function ManagementReportPage({
         <div className="mt-3 flex items-center gap-3 text-xs">
           <span className="text-slate-500">Nguồn OPEX:</span>
           <span className="px-2 py-0.5 rounded bg-slate-100 font-mono">Kim NKC (accrual)</span>
-          <Link href="/admin/opex-reconciliation" className="text-blue-600 hover:underline">
-            Đối chiếu với sổ thanh toán →
-          </Link>
         </div>
       </div>
 
@@ -348,64 +330,63 @@ export default async function ManagementReportPage({
           <h2 className="text-lg font-semibold">📈 Lãi/lỗ theo tháng — {selectedYear}</h2>
         </div>
         <p className="text-xs text-slate-500 mb-3">
-          Dồn tích theo ngày đối chiếu (chuẩn kế toán VN — Kim xác nhận 2026-07-27). Chi phí hoạt động gộp theo tháng phát sinh.
-          Lãi thuần = Doanh thu/1,1 − Giá vốn − Chi phí hoạt động.
+          Nguồn 100% Kim NKC (accrual TT200). DT = 5113, Giá vốn = 6417 (gồm HH sale + Marketing),
+          OPEX = 641/642/811/635 (loại 6417), Thuế TNDN = 8211. Lãi sau thuế = DT − Giá vốn − OPEX − Thuế.
         </p>
-        <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
+          <table className="min-w-full text-sm">
             <thead className="bg-slate-50 text-xs">
               <tr>
                 <th className="text-left p-2">Tháng</th>
-                <th className="text-right p-2">DT (gồm VAT)</th>
+                <th className="text-right p-2">Doanh thu</th>
                 <th className="text-right p-2">Giá vốn</th>
-                <th className="text-right p-2">Chi phí HĐ</th>
                 <th className="text-right p-2">Lãi gộp</th>
-                <th className="text-right p-2 w-64">Lãi thuần</th>
+                <th className="text-right p-2">Chi phí HĐ</th>
+                <th className="text-right p-2">Lãi trước thuế</th>
+                <th className="text-right p-2">Thuế TNDN</th>
+                <th className="text-right p-2 w-40">Lãi sau thuế</th>
               </tr>
             </thead>
             <tbody>
               {pnlMonths.map((p) => {
-                const gross = p.revenue / 1.1 - p.cost;
-                const net = gross - p.opex;
-                const maxAbs = Math.max(...pnlMonths.map((x) => Math.abs(x.revenue / 1.1 - x.cost - x.opex)), 1);
-                const pct = (Math.abs(net) / maxAbs) * 100;
-                const positive = net >= 0;
+                const gross = p.revenue - p.cost;
+                const preTax = gross - p.opex;
+                const afterTax = preTax - p.tax;
+                const maxAbs = Math.max(...pnlMonths.map((x) => Math.abs(x.revenue - x.cost - x.opex - x.tax)), 1);
+                const pct = (Math.abs(afterTax) / maxAbs) * 100;
+                const positive = afterTax >= 0;
                 return (
                   <tr key={p.month} className="border-t border-slate-100">
                     <td className="p-2 font-mono">
-                      <Link
-                        href={`/reports/management/${p.month}`}
-                        className="text-blue-600 hover:underline"
-                      >
+                      <Link href={`/reports/management/${p.month}`} className="text-blue-600 hover:underline">
                         {p.month}
                       </Link>
                     </td>
-                    <td className="p-2 text-right tabular-nums text-xs">
+                    <td className="p-2 text-right tabular-nums text-xs text-green-700">
                       {p.revenue > 0 ? fmt(p.revenue) : <span className="text-slate-300">—</span>}
                     </td>
                     <td className="p-2 text-right tabular-nums text-xs text-orange-700">
                       {p.cost > 0 ? fmt(p.cost) : <span className="text-slate-300">—</span>}
                     </td>
+                    <td className={`p-2 text-right tabular-nums text-xs font-medium ${gross >= 0 ? "text-slate-700" : "text-red-700"}`}>
+                      {fmt(gross)}
+                    </td>
                     <td className="p-2 text-right tabular-nums text-xs text-orange-700">
                       {p.opex > 0 ? fmt(p.opex) : <span className="text-slate-300">—</span>}
                     </td>
-                    <td className={`p-2 text-right tabular-nums text-xs font-medium ${gross >= 0 ? "text-slate-700" : "text-red-700"}`}>
-                      {fmt(gross)}
+                    <td className={`p-2 text-right tabular-nums text-xs ${preTax >= 0 ? "text-slate-700" : "text-red-700"}`}>
+                      {fmt(preTax)}
+                    </td>
+                    <td className="p-2 text-right tabular-nums text-xs text-orange-700">
+                      {p.tax > 0 ? fmt(p.tax) : <span className="text-slate-300">—</span>}
                     </td>
                     <td className="p-2">
                       <div className="flex items-center gap-2">
                         <div className="flex-1 h-3 bg-slate-100 rounded overflow-hidden">
-                          <div
-                            className={`h-full ${positive ? "bg-green-500" : "bg-red-500"}`}
-                            style={{ width: `${pct}%` }}
-                          />
+                          <div className={`h-full ${positive ? "bg-green-500" : "bg-red-500"}`} style={{ width: `${pct}%` }} />
                         </div>
-                        <div
-                          className={`text-right tabular-nums text-xs font-semibold w-28 ${
-                            positive ? "text-green-700" : "text-red-700"
-                          }`}
-                        >
-                          {fmt(net)}
+                        <div className={`text-right tabular-nums text-xs font-semibold w-24 ${positive ? "text-green-700" : "text-red-700"}`}>
+                          {fmt(afterTax)}
                         </div>
                       </div>
                     </td>
@@ -414,7 +395,7 @@ export default async function ManagementReportPage({
               })}
               {pnlMonths.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-6 text-center text-slate-500 text-sm">
+                  <td colSpan={8} className="p-6 text-center text-slate-500 text-sm">
                     Chưa có data Năm {selectedYear} ({monthsSoFar} tháng).
                   </td>
                 </tr>
