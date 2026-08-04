@@ -22,7 +22,7 @@ export default function BreakdownClient({ entries }: { entries: KimEntryWithReco
     setStatus((e.status as any) ?? "pending");
     setLoading(true);
     try {
-      const cands = await getDnttCandidates(e.id);
+      const cands = await getDnttCandidates(e.groupIds);
       setCandidates(cands);
     } finally {
       setLoading(false);
@@ -39,7 +39,7 @@ export default function BreakdownClient({ entries }: { entries: KimEntryWithReco
     if (!selected) return;
     startTransition(async () => {
       const res = await saveReconciliation({
-        kimEntryId: selected.id,
+        kimEntryIds: selected.groupIds,
         linkedIds: [...linkedIds],
         status: newStatus,
         note,

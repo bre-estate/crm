@@ -28,6 +28,7 @@ export const TK_LABELS: Record<string, string> = {
   "6427": "Thuê VP + dịch vụ",
   "811": "Chi phí khác",
   "635": "Chi phí tài chính",
+  "BHXH": "BHXH gộp (3383+3384+3386)", // Composite: 3 TK cùng ngày trả bank = 1 row
   "3383": "BHXH cty đóng",
   "3384": "BHYT cty đóng",
   "3386": "BHTN cty đóng",
