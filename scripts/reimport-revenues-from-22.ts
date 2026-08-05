@@ -134,7 +134,10 @@ async function main() {
       // Cột P sheet 2.2 = index 15 = "Ty le % thu PMG LK dot nay" (N thực)
       paymentProgressPct: toNum(r[15]),
       phaseNumber: parsePhase(r[17]),
-      revenueThisTime: toNum(r[19]),
+      // BUG FIX 2026-08-05: cột T (idx 19) là "PMG_LK ĐỢT NÀY" nhưng thực chất
+      // LŨY KẾ (bao gồm đợt trước). Cột U (idx 20) = "PMG phải trả ĐỢT NÀY"
+      // (chuẩn "đợt này" = T − S). Trước map nhầm cột T → 118 rows lệch.
+      revenueThisTime: toNum(r[20]),
       totalReceivableThisTime: toNum(r[26]),
       cdtBonusSale: toNum(r[24]),
       cdtBonusManager: toNum(r[25]),
