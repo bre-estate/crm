@@ -227,20 +227,22 @@ export default async function ProductDetailPage({
   let sumReconCdtSale = 0;
   let sumReconCdtMgr = 0;
   for (const { rec } of revRecs) {
-    const rev = Number(rec.revenueThisTime ?? 0);
+    // BUG FIX 2026-08-05: revenue_this_time đôi khi lũy kế (VD rr#3970 = 72.9M
+    // trong khi total_receivable_this_time = 2.74M đợt này). Dùng total − bonus
+    // để tính HH đợt này (đúng) thay vì rev field.
     const bs = Number(rec.cdtBonusSale ?? 0);
     const bm = Number(rec.cdtBonusManager ?? 0);
     const total = Number(rec.totalReceivableThisTime ?? 0);
-    receivedHH += rev;
+    const hhThisTime = Math.max(0, total - bs - bm);
+    receivedHH += hhThisTime;
     receivedBonus += bs + bm;
     sumReconCdtSale += bs;
     sumReconCdtMgr += bm;
     const paid = paidPerRecon.get(rec.id) ?? 0;
     if (total > 0) {
-      paidHHSale += paid * (rev / total);
+      paidHHSale += paid * (hhThisTime / total);
       paidBonus += paid * ((bs + bm) / total);
     } else {
-      // recon rỗng — payment (nếu có) coi như HH mặc định
       paidHHSale += paid;
     }
   }

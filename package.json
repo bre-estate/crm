@@ -21,6 +21,7 @@
     "csv-parse": "^7.0.2",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
+    "exceljs": "^4.4.0",
     "lucide-react": "^1.28.0",
     "next": "16.2.4",
     "postgres": "^3.4.9",
