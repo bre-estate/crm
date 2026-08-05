@@ -489,15 +489,8 @@ async function main() {
   ];
   for (const line of guide) guideSheet.addRow({ content: line });
 
-  // Move Hướng dẫn to first sheet (workbook.orderNoCase / order property)
-  // ExcelJS: dùng orderNoCase hoặc sort spliceIn. Đơn giản: set order property.
-  const sheets = wb.worksheets;
-  // orderNoCase = index 0-based
-  guideSheet.orderNo = 0;
-  dataSheet.orderNo = 1;
-  const summary = wb.getWorksheet("Tổng hợp")!;
-  summary.orderNo = 2;
-  lookupSheet.orderNo = 3;
+  // (Skip re-order sheets — created in order: Data, Lookup, Tổng hợp, Hướng dẫn.
+  //  Excel default opens first sheet Data. User có thể navigate tab dễ dàng.)
 
   const outPath = "data-excel/SO QUAN TRI 2025.xlsx";
   await wb.xlsx.writeFile(outPath);
