@@ -1349,9 +1349,29 @@ export default async function ProductDetailPage({
                       </tr>
                     );
                   })}
-                  <tr className="border-t-2 border-slate-300 bg-slate-50 font-semibold">
-                    <td className="p-2">Tổng đã thu</td>
+                  <tr className="border-t-2 border-slate-300 bg-blue-50 font-semibold">
                     <td className="p-2"></td>
+                    <td className="p-2 text-blue-700">Tổng HH sale</td>
+                    <td className="p-2 text-right tabular-nums text-blue-700">
+                      {fmtMoney(paidHHSale)}
+                    </td>
+                    <td className="p-2 text-xs text-slate-500">
+                      / kỳ vọng {fmtMoney(expectedHHSale)} = {expectedHHSale > 0 ? Math.round((paidHHSale / expectedHHSale) * 100) : 0}%
+                    </td>
+                  </tr>
+                  <tr className="bg-amber-50 font-semibold">
+                    <td className="p-2"></td>
+                    <td className="p-2 text-amber-700">Tổng Thưởng nóng CĐT</td>
+                    <td className="p-2 text-right tabular-nums text-amber-700">
+                      {fmtMoney(paidBonus)}
+                    </td>
+                    <td className="p-2 text-xs text-slate-500">
+                      / kỳ vọng {fmtMoney(expectedBonus)} = {expectedBonus > 0 ? Math.round((paidBonus / expectedBonus) * 100) : 0}%
+                    </td>
+                  </tr>
+                  <tr className="border-t border-slate-300 bg-slate-100 font-bold">
+                    <td className="p-2"></td>
+                    <td className="p-2">TỔNG</td>
                     <td className="p-2 text-right tabular-nums text-green-700">
                       {fmtMoney(totalPaidInCash)}
                     </td>
