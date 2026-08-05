@@ -1349,36 +1349,59 @@ export default async function ProductDetailPage({
                       </tr>
                     );
                   })}
-                  <tr className="border-t-2 border-slate-300 bg-blue-50 font-semibold">
-                    <td className="p-2"></td>
-                    <td className="p-2 text-blue-700">Tổng HH sale</td>
-                    <td className="p-2 text-right tabular-nums text-blue-700">
-                      {fmtMoney(paidHHSale)}
-                    </td>
-                    <td className="p-2 text-xs text-slate-500">
-                      / kỳ vọng {fmtMoney(expectedHHSale)} = {expectedHHSale > 0 ? Math.round((paidHHSale / expectedHHSale) * 100) : 0}%
-                    </td>
-                  </tr>
-                  <tr className="bg-amber-50 font-semibold">
-                    <td className="p-2"></td>
-                    <td className="p-2 text-amber-700">Tổng Thưởng nóng CĐT</td>
-                    <td className="p-2 text-right tabular-nums text-amber-700">
-                      {fmtMoney(paidBonus)}
-                    </td>
-                    <td className="p-2 text-xs text-slate-500">
-                      / kỳ vọng {fmtMoney(expectedBonus)} = {expectedBonus > 0 ? Math.round((paidBonus / expectedBonus) * 100) : 0}%
-                    </td>
-                  </tr>
-                  <tr className="border-t border-slate-300 bg-slate-100 font-bold">
-                    <td className="p-2"></td>
-                    <td className="p-2">TỔNG</td>
-                    <td className="p-2 text-right tabular-nums text-green-700">
-                      {fmtMoney(totalPaidInCash)}
-                    </td>
-                    <td className="p-2"></td>
-                  </tr>
                 </tbody>
               </table>
+            </div>
+
+            {/* Summary progress cards — tách HH vs Thưởng nóng cho dễ đọc */}
+            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+              {(() => {
+                const hhPct = expectedHHSale > 0 ? Math.min(100, (paidHHSale / expectedHHSale) * 100) : 0;
+                const bnPct = expectedBonus > 0 ? Math.min(100, (paidBonus / expectedBonus) * 100) : 0;
+                return (
+                  <>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <div className="flex items-baseline justify-between mb-1">
+                        <span className="text-xs font-semibold text-blue-800">🔵 HH sale</span>
+                        <span className="text-xs text-slate-600">
+                          <b className="text-blue-700 tabular-nums">{fmtMoney(paidHHSale)}</b>
+                          {" / "}
+                          <span className="tabular-nums">{fmtMoney(expectedHHSale)}</span>
+                        </span>
+                      </div>
+                      <div className="h-2 bg-blue-100 rounded overflow-hidden">
+                        <div className="h-full bg-blue-500" style={{ width: `${hhPct}%` }} />
+                      </div>
+                      <div className="text-right text-xs mt-1 tabular-nums text-blue-700 font-semibold">
+                        {expectedHHSale > 0 ? Math.round((paidHHSale / expectedHHSale) * 100) : 0}%
+                      </div>
+                    </div>
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                      <div className="flex items-baseline justify-between mb-1">
+                        <span className="text-xs font-semibold text-amber-800">🟡 Thưởng nóng CĐT</span>
+                        <span className="text-xs text-slate-600">
+                          <b className="text-amber-700 tabular-nums">{fmtMoney(paidBonus)}</b>
+                          {" / "}
+                          <span className="tabular-nums">{fmtMoney(expectedBonus)}</span>
+                        </span>
+                      </div>
+                      <div className="h-2 bg-amber-100 rounded overflow-hidden">
+                        <div className="h-full bg-amber-500" style={{ width: `${bnPct}%` }} />
+                      </div>
+                      <div className="text-right text-xs mt-1 tabular-nums text-amber-700 font-semibold">
+                        {expectedBonus > 0 ? Math.round((paidBonus / expectedBonus) * 100) : 0}%
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+
+            <div className="mt-2 flex items-center justify-between px-3 py-2 bg-slate-100 rounded-lg">
+              <span className="text-sm font-semibold text-slate-700">TỔNG đã thu</span>
+              <span className="text-lg font-bold tabular-nums text-green-700">
+                {fmtMoney(totalPaidInCash)}
+              </span>
             </div>
           </div>
         )}
