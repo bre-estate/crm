@@ -657,7 +657,12 @@ export default async function ProductDetailPage({
 
           // Base net VAT sau khi trừ admin sale và hỗ trợ khách
           const baseNet = (pmgBase * pmgSaleRate - adminSale) / 1.1 - support;
-          const hhSaleAmt = baseNet * hhRate;
+          // hhSaleAmt: ưu tiên số THỰC từ cost_reconciliations (BCDT source of truth).
+          // Fallback baseNet × hhRate nếu chưa có cost_recon.
+          const actualHHFromRecon = costRecs
+            .filter((r) => r.costType === "sale_commission")
+            .reduce((s, r) => s + Number(r.amountPayableThisTime ?? 0), 0);
+          const hhSaleAmt = actualHHFromRecon > 0 ? actualHHFromRecon : baseNet * hhRate;
           const kpiCeoAmt = baseNet * kpiCeo;
           const kpiTpkdAmt = baseNet * kpiTpkd;
           const kpiAdminAmt = baseNet * kpiAdmin;
