@@ -372,7 +372,7 @@ async function runChecks(): Promise<CheckResult[]> {
       : undefined,
     link:
       spike && maxRow.month
-        ? { href: `/reports/management/${maxRow.month}`, label: `Xem T${maxRow.month}` }
+        ? { href: `/reports/profit-detail?year=2025`, label: `Xem T${maxRow.month}` }
         : undefined,
   });
 

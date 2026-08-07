@@ -28,7 +28,7 @@ const SECTIONS: Section[] = [
     color: "bg-orange-50 border-orange-300",
     reports: [
       {
-        href: "/reports/management",
+        href: "/reports/profit-detail",
         title: "1. Lãi/lỗ (P&L)",
         desc: "Doanh thu − Giá vốn − OPEX. Break-even, cơ cấu chi phí. Nguồn: Kim NKC.",
         gate: "reports",
@@ -95,26 +95,6 @@ const SECTIONS: Section[] = [
         href: "/reports/people",
         title: "Theo nhân sự",
         desc: "Theo phòng + KPI cá nhân NVKD (căn, DT, HH, thưởng, alias)",
-        gate: "reports",
-      },
-      {
-        href: "/reports/time",
-        title: "Theo thời gian",
-        desc: "Ghi nhận doanh thu theo tháng + mùa vụ nhiều năm",
-        gate: "reports",
-      },
-    ],
-  },
-  {
-    key: "legacy",
-    title: "Legacy",
-    icon: "🗂️",
-    color: "bg-slate-50 border-slate-200",
-    reports: [
-      {
-        href: "/reports/overview",
-        title: "Tổng hợp cũ",
-        desc: "8 KPI cards phiên bản cũ. Sẽ thay bằng 5 báo cáo chính trên.",
         gate: "reports",
       },
     ],

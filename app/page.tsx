@@ -205,7 +205,7 @@ export default async function Home({
     ["partners", "/partners", "Đối tác"],
     ["finance", "/finance", "Tài chính"],
     ["employees", "/employees", "Nhân sự"],
-    ["reports.overview", "/reports/overview", "Báo cáo"],
+    ["reports.profit-detail", "/reports/profit-detail", "Báo cáo"],
   ];
   const userAccessible = availablePages.filter(([r]) => canView(r));
 
@@ -250,7 +250,7 @@ export default async function Home({
   }
 
   // Owner: home tối giản — chỉ 3 KPI (Doanh thu / Số căn / Cash).
-  // Chi tiết P&L, OPEX, receivable/payable, xu hướng 6T ở /reports/management.
+  // Chi tiết P&L, OPEX, receivable/payable, xu hướng 6T ở /reports/profit-detail.
   // safe() bảo đảm 1 query fail không blow up cả trang (cold start Vercel +
   // Supabase pool timeout có thể xảy ra).
   const safe = <T,>(p: Promise<T>, fallback: T): Promise<T> =>
@@ -308,7 +308,7 @@ export default async function Home({
 
       {/* Link đến báo cáo full */}
       <div className="text-sm">
-        <Link href="/reports/management" className="text-blue-600 hover:underline">
+        <Link href="/reports/profit-detail" className="text-blue-600 hover:underline">
           Xem báo cáo đầy đủ (P&amp;L, cash flow, xu hướng 6T) →
         </Link>
       </div>
@@ -322,7 +322,7 @@ export default async function Home({
           <QuickLink href="/products" label="Danh sách căn" desc="Xem/thêm căn chốt" />
           <QuickLink href="/revenues" label="Doanh thu" desc="ĐC hoa hồng với CĐT" />
           <QuickLink href="/costs" label="Giá vốn" desc="Trả HH sale team" />
-          <QuickLink href="/reports/management" label="Báo cáo" desc="P&L, cash flow, chi tiết" />
+          <QuickLink href="/reports/profit-detail" label="Báo cáo" desc="P&L, cash flow, chi tiết" />
         </div>
       </div>
     </div>

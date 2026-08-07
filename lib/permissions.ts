@@ -12,7 +12,8 @@ export type Action = "view" | "edit" | "delete";
 export type Role = "owner" | "manager" | "sale" | "admin" | "hr" | "viewer" | "custom";
 
 export const RESOURCES = {
-  "products": "Danh sách căn",
+  "products": "Danh sách căn (sơ cấp)",
+  "secondary-sales": "Bán thứ cấp",
   "revenues": "Doanh thu",
   "costs": "Giá vốn",
   "invoices": "Hóa đơn",
@@ -21,7 +22,8 @@ export const RESOURCES = {
   "employees": "Nhân sự",
   "finance": "Tài chính (Vốn góp / Tài sản / Giao dịch)",
   "reports.overview": "Báo cáo Tổng quan",
-  "reports.management": "Báo cáo Quản trị",
+  "reports.management": "Báo cáo Quản trị (P&L cũ)",
+  "reports.profit-detail": "BC chi tiết lợi nhuận (Format Kim)",
   "reports.people": "Báo cáo Sale/Team",
   "reports.balance-sheet": "Bảng cân đối kế toán",
   "reports.cash-flow": "Dòng tiền",
@@ -40,8 +42,12 @@ export type Resource = keyof typeof RESOURCES;
 // Khớp với structure menu AppSidebar: Giao dịch / Đối tác & Nhân sự / Tài chính / Báo cáo / Hệ thống.
 export const RESOURCE_GROUPS: { label: string; keys: Resource[] }[] = [
   {
-    label: "Giao dịch",
+    label: "Giao dịch sơ cấp",
     keys: ["products", "revenues", "costs", "costs-report", "invoices"],
+  },
+  {
+    label: "Giao dịch thứ cấp",
+    keys: ["secondary-sales"],
   },
   {
     label: "Đối tác & Nhân sự",
@@ -60,6 +66,7 @@ export const RESOURCE_GROUPS: { label: string; keys: Resource[] }[] = [
       "reports.balance-sheet",
       "reports.cash-flow",
       "reports.obligations",
+      "reports.profit-detail",
       "reports.unit-profitability",
       "reports.segments",
     ],

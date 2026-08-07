@@ -6,12 +6,11 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const PAGE_TITLE: Record<string, string> = {
-  "/reports/overview": "Tổng hợp",
+  "/reports/profit-detail": "Lợi nhuận chi tiết",
   "/reports/projects": "Theo dự án",
   "/reports/partners": "Đối tác",
   "/reports/people": "Theo nhân sự",
-  "/reports/time": "Theo thời gian",
-  "/reports/cashflow": "Dòng tiền",
+  "/reports/cash-flow": "Dòng tiền",
 };
 
 export function ReportsHeader({

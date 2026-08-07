@@ -156,7 +156,7 @@ function AlertDetail({ alert }: { alert: Alert }) {
             <b>{s.month}</b>: {fmt(s.amount)} VND ({s.ratio.toFixed(1)} lần trung bình)
             {" · "}
             <Link
-              href={`/reports/management/${s.month}`}
+              href={`/reports/profit-detail?year=2025`}
               className="text-blue-600 hover:underline"
             >
               Xem chi tiết →

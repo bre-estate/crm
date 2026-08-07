@@ -98,7 +98,7 @@ const NAV: NavEntry[] = [
     href: "/reports",
     children: [
       // 5 báo cáo chính quản trị — dùng hàng ngày/tuần
-      { href: "/reports/management", label: "Lãi/lỗ (P&L)", resource: "reports.management" },
+      { href: "/reports/profit-detail", label: "Lợi nhuận chi tiết", resource: "reports.profit-detail" },
       { href: "/reports/cash-flow", label: "Dòng tiền", resource: "reports.cash-flow" },
       { href: "/reports/obligations", label: "Nghĩa vụ tài chính", resource: "reports.obligations" },
       { href: "/reports/balance-sheet", label: "Bảng cân đối", resource: "reports.balance-sheet" },
@@ -108,10 +108,6 @@ const NAV: NavEntry[] = [
       { href: "/reports/people", label: "Theo nhân sự", resource: "reports.people", section: "Chi tiết" },
       { href: "/reports/projects", label: "Theo dự án", resource: "reports.overview", section: "Chi tiết" },
       { href: "/reports/partners", label: "Theo đối tác", resource: "reports.overview", section: "Chi tiết" },
-      { href: "/reports/time", label: "Theo thời gian", resource: "reports.overview", section: "Chi tiết" },
-      // Ít dùng
-      { href: "/reports/overview", label: "Tổng hợp cũ", resource: "reports.overview", section: "Legacy" },
-      { href: "/costs-report", label: "Đối chiếu giá vốn (HR)", resource: "costs-report", section: "Legacy" },
     ],
   },
   {
