@@ -659,5 +659,58 @@ export const bankTransactions = pgTable("bank_transactions", {
 
 export type BankTransaction = typeof bankTransactions.$inferSelect;
 
+// Bán thứ cấp (F2 resale) — flow: khách CK phí → NV nhận → trích % về cty.
+export const secondarySales = pgTable("secondary_sales", {
+  id: serial("id").primaryKey(),
+  unitCode: text("unit_code").notNull(),
+  projectName: text("project_name"),
+  sellPrice: doublePrecision("sell_price").notNull(),
+  salesPerson: text("sales_person").notNull(),
+  depositDate: text("deposit_date"),
+  completionDate: text("completion_date"),
+  recognitionMonth: text("recognition_month"),
+  totalFee: doublePrecision("total_fee").notNull(),
+  commissionRate: doublePrecision("commission_rate").notNull().default(0.5),
+  commissionAmount: doublePrecision("commission_amount").notNull().default(0),
+  companyAmount: doublePrecision("company_amount").notNull().default(0),
+  settlementStatus: text("settlement_status").default("pending"),
+  settledDate: text("settled_date"),
+  status: text("status").default("processing"),
+  note: text("note"),
+  sourceFile: text("source_file"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type SecondarySale = typeof secondarySales.$inferSelect;
+
+// Cho thuê — mỗi HD = 1 record. Gia hạn = record mới.
+export const rentals = pgTable("rentals", {
+  id: serial("id").primaryKey(),
+  unitCode: text("unit_code").notNull(),
+  projectName: text("project_name"),
+  landlordName: text("landlord_name"),
+  landlordPhone: text("landlord_phone"),
+  tenantName: text("tenant_name").notNull(),
+  tenantPhone: text("tenant_phone"),
+  monthlyRent: doublePrecision("monthly_rent").notNull(),
+  leaseTermMonths: integer("lease_term_months").notNull(),
+  leaseStart: text("lease_start").notNull(),
+  leaseEnd: text("lease_end"),
+  deposit: doublePrecision("deposit").default(0),
+  totalFee: doublePrecision("total_fee").notNull(),
+  commissionRate: doublePrecision("commission_rate").notNull().default(0.5),
+  commissionAmount: doublePrecision("commission_amount").notNull().default(0),
+  companyAmount: doublePrecision("company_amount").notNull().default(0),
+  settlementStatus: text("settlement_status").default("pending"),
+  settledDate: text("settled_date"),
+  contractDate: text("contract_date").notNull(),
+  salesPerson: text("sales_person").notNull(),
+  status: text("status").default("active"),
+  note: text("note"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type Rental = typeof rentals.$inferSelect;
+
 // Used in raw SQL for profile auto-create trigger
 export const _sql = sql;

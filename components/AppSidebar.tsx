@@ -74,7 +74,9 @@ const NAV: NavEntry[] = [
   {
     label: "Giao dịch",
     children: [
-      { href: "/products", label: "Căn chốt", resource: "products" },
+      { href: "/products", label: "Căn chốt (sơ cấp)", resource: "products" },
+      { href: "/secondary-sales", label: "Bán thứ cấp", resource: "products" },
+      { href: "/rentals", label: "Cho thuê", resource: "products" },
       { href: "/revenues", label: "Doanh thu", resource: "revenues" },
       { href: "/costs", label: "Giá vốn", resource: "costs" },
       { href: "/invoices", label: "Hóa đơn", resource: "invoices" },
