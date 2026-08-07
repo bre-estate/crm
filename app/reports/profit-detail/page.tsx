@@ -120,8 +120,25 @@ export default async function ProfitDetailPage({ searchParams }: { searchParams:
   const cpTaiChinh = nkcByTk.get("635") ?? 0;
   const cpQlChungKhac = thueVpDichVu + doDungVp + thuePhi + cpKhac + cpTaiChinh;
 
-  // Marketing = phần 6417 KHÔNG phải HH (chi tiết filter description). Fallback rough.
-  const marketing = 0; // TODO parse Kim NKC 6417 rows với keyword "quảng cáo"
+  // Marketing = 6417 rows có description quảng cáo/marketing (không phải HH sale)
+  const [mkt] = await db.execute(sql`
+    SELECT COALESCE(SUM(amount), 0)::float8 as s
+    FROM accounting_journal
+    WHERE debit_account = '6417'
+      AND credit_account != '911'
+      AND entry_date >= ${start}
+      AND entry_date <= ${end}
+      AND (
+        description ILIKE '%quảng cáo%'
+        OR description ILIKE '%quang cao%'
+        OR description ILIKE '%marketing%'
+        OR description ILIKE '%batdongsan%'
+        OR description ILIKE '%sự kiện%'
+        OR description ILIKE '%su kien%'
+        OR description ILIKE '%PR %'
+      )
+  `) as any[];
+  const marketing = Number(mkt?.s ?? 0);
 
   const totalFixed = luongNvkd + luongQlAdmin + marketing + cpQlChungKhac;
 
