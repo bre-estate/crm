@@ -274,21 +274,33 @@ export default function CostForm({
   // Track khi user vừa gõ "-" chưa kèm digit → giữ hiển thị dấu "-"
   const [dashPending, setDashPending] = useState(false);
 
-  // Effective M cho "Đợt này (dự tính)" — số recon lưu:
-  // - Edit mode: dùng M snapshot từ recon (giữ nguyên giá trị đã lưu)
-  // - New mode: dùng M current từ product config
-  const effectiveM = useMemo(() => {
+  // Default M: edit mode = snapshot của recon; new mode = từ product config.
+  const defaultM = useMemo(() => {
     if (isEdit && recon?.pmgLkSaleRate && Number(recon.pmgLkSaleRate) > 0) {
       return Number(recon.pmgLkSaleRate);
     }
     return Number(product?.pmgSaleRate ?? 0) || Number(product?.pmgRate ?? 0);
   }, [isEdit, recon, product]);
 
-  // M current từ config (đại diện target FULL + phần hồi tố nếu M đã tăng)
+  // M input — user có thể nhập tay (%PMG_LK_sale cumulative CĐT đã chi đến đợt).
+  // Chốt 2026-08-07: Excel BCDT cột M cho user nhập tay, không auto tính.
+  // Pattern mới CĐT chi rải rác cần override rate.
+  const [mInput, setMInput] = useState<string>(
+    defaultM > 0 ? (defaultM * 100).toString().replace(".", ",") : "",
+  );
+  const mNum = mInput ? Number(mInput.replace(/,/g, ".")) / 100 : defaultM;
+
+  // Effective M = user input nếu có, else default.
+  const effectiveM = mNum;
+
+  // M current từ config (ceiling HĐ CĐT).
   const currentM = useMemo(
     () => Number(product?.pmgSaleRate ?? 0) || Number(product?.pmgRate ?? 0),
     [product],
   );
+
+  // Warning: user nhập M vượt ceiling HĐ
+  const mExceedsCeiling = mNum > currentM + 0.0001; // tolerance rounding
 
   // Config dùng cho "Đợt này (dự tính)" — dùng effectiveM (snapshot).
   const effectiveCfg = useMemo<ProductConfig>(
@@ -798,8 +810,8 @@ export default function CostForm({
           </div>
         )}
 
-        {/* Nội dung + Tiến độ PMG (N) — ẩn N khi là chi phí flat (thưởng, hỗ trợ khách) */}
-        <div className={isFlatCost ? "" : "grid grid-cols-2 gap-4"}>
+        {/* Nội dung + Tiến độ PMG (N) + %PMG_LK_sale (M) */}
+        <div className={isFlatCost ? "" : "grid grid-cols-3 gap-4"}>
           <Field label="Nội dung thanh toán">
             <input
               name="note"
@@ -820,11 +832,10 @@ export default function CostForm({
                   inputMode="decimal"
                   value={progressN}
                   onChange={(e) => {
-                    // User chủ động sửa N → cho phép auto-sync totalAmt lại
                     manuallyOverriddenRef.current = false;
                     setProgressN(e.target.value);
                   }}
-                  placeholder={maxPrevN > 0 ? `≥ ${(maxPrevN * 100).toFixed(0)}%` : "vd: 90 = khách đã trả CĐT 90%"}
+                  placeholder={maxPrevN > 0 ? `≥ ${(maxPrevN * 100).toFixed(0)}%` : "vd: 90 = khách trả CĐT 90%"}
                   className={`input pr-8 ${isNRegression ? "border-red-400 text-red-700" : ""}`}
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
@@ -833,14 +844,44 @@ export default function CostForm({
               </div>
               {isNRegression ? (
                 <div className="text-[10px] text-red-600 mt-1 font-semibold">
-                  ⚠️ N phải ≥ {(maxPrevN * 100).toFixed(0)}% (tiến độ đợt trước). Không thể lùi tiến độ.
+                  ⚠️ N phải ≥ {(maxPrevN * 100).toFixed(0)}%. Không thể lùi.
                 </div>
               ) : (
                 <div className="text-[10px] text-slate-500 mt-1">
-                  = ((PMG Sale × N − admin_sale)/1,1 − hỗ trợ khách) × % − đã ĐC
+                  % khách đã trả CĐT
                   {maxPrevN > 0 && (
                     <span className="block mt-0.5">Tối thiểu {(maxPrevN * 100).toFixed(0)}% (theo đợt trước)</span>
                   )}
+                </div>
+              )}
+            </Field>
+          )}
+          {!isFlatCost && (
+            <Field label="%PMG_LK_sale (M) — CĐT chi cumulative">
+              <div className="relative">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={mInput}
+                  onChange={(e) => {
+                    manuallyOverriddenRef.current = false;
+                    setMInput(e.target.value);
+                  }}
+                  placeholder={`vd: ${(currentM * 100).toFixed(2)}`}
+                  className={`input pr-8 ${mExceedsCeiling ? "border-amber-400" : ""}`}
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+                  %
+                </span>
+              </div>
+              {mExceedsCeiling ? (
+                <div className="text-[10px] text-amber-700 mt-1 font-semibold">
+                  ⚠️ Vượt ceiling HĐ ({(currentM * 100).toFixed(2)}%).
+                  <span className="block mt-0.5 font-normal">CĐT tăng rate? Sửa PMG_LK ở trang căn trước.</span>
+                </div>
+              ) : (
+                <div className="text-[10px] text-slate-500 mt-1">
+                  Rate cumulative CĐT đã chi đến đợt này. Ceiling HĐ: {(currentM * 100).toFixed(2)}%
                 </div>
               )}
             </Field>
@@ -856,7 +897,7 @@ export default function CostForm({
         <input
           type="hidden"
           name="pmgLkSaleRate"
-          value={pctDisplay(recon?.pmgLkSaleRate ?? product?.pmgSaleRate)}
+          value={String(mNum)}
         />
         <input
           type="hidden"
