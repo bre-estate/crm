@@ -72,14 +72,18 @@ const isGroup = (n: NavEntry): n is NavGroup => "children" in n;
 const NAV: NavEntry[] = [
   { href: "/", label: "Tổng quan" },
   {
-    label: "Giao dịch",
+    label: "Giao dịch sơ cấp",
     children: [
-      { href: "/products", label: "Căn chốt (sơ cấp)", resource: "products" },
-      { href: "/secondary-sales", label: "Bán thứ cấp", resource: "products" },
-      { href: "/rentals", label: "Cho thuê", resource: "products" },
+      { href: "/products", label: "Danh sách căn", resource: "products" },
       { href: "/revenues", label: "Doanh thu", resource: "revenues" },
       { href: "/costs", label: "Giá vốn", resource: "costs" },
       { href: "/invoices", label: "Hóa đơn", resource: "invoices" },
+    ],
+  },
+  {
+    label: "Giao dịch thứ cấp",
+    children: [
+      { href: "/secondary-sales", label: "Danh sách", resource: "products" },
     ],
   },
   {

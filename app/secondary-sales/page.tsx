@@ -39,9 +39,9 @@ export default async function SecondarySalesPage() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard label={`Tổng giao dịch`} value={String(rows.length)} sub={`${pending} chưa settle`} />
-        <StatCard label="Tổng phí HH" value={fmt(totalFee)} sub="Doanh thu về cty (thô)" />
-        <StatCard label="Cty ăn" value={fmt(totalCompany)} sub="Phần cty" color="green" />
-        <StatCard label="NV giữ" value={fmt(totalCommission)} sub="Phần NVKD" color="blue" />
+        <StatCard label="Tổng phí HH" value={fmt(totalFee)} sub="Khách CK cho NV" />
+        <StatCard label="Lợi nhuận" value={fmt(totalCompany)} sub="Phần cty" color="green" />
+        <StatCard label="HH Sale" value={fmt(totalCommission)} sub="Phần NVKD" color="blue" />
       </div>
 
       <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
@@ -54,10 +54,11 @@ export default async function SecondarySalesPage() {
               <th className="text-left p-2">NVKD</th>
               <th className="text-right p-2">Giá bán</th>
               <th className="text-right p-2">Tổng phí</th>
-              <th className="text-right p-2">%HH NV</th>
-              <th className="text-right p-2">NV giữ</th>
-              <th className="text-right p-2">Cty ăn</th>
+              <th className="text-right p-2">%HH Sale</th>
+              <th className="text-right p-2">HH Sale</th>
+              <th className="text-right p-2">Lợi nhuận</th>
               <th className="text-center p-2">Settle</th>
+              <th className="text-center p-2 w-16"></th>
             </tr>
           </thead>
           <tbody>
@@ -79,11 +80,16 @@ export default async function SecondarySalesPage() {
                     <span className="text-[10px] px-2 py-0.5 rounded bg-amber-100 text-amber-700">Chờ</span>
                   )}
                 </td>
+                <td className="p-2 text-center">
+                  <Link href={`/secondary-sales/${r.id}/edit`} className="text-xs text-blue-600 hover:underline">
+                    Sửa
+                  </Link>
+                </td>
               </tr>
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={10} className="p-6 text-center text-slate-500">Chưa có giao dịch. Bấm "+ Thêm giao dịch".</td>
+                <td colSpan={11} className="p-6 text-center text-slate-500">Chưa có giao dịch. Bấm "+ Thêm giao dịch".</td>
               </tr>
             )}
           </tbody>

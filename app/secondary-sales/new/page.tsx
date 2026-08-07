@@ -41,15 +41,15 @@ export default async function NewSecondarySalePage() {
           <div className="grid grid-cols-2 gap-4">
             <Field label="Tổng phí HH (VND) *">
               <input name="total_fee" type="number" required className="input" placeholder="VD: 39200000" />
-              <div className="text-[10px] text-slate-500 mt-1">Doanh thu về cty (thô) — khách CK cho NV</div>
+              <div className="text-[10px] text-slate-500 mt-1">Khách CK cho NV</div>
             </Field>
-            <Field label="% NV giữ (default 50%)">
+            <Field label="% HH Sale (default 50%)">
               <input name="commission_rate" type="number" step="0.01" defaultValue="0.5" className="input" />
               <div className="text-[10px] text-slate-500 mt-1">0.5 = 50%. Bỏ cọc thì 0.3-0.5 (30-50%)</div>
             </Field>
           </div>
           <div className="mt-2 text-xs text-slate-600 bg-slate-50 p-2 rounded">
-            💡 Ví dụ: Tổng phí 40M, %NV 50% → NV giữ 20M, cty ăn 20M
+            💡 Ví dụ: Tổng phí 40M, %HH Sale 50% → HH Sale (NV) 20M, Lợi nhuận (cty) 20M
           </div>
         </div>
 
