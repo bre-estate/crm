@@ -31,12 +31,18 @@ function sheet(name: string): unknown[][] {
   return XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null }) as unknown[][];
 }
 
+// Parse Excel cell → JS Number. Preserves decimal (không round ở đây).
 const toNum = (v: unknown): number => {
   if (v === null || v === undefined || v === "") return 0;
   if (typeof v === "number") return v;
   const n = Number(String(v).replace(/[^\d.-]/g, ""));
   return isNaN(n) ? 0 : n;
 };
+
+// Parse Excel + round về integer. Dùng cho amount fields (VND không có phần lẻ).
+// Chốt 2026-08-08: Excel cells có underlying decimal (do công thức /1.1),
+// display round. Import từng amount cần Math.round để DB match Excel display.
+const toAmount = (v: unknown): number => Math.round(toNum(v));
 const toStr = (v: unknown): string => (v == null ? "" : String(v).trim());
 const toDateStr = (v: unknown): string | null => {
   if (!v) return null;
@@ -121,19 +127,19 @@ async function main() {
       continue;
     }
 
-    // Columns
-    const pmgPayable = toNum(row[21]); // V = PMG phải trả (HH sale phần chính)
-    const csVal = toNum(row[23]); // X = customer support
-    const cdtBonusSaleVal = toNum(row[24]); // Y = CĐT thưởng sale (NVKD)
-    const cdtBonusMgrVal = toNum(row[25]); // Z = CĐT thưởng QL
-    const bsVal = toNum(row[26]); // AA = CTY thưởng sale
-    const bmVal = toNum(row[27]); // AB = CTY thưởng quản lý
-    const kpiCeoRate = toNum(row[28]); // AC
-    const kpiTpkdRate = toNum(row[32]); // AG
-    const kpiAdminPct = toNum(row[36]); // AK
-    const totalAmount = toNum(row[38]); // AM = Tổng phải trả
+    // Columns — amounts dùng toAmount (round integer, match Excel display)
+    const pmgPayable = toAmount(row[21]); // V = PMG phải trả (HH sale phần chính)
+    const csVal = toAmount(row[23]); // X = customer support
+    const cdtBonusSaleVal = toAmount(row[24]); // Y = CĐT thưởng sale (NVKD)
+    const cdtBonusMgrVal = toAmount(row[25]); // Z = CĐT thưởng QL
+    const bsVal = toAmount(row[26]); // AA = CTY thưởng sale
+    const bmVal = toAmount(row[27]); // AB = CTY thưởng quản lý
+    const kpiCeoRate = toNum(row[28]); // AC (rate — không round)
+    const kpiTpkdRate = toNum(row[32]); // AG (rate — không round)
+    const kpiAdminPct = toNum(row[36]); // AK (rate — không round)
+    const totalAmount = toAmount(row[38]); // AM = Tổng phải trả
     const payDate = toDateStr(row[39]);
-    const payAmount = toNum(row[40]);
+    const payAmount = toAmount(row[40]);
 
     // Detect the primary cost_type for the row. Priority: specific → generic.
     // 1 dòng có thể chứa 2 loại chi phí gộp (vd HH sale + CĐT thưởng sale = 63.6M).
@@ -157,9 +163,9 @@ async function main() {
     // Excel 1 dòng cost recon = TỔNG chi cho 1 người/đợt, có thể gồm nhiều
     // component. Amount total (AM) = SUM(V + X:AB + AF + AJ + AL).
     // Cần SPLIT thành 1 recon per component, mỗi recon amount = phần đó.
-    const kpiCeoAmt = toNum(row[31]); // AF = KPI CEO còn thanh toán đợt này
-    const kpiTpkdAmt = toNum(row[35]); // AJ = KPI TPKD còn đợt này
-    const kpiAdminAmt = toNum(row[37]); // AL = KPI Admin
+    const kpiCeoAmt = toAmount(row[31]); // AF = KPI CEO còn thanh toán đợt này
+    const kpiTpkdAmt = toAmount(row[35]); // AJ = KPI TPKD còn đợt này
+    const kpiAdminAmt = toAmount(row[37]); // AL = KPI Admin
 
     // Fix 2026-07-29: !== 0 thay > 0 để handle số âm (điều chỉnh giảm).
     if (pmgPayable !== 0) {
@@ -222,10 +228,10 @@ async function main() {
           adminFeeSale: toNum(row[16]),
           customerSupport: ins.costType === "customer_support" ? csVal : 0,
           fiscalYear: toNum(row[18]) || null,
-          pmgReconciledCumulative: toNum(row[19]),
-          pmgThisTime: toNum(row[20]),
+          pmgReconciledCumulative: toAmount(row[19]),
+          pmgThisTime: toAmount(row[20]),
           pmgPayable: ins.costType === "sale_commission" ? pmgPayable : 0,
-          pmgRemaining: toNum(row[22]),
+          pmgRemaining: toAmount(row[22]),
           kpiRate: ins.kpiRate,
           kpiAmount: ins.kpiAmount,
           amountPayableThisTime: ins.amount,
