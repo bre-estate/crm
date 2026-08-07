@@ -131,6 +131,7 @@ const NAV: NavEntry[] = [
       { href: "/admin/users", label: "Quản lý user", ownerOnly: true },
       { href: "/admin/data-checks", label: "Kiểm tra dữ liệu", ownerOnly: true },
       { href: "/help/accounting-basics", label: "📚 Kế toán căn bản" },
+      { href: "/help/nhap-doi-chieu-gia-von", label: "📖 Nhập ĐC giá vốn" },
       { href: "/admin/activity", label: "Lịch sử hoạt động", resource: "admin.activity" },
     ],
   },
