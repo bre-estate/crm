@@ -7,6 +7,7 @@ import MoneyInput from "@/components/MoneyInput";
 import SearchableSelect from "@/components/SearchableSelect";
 import { costTypeLabel, fmtMoney, fmtPct, fmtPctTight, fmtPctRaw } from "@/lib/format";
 import { computeLuyKe, type ProductConfig, type CostType } from "@/lib/costCalc";
+import { sanitizeDecimalInput } from "@/lib/decimal-input";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -833,9 +834,9 @@ export default function CostForm({
                   value={progressN}
                   onChange={(e) => {
                     manuallyOverriddenRef.current = false;
-                    setProgressN(e.target.value);
+                    setProgressN(sanitizeDecimalInput(e.target.value));
                   }}
-                  placeholder={maxPrevN > 0 ? `≥ ${(maxPrevN * 100).toFixed(0)}%` : "vd: 90 = khách trả CĐT 90%"}
+                  placeholder={maxPrevN > 0 ? `≥ ${(maxPrevN * 100).toFixed(0)}` : "vd: 90 (khách trả 90%)"}
                   className={`input pr-8 ${isNRegression ? "border-red-400 text-red-700" : ""}`}
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
@@ -857,7 +858,7 @@ export default function CostForm({
             </Field>
           )}
           {!isFlatCost && (
-            <Field label="%PMG_LK_sale (M) — CĐT chi cumulative">
+            <Field label="%PMG_LK_sale (M) — CĐT đã chi lũy kế">
               <div className="relative">
                 <input
                   type="text"
@@ -865,9 +866,9 @@ export default function CostForm({
                   value={mInput}
                   onChange={(e) => {
                     manuallyOverriddenRef.current = false;
-                    setMInput(e.target.value);
+                    setMInput(sanitizeDecimalInput(e.target.value));
                   }}
-                  placeholder={`vd: ${(currentM * 100).toFixed(2)}`}
+                  placeholder={`vd: ${(currentM * 100).toFixed(2).replace(".", ",")}`}
                   className={`input pr-8 ${mExceedsCeiling ? "border-amber-400" : ""}`}
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
@@ -876,12 +877,12 @@ export default function CostForm({
               </div>
               {mExceedsCeiling ? (
                 <div className="text-[10px] text-amber-700 mt-1 font-semibold">
-                  ⚠️ Vượt ceiling HĐ ({(currentM * 100).toFixed(2)}%).
-                  <span className="block mt-0.5 font-normal">CĐT tăng rate? Sửa PMG_LK ở trang căn trước.</span>
+                  ⚠️ Vượt mức tối đa HĐ ({(currentM * 100).toFixed(2)}%).
+                  <span className="block mt-0.5 font-normal">CĐT tăng tỷ lệ? Sửa %PMG_LK ở trang căn trước.</span>
                 </div>
               ) : (
                 <div className="text-[10px] text-slate-500 mt-1">
-                  Rate cumulative CĐT đã chi đến đợt này. Ceiling HĐ: {(currentM * 100).toFixed(2)}%
+                  Tỷ lệ lũy kế CĐT đã chi đến đợt này. Mức tối đa HĐ: {(currentM * 100).toFixed(2)}%
                 </div>
               )}
             </Field>
