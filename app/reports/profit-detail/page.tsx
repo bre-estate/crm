@@ -7,7 +7,7 @@
  * Xem lib/transaction-classifier.ts classifyNkc() để hiểu logic.
  */
 import { db } from "@/lib/db";
-import { accountingJournal } from "@/lib/schema";
+import { accountingJournal, yearEndAccruals, yearEndOtherAccruals } from "@/lib/schema";
 import { sql, and, gte, lte, ne } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { notFound } from "next/navigation";
@@ -78,6 +78,47 @@ export default async function ProfitDetailPage({ searchParams }: { searchParams:
 
   const byKey = new Map<CategoryKey, number>();
   for (const r of rows) byKey.set((r.category ?? "opex_khac") as CategoryKey, Number(r.total));
+
+  // Nguồn 3: Trích trước cuối kỳ (Kim's breakdown from "251231_Trich truoc 335.xlsx")
+  // Sum theo bucket, add vào NKC bucket đã có
+  const [accrual] = await db
+    .select({
+      hh: sql<number>`coalesce(sum(hh_sale),0)::float8`,
+      cdt: sql<number>`coalesce(sum(cdt_bonus_sale),0)::float8`,
+      ql: sql<number>`coalesce(sum(cty_bonus_ql),0)::float8`,
+      ceo: sql<number>`coalesce(sum(kpi_ceo),0)::float8`,
+      tpkd: sql<number>`coalesce(sum(kpi_tpkd),0)::float8`,
+      admin: sql<number>`coalesce(sum(bonus_admin),0)::float8`,
+      hoTro: sql<number>`coalesce(sum(customer_support),0)::float8`,
+    })
+    .from(yearEndAccruals)
+    .where(and(
+      gte(yearEndAccruals.accrualDate, start),
+      lte(yearEndAccruals.accrualDate, end),
+    ));
+
+  const otherAccruals = await db
+    .select({ category: yearEndOtherAccruals.category, sum: sql<number>`coalesce(sum(amount),0)::float8` })
+    .from(yearEndOtherAccruals)
+    .where(and(
+      gte(yearEndOtherAccruals.accrualDate, start),
+      lte(yearEndOtherAccruals.accrualDate, end),
+    ))
+    .groupBy(yearEndOtherAccruals.category);
+
+  // Merge: add accrual sums vào từng bucket
+  const addToBucket = (k: CategoryKey, amount: number) => {
+    byKey.set(k, (byKey.get(k) ?? 0) + amount);
+  };
+  addToBucket("hh_sale", Number(accrual?.hh ?? 0));
+  addToBucket("cdt_thuong_nvkd", Number(accrual?.cdt ?? 0));
+  addToBucket("cty_thuong_ql", Number(accrual?.ql ?? 0));
+  addToBucket("cty_thuong_ceo", Number(accrual?.ceo ?? 0));
+  addToBucket("cty_thuong_tpkd", Number(accrual?.tpkd ?? 0));
+  addToBucket("cty_thuong_admin", Number(accrual?.admin ?? 0));
+  addToBucket("ho_tro_khach", Number(accrual?.hoTro ?? 0));
+  for (const o of otherAccruals) addToBucket(o.category as CategoryKey, Number(o.sum));
+
   const get = (k: CategoryKey) => byKey.get(k) ?? 0;
 
   // Kim BC 2.x giá vốn trực tiếp

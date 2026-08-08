@@ -724,6 +724,41 @@ export const rentals = pgTable("rentals", {
 });
 export type Rental = typeof rentals.$inferSelect;
 
+// Trích trước cuối kỳ theo căn (Kim's breakdown từ file "251231_Trich truoc 335.xlsx").
+// Mỗi row = 1 căn với 7 cột breakdown → sum → bucket P&L khớp Kim BC.
+export const yearEndAccruals = pgTable("year_end_accruals", {
+  id: serial("id").primaryKey(),
+  accrualDate: date("accrual_date").notNull(),
+  unitCode: text("unit_code").notNull(),
+  projectName: text("project_name"),
+  partnerName: text("partner_name"),
+  employeeName: text("employee_name"),
+  hhSale: doublePrecision("hh_sale").default(0),
+  cdtBonusSale: doublePrecision("cdt_bonus_sale").default(0),
+  ctyBonusQl: doublePrecision("cty_bonus_ql").default(0),
+  kpiCeo: doublePrecision("kpi_ceo").default(0),
+  kpiTpkd: doublePrecision("kpi_tpkd").default(0),
+  bonusAdmin: doublePrecision("bonus_admin").default(0),
+  customerSupport: doublePrecision("customer_support").default(0),
+  totalAmount: doublePrecision("total_amount").default(0),
+  sourceFile: text("source_file"),
+  sourceRow: integer("source_row"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type YearEndAccrual = typeof yearEndAccruals.$inferSelect;
+
+export const yearEndOtherAccruals = pgTable("year_end_other_accruals", {
+  id: serial("id").primaryKey(),
+  accrualDate: date("accrual_date").notNull(),
+  description: text("description").notNull(),
+  category: text("category").notNull(),
+  amount: doublePrecision("amount").notNull(),
+  sourceFile: text("source_file"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type YearEndOtherAccrual = typeof yearEndOtherAccruals.$inferSelect;
+
 // CP quản lý (lương, marketing, thuê VP...). Nhập tay hoặc reverse-import từ bank.
 export const generalExpenses = pgTable("general_expenses", {
   id: serial("id").primaryKey(),

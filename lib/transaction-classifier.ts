@@ -358,6 +358,13 @@ export function classifyNkc(input: {
     return { category: "chuyen_noi_bo", confidence: 100, matchedPattern: "911_ket_chuyen" };
   }
 
+  // ═══ TRÍCH TRƯỚC CUỐI KỲ (credit=335) → EXCLUDE khỏi P&L ═══
+  // Đã có breakdown chính xác trong bảng year_end_accruals (import từ file Kim).
+  // Nếu để rows này ở NKC bucket sẽ bị DOUBLE COUNT.
+  if (credit === "335" || /trích trước|trich truoc/i.test(desc)) {
+    return { category: "chuyen_noi_bo", confidence: 100, matchedPattern: "trich_truoc_335" };
+  }
+
   // ═══ SEMANTIC CHECK TRƯỚC TK CODE ═══
   // Kim đôi khi hạch toán chi phí P&L vào TK balance sheet (335 chi phí trả trước → phân bổ).
   // Row TK 335 với "hỗ trợ khách" vẫn phải tính vào Kim BC 2.2. Vậy check description trước.
