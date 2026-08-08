@@ -23,32 +23,38 @@ type Section = {
 const SECTIONS: Section[] = [
   {
     key: "core",
-    title: "4 báo cáo quản trị chính",
+    title: "5 báo cáo quản trị chính",
     icon: "⭐",
     color: "bg-orange-50 border-orange-300",
     reports: [
       {
         href: "/reports/profit-detail",
-        title: "1. Lãi/lỗ (P&L)",
-        desc: "Doanh thu − Giá vốn − OPEX. Break-even, cơ cấu chi phí. Nguồn: Kim NKC.",
+        title: "1. Lãi/lỗ quản trị (Management P&L)",
+        desc: "DT − Giá vốn − OPEX. Chuẩn dòng tiền (cash basis) từ sao kê bank. Khớp format Kim BC.",
         gate: "reports",
       },
       {
         href: "/reports/cash-flow",
-        title: "2. Dòng tiền",
-        desc: "Số dư + runway + vào/ra bank per tháng + phân loại + top nhận tiền. Từ sao kê Techcombank.",
+        title: "2. Dòng tiền (Cash flow)",
+        desc: "Số dư + runway + vào/ra bank per tháng + phân loại. Từ sao kê Techcombank.",
         gate: "owner",
       },
       {
-        href: "/reports/obligations",
-        title: "3. Nghĩa vụ tài chính",
-        desc: "Còn thu CĐT / Còn nợ sale team / Nợ thuế / BHXH. Vị thế ròng.",
+        href: "/reports/ar-aging",
+        title: "3. Tuổi nợ phải thu (A/R aging)",
+        desc: "CĐT nào còn nợ mình bao lâu. Bucket 0-30 / 31-60 / 61-90 / >90 ngày.",
+        gate: "reports",
+      },
+      {
+        href: "/reports/ap-aging",
+        title: "4. Tuổi nợ phải trả (A/P aging)",
+        desc: "Mình còn nợ sale team + thuế + BHXH bao lâu. Ưu tiên trả >90 trước.",
         gate: "owner",
       },
       {
         href: "/reports/balance-sheet",
-        title: "4. Bảng cân đối kế toán",
-        desc: "Tài sản = Nợ + Vốn. Theo TT200 Kim NKC.",
+        title: "5. Bảng cân đối quản trị",
+        desc: "Tài sản = Nợ + Vốn tại thời điểm. Nguồn Kim NKC.",
         gate: "reports",
       },
     ],

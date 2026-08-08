@@ -6,11 +6,14 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const PAGE_TITLE: Record<string, string> = {
-  "/reports/profit-detail": "Lợi nhuận chi tiết",
+  "/reports/profit-detail": "Lãi/lỗ quản trị",
+  "/reports/cash-flow": "Dòng tiền",
+  "/reports/ar-aging": "Tuổi nợ phải thu",
+  "/reports/ap-aging": "Tuổi nợ phải trả",
+  "/reports/balance-sheet": "Bảng cân đối",
   "/reports/projects": "Theo dự án",
   "/reports/partners": "Đối tác",
   "/reports/people": "Theo nhân sự",
-  "/reports/cash-flow": "Dòng tiền",
 };
 
 export function ReportsHeader({

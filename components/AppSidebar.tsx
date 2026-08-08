@@ -94,15 +94,15 @@ const NAV: NavEntry[] = [
     ],
   },
   {
-    label: "Báo cáo",
+    label: "Báo cáo quản trị",
     href: "/reports",
     children: [
-      // 5 báo cáo chính quản trị — dùng hàng ngày/tuần
-      { href: "/reports/profit-detail", label: "Lợi nhuận chi tiết", resource: "reports.profit-detail" },
+      { href: "/reports/profit-detail", label: "Lãi/lỗ (cash basis)", resource: "reports.profit-detail" },
       { href: "/reports/cash-flow", label: "Dòng tiền", resource: "reports.cash-flow" },
-      { href: "/reports/obligations", label: "Nghĩa vụ tài chính", resource: "reports.obligations" },
+      { href: "/reports/ar-aging", label: "Tuổi nợ phải thu", resource: "reports.ar-aging" },
+      { href: "/reports/ap-aging", label: "Tuổi nợ phải trả", resource: "reports.ap-aging" },
       { href: "/reports/balance-sheet", label: "Bảng cân đối", resource: "reports.balance-sheet" },
-      // Deep dives — khi cần soi chi tiết
+      // Deep dives (Phase 2 sắp gom lại thành Sales report + Commission)
       { href: "/reports/unit-profitability", label: "Lãi từng căn", resource: "reports.unit-profitability", section: "Chi tiết" },
       { href: "/reports/segments", label: "Phân khúc căn", resource: "reports.segments", section: "Chi tiết" },
       { href: "/reports/people", label: "Theo nhân sự", resource: "reports.people", section: "Chi tiết" },
@@ -118,6 +118,7 @@ const NAV: NavEntry[] = [
       { href: "/finance/capital", label: "Vốn góp founder", resource: "finance" },
       { href: "/finance/assets", label: "Tài sản cố định", resource: "finance" },
       { href: "/finance/transactions", label: "Giao dịch tài chính", resource: "finance" },
+      { href: "/finance/bank-review", label: "Đối chiếu sao kê bank", resource: "finance" },
     ],
   },
   {

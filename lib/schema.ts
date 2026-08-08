@@ -5,6 +5,7 @@ import {
   serial,
   doublePrecision,
   timestamp,
+  date,
   boolean,
   uuid,
   jsonb,
@@ -654,6 +655,13 @@ export const bankTransactions = pgTable("bank_transactions", {
   vat: doublePrecision("vat"),
   runningBalance: doublePrecision("running_balance"),
   sourceFile: text("source_file").notNull(),
+  // Category + reconciliation (added 2026-08-08)
+  category: text("category"),
+  categorySource: text("category_source"),
+  categoryConfidence: integer("category_confidence"),
+  linkedEventType: text("linked_event_type"),
+  linkedEventId: integer("linked_event_id"),
+  reconciliationStatus: text("reconciliation_status").default("unmatched"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -711,6 +719,34 @@ export const rentals = pgTable("rentals", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 export type Rental = typeof rentals.$inferSelect;
+
+// CP quản lý (lương, marketing, thuê VP...). Nhập tay hoặc reverse-import từ bank.
+export const generalExpenses = pgTable("general_expenses", {
+  id: serial("id").primaryKey(),
+  expenseDate: date("expense_date").notNull(),
+  amount: doublePrecision("amount").notNull(),
+  category: text("category").notNull(),
+  description: text("description").notNull(),
+  beneficiaryName: text("beneficiary_name"),
+  beneficiaryAccount: text("beneficiary_account"),
+  paymentMethod: text("payment_method").default("bank"),
+  status: text("status").notNull().default("draft"),
+  requestedBy: uuid("requested_by"),
+  approverId: uuid("approver_id"),
+  approvedAt: timestamp("approved_at", { withTimezone: true }),
+  rejectedReason: text("rejected_reason"),
+  paidAt: timestamp("paid_at", { withTimezone: true }),
+  bankTransactionId: integer("bank_transaction_id").references(() => bankTransactions.id, { onDelete: "set null" }),
+  attachmentUrl: text("attachment_url"),
+  invoiceNumber: text("invoice_number"),
+  invoiceDate: date("invoice_date"),
+  note: text("note"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid("created_by"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type GeneralExpense = typeof generalExpenses.$inferSelect;
+export type NewGeneralExpense = typeof generalExpenses.$inferInsert;
 
 // Used in raw SQL for profile auto-create trigger
 export const _sql = sql;

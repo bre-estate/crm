@@ -23,13 +23,16 @@ export const RESOURCES = {
   "finance": "Tài chính (Vốn góp / Tài sản / Giao dịch)",
   "reports.overview": "Báo cáo Tổng quan",
   "reports.management": "Báo cáo Quản trị (P&L cũ)",
-  "reports.profit-detail": "BC chi tiết lợi nhuận (Format Kim)",
+  "reports.profit-detail": "Lãi/lỗ quản trị (Management P&L)",
+  "reports.cash-flow": "Dòng tiền",
+  "reports.ar-aging": "Tuổi nợ phải thu (A/R aging)",
+  "reports.ap-aging": "Tuổi nợ phải trả (A/P aging)",
   "reports.people": "Báo cáo Sale/Team",
   "reports.balance-sheet": "Bảng cân đối kế toán",
-  "reports.cash-flow": "Dòng tiền",
   "reports.obligations": "Nghĩa vụ tài chính (còn thu/nợ)",
   "reports.unit-profitability": "Lãi/lỗ per căn",
   "reports.segments": "Phân khúc căn",
+  "finance.bank-review": "Đối chiếu sao kê bank",
   "costs-report": "Đối chiếu giá vốn",
   "alerts": "Cảnh báo",
   "admin.users": "Quản lý user",
@@ -60,15 +63,17 @@ export const RESOURCE_GROUPS: { label: string; keys: Resource[] }[] = [
   {
     label: "Báo cáo",
     keys: [
-      "reports.overview",
-      "reports.management",
-      "reports.people",
-      "reports.balance-sheet",
-      "reports.cash-flow",
-      "reports.obligations",
       "reports.profit-detail",
+      "reports.cash-flow",
+      "reports.ar-aging",
+      "reports.ap-aging",
+      "reports.balance-sheet",
+      "reports.people",
       "reports.unit-profitability",
       "reports.segments",
+      "reports.obligations",
+      "reports.overview",
+      "reports.management",
     ],
   },
   {
@@ -217,6 +222,7 @@ export function resourceOfPath(path: string): Resource | "reports.*" | null {
   if (p.startsWith("/partners")) return "partners";
   if (p.startsWith("/departments")) return "departments";
   if (p.startsWith("/employees")) return "employees";
+  // /finance/bank-review là tool riêng, nhưng vẫn dùng permission "finance"
   if (p.startsWith("/finance")) return "finance";
   if (p.startsWith("/alerts")) return "alerts";
 
