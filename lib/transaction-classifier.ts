@@ -358,25 +358,44 @@ export function classifyNkc(input: {
     return { category: "chuyen_noi_bo", confidence: 100, matchedPattern: "911_ket_chuyen" };
   }
 
-  // ═══ Debit KHÔNG PHẢI expense (balance sheet accounts) → chuyen_noi_bo ═══
-  // TT200: 1xx tiền/phải thu/hàng tồn kho, 2xx TSCĐ, 3xx phải trả, 4xx vốn
-  // Chỉ classify P&L khi debit là 6xx (chi phí), 5xx (DT), 7xx (thu khác), 8xx
-  const debitCode = parseInt(debit) || 0;
-  // TT200: TK 100-499 (3 chữ số) hoặc 1000-4999 (4 chữ số) đều là balance sheet
-  // 100-199 tiền, 200-299 TSCĐ, 300-399 phải trả, 400-499 vốn
-  const isBalanceSheet =
-    (debitCode >= 100 && debitCode < 500) ||
-    (debitCode >= 1000 && debitCode < 5000);
-  const isRevenue = (debitCode >= 500 && debitCode < 600) || (debitCode >= 5000 && debitCode < 6000) || debitCode === 711;
-  if (isBalanceSheet) {
-    // Debit 3xx = tăng phải trả (VD 3341 khi trích lương) — thực ra phần chi phí đã ghi ở TK 6xxx bên credit
-    // Debit 1xx = tăng tiền (VD nhận thanh toán)
-    // Đây không phải chi phí P&L, đây là balance sheet movement
+  // ═══ SEMANTIC CHECK TRƯỚC TK CODE ═══
+  // Kim đôi khi hạch toán chi phí P&L vào TK balance sheet (335 chi phí trả trước → phân bổ).
+  // Row TK 335 với "hỗ trợ khách" vẫn phải tính vào Kim BC 2.2. Vậy check description trước.
+  if (/hỗ trợ khách hàng|ho tro khach hang|hỗ trợ khách|ho tro khach/i.test(desc)) {
+    return { category: "ho_tro_khach", confidence: 92, matchedPattern: "semantic:ho_tro_khach" };
+  }
+  if (/(trích trước|trich truoc).*(hỗ trợ|ho tro).*(khách|khach|căn|can)/i.test(desc)) {
+    return { category: "ho_tro_khach", confidence: 92, matchedPattern: "semantic:trich_ho_tro_khach" };
+  }
+  if (/BRE thanh toan ho tro can|BRE thanh toán hỗ trợ căn/i.test(desc)) {
+    return { category: "ho_tro_khach", confidence: 92, matchedPattern: "semantic:BRE_ho_tro_can" };
+  }
+
+  // ═══ Phân loại theo CHỮ ĐẦU của TK code (TT200 standard) ═══
+  // TK 5 chữ số (11211 = Techcombank) → check first char, không phải range
+  // 1: TS ngắn hạn | 2: TS dài hạn | 3: Nợ phải trả | 4: Vốn CSH
+  // 5: DT | 6: Chi phí | 7: Thu khác | 8: Chi khác | 9: kết chuyển (đã catch trên)
+  const debitFirst = debit.charAt(0);
+  const creditFirst = credit.charAt(0);
+
+  // Debit 1xxx/2xxx/3xxx/4xxx = balance sheet
+  if (["1", "2", "3", "4"].includes(debitFirst)) {
+    // Trừ khi credit là 5xxx (DT) — thu tiền/tăng phải thu do bán hàng → dt_hh_so_cap
+    if (creditFirst === "5") {
+      return { category: "dt_hh_so_cap", confidence: 92, matchedPattern: "credit:5xx_revenue" };
+    }
+    // Còn lại là balance sheet movement (nhận HH từ CĐT, giữ hộ khách, trả nợ, kết chuyển VAT...)
     return { category: "chuyen_noi_bo", confidence: 90, matchedPattern: `tk:${debit}_balance_sheet` };
   }
-  if (isRevenue) {
-    return { category: "dt_hh_so_cap", confidence: 90, matchedPattern: `tk:${debit}_revenue` };
+  // Debit 5xxx = giảm DT (hiếm — chiết khấu / trả lại)
+  if (debitFirst === "5") {
+    return { category: "dt_hh_so_cap", confidence: 82, matchedPattern: `tk:${debit}_dt_giam` };
   }
+  // Debit 7xx = thu khác
+  if (debitFirst === "7") {
+    return { category: "khac_thu", confidence: 82, matchedPattern: `tk:${debit}_thu_khac` };
+  }
+  // Debit 6xxx, 8xx → tiếp tục xuống check bucket cụ thể
 
   // ═══ Debit TK cứng — TT200 mapping ═══
   // 6421 = Chi phí nhân viên QLDN (Kim BC 4.3) — LUÔN là lương QL/Admin
