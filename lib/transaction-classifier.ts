@@ -453,13 +453,24 @@ export function classifyNkc(input: {
     if (/thưởng hành chính|thuong hanh chinh|thưởng admin|kpi admin/i.test(desc)) {
       return { category: "cty_thuong_admin", confidence: 92, matchedPattern: "6417+admin" };
     }
-    // Thưởng KPI TPKD
-    if (/thưởng kpi|thuong kpi|kpi tpkd|kpi ql/i.test(desc)) {
-      return { category: "cty_thuong_tpkd", confidence: 90, matchedPattern: "6417+kpi_tpkd" };
+    // Thưởng KPI GẮN VỚI CĂN → hh_sale (hoa hồng)
+    // VD: "BRE TT hoa hong can B.28.18 TT AVIO + Thuong KPI QL thang 8+9+10"
+    if (/(hoa hong|hoa hồng).*(kpi|thưởng kpi|thuong kpi)/i.test(desc) ||
+        /(kpi).*(can|căn)\s*[a-z]?\.?\d/i.test(desc)) {
+      return { category: "hh_sale", confidence: 88, matchedPattern: "6417+hh+kpi" };
     }
-    // Thưởng QL sàn (nóng)
+    // Thưởng KPI thuần túy (không gắn căn)
+    if (/thưởng kpi|thuong kpi|kpi tpkd|kpi ql|trích trước.*kpi|trich truoc.*kpi/i.test(desc)) {
+      return { category: "cty_thuong_tpkd", confidence: 82, matchedPattern: "6417+kpi_fixed" };
+    }
+    // Thưởng nóng QL SÀN GẮN VỚI CĂN CỤ THỂ → hh_sale (Kim BC 2.1)
+    // "BRE thanh toan Thuong nong QL can B.11.06 TT AVIO" → HH sale theo căn
+    if (/(thưởng nóng|thuong nong).*(can|căn)\s*[a-z]?\.?\d/i.test(desc)) {
+      return { category: "hh_sale", confidence: 90, matchedPattern: "6417+thuong_nong_theo_can" };
+    }
+    // Thưởng QL sàn CỐ ĐỊNH (không gắn căn) → cty_thuong_ql (Kim BC 2.5)
     if (/thưởng nóng|thuong nong|thưởng ql sàn|thuong ql san|thưởng quản lý sàn|thuong quan ly san/i.test(desc)) {
-      return { category: "cty_thuong_ql", confidence: 88, matchedPattern: "6417+ql_san" };
+      return { category: "cty_thuong_ql", confidence: 82, matchedPattern: "6417+ql_san_fixed" };
     }
     // Hỗ trợ khách mua BĐS (2.2) — chỉ khi có "khách" rõ ràng
     if (/hỗ trợ khách|ho tro khach|chiết khấu khách|chiet khau khach/i.test(desc)) {
