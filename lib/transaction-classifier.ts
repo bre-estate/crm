@@ -338,6 +338,141 @@ export interface ClassifyResult {
   matchedPattern?: string;
 }
 
+/**
+ * Classify NKC row (accounting_journal) — dùng cho P&L dồn tích khớp Kim BC.
+ * Khác classify() cho bank: NKC không có partner_name, nhưng có debit_account
+ * → TK code là gợi ý mạnh (6411 → luong_nvkd, 6421 → luong_admin...).
+ */
+export function classifyNkc(input: {
+  debitAccount: string;
+  creditAccount: string;
+  description: string;
+  amount: number;
+}): ClassifyResult {
+  const desc = input.description ?? "";
+  const debit = input.debitAccount;
+  const credit = input.creditAccount;
+
+  // Rows kết chuyển cuối kỳ (credit=911) → không tính P&L
+  if (credit === "911" || debit === "911") {
+    return { category: "chuyen_noi_bo", confidence: 100, matchedPattern: "911_ket_chuyen" };
+  }
+
+  // ═══ Debit KHÔNG PHẢI expense (balance sheet accounts) → chuyen_noi_bo ═══
+  // TT200: 1xx tiền/phải thu/hàng tồn kho, 2xx TSCĐ, 3xx phải trả, 4xx vốn
+  // Chỉ classify P&L khi debit là 6xx (chi phí), 5xx (DT), 7xx (thu khác), 8xx
+  const debitCode = parseInt(debit) || 0;
+  // TT200: TK 100-499 (3 chữ số) hoặc 1000-4999 (4 chữ số) đều là balance sheet
+  // 100-199 tiền, 200-299 TSCĐ, 300-399 phải trả, 400-499 vốn
+  const isBalanceSheet =
+    (debitCode >= 100 && debitCode < 500) ||
+    (debitCode >= 1000 && debitCode < 5000);
+  const isRevenue = (debitCode >= 500 && debitCode < 600) || (debitCode >= 5000 && debitCode < 6000) || debitCode === 711;
+  if (isBalanceSheet) {
+    // Debit 3xx = tăng phải trả (VD 3341 khi trích lương) — thực ra phần chi phí đã ghi ở TK 6xxx bên credit
+    // Debit 1xx = tăng tiền (VD nhận thanh toán)
+    // Đây không phải chi phí P&L, đây là balance sheet movement
+    return { category: "chuyen_noi_bo", confidence: 90, matchedPattern: `tk:${debit}_balance_sheet` };
+  }
+  if (isRevenue) {
+    return { category: "dt_hh_so_cap", confidence: 90, matchedPattern: `tk:${debit}_revenue` };
+  }
+
+  // ═══ Debit TK cứng — TT200 mapping ═══
+  // 6421 = Chi phí nhân viên QLDN (Kim BC 4.3) — LUÔN là lương QL/Admin
+  if (debit === "6421") {
+    return { category: "luong_admin", confidence: 95, matchedPattern: "tk:6421" };
+  }
+  // 6423 = Đồ dùng VP (Kim BC 4.5 sub)
+  if (debit === "6423") {
+    return { category: "do_dung_vp", confidence: 95, matchedPattern: "tk:6423" };
+  }
+  // 6425 = Thuế phí lệ phí (Kim BC 4.5 sub)
+  if (debit === "6425") {
+    return { category: "thue_phi_le_phi", confidence: 95, matchedPattern: "tk:6425" };
+  }
+  // 6427 = Dịch vụ mua ngoài QLDN — Kim BC coi là thuê VP (Kim gộp thuê VP + dịch vụ)
+  if (debit === "6427") {
+    // Sub-check: nếu có "thuê" → thue_vp, còn không → dich_vu_ngoai
+    if (/thuê|thue|internet|điện|dien|nước|nuoc|wifi/i.test(desc)) {
+      return { category: "thue_vp", confidence: 90, matchedPattern: "tk:6427+text" };
+    }
+    return { category: "dich_vu_ngoai", confidence: 85, matchedPattern: "tk:6427" };
+  }
+  // 811 = Chi phí khác (Kim BC 4.5 sub)
+  if (debit === "811") {
+    return { category: "opex_khac", confidence: 90, matchedPattern: "tk:811" };
+  }
+  // 635 = Chi phí tài chính (Kim BC 4.5 sub — lãi vay, chênh lệch tỷ giá)
+  if (debit === "635") {
+    return { category: "opex_khac", confidence: 90, matchedPattern: "tk:635" };
+  }
+  // 821 = Chi phí thuế TNDN — không tính P&L trước thuế
+  if (debit === "821" || debit === "8211") {
+    return { category: "thue_tndn", confidence: 100, matchedPattern: "tk:821" };
+  }
+
+  // ═══ 6411 = Chi phí NV bán hàng (bao gồm CTV support) ═══
+  // Từ T9/2025 Kim hạch toán vào đây. Kim BC 4.1 = 6411 + rows "hỗ trợ CTV" của 6417.
+  if (debit === "6411") {
+    return { category: "luong_nvkd", confidence: 95, matchedPattern: "tk:6411" };
+  }
+
+  // ═══ 6417 = Chi phí dịch vụ mua ngoài BH — CẦN CLASSIFY PER DESCRIPTION ═══
+  // Bucket đa dạng: hoa hồng, hỗ trợ CTV (=lương NVKD trước T9), thưởng, marketing...
+  if (debit === "6417") {
+    // Hỗ trợ CTV = lương NVKD nghĩa rộng (Kim BC 4.1)
+    if (/hỗ trợ ctv|ho tro ctv|hỗ trợ NV|ho tro nv|ho tro.*kt/i.test(desc)) {
+      return { category: "luong_nvkd", confidence: 90, matchedPattern: "6417+ho_tro_ctv" };
+    }
+    // Marketing
+    if (/quảng cáo|quang cao|marketing|batdongsan|dji|máy ảnh|may anh|tay cầm chống rung|in tờ rơi|in to roi|propertyguru|bdsvn|sự kiện|su kien/i.test(desc)) {
+      return { category: "marketing", confidence: 90, matchedPattern: "6417+marketing" };
+    }
+    // Thuế TNCN đi kèm chi HH (CT/CTV_Hoa hong)
+    if (/thuế tncn|thue tncn/i.test(desc)) {
+      return { category: "thue_tncn", confidence: 95, matchedPattern: "6417+tncn" };
+    }
+    // Tiếp khách
+    if (/tiếp khách|tiep khach/i.test(desc)) {
+      return { category: "tiep_khach", confidence: 92, matchedPattern: "6417+tiep_khach" };
+    }
+    // Vận chuyển / đi lại
+    if (/vận chuyển|van chuyen/i.test(desc)) {
+      return { category: "di_lai", confidence: 85, matchedPattern: "6417+van_chuyen" };
+    }
+    // Thưởng doanh số CTV (Kim BC 4.2)
+    if (/thưởng doanh số|thuong doanh so|thưởng ds ctv|thuong ds ctv/i.test(desc)) {
+      return { category: "thuong_ds_sale", confidence: 90, matchedPattern: "6417+thuong_ds" };
+    }
+    // Thưởng CEO
+    if (/thưởng ceo|thuong ceo|thưởng giám đốc|thuong giam doc|kpi ceo/i.test(desc)) {
+      return { category: "cty_thuong_ceo", confidence: 92, matchedPattern: "6417+ceo" };
+    }
+    // Thưởng hành chính (Admin)
+    if (/thưởng hành chính|thuong hanh chinh|thưởng admin|kpi admin/i.test(desc)) {
+      return { category: "cty_thuong_admin", confidence: 92, matchedPattern: "6417+admin" };
+    }
+    // Thưởng KPI TPKD
+    if (/thưởng kpi|thuong kpi|kpi tpkd|kpi ql/i.test(desc)) {
+      return { category: "cty_thuong_tpkd", confidence: 90, matchedPattern: "6417+kpi_tpkd" };
+    }
+    // Thưởng QL sàn (nóng)
+    if (/thưởng nóng|thuong nong|thưởng ql sàn|thuong ql san|thưởng quản lý sàn|thuong quan ly san/i.test(desc)) {
+      return { category: "cty_thuong_ql", confidence: 88, matchedPattern: "6417+ql_san" };
+    }
+    // Hỗ trợ khách mua BĐS (2.2) — chỉ khi có "khách" rõ ràng
+    if (/hỗ trợ khách|ho tro khach|chiết khấu khách|chiet khau khach/i.test(desc)) {
+      return { category: "ho_tro_khach", confidence: 92, matchedPattern: "6417+ho_tro_khach" };
+    }
+    // Default 6417: HH sale (Kim BC 2.1) — phần lớn 6417 là hoa hồng bán
+    return { category: "hh_sale", confidence: 75, matchedPattern: "6417+default" };
+  }
+
+  // Fallback
+  return { category: "opex_khac", confidence: 30, matchedPattern: "default" };
+}
+
 export function classify(input: ClassifyInput): ClassifyResult {
   const desc = input.description ?? "";
   // Techcombank convention: debit_amount là số âm cho outflow, credit_amount là số dương cho inflow.

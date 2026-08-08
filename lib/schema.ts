@@ -632,6 +632,10 @@ export const accountingJournal = pgTable("accounting_journal", {
   sourceSheet: text("source_sheet").notNull(),
   sourceRow: integer("source_row").notNull(),
   dedupKey: text("dedup_key").notNull().unique(),
+  // Category classification (added 2026-08-08 để build P&L dồn tích khớp Kim BC)
+  category: text("category"),
+  categorySource: text("category_source"),
+  categoryConfidence: integer("category_confidence"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

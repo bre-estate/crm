@@ -1,10 +1,18 @@
+/**
+ * P&L quản trị (Management P&L) — CHUẨN DỒN TÍCH (accrual) khớp Kim BC.
+ * Nguồn: accounting_journal (NKC Kim làm) đã classify per description → 32 bucket.
+ *
+ * Kim BC classify cross-TK theo bản chất (không theo mã TK):
+ * VD Kim BC 4.1 (345M) = NKC 6411 (198M) + 6417 "hỗ trợ CTV" T1-T8 (156M).
+ * Xem lib/transaction-classifier.ts classifyNkc() để hiểu logic.
+ */
 import { db } from "@/lib/db";
-import { bankTransactions } from "@/lib/schema";
-import { sql, and, gte, lte } from "drizzle-orm";
+import { accountingJournal } from "@/lib/schema";
+import { sql, and, gte, lte, ne } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { CATEGORIES, type CategoryKey } from "@/lib/transaction-classifier";
+import type { CategoryKey } from "@/lib/transaction-classifier";
 
 export const dynamic = "force-dynamic";
 
@@ -39,37 +47,40 @@ export default async function ProfitDetailPage({ searchParams }: { searchParams:
   const month = sp.month ? Number(sp.month) : undefined;
   const { start, end, label } = periodDates(year, period, q, month);
 
-  // Aggregate bank_transactions per category trong khoảng
+  // Nguồn 1: Doanh thu từ revenue_reconciliations (Kim BCDT — sát Kim BC 1.x)
+  const [rev] = await db.execute(sql`
+    SELECT
+      COALESCE(SUM(total_receivable_this_time), 0)::float8 as total,
+      COALESCE(SUM(cdt_bonus_sale), 0)::float8 as bs,
+      COALESCE(SUM(cdt_bonus_manager), 0)::float8 as bm
+    FROM revenue_reconciliations
+    WHERE reconciliation_date BETWEEN ${start} AND ${end}
+  `) as any[];
+  const dtGross = Number(rev?.total ?? 0);
+  const dtNet = dtGross / 1.1;
+  const bonusSaleGross = Number(rev?.bs ?? 0);
+  const bonusMgrGross = Number(rev?.bm ?? 0);
+  const dtNetNoBonus = dtNet - bonusSaleGross / 1.1 - bonusMgrGross / 1.1;
+
+  // Nguồn 2: Chi phí từ accounting_journal đã classify (accrual dồn tích khớp Kim)
   const rows = await db
     .select({
-      category: bankTransactions.category,
-      inflow: sql<number>`coalesce(sum(credit_amount), 0)::float8`,
-      outflow: sql<number>`coalesce(sum(abs(debit_amount)), 0)::float8`,
+      category: accountingJournal.category,
+      total: sql<number>`coalesce(sum(amount), 0)::float8`,
     })
-    .from(bankTransactions)
+    .from(accountingJournal)
     .where(and(
-      gte(bankTransactions.transactionDate, start),
-      lte(bankTransactions.transactionDate, end),
+      gte(accountingJournal.entryDate, start),
+      lte(accountingJournal.entryDate, end),
+      ne(accountingJournal.creditAccount, "911"),
     ))
-    .groupBy(bankTransactions.category);
+    .groupBy(accountingJournal.category);
 
-  const byKey = new Map<CategoryKey, { inflow: number; outflow: number }>();
-  for (const r of rows) {
-    const k = (r.category ?? "chua_phan_loai") as CategoryKey;
-    byKey.set(k, { inflow: Number(r.inflow), outflow: Number(r.outflow) });
-  }
-  const get = (k: CategoryKey) => byKey.get(k)?.outflow ?? 0;
-  const getIn = (k: CategoryKey) => byKey.get(k)?.inflow ?? 0;
+  const byKey = new Map<CategoryKey, number>();
+  for (const r of rows) byKey.set((r.category ?? "opex_khac") as CategoryKey, Number(r.total));
+  const get = (k: CategoryKey) => byKey.get(k) ?? 0;
 
-  // ── 1. DOANH THU ──
-  const dtHhSoCap = getIn("dt_hh_so_cap");
-  const dtThuCap = getIn("dt_thu_cap");
-  const khacThu = getIn("khac_thu");
-  const dtTong = dtHhSoCap + dtThuCap + khacThu;
-  // DT không VAT ≈ /1.1 (giả định HĐ 10% VAT)
-  const dtNet = dtTong / 1.1;
-
-  // ── 2. GIÁ VỐN TRỰC TIẾP (Kim BC 2.x) ──
+  // Kim BC 2.x giá vốn trực tiếp
   const hh_sale = get("hh_sale");
   const ho_tro_khach = get("ho_tro_khach");
   const cdt_thuong_nvkd = get("cdt_thuong_nvkd");
@@ -82,7 +93,7 @@ export default async function ProfitDetailPage({ searchParams }: { searchParams:
     + cty_thuong_ql + cty_thuong_tpkd + cty_thuong_admin + cty_thuong_ceo;
   const laiGop = dtNet - totalCogs;
 
-  // ── 4. CHI PHÍ CỐ ĐỊNH (Kim BC 4.x) ──
+  // Kim BC 4.x chi phí cố định
   const luong_nvkd = get("luong_nvkd");
   const thuong_ds_sale = get("thuong_ds_sale");
   const luong_admin = get("luong_admin");
@@ -100,11 +111,10 @@ export default async function ProfitDetailPage({ searchParams }: { searchParams:
   const totalOpex = totalCogs + totalFixed;
   const laiThuan = dtNet - totalOpex;
 
-  // Chưa phân loại — cảnh báo
-  const chua_phan_loai_out = get("chua_phan_loai") + get("opex_khac");
-  const chua_phan_loai_in = getIn("chua_phan_loai") + getIn("khac_thu");
+  // 6.1 Thuế TNDN
+  const thue_tndn = get("thue_tndn");
+  const laiSauThue = laiThuan - thue_tndn;
 
-  // Toggle links
   const years = [2024, 2025, 2026];
   const quarters = [1, 2, 3, 4];
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -125,7 +135,8 @@ export default async function ProfitDetailPage({ searchParams }: { searchParams:
         </div>
         <h1 className="text-2xl font-bold mt-1">Báo cáo lãi/lỗ quản trị</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Format Kim BC — {label}. <b>Chuẩn dòng tiền</b> (cash basis) từ sao kê bank. Không phải dồn tích.
+          Format Kim BC — {label}. <b>Chuẩn dồn tích (TT200)</b> từ NKC Kim.
+          Nguồn DT: BCDT (Kim). Nguồn chi phí: accounting_journal classify per description.
         </p>
       </div>
 
@@ -134,9 +145,7 @@ export default async function ProfitDetailPage({ searchParams }: { searchParams:
         <div>
           <span className="text-slate-500 mr-2">Năm:</span>
           {years.map((y) => (
-            <Link key={y} href={linkTo({ year: y })} className={`inline-block px-2 py-1 rounded mr-1 ${y === year ? "bg-orange-500 text-white" : "bg-slate-100 hover:bg-slate-200"}`}>
-              {y}
-            </Link>
+            <Link key={y} href={linkTo({ year: y })} className={`inline-block px-2 py-1 rounded mr-1 ${y === year ? "bg-orange-500 text-white" : "bg-slate-100 hover:bg-slate-200"}`}>{y}</Link>
           ))}
         </div>
         <div>
@@ -154,13 +163,11 @@ export default async function ProfitDetailPage({ searchParams }: { searchParams:
         </div>
       </div>
 
-      {/* Warning nếu chưa phân loại còn lớn */}
-      {(chua_phan_loai_out + chua_phan_loai_in > dtTong * 0.1) && (
-        <div className="bg-amber-50 border border-amber-300 rounded p-3 text-sm text-amber-800">
-          ⚠️ Chưa phân loại: {fmt(chua_phan_loai_in)} vào + {fmt(chua_phan_loai_out)} ra.
-          Số liệu chưa chính xác. <Link href="/finance/bank-review" className="underline">→ Đối chiếu bank</Link> để chỉnh tay.
-        </div>
-      )}
+      {/* Cash flow report link */}
+      <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-800 flex items-center justify-between">
+        <span>💡 Đây là <b>P&L dồn tích</b> (khớp Kim BCTC). Muốn xem <b>dòng tiền thực</b> (cash basis)?</span>
+        <Link href="/reports/cash-flow" className="text-blue-700 underline font-medium">→ Xem dòng tiền</Link>
+      </div>
 
       {/* Report table */}
       <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
@@ -175,11 +182,11 @@ export default async function ProfitDetailPage({ searchParams }: { searchParams:
           </thead>
           <tbody>
             <SectionRow stt="1" label="DOANH THU" />
-            <ItemRow stt="1.1" label="Doanh thu gồm VAT (thực thu vào bank)" value={dtTong} />
+            <ItemRow stt="1.1" label="Doanh thu gồm VAT" value={dtGross} />
             <ItemRow stt="1.2" label="Doanh thu không VAT" value={dtNet} highlight />
-            <ItemRow stt="1.a" label="↳ HH sơ cấp (CĐT trả)" value={dtHhSoCap} indent />
-            <ItemRow stt="1.b" label="↳ Thứ cấp" value={dtThuCap} indent />
-            <ItemRow stt="1.c" label="↳ Thu khác" value={khacThu} indent />
+            <ItemRow stt="1.3" label="CĐT thưởng sale (gồm VAT)" value={bonusSaleGross} />
+            <ItemRow stt="1.4" label="CĐT thưởng quản lý (gồm VAT)" value={bonusMgrGross} />
+            <ItemRow stt="1.5" label="Doanh thu không gồm thưởng CĐT" value={dtNetNoBonus} />
 
             <SectionRow stt="2" label="CÁC KHOẢN GIÁ VỐN TRỰC TIẾP" value={totalCogs} pct={pct(totalCogs, dtNet)} />
             <ItemRow stt="2.1" label="Chi phí hoa hồng" value={hh_sale} pctStr={pct(hh_sale, dtNet)} indent />
@@ -209,15 +216,22 @@ export default async function ProfitDetailPage({ searchParams }: { searchParams:
 
             <SectionRow stt="5" label="TỔNG CHI PHÍ HOẠT ĐỘNG" value={totalOpex} pct={pct(totalOpex, dtNet)} />
 
-            <SectionRow stt="6" label="LỢI NHUẬN" value={laiThuan} pct={pct(laiThuan, dtNet)} color={laiThuan >= 0 ? "green" : "red"} />
+            <SectionRow stt="6" label="LỢI NHUẬN TRƯỚC THUẾ" value={laiThuan} pct={pct(laiThuan, dtNet)} color={laiThuan >= 0 ? "green" : "red"} />
+
+            {thue_tndn > 0 && (
+              <>
+                <ItemRow stt="6.1" label="Thuế TNDN" value={thue_tndn} pctStr={pct(thue_tndn, dtNet)} indent />
+                <SectionRow stt="7" label="LỢI NHUẬN SAU THUẾ" value={laiSauThue} pct={pct(laiSauThue, dtNet)} color={laiSauThue >= 0 ? "green" : "red"} />
+              </>
+            )}
           </tbody>
         </table>
       </div>
 
       <div className="text-xs text-slate-500 italic space-y-1">
-        <p>💡 Nguồn: <b>bank_transactions</b> (sao kê Techcombank) — 824 rows đã classify vào 32 bucket.</p>
-        <p>💡 Không tính vào P&L: thuế (TNCN/TNDN/VAT), chuyển nội bộ, rút vốn, hoàn khách — xem trong Cash flow.</p>
-        <p>💡 Nếu số không khớp Kim BC: check <Link href="/finance/bank-review" className="underline">Đối chiếu bank</Link> → tìm bucket sai → chỉnh tay.</p>
+        <p>💡 <b>Nguồn:</b> revenue_reconciliations (DT) + accounting_journal (Kim NKC dồn tích).</p>
+        <p>💡 Classifier áp per description NKC → 32 bucket (xem <Link href="/finance/bank-review" className="underline">Đối chiếu bank</Link> để hiểu logic).</p>
+        <p>💡 Nếu số không khớp Kim BC: có thể Kim gộp cross-TK theo bản chất — cần user override qua UI (sắp bổ sung UI review NKC).</p>
       </div>
     </div>
   );
