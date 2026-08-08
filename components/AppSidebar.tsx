@@ -97,7 +97,8 @@ const NAV: NavEntry[] = [
     label: "Báo cáo quản trị",
     href: "/reports",
     children: [
-      { href: "/reports/profit-detail", label: "Lãi/lỗ (cash basis)", resource: "reports.profit-detail" },
+      { href: "/reports/kpi-dashboard", label: "🎯 KPI Dashboard", resource: "reports.kpi-dashboard" },
+      { href: "/reports/profit-detail", label: "Lãi/lỗ (dồn tích)", resource: "reports.profit-detail" },
       { href: "/reports/cash-flow", label: "Dòng tiền", resource: "reports.cash-flow" },
       { href: "/reports/ar-aging", label: "Tuổi nợ phải thu", resource: "reports.ar-aging" },
       { href: "/reports/ap-aging", label: "Tuổi nợ phải trả", resource: "reports.ap-aging" },
@@ -106,6 +107,7 @@ const NAV: NavEntry[] = [
       { href: "/reports/commissions", label: "Báo cáo hoa hồng", resource: "reports.commissions" },
       { href: "/reports/project-profitability", label: "Lãi/lỗ theo dự án", resource: "reports.project-profitability" },
       { href: "/reports/expenses", label: "Phân tích chi phí", resource: "reports.expenses" },
+      { href: "/reports/break-even", label: "Điểm hòa vốn", resource: "reports.break-even" },
       // Deep dives (Phase 2 sắp gom lại thành Sales report + Commission)
       { href: "/reports/unit-profitability", label: "Lãi từng căn", resource: "reports.unit-profitability", section: "Chi tiết" },
       { href: "/reports/segments", label: "Phân khúc căn", resource: "reports.segments", section: "Chi tiết" },

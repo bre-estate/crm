@@ -1,297 +1,209 @@
+/**
+ * Balance Sheet quản trị (BCĐKT) — chuẩn TT200 B01-DN.
+ * Nguồn: trial_balance (import từ sheet CDPS của Kim). Tài sản = Nợ + Vốn.
+ */
 import { db } from "@/lib/db";
-import { financialTransactions, revenueReconciliations, costReconciliations, paymentsIn, paymentsOut } from "@/lib/schema";
-import { getOwnerEmail } from "@/lib/auth";
+import { trialBalance } from "@/lib/schema";
+import { sql, eq, and } from "drizzle-orm";
+import { getCurrentUser } from "@/lib/auth";
 import { notFound } from "next/navigation";
-import { sql, inArray, eq, ne, and } from "drizzle-orm";
 import Link from "next/link";
-import { netBookValue, accumulatedDepreciation } from "@/lib/accounting/depreciation";
 
 export const dynamic = "force-dynamic";
-
-import { OPEX_MGMT_CATEGORIES } from "@/lib/accounting/categories";
-
 const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
 
-/**
- * BCĐKT snapshot at current date.
- *
- * PHƯƠNG PHÁP (simplified, chưa full accrual accounting):
- *
- * TÀI SẢN:
- * - 111/112 Tiền mặt + TGNH = tính plug từ VCSH - các TS khác - nợ phải trả
- *   (chưa track sao kê thực tế). Nếu âm → có khoản gì miss.
- * - 131 Phải thu khách = sum totalReceivable revenue_reconciliations
- *                      − sum paidIn
- * - 138 Phải thu khác = sum nhóm 14 (đặt cọc hộ khách)
- * - 141 Tạm ứng nội bộ = sum nhóm 15 chi ra (chưa hoàn về)
- * - 153/211 TSCĐ/CCDC = sum nhóm 5 (Thiết bị) — chưa trừ khấu hao
- * - 244 Ký quỹ dài hạn = sum categoryCode='244'
- *
- * NỢ PHẢI TRẢ + VCSH:
- * - 331/334 Phải trả NCC/NLĐ = sum payable cost_reconciliations − paidOut
- * - 3411 Vay chủ = sum nhóm 13 chưa trả (booking chưa hoàn hết)
- * - 411 Vốn góp CSH = sum vốn founder (Triết + Bách chi hộ + 411 + 244 direct)
- * - 421 Lãi/lỗ lũy kế = tổng Lãi thuần lũy kế
- */
-export default async function BalanceSheetPage() {
-  const owner = await getOwnerEmail();
-  if (!owner) notFound();
+type SP = Promise<{ period?: string }>;
 
-  // ===== TÀI SẢN =====
+// TK mapping theo TT200 B01-DN
+const TS_NGAN_HAN = [
+  { code: "111", label: "Tiền mặt" },
+  { code: "112", label: "Tiền gửi ngân hàng" },
+  { code: "131", label: "Phải thu khách hàng" },
+  { code: "133", label: "Thuế GTGT được khấu trừ" },
+  { code: "138", label: "Phải thu khác" },
+  { code: "141", label: "Tạm ứng nội bộ" },
+  { code: "152", label: "Nguyên vật liệu" },
+  { code: "153", label: "Công cụ dụng cụ" },
+  { code: "242", label: "Chi phí trả trước" },
+];
+const TS_DAI_HAN = [
+  { code: "211", label: "TSCĐ hữu hình" },
+  { code: "213", label: "TSCĐ vô hình" },
+  { code: "244", label: "Cầm cố, ký quỹ, ký cược dài hạn" },
+];
+const NPT = [
+  { code: "331", label: "Phải trả người bán" },
+  { code: "333", label: "Thuế và các khoản phải nộp NN" },
+  { code: "334", label: "Phải trả người lao động" },
+  { code: "335", label: "Chi phí phải trả (trích trước)" },
+  { code: "338", label: "Phải trả, phải nộp khác" },
+  { code: "341", label: "Vay và nợ thuê tài chính" },
+];
+const VCSH = [
+  { code: "411", label: "Vốn đầu tư của CSH" },
+  { code: "421", label: "Lợi nhuận sau thuế chưa phân phối" },
+];
 
-  // 131 Phải thu khách = totalReceivable − paidIn
-  const [rev] = await db
-    .select({
-      receivable: sql<number>`coalesce(sum(total_receivable_this_time), 0)::float8`,
-    })
-    .from(revenueReconciliations);
-  const [pin] = await db
-    .select({ paid: sql<number>`coalesce(sum(amount), 0)::float8` })
-    .from(paymentsIn);
-  const phaiThuKhach = Number(rev.receivable) - Number(pin.paid);
+export default async function BalanceSheetPage({ searchParams }: { searchParams: SP }) {
+  const user = await getCurrentUser();
+  if (!user) notFound();
+  const sp = await searchParams;
+  const periodEnd = sp.period || "2025-12-31";
 
-  // 138 Phải thu khác = nhóm 14 (đặt cọc hộ khách, khách chưa hoàn)
-  const [ck] = await db
-    .select({ s: sql<number>`coalesce(sum(amount), 0)::float8` })
-    .from(financialTransactions)
-    .where(eq(financialTransactions.categoryCode, "131")); // nhóm 14 dùng code '131' theo classifier
-  const phaiThuKhac = Number(ck.s);
+  // Get all trial balance rows for period, length=3 (parent) để không dupe
+  const rows = await db
+    .select()
+    .from(trialBalance)
+    .where(and(eq(trialBalance.periodEnd, periodEnd), sql`length(${trialBalance.accountCode}) = 3`));
 
-  // 141 Tạm ứng nội bộ
-  const [tu] = await db
-    .select({ s: sql<number>`coalesce(sum(amount), 0)::float8` })
-    .from(financialTransactions)
-    .where(eq(financialTransactions.categoryCode, "141"));
-  const tamUng = Number(tu.s);
+  const bal = new Map<string, { name: string; debit: number; credit: number; opening: number }>();
+  for (const r of rows) {
+    bal.set(r.accountCode, {
+      name: r.accountName,
+      debit: Number(r.closingDebit ?? 0),
+      credit: Number(r.closingCredit ?? 0),
+      opening: Number(r.openingDebit ?? 0) - Number(r.openingCredit ?? 0),
+    });
+  }
 
-  // 153/211 TSCĐ/CCDC (nhóm 5) — Giá trị net = giá gốc − khấu hao lũy kế
-  const tscdRows = await db
-    .select({
-      month: financialTransactions.transactionMonth,
-      cost: financialTransactions.amount,
-    })
-    .from(financialTransactions)
-    .where(eq(financialTransactions.categoryCode, "242"));
-  const nowMonth = new Date().toISOString().slice(0, 7);
-  const tscdCcdc = tscdRows.reduce(
-    (s, a) => s + netBookValue(a.month, Number(a.cost), nowMonth),
-    0,
-  );
-  const tscdGross = tscdRows.reduce((s, a) => s + Number(a.cost), 0);
-  const tscdAccumDep = tscdRows.reduce(
-    (s, a) => s + accumulatedDepreciation(a.month, Number(a.cost), nowMonth),
-    0,
-  );
+  // TS = debit - credit (Nợ − Có). NPT + VCSH = credit - debit.
+  const getTs = (code: string) => {
+    const b = bal.get(code);
+    return b ? b.debit - b.credit : 0;
+  };
+  const getNpt = (code: string) => {
+    const b = bal.get(code);
+    return b ? b.credit - b.debit : 0;
+  };
 
-  // 244 Ký quỹ dài hạn
-  const [kq] = await db
-    .select({ s: sql<number>`coalesce(sum(amount), 0)::float8` })
-    .from(financialTransactions)
-    .where(eq(financialTransactions.categoryCode, "244"));
-  const kyQuy = Number(kq.s);
+  const tsNganHan = TS_NGAN_HAN.map(a => ({ ...a, amount: getTs(a.code) })).filter(a => a.amount !== 0);
+  const tsDaiHan = TS_DAI_HAN.map(a => ({ ...a, amount: getTs(a.code) })).filter(a => a.amount !== 0);
+  const npt = NPT.map(a => ({ ...a, amount: getNpt(a.code) })).filter(a => a.amount !== 0);
+  const vcsh = VCSH.map(a => ({ ...a, amount: getNpt(a.code) })).filter(a => a.amount !== 0);
 
-  // ===== NỢ PHẢI TRẢ =====
+  const totalTsNganHan = tsNganHan.reduce((s, r) => s + r.amount, 0);
+  const totalTsDaiHan = tsDaiHan.reduce((s, r) => s + r.amount, 0);
+  const totalTs = totalTsNganHan + totalTsDaiHan;
+  const totalNpt = npt.reduce((s, r) => s + r.amount, 0);
+  const totalVcsh = vcsh.reduce((s, r) => s + r.amount, 0);
+  const totalNv = totalNpt + totalVcsh;
+  const diff = totalTs - totalNv;
 
-  // 331/334 Phải trả NCC/NLĐ = payable − paidOut
-  const [cost] = await db
-    .select({
-      payable: sql<number>`coalesce(sum(amount_payable_this_time), 0)::float8`,
-    })
-    .from(costReconciliations);
-  const [pout] = await db
-    .select({ paid: sql<number>`coalesce(sum(amount), 0)::float8` })
-    .from(paymentsOut);
-  const phaiTraNCC = Number(cost.payable) - Number(pout.paid);
-
-  // 3411 Vay chủ (Hoàn booking chưa trả hết) — em không có counter nên tạm 0
-  const vayChu = 0;
-
-  // ===== VCSH =====
-
-  // 411 Vốn góp CSH = tổng Triết + Bách bỏ cá nhân − thứ cấp
-  const capitalRows = await db
-    .select({ s: sql<number>`sum(amount)::float8` })
-    .from(financialTransactions)
-    .where(
-      and(
-        inArray(financialTransactions.payer, ["Triết", "Bách"]),
-        ne(financialTransactions.categoryCode, "secondary"),
-      ),
-    );
-  const vonGop = Number(capitalRows[0]?.s ?? 0);
-
-  // Lãi thuần lũy kế = DT/1.1 − Giá vốn − CP QL (accrual, cumulative)
-  const [opexTotal] = await db
-    .select({ s: sql<number>`coalesce(sum(amount), 0)::float8` })
-    .from(financialTransactions)
-    .where(inArray(financialTransactions.categoryCode, OPEX_MGMT_CATEGORIES));
-  const totalOpex = Number(opexTotal.s);
-  // Giá vốn = cost_reconciliations only (fin_txn 6417 = same khoản, gross bank
-  // transfer, cộng vào sẽ double count — verified 2026-08-03).
-  const laiLoLuyKe = Number(rev.receivable) / 1.1 - Number(cost.payable) - totalOpex;
-
-  // ===== TIỀN (111/112) plug =====
-  // Tổng TS = Tổng NPT + VCSH
-  // Tiền = (NPT + VCSH) − (các TS khác đã biết)
-  const totalNonCashAsset = phaiThuKhach + phaiThuKhac + tamUng + tscdCcdc + kyQuy;
-  const totalLiabEquity = phaiTraNCC + vayChu + vonGop + laiLoLuyKe;
-  const tienMat = totalLiabEquity - totalNonCashAsset;
-
-  const totalAsset = tienMat + totalNonCashAsset;
-
-  const assets: Array<[string, string, number]> = [
-    ["111/112", "Tiền mặt + TGNH", tienMat],
-    ["131", "Phải thu khách hàng", phaiThuKhach],
-    ["138", "Phải thu khác (cọc hộ khách)", phaiThuKhac],
-    ["141", "Tạm ứng nội bộ", tamUng],
-    ["153/211", `TSCĐ/CCDC net (gốc ${fmt(Math.round(tscdGross))} − KH ${fmt(Math.round(tscdAccumDep))})`, tscdCcdc],
-    ["244", "Ký quỹ dài hạn", kyQuy],
-  ];
-  const liabEquity: Array<[string, string, number, "npt" | "vcsh"]> = [
-    ["331/334", "Phải trả NCC + NLĐ", phaiTraNCC, "npt"],
-    ["3411", "Vay chủ / Hoàn booking chưa trả", vayChu, "npt"],
-    ["411", "Vốn góp CSH (Triết + Bách)", vonGop, "vcsh"],
-    ["421", "Lãi/lỗ chưa phân phối (lũy kế)", laiLoLuyKe, "vcsh"],
-  ];
-
-  const totalNPT = liabEquity.filter((l) => l[3] === "npt").reduce((s, l) => s + l[2], 0);
-  const totalVCSH = liabEquity.filter((l) => l[3] === "vcsh").reduce((s, l) => s + l[2], 0);
+  // Rows chưa xử lý (nếu có TK khác không nằm trong template)
+  const knownCodes = new Set([...TS_NGAN_HAN, ...TS_DAI_HAN, ...NPT, ...VCSH].map(a => a.code));
+  const untracked = Array.from(bal.entries())
+    .filter(([code]) => !knownCodes.has(code) && !code.startsWith("5") && !code.startsWith("6") && !code.startsWith("7") && !code.startsWith("8") && !code.startsWith("9"))
+    .map(([code, v]) => ({ code, name: v.name, debit: v.debit, credit: v.credit }));
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div>
-        <div className="text-xs">
-          <Link href="/reports" className="text-blue-600 hover:underline">
-            ← Báo cáo
-          </Link>
-        </div>
+        <div className="text-xs"><Link href="/reports" className="text-blue-600 hover:underline">← Báo cáo</Link></div>
         <h1 className="text-2xl font-bold mt-1">Bảng cân đối kế toán</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Ảnh chụp tại {new Date().toISOString().slice(0, 10)}. Đơn giản hóa —
-          chưa hạch toán dồn tích đầy đủ + chưa đối chiếu sao kê thực. Tiền mặt/TGNH
-          là số cân đối (= Nợ phải trả + Vốn CSH − Tài sản khác). Sẽ chính xác hơn
-          khi có sổ nhật ký + sao kê.
-        </p>
-        {tienMat < 0 && (
-          <div className="mt-3 p-3 rounded-lg border border-red-200 bg-red-50 text-sm text-red-900">
-            <b>⚠️ Cảnh báo:</b> Tiền mặt cân đối âm{" "}
-            <b>{fmt(Math.round(tienMat))}</b> — Nợ phải trả + Vốn CSH thấp hơn
-            các tài sản khác. Nghĩa là có tài sản (phải thu, tạm ứng, TSCĐ, ký
-            quỹ) chưa được nguồn vốn hoặc lãi lũy kế cover. Rà lại: bổ sung vốn
-            góp còn thiếu, hoặc kiểm tra công nợ khách thực tế.
+        <p className="text-sm text-slate-500 mt-1">Chuẩn TT200 B01-DN. Ngày báo cáo: <b>{periodEnd}</b>. Nguồn: CDPS Kim ({diff === 0 ? "✅ cân" : `❌ lệch ${fmt(diff)}`}).</p>
+      </div>
+
+      <div className={`p-4 rounded-xl border-2 ${diff === 0 ? "bg-green-50 border-green-300" : "bg-red-50 border-red-300"}`}>
+        <div className="grid grid-cols-3 gap-4 text-center">
+          <div>
+            <div className="text-xs text-slate-600 uppercase">Tổng tài sản</div>
+            <div className="text-2xl font-bold tabular-nums text-blue-800">{fmt(totalTs)}</div>
           </div>
-        )}
+          <div className="text-2xl font-bold self-center">=</div>
+          <div>
+            <div className="text-xs text-slate-600 uppercase">Nợ phải trả + Vốn CSH</div>
+            <div className="text-2xl font-bold tabular-nums text-blue-800">{fmt(totalNv)}</div>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* TÀI SẢN */}
-        <div className="bg-card rounded-xl ring-1 ring-foreground/10">
-          <div className="p-4 border-b border-slate-100 bg-blue-50">
-            <h2 className="text-lg font-bold text-blue-900">TÀI SẢN</h2>
-          </div>
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
+          <div className="bg-blue-800 text-white p-3 font-bold">A. TÀI SẢN</div>
           <table className="w-full text-sm">
             <tbody>
-              {assets.map(([code, name, val]) => (
-                <tr key={code} className="border-t border-slate-100">
-                  <td className="p-2 font-mono text-xs text-slate-500 w-16">{code}</td>
-                  <td className="p-2">{name}</td>
-                  <td className={`p-2 text-right tabular-nums ${val < 0 ? "text-red-700" : ""}`}>
-                    {fmt(Math.round(val))}
-                  </td>
+              <tr className="bg-blue-50 font-semibold border-t">
+                <td className="p-2">I. Tài sản ngắn hạn</td>
+                <td className="p-2 text-right tabular-nums">{fmt(totalTsNganHan)}</td>
+              </tr>
+              {tsNganHan.map(a => (
+                <tr key={a.code} className="border-t">
+                  <td className="p-2 pl-6"><span className="font-mono text-xs text-slate-500 mr-2">{a.code}</span>{a.label}</td>
+                  <td className={`p-2 text-right tabular-nums ${a.amount < 0 ? "text-red-700" : ""}`}>{fmt(a.amount)}</td>
                 </tr>
               ))}
-            </tbody>
-            <tfoot className="bg-blue-50 font-bold">
-              <tr>
-                <td colSpan={2} className="p-2">TỔNG TÀI SẢN</td>
-                <td className="p-2 text-right tabular-nums text-blue-900">
-                  {fmt(Math.round(totalAsset))}
-                </td>
+              <tr className="bg-blue-50 font-semibold border-t">
+                <td className="p-2">II. Tài sản dài hạn</td>
+                <td className="p-2 text-right tabular-nums">{fmt(totalTsDaiHan)}</td>
               </tr>
-            </tfoot>
+              {tsDaiHan.map(a => (
+                <tr key={a.code} className="border-t">
+                  <td className="p-2 pl-6"><span className="font-mono text-xs text-slate-500 mr-2">{a.code}</span>{a.label}</td>
+                  <td className={`p-2 text-right tabular-nums ${a.amount < 0 ? "text-red-700" : ""}`}>{fmt(a.amount)}</td>
+                </tr>
+              ))}
+              <tr className="border-t-2 bg-blue-100 font-bold">
+                <td className="p-2">TỔNG TÀI SẢN</td>
+                <td className="p-2 text-right tabular-nums text-blue-800">{fmt(totalTs)}</td>
+              </tr>
+            </tbody>
           </table>
         </div>
 
         {/* NGUỒN VỐN */}
-        <div className="bg-card rounded-xl ring-1 ring-foreground/10">
-          <div className="p-4 border-b border-slate-100 bg-green-50">
-            <h2 className="text-lg font-bold text-green-900">NGUỒN VỐN</h2>
-          </div>
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
+          <div className="bg-blue-800 text-white p-3 font-bold">B. NGUỒN VỐN</div>
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-xs text-slate-600">
-              <tr>
-                <td colSpan={3} className="p-2 font-semibold">A. Nợ phải trả</td>
-              </tr>
-            </thead>
             <tbody>
-              {liabEquity
-                .filter((l) => l[3] === "npt")
-                .map(([code, name, val]) => (
-                  <tr key={code} className="border-t border-slate-100">
-                    <td className="p-2 font-mono text-xs text-slate-500 w-16">{code}</td>
-                    <td className="p-2">{name}</td>
-                    <td className={`p-2 text-right tabular-nums ${val < 0 ? "text-red-700" : ""}`}>
-                      {fmt(Math.round(val))}
-                    </td>
-                  </tr>
-                ))}
-              <tr className="bg-slate-50 font-semibold text-sm">
-                <td colSpan={2} className="p-2">Tổng NPT</td>
-                <td className="p-2 text-right tabular-nums">{fmt(Math.round(totalNPT))}</td>
+              <tr className="bg-blue-50 font-semibold border-t">
+                <td className="p-2">I. Nợ phải trả</td>
+                <td className="p-2 text-right tabular-nums">{fmt(totalNpt)}</td>
+              </tr>
+              {npt.map(a => (
+                <tr key={a.code} className="border-t">
+                  <td className="p-2 pl-6"><span className="font-mono text-xs text-slate-500 mr-2">{a.code}</span>{a.label}</td>
+                  <td className={`p-2 text-right tabular-nums ${a.amount < 0 ? "text-red-700" : ""}`}>{fmt(a.amount)}</td>
+                </tr>
+              ))}
+              <tr className="bg-blue-50 font-semibold border-t">
+                <td className="p-2">II. Vốn chủ sở hữu</td>
+                <td className="p-2 text-right tabular-nums">{fmt(totalVcsh)}</td>
+              </tr>
+              {vcsh.map(a => (
+                <tr key={a.code} className="border-t">
+                  <td className="p-2 pl-6"><span className="font-mono text-xs text-slate-500 mr-2">{a.code}</span>{a.label}</td>
+                  <td className={`p-2 text-right tabular-nums ${a.amount < 0 ? "text-red-700" : ""}`}>{fmt(a.amount)}</td>
+                </tr>
+              ))}
+              <tr className="border-t-2 bg-blue-100 font-bold">
+                <td className="p-2">TỔNG NGUỒN VỐN</td>
+                <td className="p-2 text-right tabular-nums text-blue-800">{fmt(totalNv)}</td>
               </tr>
             </tbody>
-            <thead className="bg-slate-50 text-xs text-slate-600">
-              <tr>
-                <td colSpan={3} className="p-2 font-semibold">B. Vốn chủ sở hữu</td>
-              </tr>
-            </thead>
-            <tbody>
-              {liabEquity
-                .filter((l) => l[3] === "vcsh")
-                .map(([code, name, val]) => (
-                  <tr key={code} className="border-t border-slate-100">
-                    <td className="p-2 font-mono text-xs text-slate-500 w-16">{code}</td>
-                    <td className="p-2">{name}</td>
-                    <td className={`p-2 text-right tabular-nums ${val < 0 ? "text-red-700" : ""}`}>
-                      {fmt(Math.round(val))}
-                    </td>
-                  </tr>
-                ))}
-              <tr className="bg-slate-50 font-semibold text-sm">
-                <td colSpan={2} className="p-2">Tổng VCSH</td>
-                <td className="p-2 text-right tabular-nums">{fmt(Math.round(totalVCSH))}</td>
-              </tr>
-            </tbody>
-            <tfoot className="bg-green-50 font-bold">
-              <tr>
-                <td colSpan={2} className="p-2">TỔNG NGUỒN VỐN</td>
-                <td className="p-2 text-right tabular-nums text-green-900">
-                  {fmt(Math.round(totalLiabEquity))}
-                </td>
-              </tr>
-            </tfoot>
           </table>
         </div>
       </div>
 
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-800 space-y-2">
-        <p className="font-semibold">Ghi chú simplified accounting (chờ Phase 4 sổ nhật ký):</p>
-        <ul className="list-disc list-inside space-y-1">
-          <li>
-            <b>Tiền mặt/TGNH</b> là số cân đối, không phải số dư sao kê thực. Nếu âm → có
-            khoản chưa track (VD lãi ngân hàng thu vào, tiền vay ngoài).
-          </li>
-          <li>
-            <b>TSCĐ/CCDC</b> chưa trừ khấu hao — số thực tế thấp hơn (khấu hao 3-5 năm).
-          </li>
-          <li>
-            <b>Lãi/lỗ lũy kế</b> = Doanh thu đối chiếu/1,1 − Giá vốn đối chiếu − Chi phí quản lý (dùng số đã đối chiếu, chưa phân biệt đã
-            thu/chưa thu).
-          </li>
-          <li>
-            <b>Thuế phải nộp (333)</b> chưa track — giả định đã nộp (nộp thuế = giảm tiền, không tăng nợ).
-          </li>
-        </ul>
+      {untracked.length > 0 && (
+        <div className="bg-amber-50 border border-amber-300 rounded p-3 text-sm">
+          <div className="font-semibold mb-2">⚠️ TK chưa xếp vào template:</div>
+          <table className="w-full text-xs">
+            <tbody>
+              {untracked.map(u => (
+                <tr key={u.code}>
+                  <td className="pr-2"><span className="font-mono">{u.code}</span> {u.name}</td>
+                  <td className="text-right tabular-nums">D {fmt(u.debit)} / C {fmt(u.credit)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div className="text-xs text-slate-500 italic">
+        Nguồn: sheet CDPS trong file <b>SO SACH BRE 2025.xlsx</b> (Kim làm chuẩn TT200).
+        Import lại: <code>npx tsx scripts/import-trial-balance.ts</code>.
       </div>
     </div>
   );

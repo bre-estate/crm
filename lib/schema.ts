@@ -724,6 +724,24 @@ export const rentals = pgTable("rentals", {
 });
 export type Rental = typeof rentals.$inferSelect;
 
+// Bảng cân đối phát sinh (CDPS) — nguồn cho Balance Sheet quản trị.
+// Import từ sheet CDPS của SO SACH BRE 2025.xlsx (Kim làm chuẩn TT200).
+export const trialBalance = pgTable("trial_balance", {
+  id: serial("id").primaryKey(),
+  periodEnd: date("period_end").notNull(),
+  accountCode: text("account_code").notNull(),
+  accountName: text("account_name").notNull(),
+  openingDebit: doublePrecision("opening_debit").default(0),
+  openingCredit: doublePrecision("opening_credit").default(0),
+  periodDebit: doublePrecision("period_debit").default(0),
+  periodCredit: doublePrecision("period_credit").default(0),
+  closingDebit: doublePrecision("closing_debit").default(0),
+  closingCredit: doublePrecision("closing_credit").default(0),
+  sourceFile: text("source_file"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type TrialBalance = typeof trialBalance.$inferSelect;
+
 // Trích trước cuối kỳ theo căn (Kim's breakdown từ file "251231_Trich truoc 335.xlsx").
 // Mỗi row = 1 căn với 7 cột breakdown → sum → bucket P&L khớp Kim BC.
 export const yearEndAccruals = pgTable("year_end_accruals", {
