@@ -119,6 +119,7 @@ const NAV: NavEntry[] = [
       { href: "/finance/assets", label: "Tài sản cố định", resource: "finance" },
       { href: "/finance/transactions", label: "Giao dịch tài chính", resource: "finance" },
       { href: "/finance/bank-review", label: "Đối chiếu sao kê bank", resource: "finance" },
+      { href: "/finance/nkc-review", label: "Đối chiếu sổ NKC", resource: "finance" },
     ],
   },
   {
