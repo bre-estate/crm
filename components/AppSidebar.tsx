@@ -102,6 +102,10 @@ const NAV: NavEntry[] = [
       { href: "/reports/ar-aging", label: "Tuổi nợ phải thu", resource: "reports.ar-aging" },
       { href: "/reports/ap-aging", label: "Tuổi nợ phải trả", resource: "reports.ap-aging" },
       { href: "/reports/balance-sheet", label: "Bảng cân đối", resource: "reports.balance-sheet" },
+      { href: "/reports/sales", label: "Báo cáo bán hàng", resource: "reports.sales" },
+      { href: "/reports/commissions", label: "Báo cáo hoa hồng", resource: "reports.commissions" },
+      { href: "/reports/project-profitability", label: "Lãi/lỗ theo dự án", resource: "reports.project-profitability" },
+      { href: "/reports/expenses", label: "Phân tích chi phí", resource: "reports.expenses" },
       // Deep dives (Phase 2 sắp gom lại thành Sales report + Commission)
       { href: "/reports/unit-profitability", label: "Lãi từng căn", resource: "reports.unit-profitability", section: "Chi tiết" },
       { href: "/reports/segments", label: "Phân khúc căn", resource: "reports.segments", section: "Chi tiết" },
