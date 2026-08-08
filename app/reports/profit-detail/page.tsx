@@ -120,7 +120,9 @@ export default async function ProfitDetailPage({ searchParams }: { searchParams:
   const cpTaiChinh = nkcByTk.get("635") ?? 0;
   const cpQlChungKhac = thueVpDichVu + doDungVp + thuePhi + cpKhac + cpTaiChinh;
 
-  // Marketing = 6417 rows có description quảng cáo/marketing (không phải HH sale)
+  // Marketing = 6417 rows có description quảng cáo/marketing/thiết bị content/tiếp khách.
+  // Kim tính rộng: quảng cáo + phí dịch vụ QC + BDS.com.vn + thiết bị content
+  // (DJI/máy ảnh) + in tờ rơi + tiếp khách khách hàng.
   const [mkt] = await db.execute(sql`
     SELECT COALESCE(SUM(amount), 0)::float8 as s
     FROM accounting_journal
@@ -136,6 +138,12 @@ export default async function ProfitDetailPage({ searchParams }: { searchParams:
         OR description ILIKE '%sự kiện%'
         OR description ILIKE '%su kien%'
         OR description ILIKE '%PR %'
+        OR description ILIKE '%DJI%'
+        OR description ILIKE '%máy ảnh%'
+        OR description ILIKE '%may anh%'
+        OR description ILIKE '%tay cầm chống rung%'
+        OR description ILIKE '%in tờ rơi%'
+        OR description ILIKE '%in to roi%'
       )
   `) as any[];
   const marketing = Number(mkt?.s ?? 0);
