@@ -72,6 +72,27 @@ export const CATEGORIES: Record<CategoryKey, CategoryMeta> = {
   chua_phan_loai:   { key: "chua_phan_loai",   label: "Chưa phân loại",                   group: "unknown" },
 };
 
+// Employees theo phòng — dùng để classify lương/thưởng theo partner_name.
+// Sync từ /employees; khi thêm NV mới thì update list này hoặc load DB.
+const NVKD_NAMES = new Set([
+  "DOAN LE BACH", "HO NGUYEN CONG THANH", "TRAN MINH NHAT",
+  "TRAN THI KHANH LINH", "LE THI CAM GIANG", "LE TRINH THANH THUY",
+  "VU DUC THINH", "DOAN NGOC HA SANG", "HUYNH DUY ANH",
+  "NGUYEN THI HONG NHUNG", "BUI THI HA UYEN", "NGUYEN QUY TAI",
+  "VO THI THU THAO", "TONG THI NHUNG", "TONG THI HONG THAM",
+  "VU THI NGOC DUYEN", "PHAM VAN QUYET", "BUI XUAN DAT",
+]);
+const ADMIN_NAMES = new Set([
+  "DANH HOANG THI TUONG VI", "PHAM QUANG TUNG", "LUONG THI NGA",
+  "HO THI LAN KIM", // Kế toán thuê ngoài
+]);
+const MARKETING_NAMES = new Set([
+  "LE THANH TUNG",
+]);
+const OWNER_NAMES = new Set([
+  "NGUYEN MINH TRIET", "MINH TRIET",
+]);
+
 interface Rule {
   category: CategoryKey;
   patterns: RegExp[];
@@ -79,6 +100,7 @@ interface Rule {
   confidence: number;  // 0-100
   requireInflow?: boolean;
   requireOutflow?: boolean;
+  requirePartner?: "nvkd" | "admin" | "marketing" | "owner";
 }
 
 // Rules được sort theo priority. Specific → generic.
@@ -93,6 +115,19 @@ const RULES: Rule[] = [
 
   { category: "dt_thu_cap", priority: 15, confidence: 90, requireInflow: true,
     patterns: [/thứ cấp/i, /thu cap/i, /f2 resale/i, /chuyển nhượng căn/i, /chuyen nhuong can/i] },
+
+  // Passthrough inflow: khách chuyển tiền booking/đặt cọc/DKTV qua sàn — sàn giữ hộ cho CĐT
+  { category: "chuyen_noi_bo", priority: 16, confidence: 88, requireInflow: true,
+    patterns: [
+      /\bDKTV\b/i, /đăng ký tham gia/i,
+      /\bbooking\b/i,
+      /\bdat coc\b/i, /đặt cọc/i,
+      /\bdat cho\b/i, /giữ chỗ/i,
+      /at saigon riverside/i, /at sài gòn/i,
+      /the emerald garden view/i, /phu dong sky garden/i,
+      /chuyen khoan.*dat cho.*du an/i,
+      /nop tien.*vao tai khoan/i, /NOP TIEN$/i,
+    ] },
 
   // DT HH sơ cấp — CĐT/đối tác chuyển phí môi giới về cho sàn
   { category: "dt_hh_so_cap", priority: 18, confidence: 92, requireInflow: true,
@@ -124,6 +159,10 @@ const RULES: Rule[] = [
       /Open term deposit/i, /gửi tiết kiệm/i, /gui tiet kiem/i,
       /Bang ke.*BKCT|BKHT/i,
       /Don vi BRE chuyen tien/i,
+      // Nộp thay khách (passthrough qua CĐT): "Nop thay [tên] [số] [căn] TT AVIO"
+      /\bnop thay\b/i, /nộp thay/i,
+      // Khách chuyển tiền qua sàn để đặt cọc/mua căn
+      /khach hang.*chuyen tien.*(dat coc|dat mua|đặt cọc|đặt mua)/i,
     ] },
 
   // Hoàn tiền YCTV / booking — trả lại tiền tạm ứng
@@ -156,6 +195,7 @@ const RULES: Rule[] = [
   { category: "marketing", priority: 30, confidence: 90, requireOutflow: true,
     patterns: [/quảng cáo/i, /quang cao/i, /marketing/i, /batdongsan/i,
       /facebook ads/i, /google ads/i, /tiktok ads/i, /zalo ads/i,
+      /PROPERTYGURU/i, /BDSVN/i, /nap tien cho BDS/i,
       /dji/i, /máy ảnh/i, /may anh/i, /tay cầm chống rung/i, /tay cam chong rung/i,
       /in tờ rơi/i, /in to roi/i, /pr event/i, /sự kiện/i, /su kien/i] },
 
@@ -274,6 +314,22 @@ export interface ClassifyInput {
   description: string;
   debitAmount?: number | null;   // Tiền ra khỏi TK cty (outflow)
   creditAmount?: number | null;  // Tiền vào TK cty (inflow)
+  partnerName?: string | null;   // Nếu có → giúp phân biệt lương NVKD vs Admin
+}
+
+function partnerCategory(partnerName: string | null | undefined): "nvkd" | "admin" | "marketing" | "owner" | null {
+  const p = (partnerName ?? "").toUpperCase().trim();
+  if (!p) return null;
+  if (OWNER_NAMES.has(p)) return "owner";
+  if (NVKD_NAMES.has(p)) return "nvkd";
+  if (ADMIN_NAMES.has(p)) return "admin";
+  if (MARKETING_NAMES.has(p)) return "marketing";
+  // Prefix match (VD "NGUYEN MINH TRIET ID: ..." → owner)
+  for (const n of OWNER_NAMES) if (p.startsWith(n)) return "owner";
+  for (const n of NVKD_NAMES) if (p.startsWith(n)) return "nvkd";
+  for (const n of ADMIN_NAMES) if (p.startsWith(n)) return "admin";
+  for (const n of MARKETING_NAMES) if (p.startsWith(n)) return "marketing";
+  return null;
 }
 
 export interface ClassifyResult {
@@ -285,13 +341,22 @@ export interface ClassifyResult {
 export function classify(input: ClassifyInput): ClassifyResult {
   const desc = input.description ?? "";
   // Techcombank convention: debit_amount là số âm cho outflow, credit_amount là số dương cho inflow.
-  // Sign-agnostic để hàm dùng được cả với data nguồn khác.
   const isOutflow = Math.abs(input.debitAmount ?? 0) > 0;
   const isInflow = Math.abs(input.creditAmount ?? 0) > 0;
+  const partnerCat = partnerCategory(input.partnerName);
+
+  // FAST PATH: partner_name owner → chuyen_noi_bo (nạp/rút vốn) hoặc rut_von
+  if (partnerCat === "owner" && isOutflow) {
+    return { category: "rut_von", confidence: 92, matchedPattern: "partner:owner" };
+  }
+  if (partnerCat === "owner" && isInflow) {
+    return { category: "chuyen_noi_bo", confidence: 88, matchedPattern: "partner:owner" };
+  }
 
   for (const rule of RULES) {
     if (rule.requireInflow && !isInflow) continue;
     if (rule.requireOutflow && !isOutflow) continue;
+    if (rule.requirePartner && rule.requirePartner !== partnerCat) continue;
     for (const pat of rule.patterns) {
       if (pat.test(desc)) {
         return {
@@ -303,7 +368,19 @@ export function classify(input: ClassifyInput): ClassifyResult {
     }
   }
 
-  // Fallback: inflow → khac_thu, outflow → opex_khac, else chua_phan_loai
+  // FALLBACK theo partner_name (khi rules text không match)
+  if (isOutflow && partnerCat === "admin") {
+    return { category: "luong_admin", confidence: 70, matchedPattern: "partner:admin" };
+  }
+  if (isOutflow && partnerCat === "marketing") {
+    return { category: "luong_admin", confidence: 65, matchedPattern: "partner:marketing" };
+  }
+  if (isOutflow && partnerCat === "nvkd") {
+    // NVKD nhận tiền → default HH sale (không rõ lương hay HH)
+    // Rule text đã catch được "luong t..." → luong_nvkd, còn lại là HH sale
+    return { category: "hh_sale", confidence: 60, matchedPattern: "partner:nvkd" };
+  }
+
   if (isInflow) return { category: "khac_thu", confidence: 30 };
   if (isOutflow) return { category: "opex_khac", confidence: 20 };
   return { category: "chua_phan_loai", confidence: 0 };

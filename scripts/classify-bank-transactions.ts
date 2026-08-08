@@ -17,8 +17,8 @@ const sql = postgres(process.env.DATABASE_URL!);
 const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
 
 async function main() {
-  const rows = await sql<Array<{ id: number; description: string; debit_amount: number | null; credit_amount: number | null }>>`
-    SELECT id, description, debit_amount, credit_amount
+  const rows = await sql<Array<{ id: number; description: string; debit_amount: number | null; credit_amount: number | null; partner_name: string | null }>>`
+    SELECT id, description, debit_amount, credit_amount, partner_name
     FROM bank_transactions
     ${FORCE ? sql`` : sql`WHERE category IS NULL OR category_source IS NULL OR category_source != 'manual'`}`;
 
@@ -33,6 +33,7 @@ async function main() {
         description: r.description,
         debitAmount: r.debit_amount,
         creditAmount: r.credit_amount,
+        partnerName: r.partner_name,
       });
       await sql`
         UPDATE bank_transactions

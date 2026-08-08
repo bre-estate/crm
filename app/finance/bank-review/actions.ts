@@ -31,6 +31,7 @@ export async function rerunClassifier() {
     description: bankTransactions.description,
     debitAmount: bankTransactions.debitAmount,
     creditAmount: bankTransactions.creditAmount,
+    partnerName: bankTransactions.partnerName,
   }).from(bankTransactions)
     .where(sql`category_source IS DISTINCT FROM 'manual'`);
   for (const r of rows) {
@@ -38,6 +39,7 @@ export async function rerunClassifier() {
       description: r.description ?? "",
       debitAmount: r.debitAmount,
       creditAmount: r.creditAmount,
+      partnerName: r.partnerName,
     });
     await db.update(bankTransactions)
       .set({ category: result.category, categorySource: "auto", categoryConfidence: result.confidence })
