@@ -10,6 +10,7 @@ import ExcelJS from "exceljs";
 import postgres from "postgres";
 import fs from "fs";
 import path from "path";
+import { parsePmgStructure } from "../lib/pmg-tier-parser";
 
 const FILE = "data-excel/BAO CAO DOANH THU.xlsx";
 const sql = postgres(process.env.DATABASE_URL!);
@@ -41,9 +42,11 @@ async function main() {
     sourceFile: FILE,
     targetTable: "contracts",
   }, async (log) => {
-    // Migration
-    const mig = fs.readFileSync("drizzle/0036_contracts.sql", "utf-8");
-    await sql.unsafe(mig);
+    // Migrations
+    for (const migFile of ["drizzle/0036_contracts.sql", "drizzle/0037_contracts_pmg_tiers.sql"]) {
+      const mig = fs.readFileSync(migFile, "utf-8");
+      await sql.unsafe(mig);
+    }
 
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.readFile(FILE);
@@ -74,6 +77,9 @@ async function main() {
       const projectId = projByCode.get(projectCode) ?? null;
       const partnerId = partnerName ? partnerByName.get(partnerName.toLowerCase()) ?? null : null;
 
+      const pmgStructRaw = str(row.getCell(8).value) || null;
+      const parsed = parsePmgStructure(pmgStructRaw);
+
       rows.push({
         project_code: projectCode,
         project_id: projectId,
@@ -82,7 +88,11 @@ async function main() {
         contract_number: str(row.getCell(5).value) || null,
         status: str(row.getCell(6).value) === "ĐÃ KÝ" ? "active" : "unknown",
         pmg_lk: num(row.getCell(7).value),
-        pmg_structure: str(row.getCell(8).value) || null,
+        pmg_structure: pmgStructRaw,
+        pmg_tiers: parsed?.tiers ?? null,
+        pmg_metric: parsed?.metric ?? null,
+        pmg_retroactive: parsed?.retroactive ?? false,
+        pmg_notes: parsed?.notes ?? null,
         pmg_lk_sale: num(row.getCell(9).value),
         admin_fee: num(row.getCell(10).value),
         admin_fee_sale: num(row.getCell(11).value),

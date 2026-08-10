@@ -75,7 +75,7 @@ export default async function ProjectsPage() {
             <tr>
               <th className="text-left p-3">Mã DA / Dự án</th>
               <th className="text-left p-3">Đối tác (hợp đồng)</th>
-              <th className="text-right p-3">%PMG_LK</th>
+              <th className="text-left p-3">Biểu PMG (CĐT → BRE)</th>
               <th className="text-right p-3">%PMG_sale</th>
               <th className="text-right p-3">Phí admin</th>
               <th className="text-right p-3">CĐT thưởng sale</th>
@@ -138,8 +138,36 @@ export default async function ProjectsPage() {
                       </div>
                     )}
                   </td>
-                  <td className="p-3 text-right tabular-nums">
-                    {c.pmgLk != null ? fmtPct(c.pmgLk) : <span className="text-slate-300">—</span>}
+                  <td className="p-3 text-xs">
+                    {Array.isArray(c.pmgTiers) && c.pmgTiers.length > 0 ? (
+                      <div className="space-y-0.5">
+                        {c.pmgTiers.map((t: any, ti: number) => {
+                          const metric = c.pmgMetric === "percent" ? "% giỏ" : "căn";
+                          const range = t.max == null
+                            ? (c.pmgMetric === "percent" ? `Y ≥ ${(t.min * 100).toFixed(0)}%` : `X ≥ ${t.min}`)
+                            : (c.pmgMetric === "percent" ? `${(t.min * 100).toFixed(0)}%-${(t.max * 100).toFixed(0)}%` : `${t.min}-${t.max}`);
+                          return (
+                            <div key={ti} className="flex items-center gap-1.5 tabular-nums">
+                              <span className="text-slate-500 min-w-16">{range}</span>
+                              <span className="font-semibold text-slate-700">{fmtPct(t.rate)}</span>
+                              {t.saleCap != null && (
+                                <span className="text-[9px] text-orange-600">sale ≤ {fmtPct(t.saleCap)}</span>
+                              )}
+                            </div>
+                          );
+                        })}
+                        {c.pmgRetroactive && <div className="text-[10px] text-blue-600 italic">↺ hồi tố</div>}
+                        {c.pmgNotes && <div className="text-[10px] text-slate-500 italic">{c.pmgNotes}</div>}
+                      </div>
+                    ) : c.pmgLk != null ? (
+                      <span className="tabular-nums">{fmtPct(c.pmgLk)} <span className="text-[10px] text-slate-400">(phẳng)</span></span>
+                    ) : c.pmgStructure ? (
+                      <span className="text-[10px] text-amber-600 italic" title={c.pmgStructure}>
+                        Biểu phức tạp — chưa parse. Xem raw
+                      </span>
+                    ) : (
+                      <span className="text-slate-300">—</span>
+                    )}
                   </td>
                   <td className="p-3 text-right tabular-nums">
                     {c.pmgLkSale != null ? fmtPct(c.pmgLkSale) : <span className="text-slate-300">—</span>}

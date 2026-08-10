@@ -756,6 +756,17 @@ export const contracts = pgTable("contracts", {
   pmgLk: doublePrecision("pmg_lk"),
   pmgLkSale: doublePrecision("pmg_lk_sale"),
   pmgStructure: text("pmg_structure"),
+  pmgTiers: jsonb("pmg_tiers").$type<Array<{
+    min: number;                // ngưỡng dưới (theo metric)
+    max: number | null;         // ngưỡng trên (null = ∞)
+    rate: number;               // % PMG CĐT trả BRE (0.055 = 5,5%)
+    saleRate?: number | null;   // % BRE trả sale (nếu khác rate)
+    saleCap?: number | null;    // trần rate cho NVKD (nếu contract giới hạn)
+    note?: string;
+  }> | null>(),
+  pmgMetric: text("pmg_metric"),           // 'count' số căn X | 'percent' %giỏ hàng Y | 'combined' | 'other'
+  pmgRetroactive: boolean("pmg_retroactive").default(false),
+  pmgNotes: text("pmg_notes"),
   adminFee: doublePrecision("admin_fee"),
   adminFeeSale: doublePrecision("admin_fee_sale"),
   paymentPhases: integer("payment_phases"),
