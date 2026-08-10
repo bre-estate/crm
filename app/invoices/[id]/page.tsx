@@ -11,6 +11,7 @@ import { eq, asc } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { fmtMoney } from "@/lib/format";
+import { hasPermission } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -157,29 +158,7 @@ export default async function InvoiceDetailPage({
           )}
         </h2>
         {recons.length === 0 ? (
-          <div className="bg-red-50 border-2 border-red-300 rounded-xl p-6 space-y-3">
-            <div className="font-semibold text-red-800">
-              ⚠️ Hóa đơn ORPHAN — 0 đợt đối chiếu link vào
-            </div>
-            <div className="text-sm text-red-700">
-              Rất có thể là record trống do bug import Excel. Không có căn nào,
-              không có phát sinh doanh thu thật. Nếu chắc chắn không cần → xóa.
-            </div>
-            <form
-              action={async () => {
-                "use server";
-                const { deleteOrphanInvoice } = await import("./actions");
-                await deleteOrphanInvoice(inv.id);
-              }}
-            >
-              <button
-                type="submit"
-                className="bg-red-600 text-white text-sm px-4 py-2 rounded hover:bg-red-700"
-              >
-                🗑️ Xóa hóa đơn này
-              </button>
-            </form>
-          </div>
+          <OrphanBanner invoiceId={inv.id} />
         ) : (
           partnerGroups.map(([partnerName, list]) => {
             const groupTotal = list.reduce(
@@ -320,6 +299,42 @@ export default async function InvoiceDetailPage({
           </table>
         </div>
       </section>
+    </div>
+  );
+}
+
+// Banner khi HĐ orphan (0 recon). Chỉ hiện nút xóa nếu user có quyền delete.
+async function OrphanBanner({ invoiceId }: { invoiceId: number }) {
+  const canDelete = await hasPermission("invoices", "delete");
+  return (
+    <div className="bg-red-50 border-2 border-red-300 rounded-xl p-6 space-y-3">
+      <div className="font-semibold text-red-800">
+        ⚠️ Hóa đơn ORPHAN — 0 đợt đối chiếu link vào
+      </div>
+      <div className="text-sm text-red-700">
+        Rất có thể là record trống do bug import Excel. Không có căn nào,
+        không có phát sinh doanh thu thật.
+      </div>
+      {canDelete ? (
+        <form
+          action={async () => {
+            "use server";
+            const { deleteOrphanInvoice } = await import("./actions");
+            await deleteOrphanInvoice(invoiceId);
+          }}
+        >
+          <button
+            type="submit"
+            className="bg-red-600 text-white text-sm px-4 py-2 rounded hover:bg-red-700"
+          >
+            🗑️ Xóa hóa đơn này
+          </button>
+        </form>
+      ) : (
+        <div className="text-sm text-slate-600 bg-white rounded p-3 border border-slate-200">
+          🔒 Bạn không có quyền xóa hóa đơn. Liên hệ Chủ tịch hoặc Admin để xóa record này.
+        </div>
+      )}
     </div>
   );
 }
