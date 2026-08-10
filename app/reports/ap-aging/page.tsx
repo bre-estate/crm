@@ -108,7 +108,7 @@ export default async function APAgingPage() {
   `) as any[];
   const owedBhxh = Math.max(0, Number(bhxhAccrual.s ?? 0) - Number(bhxhCash.s ?? 0));
 
-  const totalObligations = totals.total + owedTax + owedBhxh;
+  // Không cộng tổng — 3 loại nợ khác bản chất (HH cho NV vs thuế/BHXH cho NN)
 
   return (
     <div className="space-y-6">
@@ -123,11 +123,14 @@ export default async function APAgingPage() {
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <SummaryCard label="Tổng nợ" value={totalObligations} color="red" bold />
-        <SummaryCard label="Nợ sale team" value={totals.total} color="orange" />
-        <SummaryCard label="Nợ thuế" value={owedTax} color="amber" />
-        <SummaryCard label="Nợ BHXH" value={owedBhxh} color="amber" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <SummaryCard label="HH còn trả sale team" value={totals.total} color="orange" bold />
+        <SummaryCard label="Nợ thuế (VAT/TNCN/TNDN)" value={owedTax} color="amber" />
+        <SummaryCard label="Nợ BHXH cty đóng" value={owedBhxh} color="amber" />
+      </div>
+      <div className="text-xs text-slate-500 italic">
+        <b>Lưu ý:</b> HH sale, thuế, BHXH là 3 nghĩa vụ khác nhau — không cộng gộp thành "tổng nợ".
+        HH sale trả cho NV (khi HH về từ CĐT). Thuế/BHXH nộp cho cơ quan nhà nước theo lịch.
       </div>
 
       {/* Sale team aging */}

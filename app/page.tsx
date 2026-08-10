@@ -95,24 +95,21 @@ async function outstanding(): Promise<{ receivable: number; payable: number }> {
     .from(paymentsIn);
   const receivable = Math.max(0, Number(rev?.s ?? 0) - Number(pin?.s ?? 0));
 
-  const [cost] = await db
-    .select({ s: sql<number>`coalesce(sum(${costReconciliations.amountPayableThisTime}), 0)::float8` })
-    .from(costReconciliations);
-  const [saleCash] = await db.execute(sql`
-    SELECT COALESCE(SUM(ABS(debit_amount)), 0)::float8 as s
-    FROM bank_transactions
-    WHERE debit_amount IS NOT NULL
-      AND partner_name IN (
-        'DOAN LE BACH', 'HO NGUYEN CONG THANH', 'TRAN MINH NHAT',
-        'TRAN THI KHANH LINH', 'LE THI CAM GIANG', 'LE TRINH THANH THUY',
-        'VU DUC THINH', 'DOAN NGOC HA SANG', 'HUYNH DUY ANH',
-        'NGUYEN THI HONG NHUNG', 'BUI THI HA UYEN', 'NGUYEN QUY TAI',
-        'VO THI THU THAO', 'TONG THI NHUNG', 'TONG THI HONG THAM',
-        'VU THI NGOC DUYEN', 'PHAM VAN QUYET', 'BUI XUAN DAT'
-      )
+  // HH còn trả sale = sum(amount_payable) − sum(payments_out) — chỉ tính CHƯA
+  // trả cho NV. Dùng payments_out để consistent với /reports/ap-aging.
+  // Tất cả cost_type (không chỉ sale_commission) vì các loại KPI/thưởng cũng
+  // là "còn trả cho NV" theo cùng logic.
+  const [payable] = await db.execute(sql`
+    SELECT COALESCE(SUM(GREATEST(0, c.amount_payable_this_time - COALESCE(po.paid, 0))), 0)::float8 as s
+    FROM cost_reconciliations c
+    LEFT JOIN (
+      SELECT cost_reconciliation_id, SUM(amount) AS paid
+      FROM payments_out
+      GROUP BY cost_reconciliation_id
+    ) po ON po.cost_reconciliation_id = c.id
+    WHERE c.amount_payable_this_time > 0
   `) as any[];
-  const payable = Math.max(0, Number(cost?.s ?? 0) - Number(saleCash?.s ?? 0));
-  return { receivable, payable };
+  return { receivable, payable: Number(payable?.s ?? 0) };
 }
 
 async function ytdUnitsClosedByPerson(year: number, limit = 3) {
