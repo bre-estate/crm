@@ -58,16 +58,27 @@ async function findOrCreateInvoice(
 /**
  * totalAmountVat của invoice = sum(totalReceivableThisTime) từ mọi recon liên kết.
  * User không tự nhập được — luôn auto tính sau mỗi lần recon thay đổi.
+ *
+ * Bonus: nếu invoice không còn recon nào → auto delete (chống orphan). Bug xảy ra
+ * khi user đổi ngày HĐ trên form revenue: findOrCreateInvoice tạo invoice mới,
+ * invoice cũ mất hết recon và trở thành orphan trong /invoices list.
  */
 async function recomputeInvoiceTotal(invoiceId: number | null): Promise<void> {
   if (!invoiceId) return;
   const [row] = await db
     .select({
+      cnt: sql<number>`COUNT(*)::int`,
       total: sql<string>`COALESCE(SUM(${revenueReconciliations.totalReceivableThisTime}), 0)`,
     })
     .from(revenueReconciliations)
     .where(eq(revenueReconciliations.invoiceId, invoiceId));
+  const cnt = Number(row?.cnt ?? 0);
   const total = Number(row?.total ?? 0);
+  if (cnt === 0) {
+    // Auto-cleanup orphan invoice
+    await db.delete(invoices).where(eq(invoices.id, invoiceId));
+    return;
+  }
   await db.update(invoices).set({ totalAmountVat: total }).where(eq(invoices.id, invoiceId));
 }
 

@@ -97,9 +97,9 @@ export default function NhapDoanhThuPage() {
             <b>1 HĐ nhiều CĐT (đặc biệt):</b> Dataloca 2025 + Dataloca 2026 là 2 pháp nhân riêng nhưng CHUNG công ty
             → xuất chung 1 HĐ. Hệ thống auto set partner_id = NULL cho HĐ đa CĐT.
           </li>
-          <li className="text-red-700">
-            <b>Đừng tạo HĐ trước rồi bỏ trống:</b> Nếu chưa link căn nào, đừng save. Record trống sẽ hiện "còn nợ" đỏ chót
-            trong danh sách hóa đơn (bug đã từng xảy ra 30/07 và 07/08/2026).
+          <li>
+            <b>Đổi ngày/số HĐ trên form doanh thu:</b> Hệ thống hiểu là 2 HĐ khác nhau và tự tạo HĐ mới với ngày/số mới.
+            <b className="text-green-700">Từ 10/08/2026:</b> HĐ cũ tự động bị xóa nếu mất hết recon (không còn orphan như trước).
           </li>
         </ul>
       </section>
