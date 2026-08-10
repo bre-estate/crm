@@ -79,9 +79,10 @@ export default async function InvoicesPage() {
   }
 
   const rows = invRows.map((inv) => {
-    const total = Number(inv.totalAmountVat ?? 0);
-    const paid = paidByInv.get(inv.id) ?? 0;
+    // Giá trị HĐ = SUM recon (khớp description "auto tính từ recon"), fallback total_amount_vat nếu không có recon
     const recon = reconByInv.get(inv.id) ?? { cnt: 0, totalRecon: 0 };
+    const total = recon.cnt > 0 ? recon.totalRecon : Number(inv.totalAmountVat ?? 0);
+    const paid = paidByInv.get(inv.id) ?? 0;
     let partnerLabel: string | null = inv.partnerName ?? null;
     if (!partnerLabel) {
       const set = partnersFromRecon.get(inv.id);

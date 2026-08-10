@@ -43,6 +43,7 @@ export const RESOURCES = {
   "alerts": "Cảnh báo",
   "admin.users": "Quản lý user",
   "admin.activity": "Nhật ký hoạt động",
+  "admin.import-logs": "Nhật ký import",
 } as const;
 
 export type Resource = keyof typeof RESOURCES;
@@ -221,6 +222,7 @@ export function resourceOfPath(path: string): Resource | "reports.*" | null {
   // Admin
   if (p.startsWith("/admin/users")) return "admin.users";
   if (p.startsWith("/admin/activity")) return "admin.activity";
+  if (p.startsWith("/admin/import-logs")) return "admin.activity";
 
   // Top-level
   if (p.startsWith("/products")) return "products";

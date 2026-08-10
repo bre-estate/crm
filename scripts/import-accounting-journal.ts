@@ -97,6 +97,12 @@ function makeDedupKey(sourceFile: string, r: Row): string {
 async function main() {
   const absPath = path.resolve(FILE_ARG);
   const fileName = path.basename(absPath);
+  const { runWithImportLog } = await import("../lib/import-log");
+  await runWithImportLog({
+    scriptName: "import-accounting-journal",
+    sourceFile: fileName,
+    targetTable: "accounting_journal",
+  }, async (log) => {
   console.log(`Reading ${fileName}...`);
 
   const rows = parseNKC(absPath);
@@ -157,7 +163,11 @@ async function main() {
     console.log(`  ${tk.padEnd(10)} ${fmt(s)}`);
   }
 
-  await sql.end();
+    log.created = inserted;
+    log.skipped = skipped;
+    log.details = { total_debit: totalDebit, total_credit: totalCredit, top_tk: top.slice(0, 5) };
+    await sql.end();
+  });
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

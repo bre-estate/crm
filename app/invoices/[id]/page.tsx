@@ -157,8 +157,28 @@ export default async function InvoiceDetailPage({
           )}
         </h2>
         {recons.length === 0 ? (
-          <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-6 text-center text-slate-500 text-sm">
-            Hóa đơn chưa có đợt đối chiếu nào link vào.
+          <div className="bg-red-50 border-2 border-red-300 rounded-xl p-6 space-y-3">
+            <div className="font-semibold text-red-800">
+              ⚠️ Hóa đơn ORPHAN — 0 đợt đối chiếu link vào
+            </div>
+            <div className="text-sm text-red-700">
+              Rất có thể là record trống do bug import Excel. Không có căn nào,
+              không có phát sinh doanh thu thật. Nếu chắc chắn không cần → xóa.
+            </div>
+            <form
+              action={async () => {
+                "use server";
+                const { deleteOrphanInvoice } = await import("./actions");
+                await deleteOrphanInvoice(inv.id);
+              }}
+            >
+              <button
+                type="submit"
+                className="bg-red-600 text-white text-sm px-4 py-2 rounded hover:bg-red-700"
+              >
+                🗑️ Xóa hóa đơn này
+              </button>
+            </form>
           </div>
         ) : (
           partnerGroups.map(([partnerName, list]) => {

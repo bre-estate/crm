@@ -724,6 +724,25 @@ export const rentals = pgTable("rentals", {
 });
 export type Rental = typeof rentals.$inferSelect;
 
+// Audit log cho mọi import script (yêu cầu Chủ tịch — trace ai/khi nào import gì).
+export const importLogs = pgTable("import_logs", {
+  id: serial("id").primaryKey(),
+  scriptName: text("script_name").notNull(),
+  sourceFile: text("source_file"),
+  targetTable: text("target_table"),
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+  finishedAt: timestamp("finished_at", { withTimezone: true }),
+  status: text("status").notNull().default("running"),
+  recordsCreated: integer("records_created").default(0),
+  recordsUpdated: integer("records_updated").default(0),
+  recordsSkipped: integer("records_skipped").default(0),
+  recordsError: integer("records_error").default(0),
+  runBy: text("run_by"),
+  errorMessage: text("error_message"),
+  details: jsonb("details"),
+});
+export type ImportLog = typeof importLogs.$inferSelect;
+
 // Bảng cân đối phát sinh (CDPS) — nguồn cho Balance Sheet quản trị.
 // Import từ sheet CDPS của SO SACH BRE 2025.xlsx (Kim làm chuẩn TT200).
 export const trialBalance = pgTable("trial_balance", {
