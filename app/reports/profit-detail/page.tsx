@@ -1,9 +1,9 @@
 /**
- * P&L quản trị (Management P&L) — CHUẨN DỒN TÍCH (accrual) khớp Kim BC.
- * Nguồn: accounting_journal (NKC Kim làm) đã classify per description → 32 bucket.
+ * P&L quản trị (Management P&L) — CHUẨN DỒN TÍCH (accrual) khớp BC kế toán.
+ * Nguồn: accounting_journal (NKC do kế toán làm) đã classify per description → 32 bucket.
  *
- * Kim BC classify cross-TK theo bản chất (không theo mã TK):
- * VD Kim BC 4.1 (345M) = NKC 6411 (198M) + 6417 "hỗ trợ CTV" T1-T8 (156M).
+ * BC kế toán classify cross-TK theo bản chất (không theo mã TK):
+ * VD BC 4.1 (345M) = NKC 6411 (198M) + 6417 "hỗ trợ CTV" T1-T8 (156M).
  * Xem lib/transaction-classifier.ts classifyNkc() để hiểu logic.
  */
 import { db } from "@/lib/db";
@@ -47,7 +47,7 @@ export default async function ProfitDetailPage({ searchParams }: { searchParams:
   const month = sp.month ? Number(sp.month) : undefined;
   const { start, end, label } = periodDates(year, period, q, month);
 
-  // Nguồn 1: Doanh thu từ revenue_reconciliations (Kim BCDT — sát Kim BC 1.x)
+  // Nguồn 1: Doanh thu từ revenue_reconciliations (BCDT kế toán — sát BC kế toán 1.x)
   const [rev] = await db.execute(sql`
     SELECT
       COALESCE(SUM(total_receivable_this_time), 0)::float8 as total,
@@ -62,7 +62,7 @@ export default async function ProfitDetailPage({ searchParams }: { searchParams:
   const bonusMgrGross = Number(rev?.bm ?? 0);
   const dtNetNoBonus = dtNet - bonusSaleGross / 1.1 - bonusMgrGross / 1.1;
 
-  // Nguồn 2: Chi phí từ accounting_journal đã classify (accrual dồn tích khớp Kim)
+  // Nguồn 2: Chi phí từ accounting_journal đã classify (accrual dồn tích khớp BC kế toán)
   const rows = await db
     .select({
       category: accountingJournal.category,
@@ -79,7 +79,7 @@ export default async function ProfitDetailPage({ searchParams }: { searchParams:
   const byKey = new Map<CategoryKey, number>();
   for (const r of rows) byKey.set((r.category ?? "opex_khac") as CategoryKey, Number(r.total));
 
-  // Nguồn 3: Trích trước cuối kỳ (Kim's breakdown from "251231_Trich truoc 335.xlsx")
+  // Nguồn 3: Trích trước cuối kỳ (kế toán breakdown from "251231_Trich truoc 335.xlsx")
   // Sum theo bucket, add vào NKC bucket đã có
   const [accrual] = await db
     .select({
@@ -121,7 +121,7 @@ export default async function ProfitDetailPage({ searchParams }: { searchParams:
 
   const get = (k: CategoryKey) => byKey.get(k) ?? 0;
 
-  // Kim BC 2.x giá vốn trực tiếp
+  // BC kế toán 2.x giá vốn trực tiếp
   const hh_sale = get("hh_sale");
   const ho_tro_khach = get("ho_tro_khach");
   const cdt_thuong_nvkd = get("cdt_thuong_nvkd");
@@ -134,7 +134,7 @@ export default async function ProfitDetailPage({ searchParams }: { searchParams:
     + cty_thuong_ql + cty_thuong_tpkd + cty_thuong_admin + cty_thuong_ceo;
   const laiGop = dtNet - totalCogs;
 
-  // Kim BC 4.x chi phí cố định
+  // BC kế toán 4.x chi phí cố định
   const luong_nvkd = get("luong_nvkd");
   const thuong_ds_sale = get("thuong_ds_sale");
   const luong_admin = get("luong_admin");
@@ -176,8 +176,8 @@ export default async function ProfitDetailPage({ searchParams }: { searchParams:
         </div>
         <h1 className="text-2xl font-bold mt-1">Báo cáo lãi/lỗ quản trị</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Format Kim BC — {label}. <b>Chuẩn dồn tích (TT200)</b> từ NKC Kim.
-          Nguồn DT: BCDT (Kim). Nguồn chi phí: accounting_journal classify per description.
+          Format BC kế toán — {label}. <b>Chuẩn dồn tích (TT200)</b> từ sổ NKC.
+          Nguồn DT: BCDT kế toán. Nguồn chi phí: accounting_journal classify per description.
         </p>
       </div>
 
@@ -206,7 +206,7 @@ export default async function ProfitDetailPage({ searchParams }: { searchParams:
 
       {/* Cash flow report link */}
       <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-800 flex items-center justify-between">
-        <span>💡 Đây là <b>P&L dồn tích</b> (khớp Kim BCTC). Muốn xem <b>dòng tiền thực</b> (cash basis)?</span>
+        <span>💡 Đây là <b>P&L dồn tích</b> (khớp BC kế toánTC). Muốn xem <b>dòng tiền thực</b> (cash basis)?</span>
         <Link href="/reports/cash-flow" className="text-blue-700 underline font-medium">→ Xem dòng tiền</Link>
       </div>
 
@@ -270,9 +270,9 @@ export default async function ProfitDetailPage({ searchParams }: { searchParams:
       </div>
 
       <div className="text-xs text-slate-500 italic space-y-1">
-        <p>💡 <b>Nguồn:</b> revenue_reconciliations (DT) + accounting_journal (Kim NKC dồn tích).</p>
+        <p>💡 <b>Nguồn:</b> revenue_reconciliations (DT) + accounting_journal (sổ NKC dồn tích).</p>
         <p>💡 Classifier áp per description NKC → 32 bucket (xem <Link href="/finance/bank-review" className="underline">Đối chiếu bank</Link> để hiểu logic).</p>
-        <p>💡 Nếu số không khớp Kim BC: có thể Kim gộp cross-TK theo bản chất — cần user override qua UI (sắp bổ sung UI review NKC).</p>
+        <p>💡 Nếu số không khớp BC kế toán: có thể kế toán gộp cross-TK theo bản chất — cần user override qua UI review NKC.</p>
       </div>
     </div>
   );

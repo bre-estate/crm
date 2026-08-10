@@ -1,6 +1,6 @@
 /**
  * Expense analysis — chi phí theo bucket + theo tháng (heatmap).
- * Nguồn: accounting_journal (accrual) + year_end_accruals (Kim breakdown).
+ * Nguồn: accounting_journal (accrual) + year_end_accruals (kế toán breakdown).
  */
 import { db } from "@/lib/db";
 import { accountingJournal, yearEndAccruals, yearEndOtherAccruals } from "@/lib/schema";
@@ -17,10 +17,10 @@ const fmtM = (n: number) => n >= 1_000_000 ? (n / 1_000_000).toFixed(0) + "M" : 
 type SP = Promise<{ year?: string }>;
 
 const EXPENSE_BUCKETS: CategoryKey[] = [
-  // COGS (Kim BC 2.x)
+  // COGS (BC mục 2.x)
   "hh_sale", "ho_tro_khach", "cdt_thuong_nvkd", "cdt_thuong_ql",
   "cty_thuong_ql", "cty_thuong_tpkd", "cty_thuong_admin", "cty_thuong_ceo",
-  // OPEX (Kim BC 4.x)
+  // OPEX (BC mục 4.x)
   "luong_nvkd", "thuong_ds_sale", "luong_admin", "marketing",
   "thue_vp", "do_dung_vp", "di_lai", "tiep_khach", "dich_vu_ngoai", "thue_phi_le_phi", "opex_khac",
 ];
@@ -129,7 +129,7 @@ export default async function ExpenseAnalysisPage({ searchParams }: { searchPara
         <table className="w-full text-xs">
           <thead className="bg-slate-800 text-white">
             <tr>
-              <th className="text-left p-2 sticky left-0 bg-slate-800">Bucket (Kim BC)</th>
+              <th className="text-left p-2 sticky left-0 bg-slate-800">Bucket (BC kế toán)</th>
               {months.map(m => <th key={m} className="text-right p-2 min-w-16">T{Number(m)}</th>)}
               <th className="text-right p-2 min-w-24 border-l border-slate-600">Tổng năm</th>
               <th className="text-right p-2 w-16">%</th>
@@ -144,7 +144,7 @@ export default async function ExpenseAnalysisPage({ searchParams }: { searchPara
                 <tr key={bucket} className="border-t hover:bg-slate-50">
                   <td className="p-2 sticky left-0 bg-white">
                     <div className="font-medium">{meta?.label}</div>
-                    {meta?.kimBc && <div className="text-[10px] text-slate-500">Kim BC {meta.kimBc}</div>}
+                    {meta?.kimBc && <div className="text-[10px] text-slate-500">Mục {meta.kimBc}</div>}
                   </td>
                   {months.map(m => {
                     const v = matrix.get(bucket)?.get(m) ?? 0;

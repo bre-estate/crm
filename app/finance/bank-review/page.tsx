@@ -85,7 +85,7 @@ export default async function BankReviewPage({ searchParams }: { searchParams: S
       <div>
         <h1 className="text-2xl font-bold">Đối chiếu sao kê bank</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Phân loại 32 bucket khớp Kim BC. Chọn bucket sai → dropdown chỉnh tay (auto lưu). Filter chua_phan_loai / opex_khac / khac_thu để dò dần.
+          Phân loại 32 bucket khớp báo cáo Kế toán. Chọn bucket sai → dropdown chỉnh tay (auto lưu). Filter chua_phan_loai / opex_khac / khac_thu để dò dần.
         </p>
       </div>
 

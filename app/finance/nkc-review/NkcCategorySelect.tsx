@@ -8,8 +8,8 @@ const OPTIONS = Object.values(CATEGORIES).map(c => ({
 }));
 const GROUP_LABEL: Record<string, string> = {
   inflow: "Dòng tiền vào",
-  cogs: "Giá vốn (Kim 2.x)",
-  opex: "OPEX (Kim 4.x)",
+  cogs: "Giá vốn (mục 2.x)",
+  opex: "OPEX (mục 4.x)",
   non_pnl: "Không tính P&L",
   unknown: "Chưa xác định",
 };

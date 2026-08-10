@@ -140,15 +140,19 @@ const NAV: NavEntry[] = [
     children: [
       { href: "/admin/users", label: "Quản lý user", ownerOnly: true },
       { href: "/admin/data-checks", label: "Kiểm tra dữ liệu", ownerOnly: true },
-      { href: "/help", label: "📋 Trợ giúp — tất cả hướng dẫn" },
-      { href: "/help/nhap-doanh-thu", label: "📥 Nhập doanh thu", section: "Hướng dẫn" },
-      { href: "/help/nhap-doi-chieu-gia-von", label: "💸 Nhập giá vốn", section: "Hướng dẫn" },
-      { href: "/help/nhap-can", label: "🏢 Nhập căn", section: "Hướng dẫn" },
-      { href: "/help/nhap-du-an", label: "🏗️ Nhập dự án", section: "Hướng dẫn" },
-      { href: "/help/nhap-doi-tac", label: "🤝 Nhập CĐT", section: "Hướng dẫn" },
-      { href: "/help/accounting-basics", label: "📚 Kế toán căn bản", section: "Tham khảo" },
       { href: "/admin/activity", label: "Lịch sử hoạt động", resource: "admin.activity" },
       { href: "/admin/import-logs", label: "Nhật ký import", resource: "admin.activity" },
+    ],
+  },
+  {
+    label: "Hướng dẫn",
+    children: [
+      { href: "/help/nhap-doanh-thu", label: "📥 Nhập doanh thu", resource: "help" },
+      { href: "/help/nhap-doi-chieu-gia-von", label: "💸 Nhập giá vốn", resource: "help" },
+      { href: "/help/nhap-can", label: "🏢 Nhập căn", resource: "help" },
+      { href: "/help/nhap-du-an", label: "🏗️ Nhập dự án", resource: "help" },
+      { href: "/help/nhap-doi-tac", label: "🤝 Nhập đối tác", resource: "help" },
+      { href: "/help/accounting-basics", label: "📚 Kế toán căn bản", resource: "help" },
     ],
   },
 ];

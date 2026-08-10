@@ -1,6 +1,6 @@
 /**
  * Sales report — DT bán hàng chi tiết per dự án / CĐT / NV / phòng.
- * Nguồn: revenue_reconciliations (Kim BCDT). Filter theo năm + kỳ.
+ * Nguồn: revenue_reconciliations (BCDT kế toán). Filter theo năm + kỳ.
  * Tab: [Theo dự án] [Theo CĐT] [Theo NV] [Theo phòng]
  */
 import { db } from "@/lib/db";
@@ -183,7 +183,7 @@ export default async function SalesReportPage({ searchParams }: { searchParams: 
         <div className="text-xs"><Link href="/reports" className="text-blue-600 hover:underline">← Báo cáo</Link></div>
         <h1 className="text-2xl font-bold mt-1">Báo cáo bán hàng</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Doanh thu ghi nhận theo BCDT (Kim). Kỳ: {label}. Tab: {TABS.find(t=>t.key===tab)?.label}
+          Doanh thu ghi nhận theo BCDT kế toán. Kỳ: {label}. Tab: {TABS.find(t=>t.key===tab)?.label}
         </p>
       </div>
 

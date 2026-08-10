@@ -2,7 +2,7 @@
  * Nghĩa vụ tài chính: còn thu / còn nợ / nợ thuế.
  * - Còn thu CĐT = accrual revenue − đã nhận từ CĐT (payments_in)
  * - Còn nợ sale team = accrual HH sale − đã trả bank cho sale team (sao kê)
- * - Nợ thuế = Kim NKC accrual thuế − đã nộp KBNN (sao kê)
+ * - Nợ thuế = NKC accrual thuế − đã nộp KBNN (sao kê)
  */
 import { db } from "@/lib/db";
 import { revenueReconciliations, paymentsIn, costReconciliations } from "@/lib/schema";
@@ -47,7 +47,7 @@ export default async function ObligationsPage() {
   const saleTeamCash = Number(saleCash.s ?? 0);
   const owedSaleTeam = Math.max(0, Number(costAccrual?.s ?? 0) - saleTeamCash);
 
-  // 3) Nợ thuế = Kim NKC TK 3334/3335/33311 accrual − cash paid to KBNN
+  // 3) Nợ thuế = NKC TK 3334/3335/33311 accrual − cash paid to KBNN
   const [taxAccrual] = await db.execute(sql`
     SELECT COALESCE(SUM(amount), 0)::float8 as s
     FROM accounting_journal
@@ -146,14 +146,14 @@ export default async function ObligationsPage() {
                 label="🏛️ Thuế (GTGT/TNDN/TNCN)"
                 accrual={Number(taxAccrual.s ?? 0)}
                 cash={Number(taxCash.s ?? 0)}
-                note="Kim NKC accrual TK 3334/3335/33311 − đã nộp KBNN"
+                note="NKC accrual TK 3334/3335/33311 − đã nộp KBNN"
                 highlight
               />
               <ObligationRow
                 label="🏥 BHXH cty đóng"
                 accrual={Number(bhxhAccrual.s ?? 0)}
                 cash={Number(bhxhCash.s ?? 0)}
-                note="Kim NKC 3383/3384/3386 − đã nộp BHXH Bình Thạnh"
+                note="NKC 3383/3384/3386 − đã nộp BHXH Bình Thạnh"
                 highlight
               />
               <tr className="border-t-2 border-slate-300 bg-slate-50 font-bold">

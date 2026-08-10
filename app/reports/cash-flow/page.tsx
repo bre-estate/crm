@@ -24,11 +24,11 @@ function classifyOut(partnerName: string | null, description: string): string {
   // ===== TẦNG 1: Owner (Triết) =====
   if (/NGUYEN MINH TRIET|MINH TRIET/.test(p)) return "Owner (Triết) — hoàn/rút vốn";
 
-  // ===== TẦNG 2: Partner-specific mapping (landlord, KH cụ thể, Kim) =====
+  // ===== TẦNG 2: Partner-specific mapping (landlord, KH cụ thể, kế toán) =====
   if (/NGUYEN DANG KHIET/.test(p)) return "Thuê VP"; // Landlord VP kỳ 1
   if (/PHAM NGOC THANH TAM/.test(p)) return "Thuê VP"; // Landlord VP kỳ 2
   if (/BUI HOANG DE/.test(p)) return "Hoàn booking/YCTV";
-  if (/HO THI LAN KIM/.test(p)) return "Phí dịch vụ (Kim)";
+  if (/HO THI LAN KIM/.test(p)) return "Phí dịch vụ kế toán";
   if (/TO THI NGA/.test(p)) return "Hỗ trợ/CK khách"; // KH Bcons quy đổi vàng
 
   // ===== TẦNG 3: Employee list — NVKD/Admin partner ăn hết payments =====
@@ -42,7 +42,7 @@ function classifyOut(partnerName: string | null, description: string): string {
   if (/LE THANH TUNG/.test(p)) return "Marketing";
 
   // ===== TẦNG 4: Description keyword (khi partner không rõ hoặc tổ chức) =====
-  // Chi hộ booking KH (TK 3388 Kim) — passthrough, KHÔNG phải chi phí
+  // Chi hộ booking KH (TK 3388) — passthrough, KHÔNG phải chi phí
   if (/CHUYEN TIEN GIU CHO.*KHACH|GIU CHO.*KHACH|NOP THAY|CHI HO.*BOOKING|CHI HỘ|YCTV/i.test(d)) return "Chi hộ booking KH (passthrough)";
   if (/HOAN\s+(BOOKING|COC|TIEN)|HOÀN\s+(BOOKING|CỌC|TIỀN)|HOAN.*YCTV|HOÀN.*YCTV|REFUND/i.test(d)) return "Hoàn booking/YCTV";
   if (/HO TRO|HỖ TRỢ|CHIET KHAU|CHIẾT KHẤU|QUY DOI.*VANG|QUY ĐỔI.*VÀNG/i.test(d)) return "Hỗ trợ/CK khách";
@@ -52,7 +52,7 @@ function classifyOut(partnerName: string | null, description: string): string {
   if (/BHXH|BAO HIEM|BẢO HIỂM/i.test(d)) return "BHXH";
   if (/THUE.*(GTGT|TNDN|TNCN|MON BAI)|NTDT|THUẾ/i.test(d)) return "Thuế";
   if (/QUANG CAO|QUẢNG CÁO|MARKETING|BATDONGSAN|PROPERTYGURU/i.test(d)) return "Marketing";
-  if (/DICH VU KE TOAN|DỊCH VỤ KẾ TOÁN|PHI DICH VU/i.test(d)) return "Phí dịch vụ (Kim)";
+  if (/DICH VU KE TOAN|DỊCH VỤ KẾ TOÁN|PHI DICH VU/i.test(d)) return "Phí dịch vụ kế toán";
 
   // ===== TẦNG 5: Tổ chức =====
   if (/^(CTY|CONG TY|CN\s|CTCP)/.test(p) && /(BAM LAND|DXMD|DANH KHOI|BCONS|PHU DONG|PHÚ ĐÔNG)/.test(p)) {

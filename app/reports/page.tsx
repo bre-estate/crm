@@ -30,7 +30,7 @@ const SECTIONS: Section[] = [
       {
         href: "/reports/profit-detail",
         title: "1. Lãi/lỗ quản trị (Management P&L)",
-        desc: "DT − Giá vốn − OPEX. Chuẩn dòng tiền (cash basis) từ sao kê bank. Khớp format Kim BC.",
+        desc: "DT − Giá vốn − OPEX. Chuẩn dòng tiền (cash basis) từ sao kê bank. Khớp format báo cáo kế toán.",
         gate: "reports",
       },
       {
@@ -54,7 +54,7 @@ const SECTIONS: Section[] = [
       {
         href: "/reports/balance-sheet",
         title: "5. Bảng cân đối quản trị",
-        desc: "Tài sản = Nợ + Vốn tại thời điểm. Nguồn Kim NKC.",
+        desc: "Tài sản = Nợ + Vốn tại thời điểm. Nguồn sổ NKC.",
         gate: "reports",
       },
     ],

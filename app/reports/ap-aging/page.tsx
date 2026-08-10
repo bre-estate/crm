@@ -79,37 +79,6 @@ export default async function APAgingPage() {
     total: acc.total + r.total,
   }), { count: 0, b0_30: 0, b31_60: 0, b61_90: 0, b91: 0, total: 0 });
 
-  // Nợ thuế TNCN/TNDN/VAT + BHXH (accrual − đã nộp bank)
-  const [taxAccrual] = await db.execute(sql`
-    SELECT COALESCE(SUM(amount), 0)::float8 as s
-    FROM accounting_journal
-    WHERE credit_account IN ('3334','3335','33311')
-      AND debit_account != '911'
-      AND substr(entry_date, 1, 4) IN ('2025','2026')
-  `) as any[];
-  const [taxCash] = await db.execute(sql`
-    SELECT COALESCE(SUM(ABS(debit_amount)), 0)::float8 as s
-    FROM bank_transactions
-    WHERE category IN ('thue_tncn','thue_tndn','thue_vat','thue_phi_le_phi')
-  `) as any[];
-  const owedTax = Math.max(0, Number(taxAccrual.s ?? 0) - Number(taxCash.s ?? 0));
-
-  const [bhxhAccrual] = await db.execute(sql`
-    SELECT COALESCE(SUM(amount), 0)::float8 as s
-    FROM accounting_journal
-    WHERE credit_account IN ('3383','3384','3386')
-      AND debit_account != '911'
-      AND substr(entry_date, 1, 4) IN ('2025','2026')
-  `) as any[];
-  const [bhxhCash] = await db.execute(sql`
-    SELECT COALESCE(SUM(ABS(debit_amount)), 0)::float8 as s
-    FROM bank_transactions
-    WHERE partner_name ILIKE '%BAO HIEM XA HOI%'
-  `) as any[];
-  const owedBhxh = Math.max(0, Number(bhxhAccrual.s ?? 0) - Number(bhxhCash.s ?? 0));
-
-  // Không cộng tổng — 3 loại nợ khác bản chất (HH cho NV vs thuế/BHXH cho NN)
-
   return (
     <div className="space-y-6">
       <div>
@@ -123,14 +92,11 @@ export default async function APAgingPage() {
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <SummaryCard label="HH còn trả sale team" value={totals.total} color="orange" bold />
-        <SummaryCard label="Nợ thuế (VAT/TNCN/TNDN)" value={owedTax} color="amber" />
-        <SummaryCard label="Nợ BHXH cty đóng" value={owedBhxh} color="amber" />
+      <div>
+        <SummaryCard label="Tổng HH còn trả sale team" value={totals.total} color="orange" bold />
       </div>
       <div className="text-xs text-slate-500 italic">
-        <b>Lưu ý:</b> HH sale, thuế, BHXH là 3 nghĩa vụ khác nhau — không cộng gộp thành "tổng nợ".
-        HH sale trả cho NV (khi HH về từ CĐT). Thuế/BHXH nộp cho cơ quan nhà nước theo lịch.
+        Nghĩa vụ thuế/BHXH quản lý riêng ở phần Kế toán — không nhập chung với HH sale team.
       </div>
 
       {/* Sale team aging */}
@@ -180,42 +146,8 @@ export default async function APAgingPage() {
         </div>
       </section>
 
-      {/* Thuế + BHXH */}
-      <section>
-        <h2 className="text-lg font-semibold mb-2">Nợ thuế + BHXH (từ Kim NKC vs đã nộp)</h2>
-        <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-xs">
-              <tr>
-                <th className="text-left p-3">Loại</th>
-                <th className="text-right p-3">Đã ghi (accrual)</th>
-                <th className="text-right p-3">Đã nộp (cash)</th>
-                <th className="text-right p-3">Còn nợ</th>
-                <th className="text-left p-3">Ghi chú</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-t">
-                <td className="p-3">Thuế (VAT/TNCN/TNDN)</td>
-                <td className="p-3 text-right tabular-nums">{fmt(Number(taxAccrual.s ?? 0))}</td>
-                <td className="p-3 text-right tabular-nums text-green-700">{fmt(Number(taxCash.s ?? 0))}</td>
-                <td className="p-3 text-right tabular-nums font-semibold text-red-700">{fmt(owedTax)}</td>
-                <td className="p-3 text-xs text-slate-500">Kim NKC 3334/3335/33311 − bank thuế</td>
-              </tr>
-              <tr className="border-t">
-                <td className="p-3">BHXH</td>
-                <td className="p-3 text-right tabular-nums">{fmt(Number(bhxhAccrual.s ?? 0))}</td>
-                <td className="p-3 text-right tabular-nums text-green-700">{fmt(Number(bhxhCash.s ?? 0))}</td>
-                <td className="p-3 text-right tabular-nums font-semibold text-red-700">{fmt(owedBhxh)}</td>
-                <td className="p-3 text-xs text-slate-500">Kim NKC 3383/3384/3386 − bank BHXH Bình Thạnh</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
       <div className="text-xs text-slate-500 italic">
-        Nguồn: <b>cost_reconciliations</b> − <b>payments_out</b> (sale team), <b>accounting_journal</b> − <b>bank_transactions</b> (thuế/BHXH).
+        Nguồn: <b>cost_reconciliations</b> − <b>payments_out</b> (đối chiếu HH per NV).
       </div>
     </div>
   );

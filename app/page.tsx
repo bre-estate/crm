@@ -284,7 +284,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
         )}
         {canRevenue && (
           <Kpi
-            label={`📊 Lãi gộp YTD ${year}`}
+            label={`📊 Lãi gộp năm ${year}`}
             value={fmtMoney(laiGop)}
             sub={`Biên ${revYtdNet > 0 ? ((laiGop / revYtdNet) * 100).toFixed(1) : "0"}%`}
             color={laiGop >= 0 ? "good" : "bad"}
@@ -311,7 +311,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
         )}
       </div>
 
-      {/* Row 2: DT tháng + DT YTD */}
+      {/* Row 2: DT tháng + DT cả năm */}
       {canRevenue && (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <Kpi
@@ -321,13 +321,13 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
             link="/reports/sales"
           />
           <Kpi
-            label={`Doanh thu YTD ${year}`}
+            label={`Doanh thu năm ${year}`}
             value={fmtMoney(revYtd.total)}
             sub={`${revYtd.units} căn từ đầu năm`}
             link="/reports/sales"
           />
           <Kpi
-            label={`Giá vốn YTD ${year}`}
+            label={`Giá vốn năm ${year}`}
             value={fmtMoney(cogsYtd)}
             sub={`HH sale + KPI + thưởng`}
             link="/reports/commissions"
@@ -335,12 +335,12 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
         </div>
       )}
 
-      {/* Top 3 sale + Top 3 dự án YTD */}
+      {/* Top 3 sale + Top 3 dự án cả năm */}
       {canRevenue && (topSale.length > 0 || topProject.length > 0) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {topSale.length > 0 && (
             <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
-              <div className="bg-slate-800 text-white p-3 font-bold text-sm">🏆 Top 3 nhân viên (DT YTD)</div>
+              <div className="bg-slate-800 text-white p-3 font-bold text-sm">🏆 Top 3 nhân viên (DT năm)</div>
               <table className="w-full text-sm">
                 <tbody>
                   {topSale.map((s: any, i: number) => (
@@ -359,7 +359,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
           )}
           {topProject.length > 0 && (
             <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
-              <div className="bg-slate-800 text-white p-3 font-bold text-sm">🏗️ Top 3 dự án (DT YTD)</div>
+              <div className="bg-slate-800 text-white p-3 font-bold text-sm">🏗️ Top 3 dự án (DT năm)</div>
               <table className="w-full text-sm">
                 <tbody>
                   {topProject.map((p: any, i: number) => (

@@ -1,7 +1,7 @@
 /**
  * Đối chiếu sổ NKC (accounting_journal) — cho phép user override classify từng row.
- * Show tổng theo bucket + so sánh với Kim BC 2025 để user thấy chênh cụ thể.
- * Nguồn: Kim's sổ nhật ký chung + trích trước cuối kỳ (year_end_accruals).
+ * Show tổng theo bucket + so sánh với báo cáo kế toán 2025 để user thấy chênh cụ thể.
+ * Nguồn: sổ nhật ký chung + trích trước cuối kỳ (year_end_accruals).
  */
 import { db } from "@/lib/db";
 import { accountingJournal, yearEndAccruals, yearEndOtherAccruals } from "@/lib/schema";
@@ -18,7 +18,7 @@ type SP = Promise<{ category?: string; q?: string; year?: string; source?: strin
 
 const fmt = (n: number | null) => n == null ? "" : Math.round(n).toLocaleString("vi-VN");
 
-// Kim BC target (dồn tích) 2025 để so
+// BC kế toán target (dồn tích) 2025 để so
 const KIM_BC_2025: Record<string, number> = {
   hh_sale: 1794473527,
   ho_tro_khach: 83539517,
@@ -145,8 +145,8 @@ export default async function NkcReviewPage({ searchParams }: { searchParams: SP
       <div>
         <h1 className="text-2xl font-bold">Đối chiếu sổ NKC</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Rà từng row Kim NKC, chỉnh bucket sai để P&L khớp Kim BC 100%.
-          Cột "Kim BC" hiển thị số Kim → so em thấy chênh bao nhiêu.
+          Rà từng row sổ NKC, chỉnh bucket sai để P&L khớp báo cáo kế toán 100%.
+          Cột "BC kế toán" hiển thị số benchmark → so app thấy chênh bao nhiêu.
         </p>
       </div>
 
@@ -198,10 +198,10 @@ export default async function NkcReviewPage({ searchParams }: { searchParams: SP
         </form>
       </form>
 
-      {/* Compare Kim BC 2025 per bucket */}
+      {/* Compare BC kế toán 2025 per bucket */}
       {filterYear === "2025" && (
         <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-3">
-          <div className="text-xs text-slate-500 mb-2">So sánh App (NKC + trích trước) vs Kim BC 2025:</div>
+          <div className="text-xs text-slate-500 mb-2">So sánh App (NKC + trích trước) vs Báo cáo kế toán 2025:</div>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead className="bg-slate-100">
@@ -210,7 +210,7 @@ export default async function NkcReviewPage({ searchParams }: { searchParams: SP
                   <th className="text-right p-1.5">NKC actual</th>
                   <th className="text-right p-1.5">Trích trước</th>
                   <th className="text-right p-1.5">App tổng</th>
-                  <th className="text-right p-1.5">Kim BC</th>
+                  <th className="text-right p-1.5">BC kế toán</th>
                   <th className="text-right p-1.5">Chênh</th>
                   <th className="text-center p-1.5">Match?</th>
                   <th></th>
@@ -317,7 +317,7 @@ export default async function NkcReviewPage({ searchParams }: { searchParams: SP
       </div>
 
       <div className="text-xs text-slate-500 italic space-y-1">
-        <p>💡 App = NKC actual + trích trước (year_end_accruals). Trích trước không hiện trong list này vì đã import riêng từ file Kim.</p>
+        <p>💡 App = NKC actual + trích trước (year_end_accruals). Trích trước không hiện trong list này vì đã import riêng từ file kế toán.</p>
         <p>💡 Chỉnh bucket 1 row → cột "Chênh" cập nhật real-time. Mục tiêu: mọi row ✅.</p>
       </div>
     </div>

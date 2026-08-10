@@ -1,6 +1,6 @@
 /**
  * Balance Sheet quản trị (BCĐKT) — chuẩn TT200 B01-DN.
- * Nguồn: trial_balance (import từ sheet CDPS của Kim). Tài sản = Nợ + Vốn.
+ * Nguồn: trial_balance (import từ sheet CDPS kế toán). Tài sản = Nợ + Vốn.
  */
 import { db } from "@/lib/db";
 import { trialBalance } from "@/lib/schema";
@@ -100,7 +100,7 @@ export default async function BalanceSheetPage({ searchParams }: { searchParams:
       <div>
         <div className="text-xs"><Link href="/reports" className="text-blue-600 hover:underline">← Báo cáo</Link></div>
         <h1 className="text-2xl font-bold mt-1">Bảng cân đối kế toán</h1>
-        <p className="text-sm text-slate-500 mt-1">Chuẩn TT200 B01-DN. Ngày báo cáo: <b>{periodEnd}</b>. Nguồn: CDPS Kim ({diff === 0 ? "✅ cân" : `❌ lệch ${fmt(diff)}`}).</p>
+        <p className="text-sm text-slate-500 mt-1">Chuẩn TT200 B01-DN. Ngày báo cáo: <b>{periodEnd}</b>. Nguồn: CDPS kế toán ({diff === 0 ? "✅ cân" : `❌ lệch ${fmt(diff)}`}).</p>
       </div>
 
       <div className={`p-4 rounded-xl border-2 ${diff === 0 ? "bg-green-50 border-green-300" : "bg-red-50 border-red-300"}`}>
@@ -202,7 +202,7 @@ export default async function BalanceSheetPage({ searchParams }: { searchParams:
       )}
 
       <div className="text-xs text-slate-500 italic">
-        Nguồn: sheet CDPS trong file <b>SO SACH BRE 2025.xlsx</b> (Kim làm chuẩn TT200).
+        Nguồn: sheet CDPS trong file <b>SO SACH BRE 2025.xlsx</b> (kế toán làm chuẩn TT200).
         Import lại: <code>npx tsx scripts/import-trial-balance.ts</code>.
       </div>
     </div>

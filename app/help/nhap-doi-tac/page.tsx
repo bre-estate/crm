@@ -7,7 +7,7 @@ export default function NhapDoiTacPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-6 py-6">
       <div>
-        <div className="text-xs"><Link href="/help" className="text-blue-600 hover:underline">← Trợ giúp</Link></div>
+        <div className="text-xs"><Link href="/" className="text-blue-600 hover:underline">← Trang chủ</Link></div>
         <h1 className="text-2xl font-bold mt-1">Hướng dẫn nhập Đối tác</h1>
         <p className="text-sm text-slate-500 mt-1">
           Dành cho Admin. Nhập đối tác khi ký hợp đồng phân phối mới.
