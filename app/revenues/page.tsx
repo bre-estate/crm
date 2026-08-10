@@ -14,6 +14,7 @@ import SearchableSelect from "@/components/SearchableSelect";
 import HighlightManager from "../HighlightManager";
 import BulkDeleteBar from "../BulkDeleteBar";
 import { deleteRevenueBulk } from "@/lib/actions/revenues";
+import { hasPermission } from "@/lib/auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -49,6 +50,7 @@ const AGE_OPTIONS = [
 ] as const;
 
 export default async function RevenuesPage({ searchParams }: { searchParams: SearchParams }) {
+  const canDelete = await hasPermission("revenues", "delete");
   const { projectId, unitCode, tab, status, age, justCreated } = await searchParams;
   const filterProjectId = projectId ? Number(projectId) : null;
   const filterUnitCode = unitCode?.trim() || null;
@@ -428,13 +430,15 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
         </div>
       </Card>
 
-      <BulkDeleteBar
-        entityLabel="đợt đối chiếu"
-        onDelete={async (ids) => {
-          "use server";
-          return await deleteRevenueBulk(ids);
-        }}
-      />
+      {canDelete && (
+        <BulkDeleteBar
+          entityLabel="đợt đối chiếu"
+          onDelete={async (ids) => {
+            "use server";
+            return await deleteRevenueBulk(ids);
+          }}
+        />
+      )}
 
       <Card className="p-0 gap-0 overflow-hidden">
         <table className="w-full text-sm">

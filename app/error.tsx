@@ -25,7 +25,7 @@ export default function GlobalError({
           <h1 className="text-xl font-bold text-amber-900">Không có quyền thực hiện</h1>
           <p className="text-sm text-amber-800">{message}</p>
           <p className="text-sm text-slate-600">
-            Liên hệ Chủ tịch hoặc Admin nếu cần quyền này.
+            Liên hệ Quản lý nếu cần quyền này.
           </p>
           <div className="flex gap-2 justify-center pt-2">
             <button

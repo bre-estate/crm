@@ -332,7 +332,7 @@ async function OrphanBanner({ invoiceId }: { invoiceId: number }) {
         </form>
       ) : (
         <div className="text-sm text-slate-600 bg-white rounded p-3 border border-slate-200">
-          🔒 Bạn không có quyền xóa hóa đơn. Liên hệ Chủ tịch hoặc Admin để xóa record này.
+          🔒 Bạn không có quyền xóa hóa đơn. Liên hệ Quản lý để xóa record này.
         </div>
       )}
     </div>

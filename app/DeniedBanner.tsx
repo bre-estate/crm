@@ -28,7 +28,7 @@ export default function DeniedBanner({ label }: { label: string }) {
   return (
     <div className="bg-orange-50 border border-orange-200 text-orange-800 rounded-lg p-3 text-sm flex items-start justify-between gap-3">
       <div>
-        Bạn không có quyền truy cập <b>{label}</b>. Liên hệ chủ tài khoản nếu cần thêm quyền.
+        Bạn không có quyền truy cập <b>{label}</b>. Liên hệ Quản lý nếu cần thêm quyền.
       </div>
       <button
         type="button"

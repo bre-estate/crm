@@ -28,6 +28,7 @@ import { asc } from "drizzle-orm";
 import ActivityHistoryButton from "./ActivityHistoryButton";
 import DeleteProductButton from "./DeleteProductButton";
 import { deleteProduct } from "@/lib/actions/products";
+import { hasPermission } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 
@@ -56,6 +57,8 @@ export default async function ProductDetailPage({
     : `/products/${idStr}`;
   const childEditQs = `?returnTo=${encodeURIComponent(detailSelfUrl)}`;
   const id = Number(idStr);
+  const canDeleteProduct = await hasPermission("products", "delete");
+  const canEditProduct = await hasPermission("products", "edit");
   if (!Number.isFinite(id)) notFound();
 
   // Parallel: 7 query độc lập (chỉ depend vào `id`) → chạy song song thay vì
@@ -323,19 +326,23 @@ export default async function ProductDetailPage({
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <DeleteProductButton
-            unitCode={p.unitCode}
-            onDelete={async () => {
-              "use server";
-              await deleteProduct(id);
-            }}
-          />
-          <Button
-            render={<Link href={editHref} />}
-            className="bg-orange-500 hover:bg-orange-600 text-white"
-          >
-            Sửa giao dịch
-          </Button>
+          {canDeleteProduct && (
+            <DeleteProductButton
+              unitCode={p.unitCode}
+              onDelete={async () => {
+                "use server";
+                await deleteProduct(id);
+              }}
+            />
+          )}
+          {canEditProduct && (
+            <Button
+              render={<Link href={editHref} />}
+              className="bg-orange-500 hover:bg-orange-600 text-white"
+            >
+              Sửa giao dịch
+            </Button>
+          )}
         </div>
       </div>
 

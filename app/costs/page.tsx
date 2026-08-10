@@ -15,6 +15,7 @@ import Link from "next/link";
 import SearchableSelect from "@/components/SearchableSelect";
 import BulkDeleteBar from "../BulkDeleteBar";
 import { deleteCostBulk } from "@/lib/actions/costs";
+import { hasPermission } from "@/lib/auth";
 import CostReconRow, { type CostReconPayment } from "./CostReconRow";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -72,6 +73,7 @@ async function loadNvkdOptions(): Promise<{ value: string; label: string; sublab
 }
 
 export default async function CostsPage({ searchParams }: { searchParams: SearchParams }) {
+  const canDelete = await hasPermission("costs", "delete");
   const { projectId, costType, unitCode, salesPerson, status, view, deleted, updated } =
     await searchParams;
   const viewMode: "recon" | "byUnit" = view === "byUnit" ? "byUnit" : "recon";
@@ -362,13 +364,15 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
         ]}
       />
 
-      <BulkDeleteBar
-        entityLabel="đối chiếu giá vốn"
-        onDelete={async (ids) => {
-          "use server";
-          return await deleteCostBulk(ids);
-        }}
-      />
+      {canDelete && (
+        <BulkDeleteBar
+          entityLabel="đối chiếu giá vốn"
+          onDelete={async (ids) => {
+            "use server";
+            return await deleteCostBulk(ids);
+          }}
+        />
+      )}
 
       <Card className="p-0 gap-0 overflow-hidden">
         <table className="w-full text-sm">
