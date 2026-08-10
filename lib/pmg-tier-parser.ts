@@ -26,15 +26,15 @@ export type ParsedPmg = {
 };
 
 // "4,5%" | "5%" | "6,75%" | "6.5%" → 0.045
+// Range "6,75-7%" | "6-6,25%" | "6,25%-6,75%-7%" → lấy MAX (7% / 6.25% / 7%)
 function parsePct(s: string): number | null {
-  s = s.trim().replace(",", ".");
-  const m = s.match(/^(\d+(?:\.\d+)?)\s*%?$/);
-  if (!m) return null;
-  return Number(m[1]) / 100;
+  s = s.trim().replace(/,/g, ".").replace(/%/g, "");
+  const nums = s.split(/\s*-\s*/).map(x => Number(x)).filter(n => !isNaN(n));
+  if (nums.length === 0) return null;
+  return Math.max(...nums) / 100;
 }
 
 function normalizeText(raw: string): string {
-  // Bỏ dấu +, xuống dòng → space, gom nhiều space → 1
   return raw
     .replace(/\+/g, " ")
     .replace(/\s+/g, " ")
@@ -42,6 +42,9 @@ function normalizeText(raw: string): string {
     .replace(/≥/g, ">=")
     .replace(/=</g, "<=")
     .replace(/=>/g, ">=")
+    // Collapse "6,25% - 6,75% - 7%" → "6,25%-6,75%-7%" (rate ranges)
+    .replace(/(\d)\s*%\s*-\s*(\d)/g, "$1%-$2")
+    .replace(/(\d)\s*-\s*(\d)\s*%/g, "$1-$2%")
     .trim();
 }
 
@@ -76,10 +79,10 @@ function parseCountTiers(raw: string): PmgTier[] | null {
   let t = normalizeText(raw);
   const tiers: PmgTier[] = [];
 
-  const rangeRe = /(\d+)\s*<=?\s*x\s*<=?\s*(\d+)\s*(?:sp|sản\s*phẩm|căn(?:\s*hộ)?)?\s*:?\s*([\d.,]+\s*%?)/gi;
-  const fromToRe = /(?:từ\s*)?0*(\d+)\s*(?:-|đến|tới)\s*0*(\d+)\s*(?:sp|sản\s*phẩm|căn(?:\s*hộ)?)\s*:?\s*([\d.,]+\s*%?)/gi;
-  const oneSideRe = /x\s*(<=?|>=?)\s*(\d+)\s*(?:sp|sản\s*phẩm|căn(?:\s*hộ)?)?\s*:?\s*([\d.,]+\s*%?)/gi;
-  const fromRe = /(?:từ\s*)?0*(\d+)\s*(?:sp|sản\s*phẩm|căn(?:\s*hộ)?)\s*(?:trở\s*lên)\s*:?\s*([\d.,]+\s*%?)/gi;
+  const rangeRe = /(\d+)\s*<=?\s*x\s*<=?\s*(\d+)\s*(?:sp|sản\s*phẩm|căn(?:\s*hộ)?)?\s*:?\s*([\d.,\-%]+)/gi;
+  const fromToRe = /(?:từ\s*)?0*(\d+)\s*(?:-|đến|tới)\s*0*(\d+)\s*(?:sp|sản\s*phẩm|căn(?:\s*hộ)?)\s*:?\s*([\d.,\-%]+)/gi;
+  const oneSideRe = /x\s*(<=?|>=?)\s*(\d+)\s*(?:sp|sản\s*phẩm|căn(?:\s*hộ)?)?\s*:?\s*([\d.,\-%]+)/gi;
+  const fromRe = /(?:từ\s*)?0*(\d+)\s*(?:sp|sản\s*phẩm|căn(?:\s*hộ)?)\s*(?:trở\s*lên)\s*:?\s*([\d.,\-%]+)/gi;
 
   // Order matters: parse ranges FIRST, then strip matched substring to avoid oneSideRe re-matching the tail
   const consume = (re: RegExp, handler: (m: RegExpExecArray) => void) => {
@@ -141,10 +144,10 @@ function parsePercentTiers(raw: string): PmgTier[] | null {
   let t = normalizeText(raw);
   const tiers: PmgTier[] = [];
 
-  const rangeRe = /(\d+(?:[.,]\d+)?)\s*%\s*<=?\s*y\s*<=?\s*(\d+(?:[.,]\d+)?)\s*%\s*:?\s*([\d.,]+\s*%?)/gi;
-  const oneSideRe = /y\s*(<=?|>=?)\s*(\d+(?:[.,]\d+)?)\s*%\s*:?\s*([\d.,]+\s*%?)/gi;
+  const rangeRe = /(\d+(?:[.,]\d+)?)\s*%\s*<=?\s*y\s*<=?\s*(\d+(?:[.,]\d+)?)\s*%\s*:?\s*([\d.,\-%]+)/gi;
+  const oneSideRe = /y\s*(<=?|>=?)\s*(\d+(?:[.,]\d+)?)\s*%\s*:?\s*([\d.,\-%]+)/gi;
   // "N% <=? Y : R%" (percent trước Y)
-  const leftFirstRe = /(\d+(?:[.,]\d+)?)\s*%\s*(<=?|>=?)\s*y\s*:?\s*([\d.,]+\s*%?)/gi;
+  const leftFirstRe = /(\d+(?:[.,]\d+)?)\s*%\s*(<=?|>=?)\s*y\s*:?\s*([\d.,\-%]+)/gi;
 
   const consume = (re: RegExp, handler: (m: RegExpExecArray) => void) => {
     const matches: Array<{ start: number; end: number }> = [];
