@@ -1,19 +1,15 @@
 import { db } from "@/lib/db";
-import { projects, partners, products } from "@/lib/schema";
+import { projects, partners, products, contracts } from "@/lib/schema";
 import { contractStatusLabel, fmtMoney, fmtPct, fmtPctRaw, displayPartnerName, isSecondaryPartner } from "@/lib/format";
 import Link from "next/link";
-import { eq, asc, count } from "drizzle-orm";
+import { eq, asc, count, sql } from "drizzle-orm";
 import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
-type SearchParams = Promise<{ type?: string }>;
-
-export default async function ProjectsPage({ searchParams }: { searchParams: SearchParams }) {
-  const sp = await searchParams;
-  const activeTab: "primary" | "secondary" = sp.type === "secondary" ? "secondary" : "primary";
-
-  const allRows = await db
+export default async function ProjectsPage() {
+  // Load all projects + contracts
+  const allProjects = await db
     .select({
       id: projects.id,
       code: projects.code,
@@ -22,9 +18,6 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Sea
       partnerName: partners.name,
       breRole: projects.breRole,
       contractStatus: projects.contractStatus,
-      brokerageRate: projects.brokerageRate,
-      brokerageRateSale: projects.brokerageRateSale,
-      adminFee: projects.adminFee,
       defaultSaleType: projects.defaultSaleType,
       totalUnits: projects.totalUnits,
       district: projects.district,
@@ -34,27 +27,38 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Sea
     .leftJoin(partners, eq(projects.partnerId, partners.id))
     .orderBy(asc(projects.name));
 
-  // Đếm số căn BRE bán per project
+  // Chỉ show dự án sơ cấp (thứ cấp có trang riêng)
+  const primaryProjects = allProjects.filter(
+    (r) => r.defaultSaleType !== "secondary" && !isSecondaryPartner(r.partnerName),
+  );
+
+  // Contracts per project
+  const allContracts = await db.select().from(contracts).orderBy(asc(contracts.partnerName));
+  const contractsByProject = new Map<number, typeof allContracts>();
+  for (const c of allContracts) {
+    if (c.projectId == null) continue;
+    const arr = contractsByProject.get(c.projectId) ?? [];
+    arr.push(c);
+    contractsByProject.set(c.projectId, arr);
+  }
+
+  // Đếm căn per project
   const breCountRaw = await db
     .select({ projectId: products.projectId, c: count() })
     .from(products)
     .groupBy(products.projectId);
   const breCountMap = new Map(breCountRaw.map((r) => [r.projectId, Number(r.c)]));
 
-  // Ưu tiên defaultSaleType, fallback theo partner name (đối tác trống/Chợ thứ cấp).
-  const isSecondaryRow = (r: (typeof allRows)[number]) =>
-    r.defaultSaleType === "secondary" || isSecondaryPartner(r.partnerName);
-  const primary = allRows.filter((r) => !isSecondaryRow(r));
-  const secondary = allRows.filter(isSecondaryRow);
-  const rows = activeTab === "secondary" ? secondary : primary;
+  // Contracts chưa link project (unmatched khi import)
+  const orphanContracts = allContracts.filter((c) => c.projectId == null);
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold">Dự án / Hợp đồng</h1>
+          <h1 className="text-2xl font-bold">Dự án & Hợp đồng</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Quản lý HĐ ký với CĐT/F1, cấu hình %PMG và biểu PMG theo mốc.
+            Mỗi dự án có thể có nhiều hợp đồng (khác CĐT hoặc khác thời kỳ). Rates từ sheet 1_HOP DONG.
           </p>
         </div>
         <Button
@@ -65,119 +69,139 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Sea
         </Button>
       </div>
 
-      <div className="border-b border-slate-200 flex gap-1">
-        <TabLink href="/projects?type=primary" active={activeTab === "primary"}>
-          Sơ cấp <span className="text-xs text-slate-400 ml-1">({primary.length})</span>
-        </TabLink>
-        <TabLink href="/projects?type=secondary" active={activeTab === "secondary"}>
-          Thứ cấp <span className="text-xs text-slate-400 ml-1">({secondary.length})</span>
-        </TabLink>
-      </div>
-
       <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-xs text-slate-600">
+          <thead className="bg-slate-800 text-white text-xs">
             <tr>
-              <th className="text-left p-3">Mã DA</th>
-              <th className="text-left p-3">Tên dự án</th>
-              <th className="text-left p-3">Đối tác</th>
-              <th className="text-left p-3">Vai trò BRE</th>
+              <th className="text-left p-3">Mã DA / Dự án</th>
+              <th className="text-left p-3">Đối tác (hợp đồng)</th>
               <th className="text-right p-3">%PMG_LK</th>
               <th className="text-right p-3">%PMG_sale</th>
               <th className="text-right p-3">Phí admin</th>
+              <th className="text-right p-3">CĐT thưởng sale</th>
+              <th className="text-left p-3">Vai trò</th>
               <th className="text-right p-3">BRE bán / Tổng</th>
-              <th className="text-left p-3">Tình trạng</th>
               <th className="text-right p-3">Thao tác</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((p) => (
-              <tr key={p.id} className="border-t border-slate-100 hover:bg-slate-50">
-                <td className="p-3 font-mono text-xs">{p.fullCode}</td>
-                <td className="p-3 font-medium">{p.name}</td>
-                <td className="p-3 text-slate-500">
-                  {displayPartnerName(p.partnerName) || <span className="text-slate-300">—</span>}
-                </td>
-                <td className="p-3">
-                  {isSecondaryRow(p) ? (
-                    <span className="text-xs px-2 py-1 rounded-md bg-orange-100 text-orange-700">
-                      Thứ cấp
-                    </span>
-                  ) : (
-                    <span
-                      className={`text-xs px-2 py-1 rounded-md ${
-                        p.breRole === "f1"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-blue-100 text-blue-700"
-                      }`}
-                    >
-                      {p.breRole === "f1" ? "BRE = F1" : "BRE = F2"}
-                    </span>
+            {primaryProjects.map((p) => {
+              const projContracts = contractsByProject.get(p.id) ?? [];
+              const bre = breCountMap.get(p.id) ?? 0;
+              const total = p.totalUnits ?? 0;
+
+              if (projContracts.length === 0) {
+                // Project chưa có contract
+                return (
+                  <tr key={p.id} className="border-t border-slate-100 hover:bg-slate-50">
+                    <td className="p-3">
+                      <div className="font-mono text-xs text-slate-500">{p.fullCode}</div>
+                      <div className="font-medium">{p.name}</div>
+                    </td>
+                    <td className="p-3 text-slate-500">
+                      {displayPartnerName(p.partnerName) || <span className="text-slate-300">—</span>}
+                    </td>
+                    <td colSpan={4} className="p-3 text-center text-slate-400 text-xs italic">
+                      Chưa có hợp đồng — chạy <code>npx tsx scripts/import-contracts.ts</code> nếu chưa import
+                    </td>
+                    <td className="p-3">
+                      <span className={`text-xs px-2 py-1 rounded-md ${p.breRole === "f1" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
+                        {p.breRole === "f1" ? "BRE = F1" : "BRE = F2"}
+                      </span>
+                    </td>
+                    <td className="p-3 text-right tabular-nums text-xs">
+                      {total > 0 ? `${bre}/${total}` : bre > 0 ? `${bre}/?` : "—"}
+                    </td>
+                    <td className="p-3 text-right">
+                      <Link href={`/projects/${p.id}`} className="text-blue-600 hover:underline text-sm">Sửa</Link>
+                    </td>
+                  </tr>
+                );
+              }
+
+              // 1 project = N contracts → hiện N rows nested
+              return projContracts.map((c, idx) => (
+                <tr key={`${p.id}-${c.id}`} className={`border-t ${idx === 0 ? "border-slate-300" : "border-slate-100"} hover:bg-slate-50`}>
+                  <td className="p-3">
+                    {idx === 0 && (
+                      <>
+                        <div className="font-mono text-xs text-slate-500">{p.fullCode}</div>
+                        <div className="font-medium">{p.name}</div>
+                      </>
+                    )}
+                  </td>
+                  <td className="p-3 text-slate-700">
+                    <div className="font-medium text-sm">{c.partnerName}</div>
+                    {c.contractNumber && (
+                      <div className="text-[10px] text-slate-400 mt-0.5 truncate max-w-xs" title={c.contractNumber}>
+                        {c.contractNumber.slice(0, 50)}
+                      </div>
+                    )}
+                  </td>
+                  <td className="p-3 text-right tabular-nums">
+                    {c.pmgLk != null ? fmtPct(c.pmgLk) : <span className="text-slate-300">—</span>}
+                  </td>
+                  <td className="p-3 text-right tabular-nums">
+                    {c.pmgLkSale != null ? fmtPct(c.pmgLkSale) : <span className="text-slate-300">—</span>}
+                  </td>
+                  <td className="p-3 text-right tabular-nums">
+                    {c.adminFee != null && c.adminFee > 0 ? fmtMoney(c.adminFee) : <span className="text-slate-300">—</span>}
+                  </td>
+                  <td className="p-3 text-right tabular-nums text-xs">
+                    {c.cdtBonusSale != null && c.cdtBonusSale > 0 ? fmtMoney(c.cdtBonusSale) : <span className="text-slate-300">—</span>}
+                  </td>
+                  {idx === 0 && (
+                    <>
+                      <td className="p-3" rowSpan={projContracts.length}>
+                        <span className={`text-xs px-2 py-1 rounded-md ${p.breRole === "f1" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
+                          {p.breRole === "f1" ? "BRE = F1" : "BRE = F2"}
+                        </span>
+                      </td>
+                      <td className="p-3 text-right tabular-nums text-xs" rowSpan={projContracts.length}>
+                        {total > 0 ? (
+                          <span>{bre} / {total} <span className="text-slate-400">({fmtPctRaw((bre / total) * 100, 1)})</span></span>
+                        ) : bre > 0 ? `${bre}/?` : <span className="text-slate-300">—</span>}
+                      </td>
+                      <td className="p-3 text-right" rowSpan={projContracts.length}>
+                        <Link href={`/projects/${p.id}`} className="text-blue-600 hover:underline text-sm">Sửa</Link>
+                      </td>
+                    </>
                   )}
-                </td>
-                <td className="p-3 text-right tabular-nums">
-                  {Number(p.brokerageRate ?? 0) > 0 ? fmtPct(p.brokerageRate) : <span className="text-slate-300">—</span>}
-                </td>
-                <td className="p-3 text-right tabular-nums">
-                  {Number(p.brokerageRateSale ?? 0) > 0 ? fmtPct(p.brokerageRateSale) : <span className="text-slate-300">—</span>}
-                </td>
-                <td className="p-3 text-right tabular-nums">
-                  {Number(p.adminFee ?? 0) > 0 ? fmtMoney(p.adminFee) : <span className="text-slate-300">—</span>}
-                </td>
-                <td className="p-3 text-right tabular-nums text-xs">
-                  {(() => {
-                    const bre = breCountMap.get(p.id) ?? 0;
-                    const total = p.totalUnits ?? 0;
-                    if (total > 0) {
-                      const share = (bre / total) * 100;
-                      const color = share >= 20 ? "text-green-700 font-medium" : share >= 5 ? "text-slate-700" : "text-slate-500";
-                      return <span className={color}>{bre} / {total} <span className="text-slate-400">({fmtPctRaw(share, 1)})</span></span>;
-                    }
-                    if (bre > 0) return <span className="text-slate-500">{bre} / <span className="text-slate-300">?</span></span>;
-                    return <span className="text-slate-300">—</span>;
-                  })()}
-                </td>
-                <td className="p-3 text-xs">{contractStatusLabel(p.contractStatus ?? "")}</td>
-                <td className="p-3 text-right">
-                  <Link href={`/projects/${p.id}`} className="text-blue-600 hover:underline text-sm">
-                    Sửa
-                  </Link>
-                </td>
-              </tr>
-            ))}
-            {rows.length === 0 && (
+                </tr>
+              ));
+            })}
+            {primaryProjects.length === 0 && (
               <tr>
-                <td colSpan={11} className="p-6 text-center text-slate-500 text-sm">
-                  Chưa có dự án {activeTab === "secondary" ? "thứ cấp" : "sơ cấp"} nào.
+                <td colSpan={9} className="p-6 text-center text-slate-500 text-sm">
+                  Chưa có dự án sơ cấp nào.
                 </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
-    </div>
-  );
-}
 
-function TabLink({
-  href,
-  active,
-  children,
-}: {
-  href: string;
-  active: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      className={`px-4 py-2 text-sm border-b-2 -mb-px ${
-        active
-          ? "border-orange-500 text-orange-600 font-semibold"
-          : "border-transparent text-slate-500 hover:text-slate-700"
-      }`}
-    >
-      {children}
-    </Link>
+      {orphanContracts.length > 0 && (
+        <div className="bg-amber-50 border border-amber-300 rounded-xl p-4">
+          <div className="font-semibold text-amber-900 mb-2">
+            ⚠️ {orphanContracts.length} hợp đồng chưa link được dự án
+          </div>
+          <div className="text-xs text-amber-800 mb-2">
+            Dự án hoặc CĐT chưa có trong DB. Cần tạo trước rồi import lại contracts.
+          </div>
+          <table className="w-full text-xs">
+            <tbody>
+              {orphanContracts.map((c) => (
+                <tr key={c.id} className="border-t border-amber-200">
+                  <td className="p-1 font-mono">{c.projectCode}</td>
+                  <td className="p-1">{c.partnerName}</td>
+                  <td className="p-1 text-slate-600">{c.contractNumber?.slice(0, 60)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 }

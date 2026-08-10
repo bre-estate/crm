@@ -743,6 +743,37 @@ export const importLogs = pgTable("import_logs", {
 });
 export type ImportLog = typeof importLogs.$inferSelect;
 
+// Hợp đồng đại lý — source of truth rates. Import từ sheet 1_HOP DONG BCDT.
+// 1 dự án có thể có nhiều hợp đồng (khác CĐT hoặc khác thời kỳ).
+export const contracts = pgTable("contracts", {
+  id: serial("id").primaryKey(),
+  projectCode: text("project_code").notNull(),
+  projectId: integer("project_id").references(() => projects.id, { onDelete: "set null" }),
+  partnerId: integer("partner_id").references(() => partners.id, { onDelete: "set null" }),
+  partnerName: text("partner_name"),
+  contractNumber: text("contract_number"),
+  status: text("status").default("active"),
+  pmgLk: doublePrecision("pmg_lk"),
+  pmgLkSale: doublePrecision("pmg_lk_sale"),
+  pmgStructure: text("pmg_structure"),
+  adminFee: doublePrecision("admin_fee"),
+  adminFeeSale: doublePrecision("admin_fee_sale"),
+  paymentPhases: integer("payment_phases"),
+  pmgPhase1: text("pmg_phase_1"),
+  pmgPhase2: text("pmg_phase_2"),
+  pmgPhase3: text("pmg_phase_3"),
+  pmgPhase4: text("pmg_phase_4"),
+  pmgPhase5: text("pmg_phase_5"),
+  cdtBonusSale: doublePrecision("cdt_bonus_sale"),
+  cdtBonusManager: text("cdt_bonus_manager"),
+  sourceFile: text("source_file"),
+  sourceRow: integer("source_row"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type Contract = typeof contracts.$inferSelect;
+export type NewContract = typeof contracts.$inferInsert;
+
 // Bảng cân đối phát sinh (CDPS) — nguồn cho Balance Sheet quản trị.
 // Import từ sheet CDPS của SO SACH BRE 2025.xlsx (Kim làm chuẩn TT200).
 export const trialBalance = pgTable("trial_balance", {
