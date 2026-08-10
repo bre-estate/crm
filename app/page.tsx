@@ -296,18 +296,18 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
         )}
         {canFinance && (
           <Kpi
-            label="💵 CĐT còn nợ mình"
+            label="💵 Công nợ từ CĐT"
             value={fmtMoney(owed.receivable)}
-            sub="Còn thu — chi tiết → A/R aging"
+            sub="CĐT còn phải trả HH → A/R aging"
             color="info"
             link="/reports/ar-aging"
           />
         )}
         {canFinance && (
           <Kpi
-            label="📤 Mình còn nợ sale"
+            label="📤 HH còn trả sale"
             value={fmtMoney(owed.payable)}
-            sub="Còn trả — chi tiết → A/P aging"
+            sub="Thường = HH chưa về từ CĐT → A/P aging"
             color="warn"
             link="/reports/ap-aging"
           />

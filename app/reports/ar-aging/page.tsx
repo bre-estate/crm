@@ -34,13 +34,16 @@ export default async function ARAgingPage() {
     WITH recon AS (
       SELECT
         r.id,
-        COALESCE(p.partner_name, i.partner_name, 'Không rõ') AS partner,
+        COALESCE(pa_inv.name, pa_pj.name, 'Không rõ') AS partner,
         r.reconciliation_date,
         r.total_receivable_this_time,
         COALESCE((SELECT SUM(amount) FROM payments_in pi WHERE pi.reconciliation_id = r.id), 0) AS paid
       FROM revenue_reconciliations r
       LEFT JOIN products p ON p.id = r.product_id
+      LEFT JOIN projects pj ON pj.id = p.project_id
+      LEFT JOIN partners pa_pj ON pa_pj.id = pj.partner_id
       LEFT JOIN invoices i ON i.id = r.invoice_id
+      LEFT JOIN partners pa_inv ON pa_inv.id = i.partner_id
       WHERE r.total_receivable_this_time > 0
     )
     SELECT
