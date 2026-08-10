@@ -54,7 +54,8 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
   const { projectId, unitCode, tab, status, age, justCreated } = await searchParams;
   const filterProjectId = projectId ? Number(projectId) : null;
   const filterUnitCode = unitCode?.trim() || null;
-  const activeTab: "primary" | "secondary" = tab === "secondary" ? "secondary" : "primary";
+  // Thứ cấp đã có trang riêng — /revenues chỉ show DT sơ cấp
+  const activeTab: "primary" = "primary";
   const activeStatus = (STATUS_OPTIONS.find((s) => s.key === status)?.key ?? "all") as (typeof STATUS_OPTIONS)[number]["key"];
   const activeAge = (AGE_OPTIONS.find((a) => a.key === age)?.key ?? "all") as (typeof AGE_OPTIONS)[number]["key"];
   const justCreatedIds = new Set<number>(
@@ -260,41 +261,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
         </div>
       </div>
 
-      <Tabs value={activeTab} className="border-b border-slate-200">
-        <TabsList variant="line">
-          {[
-            { key: "primary" as const, label: "Sơ cấp", count: primaryCount },
-            { key: "secondary" as const, label: "Thứ cấp", count: secondaryCount },
-          ].map((t) => {
-            const isActive = activeTab === t.key;
-            const params = new URLSearchParams();
-            params.set("tab", t.key);
-            if (filterProjectId) params.set("projectId", String(filterProjectId));
-            if (filterUnitCode) params.set("unitCode", filterUnitCode);
-            if (activeStatus !== "all") params.set("status", activeStatus);
-            if (activeAge !== "all") params.set("age", activeAge);
-            return (
-              <TabsTrigger
-                key={t.key}
-                value={t.key}
-                render={
-                  isActive ? <span /> : <Link href={`/revenues?${params.toString()}`} />
-                }
-              >
-                {t.label}
-                <span
-                  className={cn(
-                    "text-xs ml-1",
-                    isActive ? "text-blue-500" : "text-slate-400",
-                  )}
-                >
-                  ({t.count})
-                </span>
-              </TabsTrigger>
-            );
-          })}
-        </TabsList>
-      </Tabs>
+
 
       {/* Status filter pills */}
       <div className="flex flex-wrap gap-2 items-center">

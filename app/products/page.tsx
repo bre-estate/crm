@@ -45,7 +45,8 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
   );
   const filterProjectId = projectId ? Number(projectId) : null;
   const filterDeptId = departmentId ? Number(departmentId) : null;
-  const activeTab: "primary" | "secondary" = tab === "secondary" ? "secondary" : "primary";
+  // Thứ cấp đã có trang riêng /secondary-sales — /products chỉ show sơ cấp
+  const activeTab: "primary" = "primary";
   const dateFrom = from?.trim() || null;
   const dateTo = to?.trim() || null;
   const filterUnitCode = unitCode?.trim() || null;
@@ -362,39 +363,6 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
           </Button>
         </div>
       </div>
-
-      <Tabs value={activeTab} className="border-b border-slate-200">
-        <TabsList variant="line">
-          {[
-            { key: "primary" as const, label: "Sơ cấp", count: primaryCount },
-            { key: "secondary" as const, label: "Thứ cấp", count: secondaryCount },
-          ].map((t) => {
-            const isActive = activeTab === t.key;
-            const params = new URLSearchParams();
-            params.set("tab", t.key);
-            if (filterProjectId) params.set("projectId", String(filterProjectId));
-            if (filterDeptId) params.set("departmentId", String(filterDeptId));
-            if (filterSalesPerson) params.set("salesPerson", filterSalesPerson);
-            if (filterUnitCode) params.set("unitCode", filterUnitCode);
-            if (dateFrom) params.set("from", dateFrom);
-            if (dateTo) params.set("to", dateTo);
-            return (
-              <TabsTrigger
-                key={t.key}
-                value={t.key}
-                render={
-                  isActive ? <span /> : <Link href={`/products?${params.toString()}`} />
-                }
-              >
-                {t.label}
-                <span className={cn("text-xs ml-1", isActive ? "text-blue-500" : "text-slate-400")}>
-                  ({t.count})
-                </span>
-              </TabsTrigger>
-            );
-          })}
-        </TabsList>
-      </Tabs>
 
       <Card className="[--card-spacing:1rem] px-4 gap-3">
         <div className="flex gap-6 text-sm flex-wrap">
