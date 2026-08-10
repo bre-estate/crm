@@ -233,16 +233,21 @@ export default async function ProductDetailPage({
     // BUG FIX 2026-08-05: revenue_this_time đôi khi lũy kế (VD rr#3970 = 72.9M
     // trong khi total_receivable_this_time = 2.74M đợt này). Dùng total − bonus
     // để tính HH đợt này (đúng) thay vì rev field.
+    //
+    // BUG FIX 2026-08-11: recon reversal (total < 0) → không dùng Math.max(0, ...)
+    // và split ratio dùng total !== 0 thay vì total > 0. Trước khi fix, payment
+    // âm bị dồn nhầm vào paidHHSale khi recon là bonus_sale reversal
+    // (VD căn A2-06-17: bonus_sale -11M nhưng UI hiện HH -11M).
     const bs = Number(rec.cdtBonusSale ?? 0);
     const bm = Number(rec.cdtBonusManager ?? 0);
     const total = Number(rec.totalReceivableThisTime ?? 0);
-    const hhThisTime = Math.max(0, total - bs - bm);
+    const hhThisTime = total - bs - bm;
     receivedHH += hhThisTime;
     receivedBonus += bs + bm;
     sumReconCdtSale += bs;
     sumReconCdtMgr += bm;
     const paid = paidPerRecon.get(rec.id) ?? 0;
-    if (total > 0) {
+    if (total !== 0) {
       paidHHSale += paid * (hhThisTime / total);
       paidBonus += paid * ((bs + bm) / total);
     } else {
