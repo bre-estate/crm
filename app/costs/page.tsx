@@ -771,7 +771,7 @@ async function AggregatedCostsView(props: AggregatedProps) {
           href={buildStatusHref(null)}
           className={`text-xs px-3 py-1.5 rounded-lg border ${
             !filterStatus
-              ? "bg-slate-800 text-white border-slate-800"
+              ? "text-xs text-slate-500 border-slate-800"
               : "bg-white text-slate-600 border-slate-300 hover:bg-slate-50"
           }`}
         >

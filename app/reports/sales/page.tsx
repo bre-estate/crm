@@ -231,7 +231,7 @@ export default async function SalesReportPage({ searchParams }: { searchParams: 
       {/* Breakdown table */}
       <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-slate-800 text-white text-xs">
+          <thead className="text-xs text-slate-500">
             <tr>
               <th className="text-left p-2">{TABS.find(t=>t.key===tab)?.label}</th>
               <th className="text-right p-2">Số căn</th>

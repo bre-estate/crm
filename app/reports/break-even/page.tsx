@@ -118,7 +118,7 @@ export default async function BreakEvenPage({ searchParams }: { searchParams: SP
       {/* Cost structure */}
       <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-slate-800 text-white text-xs">
+          <thead className="text-xs text-slate-500">
             <tr>
               <th className="text-left p-2">Cơ cấu chi phí</th>
               <th className="text-right p-2">Số tiền</th>

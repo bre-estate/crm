@@ -104,7 +104,7 @@ export default async function APAgingPage() {
         <h2 className="text-lg font-semibold mb-2">Nợ sale team (chi tiết theo tuổi)</h2>
         <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-slate-800 text-white text-xs">
+            <thead className="text-xs text-slate-500">
               <tr>
                 <th className="text-left p-2">NVKD / CTV</th>
                 <th className="text-right p-2 w-16">Số ĐC</th>

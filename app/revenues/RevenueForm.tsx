@@ -724,7 +724,7 @@ export default function RevenueForm({
             />
           </Field>
           <Field label="Giá trị HĐ tổng (gồm VAT)">
-            <div className="input bg-slate-50 text-slate-700 tabular-nums cursor-not-allowed">
+            <div className="input text-xs text-slate-500 tabular-nums cursor-not-allowed">
               {invoiceTotalComputed > 0
                 ? invoiceTotalComputed.toLocaleString("vi-VN")
                 : "—"}

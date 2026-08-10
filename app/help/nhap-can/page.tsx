@@ -26,7 +26,7 @@ export default function NhapCanPage() {
         <h2 className="text-lg font-semibold mb-3">📝 Ô nhập chính</h2>
         <div className="bg-card rounded-lg ring-1 ring-slate-200 overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-slate-800 text-white text-xs">
+            <thead className="text-xs text-slate-500">
               <tr>
                 <th className="text-left p-2 w-40">Ô</th>
                 <th className="text-left p-2">Ý nghĩa</th>

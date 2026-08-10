@@ -127,9 +127,9 @@ export default async function ExpenseAnalysisPage({ searchParams }: { searchPara
       {/* Heatmap-like table */}
       <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
         <table className="w-full text-xs">
-          <thead className="bg-slate-800 text-white">
+          <thead className="text-xs text-slate-500">
             <tr>
-              <th className="text-left p-2 sticky left-0 bg-slate-800">Bucket (BC kế toán)</th>
+              <th className="text-left p-2 sticky left-0 bg-card">Bucket (BC kế toán)</th>
               {months.map(m => <th key={m} className="text-right p-2 min-w-16">T{Number(m)}</th>)}
               <th className="text-right p-2 min-w-24 border-l border-slate-600">Tổng năm</th>
               <th className="text-right p-2 w-16">%</th>

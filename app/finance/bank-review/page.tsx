@@ -163,7 +163,7 @@ export default async function BankReviewPage({ searchParams }: { searchParams: S
           Hiển thị {rows.length} / {totalRows.toLocaleString("vi-VN")} rows
         </div>
         <table className="w-full text-xs">
-          <thead className="bg-slate-800 text-white">
+          <thead className="text-xs text-slate-500">
             <tr>
               <th className="text-left p-2">Ngày</th>
               <th className="text-right p-2">Vào</th>

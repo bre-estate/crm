@@ -213,7 +213,7 @@ export default async function ProfitDetailPage({ searchParams }: { searchParams:
       {/* Report table */}
       <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-slate-800 text-white text-xs">
+          <thead className="text-xs text-slate-500">
             <tr>
               <th className="text-left p-2 w-12">STT</th>
               <th className="text-left p-2">Khoản mục</th>

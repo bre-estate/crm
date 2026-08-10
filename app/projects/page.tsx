@@ -71,7 +71,7 @@ export default async function ProjectsPage() {
 
       <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-slate-800 text-white text-xs">
+          <thead className="text-xs text-slate-500">
             <tr>
               <th className="text-left p-3">Mã DA / Dự án</th>
               <th className="text-left p-3">Đối tác (hợp đồng)</th>

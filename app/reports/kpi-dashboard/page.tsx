@@ -154,7 +154,7 @@ export default async function KpiDashboardPage({ searchParams }: { searchParams:
       {/* Top rankings */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
-          <div className="bg-slate-800 text-white p-3 font-bold text-sm">🏆 Top 3 nhân viên (DT YTD)</div>
+          <div className="p-3 font-bold text-sm text-slate-700 border-b text-sm">🏆 Top 3 nhân viên (DT YTD)</div>
           <table className="w-full text-sm">
             <tbody>
               {topSale.map((s: any, i: number) => (
@@ -170,7 +170,7 @@ export default async function KpiDashboardPage({ searchParams }: { searchParams:
           </table>
         </div>
         <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
-          <div className="bg-slate-800 text-white p-3 font-bold text-sm">🏗️ Top 3 dự án (DT YTD)</div>
+          <div className="p-3 font-bold text-sm text-slate-700 border-b text-sm">🏗️ Top 3 dự án (DT YTD)</div>
           <table className="w-full text-sm">
             <tbody>
               {topProject.map((p: any, i: number) => (

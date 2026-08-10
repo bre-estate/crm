@@ -283,7 +283,7 @@ export default async function NkcReviewPage({ searchParams }: { searchParams: SP
           Hiển thị {rows.length} / {totalRows.toLocaleString("vi-VN")} rows (sắp theo số tiền giảm dần)
         </div>
         <table className="w-full text-xs">
-          <thead className="bg-slate-800 text-white">
+          <thead className="text-xs text-slate-500">
             <tr>
               <th className="text-left p-2">Ngày</th>
               <th className="text-center p-2">TK Nợ/Có</th>

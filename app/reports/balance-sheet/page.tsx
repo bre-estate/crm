@@ -120,10 +120,10 @@ export default async function BalanceSheetPage({ searchParams }: { searchParams:
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* TÀI SẢN */}
         <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
-          <div className="bg-blue-800 text-white p-3 font-bold">A. TÀI SẢN</div>
+          <div className="p-3 font-bold text-slate-700 border-b">A. TÀI SẢN</div>
           <table className="w-full text-sm">
             <tbody>
-              <tr className="bg-blue-50 font-semibold border-t">
+              <tr className="bg-slate-50 font-semibold border-t">
                 <td className="p-2">I. Tài sản ngắn hạn</td>
                 <td className="p-2 text-right tabular-nums">{fmt(totalTsNganHan)}</td>
               </tr>
@@ -133,7 +133,7 @@ export default async function BalanceSheetPage({ searchParams }: { searchParams:
                   <td className={`p-2 text-right tabular-nums ${a.amount < 0 ? "text-red-700" : ""}`}>{fmt(a.amount)}</td>
                 </tr>
               ))}
-              <tr className="bg-blue-50 font-semibold border-t">
+              <tr className="bg-slate-50 font-semibold border-t">
                 <td className="p-2">II. Tài sản dài hạn</td>
                 <td className="p-2 text-right tabular-nums">{fmt(totalTsDaiHan)}</td>
               </tr>
@@ -143,7 +143,7 @@ export default async function BalanceSheetPage({ searchParams }: { searchParams:
                   <td className={`p-2 text-right tabular-nums ${a.amount < 0 ? "text-red-700" : ""}`}>{fmt(a.amount)}</td>
                 </tr>
               ))}
-              <tr className="border-t-2 bg-blue-100 font-bold">
+              <tr className="border-t-2 bg-slate-100 font-bold">
                 <td className="p-2">TỔNG TÀI SẢN</td>
                 <td className="p-2 text-right tabular-nums text-blue-800">{fmt(totalTs)}</td>
               </tr>
@@ -153,10 +153,10 @@ export default async function BalanceSheetPage({ searchParams }: { searchParams:
 
         {/* NGUỒN VỐN */}
         <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
-          <div className="bg-blue-800 text-white p-3 font-bold">B. NGUỒN VỐN</div>
+          <div className="p-3 font-bold text-slate-700 border-b">B. NGUỒN VỐN</div>
           <table className="w-full text-sm">
             <tbody>
-              <tr className="bg-blue-50 font-semibold border-t">
+              <tr className="bg-slate-50 font-semibold border-t">
                 <td className="p-2">I. Nợ phải trả</td>
                 <td className="p-2 text-right tabular-nums">{fmt(totalNpt)}</td>
               </tr>
@@ -166,7 +166,7 @@ export default async function BalanceSheetPage({ searchParams }: { searchParams:
                   <td className={`p-2 text-right tabular-nums ${a.amount < 0 ? "text-red-700" : ""}`}>{fmt(a.amount)}</td>
                 </tr>
               ))}
-              <tr className="bg-blue-50 font-semibold border-t">
+              <tr className="bg-slate-50 font-semibold border-t">
                 <td className="p-2">II. Vốn chủ sở hữu</td>
                 <td className="p-2 text-right tabular-nums">{fmt(totalVcsh)}</td>
               </tr>
@@ -176,7 +176,7 @@ export default async function BalanceSheetPage({ searchParams }: { searchParams:
                   <td className={`p-2 text-right tabular-nums ${a.amount < 0 ? "text-red-700" : ""}`}>{fmt(a.amount)}</td>
                 </tr>
               ))}
-              <tr className="border-t-2 bg-blue-100 font-bold">
+              <tr className="border-t-2 bg-slate-100 font-bold">
                 <td className="p-2">TỔNG NGUỒN VỐN</td>
                 <td className="p-2 text-right tabular-nums text-blue-800">{fmt(totalNv)}</td>
               </tr>

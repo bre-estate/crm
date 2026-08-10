@@ -249,7 +249,7 @@ export default async function InvoiceDetailPage({
           })
         )}
         {hasMultiplePartners && recons.length > 0 && (
-          <div className="bg-slate-800 text-white rounded-xl p-3 flex justify-between text-sm">
+          <div className="text-xs text-slate-500 rounded-xl p-3 flex justify-between text-sm">
             <span className="font-semibold">Tổng hóa đơn</span>
             <span className="tabular-nums font-bold">{fmtMoney(totalVat)}</span>
           </div>
