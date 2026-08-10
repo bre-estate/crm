@@ -1335,8 +1335,10 @@ export default async function ProductDetailPage({
                 <tbody>
                   {revPayments.map((r) => {
                     const parentRec = revRecs.find((x) => x.rec.id === r.payment.reconciliationId)?.rec;
-                    const pIsBonusSale = Number(parentRec?.cdtBonusSale ?? 0) > 0;
-                    const pIsBonusMgr = Number(parentRec?.cdtBonusManager ?? 0) > 0;
+                    // Bug fix 2026-08-11: reversal recon có cdt_bonus_sale ÂM
+                    // (VD -11M) → check !== 0 để catch cả reversal, không phải chỉ > 0.
+                    const pIsBonusSale = Number(parentRec?.cdtBonusSale ?? 0) !== 0;
+                    const pIsBonusMgr = Number(parentRec?.cdtBonusManager ?? 0) !== 0;
                     const pIsBonus = pIsBonusSale || pIsBonusMgr;
                     return (
                       <tr key={r.payment.id} className="border-t border-slate-100">
