@@ -59,6 +59,12 @@ const parsePhase = (v: unknown): number | null => {
 };
 
 async function main() {
+  const { runWithImportLog } = await import("../lib/import-log");
+  await runWithImportLog({
+    scriptName: "reimport-revenues-from-22",
+    sourceFile: EXCEL_PATH,
+    targetTable: "revenue_reconciliations",
+  }, async (log) => {
   const wb = XLSX.readFile(EXCEL_PATH, { cellDates: true, cellNF: false });
   const rows = XLSX.utils.sheet_to_json(wb.Sheets["2.2_Doanh thu"], {
     header: 1,
@@ -271,8 +277,11 @@ async function main() {
   }
   console.log(`  Inserted ${reconCount} recons + ${payCount} payments`);
 
-  await client.end();
-  console.log("\nDone.");
+    log.created = reconCount;
+    log.details = { recons: reconCount, payments: payCount };
+    await client.end();
+    console.log("\nDone.");
+  });
 }
 
 main().catch((err) => {

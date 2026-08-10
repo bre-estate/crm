@@ -57,6 +57,12 @@ function makeDedupKey(sourceFile: string, date: string, amount: number, desc: st
 }
 
 async function main() {
+  const { runWithImportLog } = await import("../lib/import-log");
+  await runWithImportLog({
+    scriptName: "import-so-theo-doi",
+    sourceFile: "So theo doi thanh toan.xlsx",
+    targetTable: "financial_transactions",
+  }, async (log) => {
   const SOURCE_FILE = "So-theo-doi-thanh-toan";
   const wb = XLSX.readFile("data-excel/Chi phí/So theo doi thanh toan.xlsx");
   const ws = wb.Sheets["1.1-Đề nghị thanh toán"];
@@ -170,6 +176,8 @@ async function main() {
   }
   console.log(`${"TOTAL".padEnd(8)} ${fmt(kt).padStart(14)} ${fmt(ct).padStart(14)} ${fmt(kt - ct).padStart(14)}`);
 
-  await sql.end();
+    log.details = { kim_total: kt, crm_total: ct, gap: kt - ct };
+    await sql.end();
+  });
 }
 main().catch((e) => { console.error(e); process.exit(1); });

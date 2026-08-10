@@ -15,6 +15,11 @@ const sql = postgres(process.env.DATABASE_URL!);
 const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
 
 async function main() {
+  const { runWithImportLog } = await import("../lib/import-log");
+  await runWithImportLog({
+    scriptName: "classify-accounting-journal",
+    targetTable: "accounting_journal",
+  }, async (log) => {
   // Chạy migration trước (idempotent)
   const mig = fs.readFileSync("drizzle/0032_nkc_category.sql", "utf-8");
   await sql.unsafe(mig);
@@ -84,6 +89,9 @@ async function main() {
     console.log(`  ${k.padEnd(20)} em: ${fmt(em).padStart(15)}  Kim: ${fmt(v).padStart(15)}  chênh: ${(diff>=0?'+':'')+fmt(diff)}  ${mark}`);
   }
 
-  await sql.end();
+    log.updated = rows.length;
+    log.details = { force: FORCE, buckets: Object.fromEntries([...buckets].map(([k, v]) => [k, v])) };
+    await sql.end();
+  });
 }
 main().catch(e => { console.error(e); process.exit(1); });

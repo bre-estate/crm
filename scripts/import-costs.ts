@@ -65,6 +65,12 @@ const toDateStr = (v: unknown): string | null => {
 const normalizeUnit = (s: string): string => s.trim().replace(/[.\-\s]/g, "");
 
 async function main() {
+  const { runWithImportLog } = await import("../lib/import-log");
+  await runWithImportLog({
+    scriptName: "import-costs",
+    sourceFile: "BAO CAO DOANH THU.xlsx",
+    targetTable: "cost_reconciliations",
+  }, async (log) => {
   // Build unit_code -> product_id map (normalized)
   const products = await db
     .select({ id: schema.products.id, unitCode: schema.products.unitCode })
@@ -258,6 +264,10 @@ async function main() {
   console.log(`\nInserted ${costRecCount} cost reconciliations`);
   console.log(`Inserted ${paymentOutCount} payments_out`);
   console.log(`Skipped ${skipped} rows (empty or unit not found)`);
+    log.created = costRecCount;
+    log.skipped = skipped;
+    log.details = { payments_out: paymentOutCount };
+  });
 }
 
 main()

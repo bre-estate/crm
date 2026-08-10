@@ -36,6 +36,12 @@ function str(v: any): string {
 }
 
 async function main() {
+  const { runWithImportLog } = await import("../lib/import-log");
+  await runWithImportLog({
+    scriptName: "import-trial-balance",
+    sourceFile: FILE,
+    targetTable: "trial_balance",
+  }, async (log) => {
   const mig = fs.readFileSync("drizzle/0034_trial_balance.sql", "utf-8");
   await sql.unsafe(mig);
 
@@ -95,6 +101,14 @@ async function main() {
   console.log(`Chênh:               ${fmt(Number(t.ts) - Number(t.npt) - Number(t.vcsh))}`);
   console.log(Math.abs(Number(t.ts) - Number(t.npt) - Number(t.vcsh)) < 1000 ? "✅ CÂN" : "⚠️ LỆCH");
 
-  await sql.end();
+    log.created = rows.length - dedupSkip;
+    log.skipped = dedupSkip;
+    log.details = {
+      period_end: PERIOD_END,
+      total_ts: Number(t.ts), total_npt: Number(t.npt), total_vcsh: Number(t.vcsh),
+      balance_check: Math.abs(Number(t.ts) - Number(t.npt) - Number(t.vcsh)) < 1000,
+    };
+    await sql.end();
+  });
 }
 main().catch(e => { console.error(e); process.exit(1); });

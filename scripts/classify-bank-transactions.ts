@@ -17,6 +17,11 @@ const sql = postgres(process.env.DATABASE_URL!);
 const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
 
 async function main() {
+  const { runWithImportLog } = await import("../lib/import-log");
+  await runWithImportLog({
+    scriptName: "classify-bank-transactions",
+    targetTable: "bank_transactions",
+  }, async (log) => {
   const rows = await sql<Array<{ id: number; description: string; debit_amount: number | null; credit_amount: number | null; partner_name: string | null }>>`
     SELECT id, description, debit_amount, credit_amount, partner_name
     FROM bank_transactions
@@ -58,6 +63,9 @@ async function main() {
     console.log(`${key.padEnd(20)} ${String(v.count).padStart(4)} rows  ${fmt(v.total).padStart(18)}  [${meta?.group ?? "?"}] ${meta?.label ?? ""}`);
   }
 
-  await sql.end();
+    log.updated = updated;
+    log.details = { buckets: Object.fromEntries([...buckets].map(([k, v]) => [k, { count: v.count, total: v.total }])), force: FORCE };
+    await sql.end();
+  });
 }
 main().catch(e => { console.error(e); process.exit(1); });

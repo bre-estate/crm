@@ -24,6 +24,12 @@ const normUnit = (s: string) => s.replace(/[.\-\s]/g, "").toLowerCase();
 const daysDiff = (a: string, b: string) => Math.abs((new Date(a).getTime() - new Date(b).getTime()) / 86400000);
 
 async function main() {
+  const { runWithImportLog } = await import("../lib/import-log");
+  await runWithImportLog({
+    scriptName: "backfill-invoices",
+    sourceFile: "BAO CAO DOANH THU.xlsx",
+    targetTable: "invoices",
+  }, async (log) => {
   const wb = XLSX.readFile("/Users/trietnguyen/Documents/Company/BRE/App/CRM/BAO CAO DOANH THU.xlsx");
   const rows = XLSX.utils.sheet_to_json<any[]>(wb.Sheets["2.2_Doanh thu"], { header: 1, defval: null });
 
@@ -139,6 +145,11 @@ async function main() {
   console.log(`Skipped: ${skipped}`);
   if (skipList.length > 0) skipList.forEach((s) => console.log(`  ${s}`));
   console.log(`\n${APPLY ? "✅ APPLIED" : "(dry-run, add --apply)"}`);
-  await c.end();
+    log.created = inserted;
+    log.updated = linked;
+    log.skipped = skipped;
+    log.details = { apply: APPLY, skips: skipList.slice(0, 20) };
+    await c.end();
+  });
 }
 main().catch((e) => { console.error(e); process.exit(1); });

@@ -37,6 +37,12 @@ function str(v: any): string {
 }
 
 async function main() {
+  const { runWithImportLog } = await import("../lib/import-log");
+  await runWithImportLog({
+    scriptName: "import-year-end-accruals",
+    sourceFile: FILE,
+    targetTable: "year_end_accruals",
+  }, async (log) => {
   const mig = fs.readFileSync("drizzle/0033_year_end_accruals.sql", "utf-8");
   await sql.unsafe(mig);
 
@@ -110,6 +116,13 @@ async function main() {
   `;
   console.log(`\n✅ Imported 2 other accruals: Thưởng ĐS 10M + Top 1 25M`);
 
-  await sql.end();
+    log.created = rows.length + 2;
+    log.details = {
+      hh_sale: Number(totals.hh), cdt_bonus_nvkd: Number(totals.cdt),
+      cty_thuong_ql: Number(totals.ql), kpi_ceo: Number(totals.ceo),
+      kpi_tpkd: Number(totals.tpkd), admin: Number(totals.admin), ho_tro: Number(totals.ho_tro),
+    };
+    await sql.end();
+  });
 }
 main().catch(e => { console.error(e); process.exit(1); });

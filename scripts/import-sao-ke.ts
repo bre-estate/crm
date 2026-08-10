@@ -19,6 +19,11 @@ function parseNum(s: any): number | null {
 }
 
 async function main() {
+  const { runWithImportLog } = await import("../lib/import-log");
+  await runWithImportLog({
+    scriptName: "import-sao-ke",
+    targetTable: "bank_transactions",
+  }, async (log) => {
   // Apply migration
   await sql.unsafe(readFileSync("drizzle/0029_bank_transactions.sql", "utf-8"));
   console.log("✅ Migration 0029 applied\n");
@@ -129,6 +134,13 @@ async function main() {
   console.log(`  Tổng OUT (nợ): ${fmt(Math.abs(Number(s.total_debit)))}`);
   console.log(`  Tổng IN  (có): ${fmt(s.total_credit)}`);
 
-  await sql.end();
+    log.created = Number(s.n ?? 0);
+    log.details = {
+      files_processed: files.length,
+      first_date: s.first_date, last_date: s.last_date,
+      total_debit: Number(s.total_debit), total_credit: Number(s.total_credit),
+    };
+    await sql.end();
+  });
 }
 main().catch((e) => { console.error(e); process.exit(1); });
