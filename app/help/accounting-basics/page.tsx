@@ -42,7 +42,7 @@ const groups: { title: string; subtitle: string; balance: "Nợ" | "Có"; tks: T
     subtitle: "Loại 4 · Số dư bên Có",
     balance: "Có",
     tks: [
-      { code: "411", name: "Vốn góp CSH", bre: "Vốn góp Triết + Bách" },
+      { code: "411", name: "Vốn góp CSH", bre: "Vốn góp founder" },
       { code: "4211", name: "Lãi/lỗ năm trước", bre: "Kết chuyển đầu kỳ" },
       { code: "4212", name: "Lãi/lỗ năm nay", bre: "KQKD kỳ này" },
     ],
@@ -67,7 +67,7 @@ const groups: { title: string; subtitle: string; balance: "Nợ" | "Có"; tks: T
       { code: "6423", name: "Đồ dùng VP", bre: "Máy in, bàn ghế, văn phòng phẩm..." },
       { code: "6425", name: "Thuế môn bài", bre: "2M/năm" },
       { code: "6427", name: "Thuê VP + tiện ích + dịch vụ", bre: "Thuê nhà + điện nước + internet" },
-      { code: "811", name: "Chi phí khác không hóa đơn", bre: "Chi Triết trả tay (không có hóa đơn hợp lệ)" },
+      { code: "811", name: "Chi phí khác không hóa đơn", bre: "Chi trả tay không có hóa đơn hợp lệ" },
       { code: "821", name: "Chi phí thuế TNDN", bre: "Thuế cty trong kỳ" },
     ],
   },
@@ -76,14 +76,14 @@ const groups: { title: string; subtitle: string; balance: "Nợ" | "Có"; tks: T
     subtitle: "Loại 9",
     balance: "Nợ",
     tks: [
-      { code: "911", name: "Xác định KQKD", bre: "Kim ghi cuối kỳ để tính lãi/lỗ" },
+      { code: "911", name: "Xác định KQKD", bre: "Kế toán ghi cuối kỳ để tính lãi/lỗ" },
     ],
   },
 ];
 
 const examples = [
   {
-    title: "Cty trả HH sale 100M cho Bách qua bank",
+    title: "Cty trả HH sale 100M cho NV qua bank",
     entry: "Nợ 6417 (chi phí tăng) / Có 11211 (bank giảm) · 100M",
     color: "orange",
   },
@@ -93,12 +93,12 @@ const examples = [
     color: "blue",
   },
   {
-    title: "Cuối tháng Kim ghi lương phát sinh cho Tường Vi (chưa trả)",
+    title: "Cuối tháng Kế toán ghi lương phát sinh cho NV (chưa trả)",
     entry: "Nợ 6421 (chi phí) / Có 3341 (nợ NLĐ) · 6M",
     color: "amber",
   },
   {
-    title: "Khi cty thực trả lương cho Tường Vi qua bank",
+    title: "Khi cty thực trả lương cho NV qua bank",
     entry: "Nợ 3341 (giảm nợ NLĐ) / Có 11211 (bank giảm) · 6M",
     color: "green",
   },
@@ -118,7 +118,7 @@ export default function AccountingBasicsPage() {
         </div>
         <h1 className="text-2xl font-bold mt-1">📚 Kế toán căn bản (TT200)</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Chart of Accounts BRE dùng thực — 25 TK Kim ghi hằng tháng. In ra để trước mặt khi nói chuyện với kế toán.
+          Chart of Accounts BRE dùng thực — 25 TK Kế toán ghi hằng tháng. In ra để trước mặt khi làm việc.
         </p>
       </div>
 
@@ -182,7 +182,7 @@ export default function AccountingBasicsPage() {
 
       <Card className="bg-slate-50 px-4">
         <div className="text-xs text-slate-600">
-          <b>Tips học nhanh:</b> Không cần thuộc hết ngay. Khi Kim nói "TK X",
+          <b>Tips học nhanh:</b> Không cần thuộc hết ngay. Khi Kế toán nhắc "TK X",
           tra bảng trên. Sau 5-10 lần dùng sẽ tự thuộc những TK BRE dùng nhiều
           nhất (5113, 6417, 6411, 6421, 6427, 3341, 11211).
         </div>

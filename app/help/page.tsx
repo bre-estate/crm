@@ -31,7 +31,7 @@ export default function HelpIndexPage() {
         <h1 className="text-2xl font-bold">Trợ giúp — Hướng dẫn nhập liệu</h1>
         <p className="text-sm text-slate-500 mt-1">
           Hướng dẫn chi tiết cho admin, kế toán và sale khi nhập dữ liệu vào CRM BRE.
-          Bám sát format Kim BCDT + chuẩn TT200.
+          Bám sát format BCDT (Kế toán) + chuẩn TT200.
         </p>
       </div>
 

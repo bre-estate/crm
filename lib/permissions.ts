@@ -44,6 +44,7 @@ export const RESOURCES = {
   "admin.users": "Quản lý user",
   "admin.activity": "Nhật ký hoạt động",
   "admin.import-logs": "Nhật ký import",
+  "help": "Trang trợ giúp / hướng dẫn nhập liệu",
 } as const;
 
 export type Resource = keyof typeof RESOURCES;
@@ -91,7 +92,7 @@ export const RESOURCE_GROUPS: { label: string; keys: Resource[] }[] = [
   },
   {
     label: "Hệ thống",
-    keys: ["alerts", "admin.users", "admin.activity"],
+    keys: ["alerts", "admin.users", "admin.activity", "help"],
   },
 ];
 
@@ -133,11 +134,13 @@ const PRESETS: Record<Exclude<Role, "owner" | "custom">, Partial<Record<Resource
     "costs-report": ["view"],
     alerts: ["view"],
     "admin.activity": ["view"],
+    help: ["view"],
   },
   sale: {
     products: ["view"],
     revenues: ["view", "edit"],
     "reports.overview": ["view"],
+    help: ["view"],
   },
   admin: {
     finance: ["view", "edit"],
@@ -146,6 +149,7 @@ const PRESETS: Record<Exclude<Role, "owner" | "custom">, Partial<Record<Resource
     departments: ["view", "edit"],
     employees: ["view", "edit"],
     "reports.overview": ["view"],
+    help: ["view"],
   },
   hr: {
     costs: ["view", "edit"],
@@ -153,9 +157,11 @@ const PRESETS: Record<Exclude<Role, "owner" | "custom">, Partial<Record<Resource
     departments: ["view"],
     "reports.people": ["view"],
     "costs-report": ["view"],
+    help: ["view"],
   },
   viewer: {
     "reports.overview": ["view"],
+    help: ["view"],
   },
 };
 
@@ -223,6 +229,7 @@ export function resourceOfPath(path: string): Resource | "reports.*" | null {
   if (p.startsWith("/admin/users")) return "admin.users";
   if (p.startsWith("/admin/activity")) return "admin.activity";
   if (p.startsWith("/admin/import-logs")) return "admin.activity";
+  if (p.startsWith("/admin/data-checks")) return "admin.activity";
 
   // Top-level
   if (p.startsWith("/products")) return "products";
@@ -239,6 +246,9 @@ export function resourceOfPath(path: string): Resource | "reports.*" | null {
   // /finance/bank-review là tool riêng, nhưng vẫn dùng permission "finance"
   if (p.startsWith("/finance")) return "finance";
   if (p.startsWith("/alerts")) return "alerts";
+  if (p.startsWith("/help")) return "help";
+  if (p.startsWith("/secondary-sales")) return "secondary-sales";
+  if (p.startsWith("/rentals")) return "products";  // rentals dùng chung permission products (đang hidden)
 
   return null;
 }

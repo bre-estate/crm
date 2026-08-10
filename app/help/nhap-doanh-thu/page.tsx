@@ -10,8 +10,8 @@ export default function NhapDoanhThuPage() {
         <div className="text-xs"><Link href="/help" className="text-blue-600 hover:underline">← Trợ giúp</Link></div>
         <h1 className="text-2xl font-bold mt-1">Hướng dẫn nhập Doanh thu</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Dành cho Admin (Tường Vi, Nga) khi nhập đối chiếu doanh thu.
-          Đồng bộ Excel BCDT sheet <b>2.2_Doanh thu</b> của Kim.
+          Dành cho Admin khi nhập đối chiếu doanh thu.
+          Đồng bộ Excel BCDT sheet <b>2.2_Doanh thu</b> do Kế toán làm.
         </p>
       </div>
 
@@ -86,7 +86,7 @@ export default function NhapDoanhThuPage() {
         <h2 className="font-semibold text-amber-900 mb-2">🔗 Về Hóa đơn (quan trọng!)</h2>
         <ul className="text-sm space-y-2 text-slate-700">
           <li>
-            <b>Quy tắc unique:</b> (Số HĐ + Ngày HĐ + CĐT) là 1 tổ hợp duy nhất — Kim <b>KHÔNG</b> reset số HĐ theo năm.
+            <b>Quy tắc unique:</b> (Số HĐ + Ngày HĐ + CĐT) là 1 tổ hợp duy nhất.
             HĐ số 4 có thể có ngày 2025 và ngày 2026 khác nhau → là 2 HĐ khác.
           </li>
           <li>
@@ -108,7 +108,7 @@ export default function NhapDoanhThuPage() {
         <h2 className="text-lg font-semibold mb-3">📊 Tình huống mẫu</h2>
 
         <div className="bg-card rounded-lg ring-1 ring-slate-200 p-4 space-y-3">
-          <h3 className="font-semibold">Căn B.28.18 TT AVIO — Trần Minh Nhật bán</h3>
+          <h3 className="font-semibold">Ví dụ: căn 2PN dự án A</h3>
           <p className="text-sm text-slate-600">Giá bán 3.5 tỷ, HH sale 5.25%, khách trả nhiều đợt.</p>
 
           <table className="w-full text-xs">
@@ -142,9 +142,9 @@ export default function NhapDoanhThuPage() {
         <ul className="text-sm space-y-2 text-slate-700">
           <li><b>Nhập %PMG_LK từng đợt lẻ:</b> phải nhập LŨY KẾ (VD 4,00% chứ không phải 2,50% chênh so đợt 1). Hệ thống tự tính đợt này = LK − LK đợt trước.</li>
           <li><b>Nhầm ngày CK bank với ngày ĐC:</b> Ngày ĐC = ngày CĐT phát biên bản, KHÔNG phải ngày chuyển tiền vào TK BRE.</li>
-          <li><b>Số HĐ trùng nhưng khác ngày:</b> ĐÚNG nếu Kim confirm là 2 HĐ khác nhau. Đừng cố merge.</li>
+          <li><b>Số HĐ trùng nhưng khác ngày:</b> ĐÚNG nếu Kế toán confirm là 2 HĐ khác nhau. Đừng cố merge.</li>
           <li><b>Nhập CĐT thưởng sale vào ô "DT đợt này":</b> Thưởng nóng có ô riêng. Không nhập chung vào doanh thu HH.</li>
-          <li><b>Quên chọn số HĐ:</b> Doanh thu không link HĐ → không đối chiếu được với hóa đơn Kim xuất.</li>
+          <li><b>Quên chọn số HĐ:</b> Doanh thu không link HĐ → không đối chiếu được với hóa đơn Kế toán xuất.</li>
         </ul>
       </section>
 

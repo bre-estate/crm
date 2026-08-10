@@ -10,7 +10,7 @@ export default function NhapCanPage() {
         <div className="text-xs"><Link href="/help" className="text-blue-600 hover:underline">← Trợ giúp</Link></div>
         <h1 className="text-2xl font-bold mt-1">Hướng dẫn nhập Căn (Products)</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Dành cho Admin (Tường Vi, Nga). Nhập căn khi CĐT mở bán dự án mới hoặc khi sale bán căn mới.
+          Dành cho Admin. Nhập căn khi CĐT mở bán dự án mới hoặc khi sale bán căn mới.
         </p>
       </div>
 
@@ -82,12 +82,12 @@ export default function NhapCanPage() {
               <tr className="border-t">
                 <td className="p-2 font-mono text-xs">NVKD (sales_person)</td>
                 <td className="p-2">Tên NV chốt căn. Chọn từ list employees</td>
-                <td className="p-2 text-slate-500">Trần Minh Nhật</td>
+                <td className="p-2 text-slate-500">Tên NV</td>
               </tr>
               <tr className="border-t">
                 <td className="p-2 font-mono text-xs">TPKD (dept_leader_name)</td>
                 <td className="p-2">Trưởng phòng KD dẫn dắt</td>
-                <td className="p-2 text-slate-500">Đoàn Lê Bách</td>
+                <td className="p-2 text-slate-500">Tên TPKD</td>
               </tr>
               <tr className="border-t">
                 <td className="p-2 font-mono text-xs">Phòng (dept_name)</td>

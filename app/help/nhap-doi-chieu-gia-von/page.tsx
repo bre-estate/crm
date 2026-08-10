@@ -11,7 +11,7 @@ export default function NhapDCGiaVonPage() {
         </div>
         <h1 className="text-2xl font-bold mt-1">Hướng dẫn nhập Đối chiếu giá vốn</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Dành cho admin (Tường Vi, Nga) khi nhập đối chiếu giá vốn trên CRM.
+          Dành cho Admin khi nhập đối chiếu giá vốn trên CRM.
           Đồng bộ với Excel BCDT sheet 2.3_Gia von.
         </p>
       </div>
