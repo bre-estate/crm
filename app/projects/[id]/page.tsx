@@ -52,6 +52,21 @@ export default async function EditProjectPage({
           </Link>
         </div>
       </div>
+      {projectContracts.length > 0 && (
+        <section className="space-y-3">
+          <div>
+            <h2 className="text-lg font-bold">Biểu PMG lũy kế theo hợp đồng</h2>
+            <p className="text-xs text-slate-500 mt-1">
+              Rate BRE thực áp cho sale. Ban đầu copy từ biểu hợp đồng CĐT, admin điều chỉnh theo thực tế BRE quyết định.
+              Thay đổi ở đây tác động ngay đến <Link href="/admin/rate-audit" className="text-blue-600 hover:underline">Đối chiếu rate căn</Link>.
+            </p>
+          </div>
+          {projectContracts.map((c) => (
+            <ContractTiersEditor key={c.id} contract={c} />
+          ))}
+        </section>
+      )}
+
       <ProjectForm
         project={project}
         partners={allPartners}
@@ -69,21 +84,6 @@ export default async function EditProjectPage({
           return { ok: res.ok, message: res.message };
         }}
       />
-
-      {projectContracts.length > 0 && (
-        <section className="space-y-3 pt-3">
-          <div>
-            <h2 className="text-lg font-bold">Biểu PMG lũy kế theo hợp đồng</h2>
-            <p className="text-xs text-slate-500 mt-1">
-              Rate BRE thực áp cho sale. Ban đầu copy từ biểu hợp đồng CĐT, admin điều chỉnh theo thực tế BRE quyết định.
-              Thay đổi ở đây tác động ngay đến <Link href="/admin/rate-audit" className="text-blue-600 hover:underline">Đối chiếu rate căn</Link>.
-            </p>
-          </div>
-          {projectContracts.map((c) => (
-            <ContractTiersEditor key={c.id} contract={c} />
-          ))}
-        </section>
-      )}
     </div>
   );
 }

@@ -149,16 +149,30 @@ export default function ContractTiersEditor({ contract }: { contract: Contract }
 
       <div>
         <div className="text-xs text-slate-500 mb-1">Biểu bậc PMG lũy kế</div>
-        <div className="space-y-2">
+        {tiers.length > 0 && (
+          <div className="grid gap-1 text-[11px] text-slate-400 px-2 mb-1" style={{ gridTemplateColumns: "1.5rem 5rem 5rem 3rem 5rem 5rem 2rem" }}>
+            <div>#</div>
+            <div>Từ ({unitLabel})</div>
+            <div>Đến</div>
+            <div></div>
+            <div className="text-right">Rate PMG %</div>
+            <div className="text-right">Trần sale %</div>
+            <div></div>
+          </div>
+        )}
+        <div className="space-y-1">
           {tiers.length === 0 && (
             <div className="text-xs text-slate-400 italic p-2 bg-slate-50 rounded">
-              Chưa có bậc nào. Bấm "+ Thêm bậc" bên dưới.
+              Chưa có bậc. Bấm "+ Thêm bậc" bên dưới.
             </div>
           )}
           {tiers.map((t, i) => (
-            <div key={i} className="flex items-center gap-2 flex-wrap text-xs bg-slate-50 rounded p-2">
-              <span className="text-slate-500 w-6">#{i + 1}</span>
-              <span className="text-slate-500">Từ</span>
+            <div
+              key={i}
+              className="grid items-center gap-1 text-xs bg-slate-50 rounded px-2 py-1"
+              style={{ gridTemplateColumns: "1.5rem 5rem 5rem 3rem 5rem 5rem 2rem" }}
+            >
+              <span className="text-slate-500">{i + 1}</span>
               <input
                 type="number"
                 value={metric === "percent" ? Math.round(t.min * 100) : t.min}
@@ -166,10 +180,8 @@ export default function ContractTiersEditor({ contract }: { contract: Contract }
                   const raw = Number(e.target.value);
                   updateTier(i, { min: metric === "percent" ? raw / 100 : raw });
                 }}
-                className="input w-20 text-right"
-                step={metric === "percent" ? 1 : 1}
+                className="input h-7 text-right px-1.5"
               />
-              <span className="text-slate-500">→</span>
               <input
                 type="number"
                 value={t.max == null ? "" : (metric === "percent" ? Math.round(t.max * 100) : t.max)}
@@ -182,21 +194,16 @@ export default function ContractTiersEditor({ contract }: { contract: Contract }
                   }
                 }}
                 placeholder="∞"
-                className="input w-20 text-right"
+                className="input h-7 text-right px-1.5"
               />
-              <span className="text-slate-500">{unitLabel}</span>
-              <span className="text-slate-400">→</span>
-              <span className="text-slate-500">Rate PMG</span>
+              <span className="text-slate-400 text-center">→</span>
               <input
                 type="number"
                 value={+(t.rate * 100).toFixed(4)}
                 onChange={e => updateTier(i, { rate: Number(e.target.value) / 100 })}
                 step={0.01}
-                className="input w-20 text-right"
+                className="input h-7 text-right px-1.5 font-semibold"
               />
-              <span className="text-slate-500">%</span>
-              <span className="text-slate-400 ml-2">·</span>
-              <span className="text-slate-500">Trần sale</span>
               <input
                 type="number"
                 value={t.saleCap == null ? "" : +(t.saleCap * 100).toFixed(4)}
@@ -206,16 +213,16 @@ export default function ContractTiersEditor({ contract }: { contract: Contract }
                 }}
                 placeholder="—"
                 step={0.01}
-                className="input w-20 text-right"
+                className="input h-7 text-right px-1.5"
               />
-              <span className="text-slate-500">%</span>
               <button
                 type="button"
                 onClick={() => removeTier(i)}
-                className="text-red-600 hover:underline ml-auto text-xs"
+                className="text-red-500 hover:text-red-700 text-sm"
                 disabled={pending}
+                title="Xoá bậc"
               >
-                Xoá
+                ×
               </button>
             </div>
           ))}

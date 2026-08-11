@@ -164,15 +164,9 @@ export default function ProjectForm({ project, partners, onSave, onDelete, onRef
           <Field label="Phí admin sale">
             <MoneyInput name="adminFeeSale" defaultValue={project?.adminFeeSale ?? 0} className="input" />
           </Field>
-          <Field label="Biểu PMG (text - ghi chú)" full>
-            <AutoGrowTextarea
-              name="contractDocs"
-              defaultValue={project?.contractDocs ?? ""}
-              minRows={3}
-              className="input"
-              placeholder="VD: + Y<50%: 4.5%  + 50%-90%: 5%  + >90%: 5.5% (hồi tố)"
-            />
-          </Field>
+        </div>
+        <div className="text-[11px] text-slate-500 italic mt-1">
+          Rate ở đây chỉ dùng khi dự án CHƯA có hợp đồng riêng. Nếu có contract, biểu PMG lũy kế ở trên là source of truth.
         </div>
       </Section>
 
