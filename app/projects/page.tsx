@@ -69,19 +69,19 @@ export default async function ProjectsPage() {
         </Button>
       </div>
 
-      <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
+      <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="text-xs text-slate-500">
             <tr>
-              <th className="text-left p-3">Mã DA / Dự án</th>
-              <th className="text-left p-3">Đối tác (hợp đồng)</th>
-              <th className="text-left p-3">Biểu PMG (CĐT → BRE)</th>
-              <th className="text-right p-3">%PMG_sale</th>
-              <th className="text-right p-3">Phí admin</th>
-              <th className="text-right p-3">CĐT thưởng sale</th>
-              <th className="text-left p-3">Vai trò</th>
-              <th className="text-right p-3">BRE bán / Tổng</th>
-              <th className="text-right p-3">Thao tác</th>
+              <th className="text-left p-2 whitespace-nowrap">Mã / Dự án</th>
+              <th className="text-left p-2">Đối tác</th>
+              <th className="text-left p-2 whitespace-nowrap">Biểu PMG (CĐT → BRE)</th>
+              <th className="text-right p-2 whitespace-nowrap">%sale</th>
+              <th className="text-right p-2 whitespace-nowrap">Admin</th>
+              <th className="text-right p-2 whitespace-nowrap">Thưởng sale</th>
+              <th className="text-left p-2 whitespace-nowrap">Vai trò</th>
+              <th className="text-right p-2 whitespace-nowrap">BRE / Tổng</th>
+              <th className="text-right p-2 whitespace-nowrap">Thao tác</th>
             </tr>
           </thead>
           <tbody>
@@ -93,110 +93,120 @@ export default async function ProjectsPage() {
               if (projContracts.length === 0) {
                 // Project chưa có contract
                 return (
-                  <tr key={p.id} className="border-t border-slate-100 hover:bg-slate-50">
-                    <td className="p-3">
-                      <div className="font-mono text-xs text-slate-500">{p.fullCode}</div>
-                      <div className="font-medium">{p.name}</div>
+                  <tr key={p.id} className="border-t border-slate-100 hover:bg-slate-50 align-middle">
+                    <td className="p-2">
+                      <div className="font-mono text-[10px] text-slate-500">{p.fullCode}</div>
+                      <div className="font-medium text-sm">{p.name}</div>
                     </td>
-                    <td className="p-3 text-slate-500">
+                    <td className="p-2 text-slate-500 text-xs">
                       {displayPartnerName(p.partnerName) || <span className="text-slate-300">—</span>}
                     </td>
-                    <td colSpan={4} className="p-3 text-center text-slate-400 text-xs italic">
-                      Chưa có hợp đồng — chạy <code>npx tsx scripts/import-contracts.ts</code> nếu chưa import
+                    <td colSpan={4} className="p-2 text-center text-slate-400 text-xs italic">
+                      Chưa có hợp đồng
                     </td>
-                    <td className="p-3">
-                      <span className={`text-xs px-2 py-1 rounded-md ${p.breRole === "f1" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
-                        {p.breRole === "f1" ? "BRE = F1" : "BRE = F2"}
+                    <td className="p-2 whitespace-nowrap">
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${p.breRole === "f1" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
+                        {p.breRole === "f1" ? "BRE=F1" : "BRE=F2"}
                       </span>
                     </td>
-                    <td className="p-3 text-right tabular-nums text-xs">
+                    <td className="p-2 text-right tabular-nums text-xs whitespace-nowrap">
                       {total > 0 ? `${bre}/${total}` : bre > 0 ? `${bre}/?` : "—"}
                     </td>
-                    <td className="p-3 text-right">
-                      <Link href={`/projects/${p.id}`} className="text-blue-600 hover:underline text-sm">Sửa</Link>
+                    <td className="p-2 text-right whitespace-nowrap">
+                      <Link href={`/projects/${p.id}`} className="text-blue-600 hover:underline text-xs">Sửa</Link>
                     </td>
                   </tr>
                 );
               }
 
               // 1 project = N contracts → hiện N rows nested
-              return projContracts.map((c, idx) => (
-                <tr key={`${p.id}-${c.id}`} className={`border-t ${idx === 0 ? "border-slate-300" : "border-slate-100"} hover:bg-slate-50`}>
-                  <td className="p-3">
+              return projContracts.map((c, idx) => {
+                // Detect nếu mọi tier same rate → collapse thành 1 dòng
+                const tiers = Array.isArray(c.pmgTiers) ? c.pmgTiers : null;
+                const allSameRate = tiers && tiers.length > 1 && tiers.every((t: any) => t.rate === tiers[0].rate);
+                return (
+                <tr key={`${p.id}-${c.id}`} className={`border-t ${idx === 0 ? "border-slate-300" : "border-slate-100"} hover:bg-slate-50 align-middle`}>
+                  <td className="p-2">
                     {idx === 0 && (
                       <>
-                        <div className="font-mono text-xs text-slate-500">{p.fullCode}</div>
-                        <div className="font-medium">{p.name}</div>
+                        <div className="font-mono text-[10px] text-slate-500">{p.fullCode}</div>
+                        <div className="font-medium text-sm">{p.name}</div>
                       </>
                     )}
                   </td>
-                  <td className="p-3 text-slate-700">
-                    <div className="font-medium text-sm">{c.partnerName}</div>
+                  <td className="p-2 text-slate-700">
+                    <div className="font-medium text-xs">{c.partnerName}</div>
                     {c.contractNumber && (
-                      <div className="text-[10px] text-slate-400 mt-0.5 truncate max-w-xs" title={c.contractNumber}>
-                        {c.contractNumber.slice(0, 50)}
+                      <div className="text-[10px] text-slate-400 mt-0.5 truncate max-w-[220px]" title={c.contractNumber}>
+                        {c.contractNumber.slice(0, 40)}
                       </div>
                     )}
                   </td>
-                  <td className="p-3 text-xs">
-                    {Array.isArray(c.pmgTiers) && c.pmgTiers.length > 0 ? (
-                      <div className="space-y-0.5">
-                        {c.pmgTiers.map((t: any, ti: number) => {
-                          const metric = c.pmgMetric === "percent" ? "% giỏ" : "căn";
-                          const range = t.max == null
-                            ? (c.pmgMetric === "percent" ? `Y ≥ ${(t.min * 100).toFixed(0)}%` : `X ≥ ${t.min}`)
-                            : (c.pmgMetric === "percent" ? `${(t.min * 100).toFixed(0)}%-${(t.max * 100).toFixed(0)}%` : `${t.min}-${t.max}`);
-                          return (
-                            <div key={ti} className="flex items-center gap-1.5 tabular-nums">
-                              <span className="text-slate-500 min-w-16">{range}</span>
-                              <span className="font-semibold text-slate-700">{fmtPct(t.rate)}</span>
-                              {t.saleCap != null && (
-                                <span className="text-[9px] text-orange-600">sale ≤ {fmtPct(t.saleCap)}</span>
-                              )}
-                            </div>
-                          );
-                        })}
-                        {c.pmgRetroactive && <div className="text-[10px] text-blue-600 italic">↺ hồi tố</div>}
-                        {c.pmgNotes && <div className="text-[10px] text-slate-500 italic">{c.pmgNotes}</div>}
-                      </div>
+                  <td className="p-2 text-xs">
+                    {tiers && tiers.length > 0 ? (
+                      allSameRate ? (
+                        <span className="tabular-nums">
+                          <span className="font-semibold text-slate-700">{fmtPct(tiers[0].rate)}</span>
+                          <span className="text-[10px] text-slate-400 ml-1.5">(mọi bậc)</span>
+                        </span>
+                      ) : (
+                        <div className="space-y-0.5">
+                          {tiers.map((t: any, ti: number) => {
+                            const range = t.max == null
+                              ? (c.pmgMetric === "percent" ? `Y≥${(t.min * 100).toFixed(0)}%` : `X≥${t.min}`)
+                              : (c.pmgMetric === "percent" ? `${(t.min * 100).toFixed(0)}-${(t.max * 100).toFixed(0)}%` : `${t.min}-${t.max}`);
+                            return (
+                              <div key={ti} className="flex items-baseline gap-2 tabular-nums whitespace-nowrap">
+                                <span className="text-slate-500 min-w-[52px]">{range}</span>
+                                <span className="font-semibold text-slate-700">{fmtPct(t.rate)}</span>
+                              </div>
+                            );
+                          })}
+                          {c.pmgTiers?.some((t: any) => t.saleCap != null) && (
+                            <div className="text-[9px] text-orange-600">sale ≤ {fmtPct(tiers[0].saleCap ?? tiers[tiers.length-1].saleCap)}</div>
+                          )}
+                          {c.pmgRetroactive && <div className="text-[10px] text-blue-600 italic">↺ hồi tố</div>}
+                        </div>
+                      )
                     ) : c.pmgLk != null ? (
-                      <span className="tabular-nums">{fmtPct(c.pmgLk)} <span className="text-[10px] text-slate-400">(phẳng)</span></span>
+                      <span className="tabular-nums font-semibold">{fmtPct(c.pmgLk)}</span>
                     ) : c.pmgStructure ? (
                       <span className="text-[10px] text-amber-600 italic" title={c.pmgStructure}>
-                        Biểu phức tạp — chưa parse. Xem raw
+                        Biểu phức tạp — hover xem
                       </span>
                     ) : (
                       <span className="text-slate-300">—</span>
                     )}
                   </td>
-                  <td className="p-3 text-right tabular-nums">
+                  <td className="p-2 text-right tabular-nums whitespace-nowrap">
                     {c.pmgLkSale != null ? fmtPct(c.pmgLkSale) : <span className="text-slate-300">—</span>}
                   </td>
-                  <td className="p-3 text-right tabular-nums">
+                  <td className="p-2 text-right tabular-nums whitespace-nowrap text-xs">
                     {c.adminFee != null && c.adminFee > 0 ? fmtMoney(c.adminFee) : <span className="text-slate-300">—</span>}
                   </td>
-                  <td className="p-3 text-right tabular-nums text-xs">
+                  <td className="p-2 text-right tabular-nums text-xs whitespace-nowrap">
                     {c.cdtBonusSale != null && c.cdtBonusSale > 0 ? fmtMoney(c.cdtBonusSale) : <span className="text-slate-300">—</span>}
                   </td>
                   {idx === 0 && (
                     <>
-                      <td className="p-3" rowSpan={projContracts.length}>
-                        <span className={`text-xs px-2 py-1 rounded-md ${p.breRole === "f1" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
-                          {p.breRole === "f1" ? "BRE = F1" : "BRE = F2"}
+                      <td className="p-2 whitespace-nowrap" rowSpan={projContracts.length}>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${p.breRole === "f1" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
+                          {p.breRole === "f1" ? "BRE=F1" : "BRE=F2"}
                         </span>
                       </td>
-                      <td className="p-3 text-right tabular-nums text-xs" rowSpan={projContracts.length}>
+                      <td className="p-2 text-right tabular-nums text-xs whitespace-nowrap" rowSpan={projContracts.length}>
                         {total > 0 ? (
-                          <span>{bre} / {total} <span className="text-slate-400">({fmtPctRaw((bre / total) * 100, 1)})</span></span>
+                          <span>{bre}/{total} <span className="text-slate-400">({fmtPctRaw((bre / total) * 100, 0)})</span></span>
                         ) : bre > 0 ? `${bre}/?` : <span className="text-slate-300">—</span>}
                       </td>
-                      <td className="p-3 text-right" rowSpan={projContracts.length}>
-                        <Link href={`/projects/${p.id}`} className="text-blue-600 hover:underline text-sm">Sửa</Link>
+                      <td className="p-2 text-right whitespace-nowrap" rowSpan={projContracts.length}>
+                        <Link href={`/projects/${p.id}`} className="text-blue-600 hover:underline text-xs">Sửa</Link>
                       </td>
                     </>
                   )}
                 </tr>
-              ));
+                );
+              });
             })}
             {primaryProjects.length === 0 && (
               <tr>

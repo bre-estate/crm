@@ -90,29 +90,29 @@ export default function PartnersManager({ partners, onCreate, onUpdate, onDelete
         </Button>
       </div>
 
-      <Card className="p-0 gap-0 overflow-hidden">
+      <Card className="p-0 gap-0 overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-xs text-slate-600">
+          <thead className="text-xs text-slate-500">
             <tr>
-              <th className="text-left p-3">Mã</th>
-              <th className="text-left p-3">Tên</th>
-              <th className="text-left p-3">Loại</th>
-              <th className="text-left p-3">Pháp nhân</th>
-              <th className="text-left p-3">MST</th>
-              <th className="text-left p-3">Địa chỉ</th>
-              <th className="text-left p-3">SĐT</th>
-              <th className="text-left p-3">Email</th>
-              <th className="text-right p-3">Thao tác</th>
+              <th className="text-left p-2 whitespace-nowrap">Mã</th>
+              <th className="text-left p-2 whitespace-nowrap">Tên</th>
+              <th className="text-left p-2 whitespace-nowrap">Loại</th>
+              <th className="text-left p-2">Pháp nhân</th>
+              <th className="text-left p-2 whitespace-nowrap">MST</th>
+              <th className="text-left p-2">Địa chỉ</th>
+              <th className="text-left p-2 whitespace-nowrap">SĐT</th>
+              <th className="text-left p-2">Email</th>
+              <th className="text-right p-2 whitespace-nowrap">Thao tác</th>
             </tr>
           </thead>
           <tbody>
             {partners.map((p) => (
-              <tr key={p.id} className="border-t border-slate-100 hover:bg-slate-50">
-                <td className="p-3 font-mono text-xs">{p.code}</td>
-                <td className="p-3 font-medium">{p.name}</td>
-                <td className="p-3">
+              <tr key={p.id} className="border-t border-slate-100 hover:bg-slate-50 align-middle">
+                <td className="p-2 font-mono text-xs whitespace-nowrap">{p.code}</td>
+                <td className="p-2 font-medium whitespace-nowrap">{p.name}</td>
+                <td className="p-2 whitespace-nowrap">
                   <span
-                    className={`text-xs px-2 py-1 rounded-md ${
+                    className={`text-xs px-2 py-0.5 rounded-md whitespace-nowrap ${
                       p.type === "cdt"
                         ? "bg-blue-100 text-blue-700"
                         : p.type === "f1"
@@ -123,12 +123,18 @@ export default function PartnersManager({ partners, onCreate, onUpdate, onDelete
                     {partnerTypeLabel(p.type)}
                   </span>
                 </td>
-                <td className="p-3 text-xs text-slate-600 max-w-xs truncate" title={p.legalName ?? undefined}>{p.legalName ?? "—"}</td>
-                <td className="p-3 font-mono text-xs">{p.taxCode ?? "—"}</td>
-                <td className="p-3 text-xs text-slate-600 max-w-xs truncate" title={p.address ?? undefined}>{p.address ?? "—"}</td>
-                <td className="p-3 text-xs">{p.phone ?? "—"}</td>
-                <td className="p-3 text-xs truncate max-w-40" title={p.email ?? undefined}>{p.email ?? "—"}</td>
-                <td className="p-3 text-right space-x-3 whitespace-nowrap">
+                <td className="p-2 text-xs text-slate-600">
+                  <div className="max-w-[240px] truncate" title={p.legalName ?? undefined}>{p.legalName ?? "—"}</div>
+                </td>
+                <td className="p-2 font-mono text-xs whitespace-nowrap">{p.taxCode ?? "—"}</td>
+                <td className="p-2 text-xs text-slate-600">
+                  <div className="max-w-[240px] truncate" title={p.address ?? undefined}>{p.address ?? "—"}</div>
+                </td>
+                <td className="p-2 text-xs whitespace-nowrap">{p.phone ?? "—"}</td>
+                <td className="p-2 text-xs">
+                  <div className="max-w-[180px] truncate" title={p.email ?? undefined}>{p.email ?? "—"}</div>
+                </td>
+                <td className="p-2 text-right space-x-3 whitespace-nowrap">
                   <button
                     type="button"
                     onClick={() => setEditing(p)}
