@@ -249,6 +249,13 @@ const RULES: Rule[] = [
       "con dấu", "con dau",
       "công văn", "cong van",
       "phụ lục", "phu luc",
+      // Dịch vụ tháo lắp / vận chuyển / dán decal (không phải mua tài sản)
+      "tháo lắp", "thao lap",
+      "bơm gas", "bom gas",
+      "vận chuyển", "van chuyen",
+      "dán cách nhiệt", "dan cach nhiet",
+      "chi thêm 10%", "chi them 10%",
+      "tiền gửi xe", "tien gui xe",
     ],
     note: "TK 6427 (BCTC): dịch vụ mua ngoài — thuê VP, tiện ích, phần mềm, dịch vụ HC",
   },
@@ -272,12 +279,21 @@ const RULES: Rule[] = [
       "ghim bấm", "ghim bam",
       "sim", "cước sim", "cuoc sim",
       "shoppee", "shopee",
+      // Đồ dùng nhỏ (< ngưỡng CCDC 3M): ổ điện, quạt, bóng đèn, đồ cúng bàn thờ
+      "ổ điện", "o dien", "ổ cắm", "o cam",
+      "quạt điện", "quat dien",
+      "bóng đèn", "bong den",
+      "gạo, muối", "gao muoi",
+      "bia, nước ngọt", "bia nuoc ngot",
     ],
     note: "TK 6423 (BCTC): đồ dùng văn phòng",
   },
 
   // ═════════════════════════════════════════════════
   //   242 CHI PHÍ TRẢ TRƯỚC (thiết bị phân bổ dần)
+  //   Chỉ áp dụng nếu:
+  //     - Không có "exclude keyword" (dịch vụ/tiêu dùng)
+  //     - Amount ≥ 3M (ngưỡng CCDC). Xử lý trong classify() sau khi match.
   // ═════════════════════════════════════════════════
   {
     categoryCode: "242",
@@ -291,13 +307,10 @@ const RULES: Rule[] = [
       "tủ hồ sơ", "tu ho so",
       "biển hiệu", "bien hieu",
       "bàn thờ", "ban tho",
-      "ổ cắm", "o cam", "ổ điện", "o dien",
-      "quạt điện", "quat dien",
       "bảng hiệu", "bang hieu", "lắp bảng hiệu", "lap bang hieu",
       "kệ treo", "ke treo", "kệ giày", "ke giay", "tủ tài liệu", "tu tai lieu",
       "ghế trưởng phòng", "ghe truong phong",
       "rèm", "rem ",
-      "dán cách nhiệt", "dan cach nhiet",
       "cây văn phòng", "cay van phong",
       "mua ghế", "mua ghe", "mua bàn", "mua ban",
     ],
@@ -333,7 +346,10 @@ function containsAny(text: string, keywords: string[]): boolean {
  * @param text description
  * @param recipient tên người nhận (dùng để tách 6411 vs 6421 với lương)
  */
-export function classify(text: string, recipient?: string): ClassifyResult {
+// Ngưỡng CCDC: dưới mức này thì chi thẳng vào 6423 thay vì phân bổ TSCĐ (242)
+const CCDC_THRESHOLD = 3_000_000;
+
+export function classify(text: string, recipient?: string, amount?: number): ClassifyResult {
   const norm = normMatch(text);
   for (const rule of RULES) {
     for (const kw of rule.keywords) {
@@ -341,6 +357,7 @@ export function classify(text: string, recipient?: string): ClassifyResult {
       if (norm.includes(kwNorm)) {
         let categoryCode = rule.categoryCode;
         let managementGroup = rule.managementGroup;
+        let note = rule.note ?? "";
 
         // Lương: nếu 6421 nhưng NVKD detected (via recipient hoặc description) → chuyển 6411
         if (rule.categoryCode === "6421") {
@@ -353,11 +370,14 @@ export function classify(text: string, recipient?: string): ClassifyResult {
           }
         }
 
-        return {
-          categoryCode,
-          managementGroup,
-          note: rule.note ?? "",
-        };
+        // 242 chỉ áp dụng nếu amount ≥ 3M. Dưới ngưỡng → chi thẳng 6423 (đồ dùng VP).
+        if (rule.categoryCode === "242" && amount != null && amount < CCDC_THRESHOLD) {
+          categoryCode = "6423";
+          managementGroup = "6a. Đồ dùng VP";
+          note = `Chi thẳng (< ${CCDC_THRESHOLD.toLocaleString("vi-VN")} VND, không phân bổ TSCĐ)`;
+        }
+
+        return { categoryCode, managementGroup, note };
       }
     }
   }

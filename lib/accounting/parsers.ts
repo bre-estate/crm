@@ -86,7 +86,7 @@ export function parseThanhToan(buf: Buffer): ParsedRow[] {
     if (!iso) continue;
     const bp = clean(r[3]);
     const recipient = clean(r[10]);
-    const c = classify(`${description} ${clean(r[9])} ${recipient}`, recipient);
+    const c = classify(`${description} ${clean(r[9])} ${recipient}`, recipient, amount);
     const source = "thanh-toan";
     out.push({
       transactionDate: iso,
@@ -136,7 +136,7 @@ export function parseMerged(buf: Buffer): ParsedRow[] {
       // Nếu không parse được ngày → dùng ngày 15 của tháng làm fallback.
       const iso = `${month}-15`;
       const description = `${hangMuc}${chiTiet ? " — " + chiTiet : ""}`;
-      const c = classify(`${hangMuc} ${chiTiet} ${clean(r[3])}`, clean(r[3]));
+      const c = classify(`${hangMuc} ${chiTiet} ${clean(r[3])}`, clean(r[3]), amount);
       const source = `merged-${nguoi}`;
       out.push({
         transactionDate: iso,
@@ -187,7 +187,7 @@ export function parseTamUng(buf: Buffer): ParsedRow[] {
       if (!iso) continue;
       const description = clean(r[1]);
       const invoiceNo = clean(r[8]) || null;
-      const c = classify(description, clean(r[10]));
+      const c = classify(description, clean(r[10]), chi);
       const source = `tam-ung-${nguoi}`;
       out.push({
         transactionDate: iso,

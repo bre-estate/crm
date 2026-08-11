@@ -24,7 +24,7 @@ async function main() {
   console.log("✅ Categories '3331-3334' + '141' seeded.\n");
 
   const rows = await c<any[]>`
-    SELECT id, description, note, category_code, management_group
+    SELECT id, description, note, amount, recipient, category_code, management_group
     FROM financial_transactions
   `;
   console.log(`Đọc ${rows.length} rows...`);
@@ -34,7 +34,7 @@ async function main() {
   for (const r of rows) {
     // Reclassify từ description + note (giống parser)
     const text = `${r.description ?? ""} ${r.note ?? ""}`;
-    const c2 = classify(text);
+    const c2 = classify(text, r.recipient ?? undefined, Number(r.amount));
     if (c2.categoryCode !== r.category_code || c2.managementGroup !== r.management_group) {
       const key = `${r.category_code} → ${c2.categoryCode}`;
       changeStats.set(key, (changeStats.get(key) ?? 0) + 1);
