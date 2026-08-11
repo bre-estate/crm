@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { partnerTypeLabel } from "@/lib/format";
 import { toast } from "sonner";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -90,7 +89,7 @@ export default function PartnersManager({ partners, onCreate, onUpdate, onDelete
         </Button>
       </div>
 
-      <Card className="p-0 gap-0 overflow-x-auto">
+      <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="text-xs text-slate-500">
             <tr>
@@ -163,7 +162,7 @@ export default function PartnersManager({ partners, onCreate, onUpdate, onDelete
             )}
           </tbody>
         </table>
-      </Card>
+      </div>
 
       <Dialog open={isOpen} onOpenChange={(o) => { if (!o) closeDialog(); }}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
