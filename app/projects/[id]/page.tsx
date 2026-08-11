@@ -70,6 +70,7 @@ export default async function EditProjectPage({
       <ProjectForm
         project={project}
         partners={allPartners}
+        hasContracts={projectContracts.length > 0}
         onSave={async (fd) => {
           "use server";
           await updateProject(id, fd);
