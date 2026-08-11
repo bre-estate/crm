@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Product, Project, Partner, Department, ProductAdjustment } from "@/lib/schema";
 import MoneyInput from "@/components/MoneyInput";
+import PercentInput from "@/components/PercentInput";
 import SearchableSelect from "@/components/SearchableSelect";
 import { fmtMoney, fmtDate, fmtPctTight, toTitleCase } from "@/lib/format";
 import AdjustmentDialog from "./[id]/AdjustmentDialog";
@@ -509,9 +510,7 @@ export default function ProductForm({
             </Field>
             <Field label="%PMG_LK (CĐT trả BRE)">
               <div className="relative">
-                <input
-                  type="text"
-                  inputMode="decimal"
+                <PercentInput
                   name={lockCoreFields ? "_locked_pmgRate" : "pmgRate"}
                   defaultValue={product?.pmgRate ? Number((Number(product.pmgRate) * 100).toFixed(4)) : ""}
                   onChange={(e) => setPmgRateLive(Number(e.target.value.replace(/,/g, ".")) / 100)}
@@ -645,10 +644,8 @@ export default function ProductForm({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {!isSecondary && (
             <Field label="%PMG_LK_sale (base tính HH sale)">
-              <input
+              <PercentInput
                 name="pmgSaleRate"
-                type="text"
-                inputMode="decimal"
                 defaultValue={pctDisplay(product?.pmgSaleRate)}
                 className="input"
                 onChange={(e) => {
@@ -659,10 +656,8 @@ export default function ProductForm({
             </Field>
           )}
           <Field label="%HH sale (NVKD)">
-            <input
+            <PercentInput
               name="saleCommissionRate"
-              type="text"
-              inputMode="decimal"
               defaultValue={pctDisplay(product?.saleCommissionRate)}
               className="input"
               onChange={(e) => {
@@ -674,10 +669,8 @@ export default function ProductForm({
           {!isSecondary && (
             <>
               <Field label="%KPI TPKD (Trưởng phòng)">
-                <input
+                <PercentInput
                   name="kpiTpkdRate"
-                  type="text"
-                  inputMode="decimal"
                   defaultValue={pctDisplay(product?.kpiTpkdRate)}
                   className="input"
                   onChange={(e) => {
@@ -687,10 +680,8 @@ export default function ProductForm({
                 />
               </Field>
               <Field label="%KPI CEO">
-                <input
+                <PercentInput
                   name="kpiCeoRate"
-                  type="text"
-                  inputMode="decimal"
                   defaultValue={pctDisplay(product?.kpiCeoRate)}
                   className="input"
                   onChange={(e) => {
@@ -700,10 +691,8 @@ export default function ProductForm({
                 />
               </Field>
               <Field label="%KPI Admin">
-                <input
+                <PercentInput
                   name="kpiAdminRate"
-                  type="text"
-                  inputMode="decimal"
                   defaultValue={pctDisplay(product?.kpiAdminRate)}
                   className="input"
                   onChange={(e) => {

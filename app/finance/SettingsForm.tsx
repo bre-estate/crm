@@ -4,6 +4,7 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import PercentInput from "@/components/PercentInput";
 
 type Settings = {
   taxRate: number;
@@ -37,9 +38,7 @@ export default function SettingsForm({ settings, onSave }: Props) {
     >
       <div>
         <label className="block text-xs text-slate-600 mb-1">Thuế TNDN (%)</label>
-        <input
-          type="text"
-          inputMode="decimal"
+        <PercentInput
           name="taxRate"
           defaultValue={Number((settings.taxRate * 100).toFixed(2))}
           className="input"

@@ -4,6 +4,7 @@ import { useState, useTransition, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { CostReconciliation } from "@/lib/schema";
 import MoneyInput from "@/components/MoneyInput";
+import PercentInput from "@/components/PercentInput";
 import SearchableSelect from "@/components/SearchableSelect";
 import { costTypeLabel, fmtMoney, fmtPct, fmtPctTight, fmtPctRaw } from "@/lib/format";
 import { computeLuyKe, type ProductConfig, type CostType } from "@/lib/costCalc";
@@ -828,9 +829,7 @@ export default function CostForm({
           {!isFlatCost && (
             <Field label="Tiến độ PMG đã thu tiền (N)">
               <div className="relative">
-                <input
-                  type="text"
-                  inputMode="decimal"
+                <PercentInput
                   value={progressN}
                   onChange={(e) => {
                     manuallyOverriddenRef.current = false;
@@ -860,9 +859,7 @@ export default function CostForm({
           {!isFlatCost && (
             <Field label="%PMG_LK_sale (M) — CĐT đã chi lũy kế">
               <div className="relative">
-                <input
-                  type="text"
-                  inputMode="decimal"
+                <PercentInput
                   value={mInput}
                   onChange={(e) => {
                     manuallyOverriddenRef.current = false;

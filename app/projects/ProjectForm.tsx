@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Project, Partner } from "@/lib/schema";
 import MoneyInput from "@/components/MoneyInput";
+import PercentInput from "@/components/PercentInput";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
@@ -178,10 +179,8 @@ export default function ProjectForm({ project, partners, onSave, onDelete, onRef
             </Field>
             {[1, 2, 3, 4, 5].map((n) => (
               <Field key={n} label={`%PMG đợt ${n}`}>
-                <input
+                <PercentInput
                   name={`phaseRate${n}`}
-                  type="text"
-                  inputMode="decimal"
                   defaultValue={Number(
                     (((project?.[`phaseRate${n}` as keyof Project] as number) ?? 0) * 100).toFixed(4),
                   )}

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { RevenueReconciliation } from "@/lib/schema";
 import MoneyInput from "@/components/MoneyInput";
+import PercentInput from "@/components/PercentInput";
 import SearchableSelect from "@/components/SearchableSelect";
 import { fmtMoney, fmtPctTight } from "@/lib/format";
 import { toast } from "sonner";
@@ -441,25 +442,21 @@ export default function RevenueForm({
           ) : (
             <>
               <Field label="% PMG_LK đợt này">
-                <input
+                <PercentInput
                   name="pmgCumulativePct"
-                  type="text"
-                  inputMode="decimal"
                   value={pmgLkDisplay}
                   onChange={(e) => setPmgLkDisplay(e.target.value)}
                   onBlur={() => isCommission && suggested > 0 && setAmount(suggested)}
                   className="input"
-                  placeholder="vd: 5.5"
+                  placeholder="vd: 5,5"
                 />
                 <div className="text-[10px] text-slate-500 mt-1">
-                  Thường trùng {product ? fmtPctTight(product.pmgRate) : "%PMG_LK căn"}.
+                  Thường trùng {product ? fmtPctTight(product.pmgRate) : "%PMG_LK căn"}. Chỉ nhập số, không kèm "%".
                 </div>
               </Field>
               <Field label="Tỷ lệ % thu PMG_LK đợt này">
-                <input
+                <PercentInput
                   name="phasePctThisTime"
-                  type="text"
-                  inputMode="decimal"
                   value={phasePctDisplay}
                   onChange={(e) => setPhasePctDisplay(e.target.value)}
                   onBlur={() => isCommission && suggested > 0 && setAmount(suggested)}

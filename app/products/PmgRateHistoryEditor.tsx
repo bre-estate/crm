@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import PercentInput from "@/components/PercentInput";
 
 type Entry = { rate: string; date: string; note: string };
 
@@ -109,9 +110,7 @@ export default function PmgRateHistoryEditor({
         </div>
         {entries.map((e, i) => (
           <div key={i} className="grid grid-cols-12 gap-2 items-center mb-1">
-            <input
-              type="text"
-              inputMode="decimal"
+            <PercentInput
               value={e.rate}
               onChange={(ev) => update(i, { rate: ev.target.value })}
               placeholder="6,75"

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { fmtMoney, fmtPct } from "@/lib/format";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import PercentInput from "@/components/PercentInput";
 import {
   Dialog,
   DialogContent,
@@ -188,25 +189,37 @@ export default function AdjustmentDialog({
                       <span className="text-slate-400">→</span>
                       <div className="min-w-32">
                         {isChecked ? (
-                          <input
-                            type="text"
-                            inputMode="decimal"
-                            value={values[f.key] ?? ""}
-                            onChange={(e) =>
-                              setValues((prev) => ({ ...prev, [f.key]: e.target.value }))
-                            }
-                            placeholder={
-                              f.type === "money"
-                                ? "VD: 25000000"
-                                : `VD: ${(currentVal * 100).toFixed(2)}`
-                            }
-                            className="input text-xs py-1"
-                            autoComplete="off"
-                            data-1p-ignore
-                            data-lpignore="true"
-                            data-form-type="other"
-                            autoFocus
-                          />
+                          f.type === "percent" ? (
+                            <PercentInput
+                              value={values[f.key] ?? ""}
+                              onChange={(e) =>
+                                setValues((prev) => ({ ...prev, [f.key]: e.target.value }))
+                              }
+                              placeholder={`VD: ${(currentVal * 100).toFixed(2)}`}
+                              className="input text-xs py-1"
+                              autoComplete="off"
+                              data-1p-ignore
+                              data-lpignore="true"
+                              data-form-type="other"
+                              autoFocus
+                            />
+                          ) : (
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={values[f.key] ?? ""}
+                              onChange={(e) =>
+                                setValues((prev) => ({ ...prev, [f.key]: e.target.value }))
+                              }
+                              placeholder="VD: 25000000"
+                              className="input text-xs py-1"
+                              autoComplete="off"
+                              data-1p-ignore
+                              data-lpignore="true"
+                              data-form-type="other"
+                              autoFocus
+                            />
+                          )
                         ) : (
                           <div className="text-xs text-slate-400 italic">
                             (giữ nguyên)
