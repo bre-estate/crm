@@ -140,6 +140,7 @@ const NAV: NavEntry[] = [
     children: [
       { href: "/admin/users", label: "Quản lý user", ownerOnly: true },
       { href: "/admin/data-checks", label: "Kiểm tra dữ liệu", ownerOnly: true },
+      { href: "/admin/rate-audit", label: "Đối chiếu rate căn vs biểu PMG", ownerOnly: true },
       { href: "/admin/activity", label: "Lịch sử hoạt động", resource: "admin.activity" },
       { href: "/admin/import-logs", label: "Nhật ký import", resource: "admin.activity" },
     ],

@@ -71,7 +71,7 @@ async function main() {
       if (validRates.size > 0 && !validRates.has(actualKey)) {
         badRate.push(`  ${p.product_code}: PMG=${fmtPct(actual)} — không thuộc biểu ${Array.from(validRates).map(k => fmtPct(k/10000)).join(", ")}`);
       } else if (maxReachedRate != null && actual > maxReachedRate + 0.0001) {
-        overRate.push(`  ${p.product_code}: PMG=${fmtPct(actual)} — vượt bậc max đạt được ${fmtPct(maxReachedRate)} (X_final=${X_final}${retroactive ? ", đã hồi tố" : ""})`);
+        overRate.push(`  ${p.product_code}: PMG=${fmtPct(actual)} — chưa đủ ${X_final} căn để đạt bậc này (max hiện tại ${fmtPct(maxReachedRate)}${retroactive ? ", đã hồi tố" : ""})`);
       } else {
         totalMatched++;
       }
@@ -90,7 +90,7 @@ async function main() {
         if (badRate.length > 3) issues.push(`    ... còn ${badRate.length - 3}`);
       }
       if (overRate.length > 0) {
-        issues.push(`  🟡 Rate vượt bậc max đạt được — sale dự đoán (${overRate.length}):`);
+        issues.push(`  ⚠️  Chưa đủ lũy kế — cần verify với sale/manager (${overRate.length}):`);
         for (const d of overRate.slice(0, 3)) issues.push(d);
         if (overRate.length > 3) issues.push(`    ... còn ${overRate.length - 3}`);
       }

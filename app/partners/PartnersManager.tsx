@@ -99,6 +99,8 @@ export default function PartnersManager({ partners, onCreate, onUpdate, onDelete
               <th className="text-left p-3">Loại</th>
               <th className="text-left p-3">Pháp nhân</th>
               <th className="text-left p-3">MST</th>
+              <th className="text-left p-3">Địa chỉ</th>
+              <th className="text-left p-3">SĐT</th>
               <th className="text-left p-3">Email</th>
               <th className="text-right p-3">Thao tác</th>
             </tr>
@@ -121,9 +123,11 @@ export default function PartnersManager({ partners, onCreate, onUpdate, onDelete
                     {partnerTypeLabel(p.type)}
                   </span>
                 </td>
-                <td className="p-3 text-xs text-slate-600">{p.legalName ?? "—"}</td>
+                <td className="p-3 text-xs text-slate-600 max-w-xs truncate" title={p.legalName ?? undefined}>{p.legalName ?? "—"}</td>
                 <td className="p-3 font-mono text-xs">{p.taxCode ?? "—"}</td>
-                <td className="p-3 text-xs">{p.email ?? "—"}</td>
+                <td className="p-3 text-xs text-slate-600 max-w-xs truncate" title={p.address ?? undefined}>{p.address ?? "—"}</td>
+                <td className="p-3 text-xs">{p.phone ?? "—"}</td>
+                <td className="p-3 text-xs truncate max-w-40" title={p.email ?? undefined}>{p.email ?? "—"}</td>
                 <td className="p-3 text-right space-x-3 whitespace-nowrap">
                   <button
                     type="button"
@@ -146,7 +150,7 @@ export default function PartnersManager({ partners, onCreate, onUpdate, onDelete
             ))}
             {partners.length === 0 && (
               <tr>
-                <td colSpan={7} className="p-6 text-center text-slate-500 text-sm">
+                <td colSpan={9} className="p-6 text-center text-slate-500 text-sm">
                   Chưa có đối tác nào.
                 </td>
               </tr>
