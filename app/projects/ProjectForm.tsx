@@ -10,13 +10,12 @@ import { Button } from "@/components/ui/button";
 type Props = {
   project?: Project;
   partners: Partner[];
-  hasContracts?: boolean;
   onSave: (fd: FormData) => Promise<void>;
   onDelete?: () => Promise<void>;
   onRefreshBatdongsan?: () => Promise<{ ok: boolean; message: string }>;
 };
 
-export default function ProjectForm({ project, partners, hasContracts = false, onSave, onDelete, onRefreshBatdongsan }: Props) {
+export default function ProjectForm({ project, partners, onSave, onDelete, onRefreshBatdongsan }: Props) {
   const [pending, start] = useTransition();
   const router = useRouter();
   const [defaultSaleType, setDefaultSaleType] = useState<"primary" | "secondary">(
@@ -139,47 +138,24 @@ export default function ProjectForm({ project, partners, hasContracts = false, o
         </div>
       </Section>
 
-      {hasContracts ? (
-        // Giữ các giá trị hiện tại qua hidden input để không mất khi save
-        <>
-          <input type="hidden" name="brokerageRate" value={Number(((project?.brokerageRate ?? 0) * 100).toFixed(4))} />
-          <input type="hidden" name="brokerageRateSale" value={Number(((project?.brokerageRateSale ?? 0) * 100).toFixed(4))} />
-          <input type="hidden" name="adminFee" value={project?.adminFee ?? 0} />
-          <input type="hidden" name="adminFeeSale" value={project?.adminFeeSale ?? 0} />
-        </>
-      ) : (
-        <Section title="Tỷ lệ phí môi giới (fallback — chưa có hợp đồng)">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <Field label="%PMG_LK (BRE nhận) — VD: 5,5 nghĩa là 5,5%">
-              <input
-                name="brokerageRate"
-                defaultValue={Number(((project?.brokerageRate ?? 0) * 100).toFixed(4))}
-                className="input"
-                type="text"
-                inputMode="decimal"
-              />
-            </Field>
-            <Field label="%PMG_LK_sale (trả F2 dưới, nếu có)">
-              <input
-                name="brokerageRateSale"
-                defaultValue={Number(((project?.brokerageRateSale ?? 0) * 100).toFixed(4))}
-                className="input"
-                type="text"
-                inputMode="decimal"
-              />
-            </Field>
-            <Field label="Phí admin (VND, gồm VAT)">
-              <MoneyInput name="adminFee" defaultValue={project?.adminFee ?? 0} className="input" />
-            </Field>
-            <Field label="Phí admin sale">
-              <MoneyInput name="adminFeeSale" defaultValue={project?.adminFeeSale ?? 0} className="input" />
-            </Field>
-          </div>
-          <div className="text-[11px] text-slate-500 italic mt-1">
-            Dự án này chưa có hợp đồng riêng — dùng rate ở đây. Khi tạo hợp đồng, biểu PMG lũy kế sẽ là source of truth.
-          </div>
-        </Section>
-      )}
+      {/* Rate %PMG_LK quản lý per căn (products), không nhập ở project. Giữ giá trị cũ qua hidden để không mất. */}
+      <input type="hidden" name="brokerageRate" value={Number(((project?.brokerageRate ?? 0) * 100).toFixed(4))} />
+      <input type="hidden" name="brokerageRateSale" value={Number(((project?.brokerageRateSale ?? 0) * 100).toFixed(4))} />
+
+      <Section title="Phí admin (mặc định cho căn của dự án)">
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Phí admin (VND, gồm VAT)">
+            <MoneyInput name="adminFee" defaultValue={project?.adminFee ?? 0} className="input" />
+          </Field>
+          <Field label="Phí admin sale">
+            <MoneyInput name="adminFeeSale" defaultValue={project?.adminFeeSale ?? 0} className="input" />
+          </Field>
+        </div>
+        <div className="text-[11px] text-slate-500 italic mt-1">
+          Khi tạo căn chốt cho dự án này, 2 phí này sẽ được pre-fill sẵn. Sale có thể override từng căn.
+          %PMG_LK không nhập ở đây — nhập trực tiếp per căn (linh động thay đổi theo thỏa thuận).
+        </div>
+      </Section>
 
       {/* Thưởng CĐT/Cty đã bỏ — nhập per-căn ở ProductForm để linh hoạt. */}
 

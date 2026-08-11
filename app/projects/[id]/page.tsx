@@ -1,10 +1,9 @@
 import { db } from "@/lib/db";
-import { projects, partners, products, contracts } from "@/lib/schema";
-import { eq, asc, count } from "drizzle-orm";
+import { projects, partners, products } from "@/lib/schema";
+import { eq, asc, count, sql, isNotNull } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import ProjectForm from "../ProjectForm";
-import ContractTiersEditor from "./ContractTiersEditor";
 import { updateProject, deleteProject, refreshProjectFromBatdongsan } from "@/lib/actions/projects";
 
 export default async function EditProjectPage({
@@ -25,11 +24,22 @@ export default async function EditProjectPage({
     .from(products)
     .where(eq(products.projectId, id));
 
-  const projectContracts = await db
-    .select()
-    .from(contracts)
-    .where(eq(contracts.projectId, id))
-    .orderBy(asc(contracts.partnerName));
+  // Aggregate rate stats from products (căn chốt) — %PMG latest do BRE quyết định per căn
+  const [rateStats] = await db
+    .select({
+      soldCount: sql<number>`count(*) filter (where deposit_date is not null)::int`,
+      avgPmg: sql<number>`avg(pmg_rate) filter (where deposit_date is not null and pmg_rate is not null)::float8`,
+      minPmg: sql<number>`min(pmg_rate) filter (where deposit_date is not null and pmg_rate is not null)::float8`,
+      maxPmg: sql<number>`max(pmg_rate) filter (where deposit_date is not null and pmg_rate is not null)::float8`,
+      latestPmg: sql<number>`(array_agg(pmg_rate order by deposit_date desc nulls last, id desc))[1]::float8`,
+      latestSaleRate: sql<number>`(array_agg(pmg_sale_rate order by deposit_date desc nulls last, id desc))[1]::float8`,
+      latestDate: sql<string>`(array_agg(deposit_date order by deposit_date desc nulls last, id desc))[1]::text`,
+    })
+    .from(products)
+    .where(eq(products.projectId, id));
+
+  const fmtPct = (n: number | null | undefined) =>
+    n == null ? "—" : (n * 100).toFixed(2).replace(/\.?0+$/, "") + "%";
 
   return (
     <div className="space-y-4">
@@ -52,25 +62,40 @@ export default async function EditProjectPage({
           </Link>
         </div>
       </div>
-      {projectContracts.length > 0 && (
-        <section className="space-y-3">
-          <div>
-            <h2 className="text-lg font-bold">Biểu PMG lũy kế theo hợp đồng</h2>
-            <p className="text-xs text-slate-500 mt-1">
-              Rate BRE thực áp cho sale. Ban đầu copy từ biểu hợp đồng CĐT, admin điều chỉnh theo thực tế BRE quyết định.
-              Thay đổi ở đây tác động ngay đến <Link href="/admin/rate-audit" className="text-blue-600 hover:underline">Đối chiếu rate căn</Link>.
-            </p>
+      {(rateStats?.soldCount ?? 0) > 0 && (
+        <section className="bg-card rounded-xl ring-1 ring-foreground/10 p-4">
+          <div className="text-xs text-slate-500 uppercase tracking-wide font-semibold mb-2">
+            %PMG_LK tổng hợp từ căn đã cọc
           </div>
-          {projectContracts.map((c) => (
-            <ContractTiersEditor key={c.id} contract={c} />
-          ))}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div>
+              <div className="text-[11px] text-slate-500">Latest (căn mới nhất)</div>
+              <div className="text-lg font-bold tabular-nums">{fmtPct(rateStats?.latestPmg)}</div>
+              {rateStats?.latestDate && <div className="text-[10px] text-slate-400">cọc {rateStats.latestDate}</div>}
+            </div>
+            <div>
+              <div className="text-[11px] text-slate-500">Trung bình</div>
+              <div className="text-lg font-bold tabular-nums">{fmtPct(rateStats?.avgPmg)}</div>
+              <div className="text-[10px] text-slate-400">{rateStats?.soldCount} căn</div>
+            </div>
+            <div>
+              <div className="text-[11px] text-slate-500">Khoảng dao động</div>
+              <div className="text-sm font-semibold tabular-nums">{fmtPct(rateStats?.minPmg)} - {fmtPct(rateStats?.maxPmg)}</div>
+            </div>
+            <div>
+              <div className="text-[11px] text-slate-500">Latest sale rate</div>
+              <div className="text-lg font-bold tabular-nums">{fmtPct(rateStats?.latestSaleRate)}</div>
+            </div>
+          </div>
+          <div className="text-[11px] text-slate-500 italic mt-3">
+            Rate quản lý per căn. Chỉnh trong <Link href={`/products?projectId=${id}`} className="text-blue-600 hover:underline">phần căn chốt</Link> (Lịch sử %PMG_LK).
+          </div>
         </section>
       )}
 
       <ProjectForm
         project={project}
         partners={allPartners}
-        hasContracts={projectContracts.length > 0}
         onSave={async (fd) => {
           "use server";
           await updateProject(id, fd);

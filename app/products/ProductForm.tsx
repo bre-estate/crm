@@ -113,10 +113,23 @@ export default function ProductForm({
     }
   }, [filteredProjects, projectId]);
 
+  // Khi tạo căn MỚI và đổi dự án → pre-fill lại phí admin/admin sale từ dự án
+  useEffect(() => {
+    if (!isNewProduct || !selectedProject) return;
+    setAdminFeeLive(Number(selectedProject.adminFee ?? 0));
+    setAdminFeeSaleLive(Number(selectedProject.adminFeeSale ?? 0));
+  }, [projectId]);
+
+  // Selected project (for pre-filling admin fees when creating new căn)
+  const selectedProject = projects.find((p) => String(p.id) === projectId);
+  const isNewProduct = !product;
+
   // === Live compute state (Section Doanh thu) ===
   const [pmgBase, setPmgBase] = useState<number>(Number(product?.pmgBasePrice ?? 0));
   const [pmgRateLive, setPmgRateLive] = useState<number>(Number(product?.pmgRate ?? 0));
-  const [adminFeeLive, setAdminFeeLive] = useState<number>(Number(product?.adminFee ?? 0));
+  const [adminFeeLive, setAdminFeeLive] = useState<number>(
+    Number(product?.adminFee ?? (isNewProduct ? selectedProject?.adminFee ?? 0 : 0))
+  );
   const [cdtBonusSaleLive, setCdtBonusSaleLive] = useState<number>(
     Number(product?.cdtBonusSale ?? 0),
   );
@@ -128,7 +141,7 @@ export default function ProductForm({
   );
   // Section Giá vốn state
   const [adminFeeSaleLive, setAdminFeeSaleLive] = useState<number>(
-    Number(product?.adminFeeSale ?? 0),
+    Number(product?.adminFeeSale ?? (isNewProduct ? selectedProject?.adminFeeSale ?? 0 : 0)),
   );
   const [saleCommRateLive, setSaleCommRateLive] = useState<number>(
     Number(product?.saleCommissionRate ?? 0),
@@ -526,8 +539,9 @@ export default function ProductForm({
                 </>
               ) : (
                 <MoneyInput
+                  key={`adminFee-${projectId}`}
                   name="adminFee"
-                  defaultValue={product?.adminFee ?? 0}
+                  defaultValue={product?.adminFee ?? (isNewProduct ? selectedProject?.adminFee ?? 0 : 0)}
                   className="input"
                   onValueChange={setAdminFeeLive}
                 />
@@ -542,8 +556,9 @@ export default function ProductForm({
             </Field>
             <Field label="Phí admin (dùng tính HH sale)">
               <MoneyInput
+                key={`adminFeeSale-${projectId}`}
                 name="adminFeeSale"
-                defaultValue={product?.adminFeeSale ?? 0}
+                defaultValue={product?.adminFeeSale ?? (isNewProduct ? selectedProject?.adminFeeSale ?? 0 : 0)}
                 className="input"
                 onValueChange={setAdminFeeSaleLive}
               />

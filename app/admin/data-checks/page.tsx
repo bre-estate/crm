@@ -432,11 +432,6 @@ export default async function DataChecksPage() {
           Chạy tự động các invariant check để bắt bug + data lỗi trước khi ra báo cáo.
           Trang này chạy lại mỗi lần load — refresh để cập nhật.
         </p>
-        <div className="mt-3 flex flex-wrap gap-2 text-xs">
-          <Link href="/admin/rate-audit" className="inline-block px-3 py-1.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700">
-            → Đối chiếu rate căn vs biểu PMG
-          </Link>
-        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-3">
