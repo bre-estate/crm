@@ -411,6 +411,7 @@ export default function AppSidebar({
                     <SidebarMenuItem key={n.href}>
                       <SidebarMenuButton
                         isActive={active}
+                        className="data-[active=true]:bg-orange-100 data-[active=true]:text-orange-800 data-[active=true]:font-semibold data-[active=true]:border-l-2 data-[active=true]:border-orange-500 data-[active=true]:rounded-l-none"
                         render={<Link href={n.href} />}
                       >
                         {n.label}
@@ -428,6 +429,7 @@ export default function AppSidebar({
                     {n.href ? (
                       <SidebarMenuButton
                         isActive={parentActive}
+                        className="data-[active=true]:bg-orange-100 data-[active=true]:text-orange-800 data-[active=true]:font-semibold data-[active=true]:border-l-2 data-[active=true]:border-orange-500 data-[active=true]:rounded-l-none"
                         render={<Link href={n.href} />}
                       >
                         <span className="font-medium">{n.label}</span>
@@ -459,6 +461,7 @@ export default function AppSidebar({
                             <SidebarMenuSubItem key={c.href}>
                               <SidebarMenuSubButton
                                 isActive={active}
+                                className="data-[active=true]:bg-orange-100 data-[active=true]:text-orange-800 data-[active=true]:font-semibold data-[active=true]:border-l-2 data-[active=true]:border-orange-500 data-[active=true]:rounded-l-none"
                                 render={<Link href={c.href} />}
                               >
                                 {c.label}

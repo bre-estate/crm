@@ -86,6 +86,16 @@ export default function ProductForm({
     String(product?.projectId ?? filteredProjects[0]?.id ?? ""),
   );
 
+  // Combined type value — track để hide checkbox +PN phụ khi chọn Duplex/Penthouse/TMDV/Shophouse
+  const [unitTypeCombined, setUnitTypeCombined] = useState<string>(() => {
+    if (product?.unitType === "penthouse") return "penthouse";
+    if (product?.unitType === "duplex") return "duplex";
+    if (product?.unitType === "shophouse") return "shophouse";
+    if (product?.unitType === "commercial") return "commercial";
+    return product?.bedrooms == null ? "" : String(product.bedrooms);
+  });
+  const hasBonusRoomApplicable = /^[0-4]$/.test(unitTypeCombined);
+
   // NVKD dropdown state — value = employee.name (text). Chọn xong auto-fill dept.
   const [salesPersonName, setSalesPersonName] = useState<string>(product?.salesPerson ?? "");
   const [departmentIdState, setDepartmentIdState] = useState<string>(
@@ -348,13 +358,8 @@ export default function ProductForm({
             <div className="flex gap-2 items-center">
               <select
                 name="unitTypeCombined"
-                defaultValue={(() => {
-                  if (product?.unitType === "penthouse") return "penthouse";
-                  if (product?.unitType === "duplex") return "duplex";
-                  if (product?.unitType === "shophouse") return "shophouse";
-                  if (product?.unitType === "commercial") return "commercial";
-                  return product?.bedrooms == null ? "" : String(product.bedrooms);
-                })()}
+                value={unitTypeCombined}
+                onChange={(e) => setUnitTypeCombined(e.target.value)}
                 className="input flex-1"
               >
                 <option value="">— chưa xác định —</option>
@@ -368,14 +373,16 @@ export default function ProductForm({
                 <option value="shophouse">Shophouse</option>
                 <option value="commercial">TMDV (Thương mại dịch vụ)</option>
               </select>
-              <label className="flex items-center gap-1 text-xs whitespace-nowrap" title="Có phòng phụ đa năng (VD 1PN+, 2PN+). Chỉ áp dụng cho căn hộ 1-4 PN.">
-                <input
-                  type="checkbox"
-                  name="hasBonusRoom"
-                  defaultChecked={product?.hasBonusRoom ?? false}
-                />
-                <span>+PN phụ</span>
-              </label>
+              {hasBonusRoomApplicable && (
+                <label className="flex items-center gap-1 text-xs whitespace-nowrap" title="Có phòng phụ đa năng (VD 1PN+, 2PN+). Chỉ áp dụng cho căn hộ 1-4 PN.">
+                  <input
+                    type="checkbox"
+                    name="hasBonusRoom"
+                    defaultChecked={product?.hasBonusRoom ?? false}
+                  />
+                  <span>+PN phụ</span>
+                </label>
+              )}
             </div>
             {product?.parseNote && (
               <div className="text-[10px] text-amber-600 mt-1">

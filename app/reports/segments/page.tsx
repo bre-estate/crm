@@ -196,7 +196,11 @@ export default async function ReportsSegmentsPage({
 
       {/* Progress: coverage của bedrooms + area */}
       {(() => {
-        const withBedrooms = prodRows.filter((p) => p.bedrooms !== null).length;
+        // Duplex/Penthouse/Shophouse/TMDV không cần số PN → tính là đã đủ data
+        const NO_BEDROOM_TYPES = new Set(["duplex", "penthouse", "shophouse", "commercial"]);
+        const withBedrooms = prodRows.filter(
+          (p) => p.bedrooms !== null || (p.unitType && NO_BEDROOM_TYPES.has(p.unitType)),
+        ).length;
         const withNet = prodRows.filter((p) => p.areaM2Net && p.areaM2Net > 0).length;
         const withGross = prodRows.filter((p) => p.areaM2Gross && p.areaM2Gross > 0).length;
         const bedPct = totalUnits > 0 ? (withBedrooms / totalUnits) * 100 : 0;
