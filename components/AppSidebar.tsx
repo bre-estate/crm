@@ -411,7 +411,7 @@ export default function AppSidebar({
                     <SidebarMenuItem key={n.href}>
                       <SidebarMenuButton
                         isActive={active}
-                        className="data-active:bg-orange-500 data-active:text-white data-active:font-semibold data-active:hover:bg-orange-600 data-active:hover:text-white"
+                        className="data-active:bg-orange-500 data-active:text-white data-active:font-semibold data-active:hover:bg-orange-500 data-active:hover:text-white"
                         render={<Link href={n.href} />}
                       >
                         {n.label}
@@ -429,7 +429,7 @@ export default function AppSidebar({
                     {n.href ? (
                       <SidebarMenuButton
                         isActive={parentActive}
-                        className="data-active:bg-orange-500 data-active:text-white data-active:font-semibold data-active:hover:bg-orange-600 data-active:hover:text-white"
+                        className="data-active:bg-orange-500 data-active:text-white data-active:font-semibold data-active:hover:bg-orange-500 data-active:hover:text-white"
                         render={<Link href={n.href} />}
                       >
                         <span className="font-medium">{n.label}</span>
@@ -461,7 +461,7 @@ export default function AppSidebar({
                             <SidebarMenuSubItem key={c.href}>
                               <SidebarMenuSubButton
                                 isActive={active}
-                                className="data-active:bg-orange-500 data-active:text-white data-active:font-semibold data-active:hover:bg-orange-600 data-active:hover:text-white"
+                                className="data-active:bg-orange-500 data-active:text-white data-active:font-semibold data-active:hover:bg-orange-500 data-active:hover:text-white"
                                 render={<Link href={c.href} />}
                               >
                                 {c.label}
