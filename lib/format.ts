@@ -23,7 +23,8 @@ export const fmtPctTight = fmtPct;
 export const fmtPctRaw = (v: number | null | undefined, maxDigits = 2): string => {
   if (v === null || v === undefined || isNaN(Number(v))) return "0%";
   const fixed = Number(v).toFixed(maxDigits);
-  const trimmed = fixed.replace(/\.?0+$/, "");
+  // Chỉ strip trailing zeros nếu có dấu chấm thập phân (tránh "100" → "1")
+  const trimmed = fixed.includes(".") ? fixed.replace(/\.?0+$/, "") : fixed;
   return `${(trimmed || "0").replace(".", ",")}%`;
 };
 
