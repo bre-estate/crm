@@ -9,7 +9,7 @@ import {
   employees,
 } from "@/lib/schema";
 import { fmtMoney, fmtDate, fmtPctTight, fmtPctRaw, displayPartnerName } from "@/lib/format";
-import { eq, asc, desc, and, gte, lte, ilike, inArray, type SQL } from "drizzle-orm";
+import { eq, asc, desc, and, gte, lte, ilike, inArray, sql, type SQL } from "drizzle-orm";
 import Link from "next/link";
 import SearchableSelect from "@/components/SearchableSelect";
 import ProductsTable, { type ProductRow } from "./ProductsTable";
@@ -108,7 +108,11 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
     if (filterSalesPerson) whereParts.push(eq(products.salesPerson, filterSalesPerson));
     if (dateFrom) whereParts.push(gte(products.depositDate, dateFrom));
     if (dateTo) whereParts.push(lte(products.depositDate, dateTo));
-    if (filterUnitCode) whereParts.push(ilike(products.unitCode, `%${filterUnitCode}%`));
+    if (filterUnitCode) {
+      // Normalize separators (. - _ space) trên cả 2 phía để "A.05.08", "A-05-08", "A0508" đều match
+      const needle = "%" + filterUnitCode.replace(/[.\-_\s]/g, "") + "%";
+      whereParts.push(sql`regexp_replace(${products.unitCode}, '[.\\-_[:space:]]', '', 'g') ILIKE ${needle}`);
+    }
   }
 
   const baseQuery = db
