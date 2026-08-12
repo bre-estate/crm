@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
+export const dynamic = "force-dynamic";
 export const metadata = { title: "Kế toán căn bản (TT200) — BRE" };
 
 type TK = { code: string; name: string; bre: string };

@@ -90,7 +90,7 @@ const NAV: NavEntry[] = [
   {
     label: "Giao dịch thứ cấp",
     children: [
-      { href: "/secondary-sales", label: "Danh sách", resource: "products" },
+      { href: "/secondary-sales", label: "Danh sách căn", resource: "products" },
     ],
   },
   {
@@ -147,11 +147,11 @@ const NAV: NavEntry[] = [
   {
     label: "Hướng dẫn",
     children: [
+      { href: "/help/nhap-doi-tac", label: "🤝 Nhập đối tác", resource: "help" },
+      { href: "/help/nhap-du-an", label: "🏗️ Nhập dự án", resource: "help" },
+      { href: "/help/nhap-can", label: "🏢 Nhập căn", resource: "help" },
       { href: "/help/nhap-doanh-thu", label: "📥 Nhập doanh thu", resource: "help" },
       { href: "/help/nhap-doi-chieu-gia-von", label: "💸 Nhập giá vốn", resource: "help" },
-      { href: "/help/nhap-can", label: "🏢 Nhập căn", resource: "help" },
-      { href: "/help/nhap-du-an", label: "🏗️ Nhập dự án", resource: "help" },
-      { href: "/help/nhap-doi-tac", label: "🤝 Nhập đối tác", resource: "help" },
       { href: "/help/accounting-basics", label: "📚 Kế toán căn bản", resource: "help" },
     ],
   },

@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 export const metadata = { title: "Hướng dẫn nhập dự án — BRE" };
 
 export default function NhapDuAnPage() {
