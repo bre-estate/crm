@@ -158,8 +158,24 @@ export default async function ReportsSegmentsPage({
     return rank(a) - rank(b);
   });
 
-  // ===== Danh sách căn cần review (parse_note != null) =====
-  const needReview = prodRows.filter((p) => p.parseNote);
+  // ===== Danh sách căn cần review: parse_note hoặc thiếu số PN / loại căn / diện tích =====
+  const needReview = prodRows
+    .map((p) => {
+      const reasons: string[] = [];
+      if (p.parseNote) reasons.push(p.parseNote);
+      if (p.unitType == null) reasons.push("chưa có loại căn");
+      // Số PN chỉ bắt buộc với apartment (penthouse/duplex/shophouse/TMDV không cần)
+      if ((p.unitType == null || p.unitType === "apartment") && p.bedrooms == null) {
+        reasons.push("chưa có số PN");
+      }
+      if (p.areaM2Net == null && p.areaM2Gross == null) {
+        reasons.push("chưa có diện tích");
+      } else if (p.areaM2Net == null) {
+        reasons.push("chưa có diện tích thông thủy");
+      }
+      return { ...p, reasons };
+    })
+    .filter((p) => p.reasons.length > 0);
 
   // ===== Diện tích m² TB per bedroom (nếu có) =====
   const areaByBedroom = bedroomRows.filter((b) => b.areaCount > 0).map((b) => ({
@@ -201,9 +217,9 @@ export default async function ReportsSegmentsPage({
                 <b>DT tim tường:</b> {withGross}/{totalUnits} ({fmtPctRaw(grossPct, 0)})
               </div>
             </div>
-            {(withBedrooms < totalUnits || withNet < totalUnits) && (
+            {needReview.length > 0 && (
               <div className="mt-2 text-xs">
-                Còn nhiều căn chưa có data — xem list "Cần check tay" cuối trang để bổ sung.
+                Còn <b>{needReview.length}</b> căn chưa có data đầy đủ — xem list "Cần check tay" cuối trang để bổ sung.
               </div>
             )}
           </div>
@@ -378,8 +394,7 @@ export default async function ReportsSegmentsPage({
             ⚠️ Cần check tay ({needReview.length} căn)
           </h2>
           <p className="text-xs text-slate-500 mb-3">
-            Parse tự động không xác định được số PN hoặc chưa có mô tả — vào form căn để bổ sung.
-            Sau khi lưu, cột này tự biến mất.
+            Căn thiếu số PN, loại căn, hoặc diện tích — báo cáo phân khúc bị lệch nếu chưa bổ sung. Vào form căn để nhập; căn tự biến mất khỏi list sau khi lưu.
           </p>
           <div className="bg-white border border-amber-200 rounded-xl overflow-hidden">
             <table className="w-full text-sm">
@@ -402,7 +417,7 @@ export default async function ReportsSegmentsPage({
                         </Link>
                       </td>
                       <td className="p-2 text-xs text-slate-600">{proj?.name ?? "—"}</td>
-                      <td className="p-2 text-xs text-amber-700">{p.parseNote}</td>
+                      <td className="p-2 text-xs text-amber-700">{p.reasons.join(" · ")}</td>
                       <td className="p-2 text-right">
                         <Link
                           href={`/products/${p.id}/edit`}
