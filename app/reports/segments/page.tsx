@@ -207,6 +207,9 @@ export default async function ReportsSegmentsPage({
         const netPct = totalUnits > 0 ? (withNet / totalUnits) * 100 : 0;
         const grossPct = totalUnits > 0 ? (withGross / totalUnits) * 100 : 0;
         if (totalUnits === 0) return null;
+        // Nếu đủ 100% cả 3 chỉ số → ẩn hộp cảnh báo (không cần nhắc user nữa)
+        const fullyCovered = withBedrooms === totalUnits && withNet === totalUnits && withGross === totalUnits;
+        if (fullyCovered) return null;
         return (
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
             <div className="font-semibold mb-1">📊 Độ phủ dữ liệu phân khúc:</div>
