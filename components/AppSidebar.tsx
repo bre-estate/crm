@@ -508,13 +508,15 @@ export default function AppSidebar({
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  render={<Link href="/profile" />}
-                  className="cursor-pointer"
+                {/* Dùng plain <Link> thay vì DropdownMenuItem — base-ui MenuPrimitive.Item
+                    intercept click event và không navigate qua Next Link. */}
+                <Link
+                  href="/profile"
+                  className="relative flex cursor-pointer items-center gap-1.5 rounded-md px-1.5 py-1 text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
                 >
                   <User className="mr-2 size-4" />
                   Trang cá nhân
-                </DropdownMenuItem>
+                </Link>
                 <DropdownMenuItem
                   onClick={handleSignOut}
                   disabled={signPending}
