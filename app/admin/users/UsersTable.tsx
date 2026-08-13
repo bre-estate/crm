@@ -239,105 +239,73 @@ function UserFormModal({
             </select>
           </div>
 
-          {role !== "custom" && (() => {
-            const effective = resolvePermissions(role);
-            const entries = Object.entries(effective).filter(([, actions]) => actions.length > 0);
+          {(() => {
+            // Custom: dùng perms user tự tick. Preset: dùng resolvePermissions() readonly.
+            const isCustom = role === "custom";
+            const effective = isCustom ? perms : resolvePermissions(role);
+            const isDisabled = !isCustom;
             return (
-              <div className="border border-slate-200 rounded-lg bg-slate-50 p-3 text-xs">
-                <div className="font-semibold text-slate-700 mb-2">
-                  📋 Quyền mặc định của role <span className="text-orange-700">{roleLabels[role]}</span> ({entries.length} khu vực)
-                </div>
-                {role === "owner" ? (
-                  <div className="text-slate-600 italic">Truy cập toàn bộ hệ thống (mọi khu vực + Xem/Sửa/Xóa).</div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                    {RESOURCE_GROUPS.map((group) => {
-                      const items = group.keys
-                        .filter((k) => (effective[k] ?? []).length > 0)
-                        .map((k) => ({
-                          key: k,
-                          label: resources[k] ?? k,
-                          actions: effective[k]!,
-                        }));
-                      if (items.length === 0) return null;
-                      return (
-                        <div key={group.label} className="min-w-0">
-                          <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-0.5">
-                            {group.label}
-                          </div>
-                          <ul className="space-y-0.5">
-                            {items.map((it) => (
-                              <li key={it.key} className="text-slate-700 truncate" title={it.label}>
-                                <span className="text-slate-500">•</span> {it.label}{" "}
-                                <span className="text-[10px] text-slate-400">
-                                  ({it.actions.map((a) => ACTION_LABELS[a]).join("/")})
+              <div>
+                <label className="block text-xs text-slate-600 mb-2">
+                  {isCustom
+                    ? "Quyền tùy chỉnh — tick theo từng nhóm"
+                    : (
+                      <>
+                        Quyền mặc định của <span className="text-orange-700 font-semibold">{roleLabels[role]}</span> (chỉ xem, chọn "Tùy chỉnh" để sửa)
+                      </>
+                    )}
+                </label>
+                <div className={`space-y-3 ${isDisabled ? "opacity-80" : ""}`}>
+                  {RESOURCE_GROUPS.map((group) => (
+                    <div
+                      key={group.label}
+                      className="border border-slate-200 rounded-lg overflow-hidden"
+                    >
+                      <div className="bg-slate-50 px-3 py-1.5 border-b border-slate-200 text-xs font-semibold text-slate-700 uppercase tracking-wide">
+                        {group.label}
+                      </div>
+                      <div className="divide-y divide-slate-100">
+                        {group.keys.map((key) => {
+                          const label = resources[key];
+                          if (!label) return null;
+                          const current = effective[key] ?? [];
+                          return (
+                            <div
+                              key={key}
+                              className="flex items-center justify-between p-2"
+                            >
+                              <div className="text-sm">
+                                {label}{" "}
+                                <span className="text-[10px] text-slate-400 font-mono">
+                                  {key}
                                 </span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                              </div>
+                              <div className="flex gap-3">
+                                {ACTIONS.map((a) => (
+                                  <label
+                                    key={a}
+                                    className={`flex items-center gap-1 text-xs ${isDisabled ? "cursor-not-allowed text-slate-500" : ""}`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={current.includes(a)}
+                                      onChange={() => isCustom && togglePerm(key, a)}
+                                      disabled={isDisabled}
+                                    />
+                                    {ACTION_LABELS[a]}
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             );
           })()}
-
-          {role === "custom" && (
-            <div>
-              <label className="block text-xs text-slate-600 mb-2">
-                Quyền tùy chỉnh — tick theo từng nhóm
-              </label>
-              <div className="space-y-3">
-                {RESOURCE_GROUPS.map((group) => (
-                  <div
-                    key={group.label}
-                    className="border border-slate-200 rounded-lg overflow-hidden"
-                  >
-                    <div className="bg-slate-50 px-3 py-1.5 border-b border-slate-200 text-xs font-semibold text-slate-700 uppercase tracking-wide">
-                      {group.label}
-                    </div>
-                    <div className="divide-y divide-slate-100">
-                      {group.keys.map((key) => {
-                        const label = resources[key];
-                        if (!label) return null;
-                        const current = perms[key] ?? [];
-                        return (
-                          <div
-                            key={key}
-                            className="flex items-center justify-between p-2"
-                          >
-                            <div className="text-sm">
-                              {label}{" "}
-                              <span className="text-[10px] text-slate-400 font-mono">
-                                {key}
-                              </span>
-                            </div>
-                            <div className="flex gap-3">
-                              {ACTIONS.map((a) => (
-                                <label
-                                  key={a}
-                                  className="flex items-center gap-1 text-xs"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={current.includes(a)}
-                                    onChange={() => togglePerm(key, a)}
-                                  />
-                                  {ACTION_LABELS[a]}
-                                </label>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>

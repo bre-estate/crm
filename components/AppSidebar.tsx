@@ -509,7 +509,7 @@ export default function AppSidebar({
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  onClick={() => router.push("/profile")}
+                  render={<Link href="/profile" />}
                   className="cursor-pointer"
                 >
                   <User className="mr-2 size-4" />
