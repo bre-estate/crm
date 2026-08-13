@@ -70,7 +70,7 @@ export default function UsersTable({ users, resources, roleLabels }: Props) {
                 <td className="p-3">{u.fullName ?? "—"}</td>
                 <td className="p-3">
                   <span className="text-xs bg-slate-100 px-2 py-0.5 rounded">
-                    {u.role}
+                    {roleLabels[u.role] ?? u.role}
                   </span>
                   {u.role === "custom" && (
                     <div className="text-[10px] text-slate-500 mt-1">

@@ -20,16 +20,8 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Bell, ChevronsUpDown, LogOut, User } from "lucide-react";
+import { Bell, LogOut } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import {
@@ -483,50 +475,31 @@ export default function AppSidebar({
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <SidebarMenuButton size="lg">
-                    <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-orange-500 text-white text-xs font-semibold">
-                      {initials}
-                    </div>
-                    <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-medium">{displayName}</span>
-                      <span className="truncate text-xs text-muted-foreground">{email}</span>
-                    </div>
-                    <ChevronsUpDown className="ml-auto size-4" />
-                  </SidebarMenuButton>
-                }
-              />
-              <DropdownMenuContent side="top" align="start" className="w-56">
-                <DropdownMenuLabel>
-                  <div className="grid text-left text-sm">
-                    <span className="truncate font-medium">{displayName}</span>
-                    <span className="truncate text-xs text-muted-foreground font-normal">
-                      {email}
-                    </span>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {/* Dùng plain <Link> thay vì DropdownMenuItem — base-ui MenuPrimitive.Item
-                    intercept click event và không navigate qua Next Link. */}
-                <Link
-                  href="/profile"
-                  className="relative flex cursor-pointer items-center gap-1.5 rounded-md px-1.5 py-1 text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-                >
-                  <User className="mr-2 size-4" />
-                  Trang cá nhân
-                </Link>
-                <DropdownMenuItem
-                  onClick={handleSignOut}
-                  disabled={signPending}
-                  className="cursor-pointer"
-                >
-                  <LogOut className="mr-2 size-4" />
-                  {signPending ? "Đang đăng xuất..." : "Đăng xuất"}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* Click TÊN + EMAIL → thẳng vào /profile. Logout tách ra icon riêng. */}
+            <div className="flex items-center gap-1 p-1">
+              <Link
+                href="/profile"
+                className="flex flex-1 items-center gap-2 rounded-md p-2 text-sm hover:bg-sidebar-accent focus:bg-sidebar-accent outline-hidden min-w-0"
+                title="Trang cá nhân"
+              >
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-orange-500 text-white text-xs font-semibold shrink-0">
+                  {initials}
+                </div>
+                <div className="grid flex-1 text-left leading-tight min-w-0">
+                  <span className="truncate font-medium">{displayName}</span>
+                  <span className="truncate text-xs text-muted-foreground">{email}</span>
+                </div>
+              </Link>
+              <button
+                type="button"
+                onClick={handleSignOut}
+                disabled={signPending}
+                className="rounded-md p-2 hover:bg-sidebar-accent focus:bg-sidebar-accent outline-hidden text-slate-500 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                title={signPending ? "Đang đăng xuất..." : "Đăng xuất"}
+              >
+                <LogOut className="size-4" />
+              </button>
+            </div>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
