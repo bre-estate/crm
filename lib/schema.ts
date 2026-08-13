@@ -445,10 +445,10 @@ export const userPermissions = pgTable("user_permissions", {
   email: text("email").primaryKey(),
   fullName: text("full_name"),
   role: text("role", {
-    enum: ["owner", "manager", "sale", "admin", "hr", "viewer", "custom"],
+    enum: ["owner", "manager", "admin", "hr", "custom"],
   })
     .notNull()
-    .default("viewer"),
+    .default("custom"),
   // JSONB: { "resource_key": ["view", "edit", "delete"] }
   permissions: jsonb("permissions").notNull().default({}),
   active: boolean("active").notNull().default(true),

@@ -7,7 +7,7 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import type { Action, Role } from "@/lib/permissions";
 
-const ALLOWED_ROLES: Role[] = ["owner", "manager", "sale", "admin", "hr", "viewer", "custom"];
+const ALLOWED_ROLES: Role[] = ["owner", "manager", "admin", "hr", "custom"];
 
 function parsePermissions(formData: FormData): Record<string, Action[]> {
   const raw = formData.get("permissions_json");

@@ -1,19 +1,10 @@
 import { getCurrentUser } from "@/lib/auth";
+import { ROLE_LABELS } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import ProfileForm from "./ProfileForm";
 
 export const dynamic = "force-dynamic";
-
-const ROLE_LABEL: Record<string, string> = {
-  owner: "Chủ tài khoản",
-  manager: "Quản lý",
-  sale: "Nhân viên kinh doanh",
-  admin: "Kế toán / Admin",
-  hr: "Nhân sự",
-  viewer: "Xem báo cáo",
-  custom: "Tùy chỉnh",
-};
 
 export default async function ProfilePage() {
   const user = await getCurrentUser();
@@ -38,7 +29,7 @@ export default async function ProfilePage() {
         </div>
         <div>
           <div className="text-xs text-slate-500 mb-1">Vai trò</div>
-          <div className="text-sm">{ROLE_LABEL[user.role] ?? user.role}</div>
+          <div className="text-sm">{ROLE_LABELS[user.role] ?? user.role}</div>
         </div>
       </div>
 

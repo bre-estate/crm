@@ -9,7 +9,35 @@
  */
 
 export type Action = "view" | "edit" | "delete";
-export type Role = "owner" | "manager" | "sale" | "admin" | "hr" | "viewer" | "custom";
+export type Role = "owner" | "manager" | "admin" | "hr" | "custom";
+
+/**
+ * Actions mà mỗi resource thực sự HỖ TRỢ.
+ * Các trang chỉ xem (báo cáo, log, help) chỉ nên có ["view"] — UI phân quyền
+ * sẽ disable các checkbox không thuộc list này để tránh cấp quyền chết.
+ */
+export const RESOURCE_ACTIONS: Record<string, Action[]> = {
+  // Full CRUD
+  products: ["view", "edit", "delete"],
+  "secondary-sales": ["view", "edit", "delete"],
+  revenues: ["view", "edit", "delete"],
+  costs: ["view", "edit", "delete"],
+  invoices: ["view", "edit", "delete"],
+  partners: ["view", "edit", "delete"],
+  departments: ["view", "edit", "delete"],
+  employees: ["view", "edit", "delete"],
+  "admin.users": ["view", "edit", "delete"],
+  // View + Edit (không xóa)
+  finance: ["view", "edit"],
+  "finance.bank-review": ["view", "edit"],
+  "costs-report": ["view", "edit"],
+  // View only (report / log / help)
+  alerts: ["view"],
+  "admin.activity": ["view"],
+  "admin.import-logs": ["view"],
+  help: ["view"],
+  // reports.* — view only (mặc định phía dưới)
+};
 
 export const RESOURCES = {
   "products": "Danh sách căn (sơ cấp)",
@@ -103,64 +131,72 @@ export const ACTION_LABELS: Record<Action, string> = {
 };
 
 export const ROLE_LABELS: Record<Role, string> = {
-  owner: "Chủ (Owner) — full access",
-  manager: "Quản lý — toàn quyền trừ user",
-  sale: "Sale — doanh thu + căn",
-  admin: "Admin — tài chính + hóa đơn",
-  hr: "HR — giá vốn + nhân sự",
-  viewer: "Xem — báo cáo tổng quan",
-  custom: "Tùy chỉnh — tick từng resource",
+  owner: "Owner",
+  manager: "Manager",
+  admin: "Sale Admin",
+  hr: "HR",
+  custom: "Tùy chỉnh",
 };
+
+// Danh sách tất cả report resources — dùng để cấp full-view cho Manager
+const ALL_REPORTS: Resource[] = [
+  "reports.overview",
+  "reports.management",
+  "reports.profit-detail",
+  "reports.cash-flow",
+  "reports.ar-aging",
+  "reports.ap-aging",
+  "reports.balance-sheet",
+  "reports.sales",
+  "reports.commissions",
+  "reports.project-profitability",
+  "reports.expenses",
+  "reports.kpi-dashboard",
+  "reports.break-even",
+  "reports.people",
+  "reports.obligations",
+  "reports.unit-profitability",
+  "reports.segments",
+];
+const reportsView = Object.fromEntries(ALL_REPORTS.map((r) => [r, ["view"] as Action[]]));
 
 // Permission maps: resource → allowed actions.
 // Owner tự động có tất cả — không cần khai báo.
 const PRESETS: Record<Exclude<Role, "owner" | "custom">, Partial<Record<Resource, Action[]>>> = {
+  // Manager: toàn quyền giao dịch + đối tác/nhân sự; báo cáo + tài chính chỉ xem;
+  // hệ thống chỉ có Trang trợ giúp.
   manager: {
     products: ["view", "edit", "delete"],
+    "secondary-sales": ["view", "edit", "delete"],
     revenues: ["view", "edit", "delete"],
     costs: ["view", "edit", "delete"],
+    "costs-report": ["view", "edit"],
     invoices: ["view", "edit", "delete"],
     partners: ["view", "edit", "delete"],
     departments: ["view", "edit", "delete"],
     employees: ["view", "edit", "delete"],
-    finance: ["view", "edit"],
-    "reports.overview": ["view"],
-    "reports.management": ["view"],
-    "reports.people": ["view"],
-    "reports.balance-sheet": ["view"],
-    "reports.cash-flow": ["view"],
-    "reports.unit-profitability": ["view"],
-    "reports.segments": ["view", "edit"],
-    "costs-report": ["view"],
-    alerts: ["view"],
-    "admin.activity": ["view"],
+    finance: ["view"],
+    ...reportsView,
     help: ["view"],
   },
-  sale: {
-    products: ["view"],
-    revenues: ["view", "edit"],
-    "reports.overview": ["view"],
-    help: ["view"],
-  },
+  // Sale Admin: chỉnh sửa giao dịch sơ cấp + đối tác, không xoá; không đụng thứ cấp / nhân sự / báo cáo.
   admin: {
-    finance: ["view", "edit"],
+    products: ["view", "edit"],
+    revenues: ["view", "edit"],
+    costs: ["view", "edit"],
+    "costs-report": ["view", "edit"],
     invoices: ["view", "edit"],
     partners: ["view", "edit"],
-    departments: ["view", "edit"],
-    employees: ["view", "edit"],
-    "reports.overview": ["view"],
     help: ["view"],
   },
+  // HR: xem giao dịch để đối chiếu; edit riêng giá vốn (nhập HH sale).
   hr: {
+    products: ["view"],
+    revenues: ["view"],
     costs: ["view", "edit"],
-    employees: ["view", "edit"],
-    departments: ["view"],
-    "reports.people": ["view"],
     "costs-report": ["view"],
-    help: ["view"],
-  },
-  viewer: {
-    "reports.overview": ["view"],
+    invoices: ["view"],
+    partners: ["view"],
     help: ["view"],
   },
 };
@@ -170,6 +206,10 @@ const PRESETS: Record<Exclude<Role, "owner" | "custom">, Partial<Record<Resource
  * Với role='custom' → dùng `customPerms` truyền vào.
  * Với owner → return { "*": ["view","edit","delete"] } (mọi resource full).
  */
+export function actionsFor(resource: string): Action[] {
+  return RESOURCE_ACTIONS[resource] ?? ["view"];
+}
+
 export function resolvePermissions(
   role: Role,
   customPerms?: Record<string, Action[]>,
@@ -177,7 +217,7 @@ export function resolvePermissions(
   if (role === "owner") {
     const all: Record<string, Action[]> = {};
     for (const r of Object.keys(RESOURCES)) {
-      all[r] = ["view", "edit", "delete"];
+      all[r] = actionsFor(r);
     }
     return all;
   }
@@ -187,7 +227,11 @@ export function resolvePermissions(
   const preset = PRESETS[role];
   const out: Record<string, Action[]> = {};
   for (const [r, actions] of Object.entries(preset)) {
-    if (actions) out[r] = [...actions];
+    if (actions) {
+      // Chỉ giữ actions mà resource thực sự hỗ trợ
+      const supported = actionsFor(r);
+      out[r] = actions.filter((a) => supported.includes(a));
+    }
   }
   return out;
 }

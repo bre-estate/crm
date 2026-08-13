@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { createUser, updateUser, toggleActive, deleteUser } from "./actions";
-import { RESOURCE_GROUPS, resolvePermissions, type Action, type Role } from "@/lib/permissions";
+import { RESOURCE_GROUPS, resolvePermissions, actionsFor, type Action, type Role } from "@/lib/permissions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -158,7 +158,7 @@ function UserFormModal({
   roleLabels: Record<Role, string>;
   onClose: () => void;
 }) {
-  const [role, setRole] = useState<Role>(user?.role ?? "viewer");
+  const [role, setRole] = useState<Role>(user?.role ?? "custom");
   const [perms, setPerms] = useState<Record<string, Action[]>>(user?.permissions ?? {});
   const [pending, startTransition] = useTransition();
   const isNew = user === null;
@@ -281,20 +281,25 @@ function UserFormModal({
                                 </span>
                               </div>
                               <div className="flex gap-3">
-                                {ACTIONS.map((a) => (
-                                  <label
-                                    key={a}
-                                    className={`flex items-center gap-1 text-xs ${isDisabled ? "cursor-not-allowed text-slate-500" : ""}`}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={current.includes(a)}
-                                      onChange={() => isCustom && togglePerm(key, a)}
-                                      disabled={isDisabled}
-                                    />
-                                    {ACTION_LABELS[a]}
-                                  </label>
-                                ))}
+                                {ACTIONS.map((a) => {
+                                  const supported = actionsFor(key).includes(a);
+                                  const cbDisabled = isDisabled || !supported;
+                                  return (
+                                    <label
+                                      key={a}
+                                      className={`flex items-center gap-1 text-xs ${cbDisabled ? "cursor-not-allowed text-slate-400" : ""}`}
+                                      title={!supported ? "Trang này không hỗ trợ hành động này" : undefined}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={supported && current.includes(a)}
+                                        onChange={() => isCustom && supported && togglePerm(key, a)}
+                                        disabled={cbDisabled}
+                                      />
+                                      {ACTION_LABELS[a]}
+                                    </label>
+                                  );
+                                })}
                               </div>
                             </div>
                           );
