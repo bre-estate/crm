@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { createUser, updateUser, toggleActive, deleteUser } from "./actions";
-import { RESOURCE_GROUPS, type Action, type Role } from "@/lib/permissions";
+import { RESOURCE_GROUPS, resolvePermissions, type Action, type Role } from "@/lib/permissions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -238,6 +238,51 @@ function UserFormModal({
               ))}
             </select>
           </div>
+
+          {role !== "custom" && (() => {
+            const effective = resolvePermissions(role);
+            const entries = Object.entries(effective).filter(([, actions]) => actions.length > 0);
+            return (
+              <div className="border border-slate-200 rounded-lg bg-slate-50 p-3 text-xs">
+                <div className="font-semibold text-slate-700 mb-2">
+                  📋 Quyền mặc định của role <span className="text-orange-700">{roleLabels[role]}</span> ({entries.length} khu vực)
+                </div>
+                {role === "owner" ? (
+                  <div className="text-slate-600 italic">Truy cập toàn bộ hệ thống (mọi khu vực + Xem/Sửa/Xóa).</div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                    {RESOURCE_GROUPS.map((group) => {
+                      const items = group.keys
+                        .filter((k) => (effective[k] ?? []).length > 0)
+                        .map((k) => ({
+                          key: k,
+                          label: resources[k] ?? k,
+                          actions: effective[k]!,
+                        }));
+                      if (items.length === 0) return null;
+                      return (
+                        <div key={group.label} className="min-w-0">
+                          <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-0.5">
+                            {group.label}
+                          </div>
+                          <ul className="space-y-0.5">
+                            {items.map((it) => (
+                              <li key={it.key} className="text-slate-700 truncate" title={it.label}>
+                                <span className="text-slate-500">•</span> {it.label}{" "}
+                                <span className="text-[10px] text-slate-400">
+                                  ({it.actions.map((a) => ACTION_LABELS[a]).join("/")})
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {role === "custom" && (
             <div>

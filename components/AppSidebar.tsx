@@ -29,7 +29,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Bell, ChevronsUpDown, LogOut } from "lucide-react";
+import { Bell, ChevronsUpDown, LogOut, User } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import {
@@ -508,6 +508,13 @@ export default function AppSidebar({
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => router.push("/profile")}
+                  className="cursor-pointer"
+                >
+                  <User className="mr-2 size-4" />
+                  Trang cá nhân
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={handleSignOut}
                   disabled={signPending}
