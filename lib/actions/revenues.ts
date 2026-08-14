@@ -194,6 +194,12 @@ export async function createRevenue(fd: FormData) {
     cdtBonusSale +
     cdtBonusManager;
 
+  // Guard: không tạo recon rỗng (mọi amount = 0 + không có date). Tránh
+  // double-submit / form trống lọt vào DB thành "Chưa ĐC" ma.
+  if (totalReceivable === 0 && !data.reconciliationDate) {
+    throw new Error("Đợt đối chiếu trống — cần có ngày ĐC hoặc số tiền > 0");
+  }
+
   const [rec] = await db
     .insert(revenueReconciliations)
     .values({
