@@ -579,10 +579,50 @@ export default function CostForm({
                 }
               />
               <RefInfo label="Phí admin sale" value={fmtMoney(product.adminFeeSale)} />
-              <RefInfo label="%HH sale (NVKD)" value={fmtPctTight(product.saleCommissionRate)} />
-              <RefInfo label="%KPI CEO" value={fmtPctTight(product.kpiCeoRate)} />
-              <RefInfo label="%KPI TPKD" value={fmtPctTight(product.kpiTpkdRate)} />
-              <RefInfo label="%KPI Admin" value={fmtPctTight(product.kpiAdminRate)} />
+              {(() => {
+                const cur = Number(product.saleCommissionRate ?? 0);
+                const inRecon = Number(recon?.commissionRate ?? 0);
+                const diff = isEdit && showCommission && inRecon > 0 && Math.abs(inRecon - cur) > 0.0001;
+                return (
+                  <RefInfo
+                    label={diff ? "%HH sale (NVKD) ⚠" : "%HH sale (NVKD)"}
+                    value={diff ? `${fmtPctTight(inRecon)} (đợt này) ≠ ${fmtPctTight(cur)} (căn)` : fmtPctTight(cur)}
+                  />
+                );
+              })()}
+              {(() => {
+                const cur = Number(product.kpiCeoRate ?? 0);
+                const inRecon = Number(recon?.kpiRate ?? 0);
+                const diff = isEdit && costType === "kpi_ceo" && inRecon > 0 && Math.abs(inRecon - cur) > 0.0001;
+                return (
+                  <RefInfo
+                    label={diff ? "%KPI CEO ⚠" : "%KPI CEO"}
+                    value={diff ? `${fmtPctTight(inRecon)} (đợt này) ≠ ${fmtPctTight(cur)} (căn)` : fmtPctTight(cur)}
+                  />
+                );
+              })()}
+              {(() => {
+                const cur = Number(product.kpiTpkdRate ?? 0);
+                const inRecon = Number(recon?.kpiRate ?? 0);
+                const diff = isEdit && costType === "kpi_tpkd" && inRecon > 0 && Math.abs(inRecon - cur) > 0.0001;
+                return (
+                  <RefInfo
+                    label={diff ? "%KPI TPKD ⚠" : "%KPI TPKD"}
+                    value={diff ? `${fmtPctTight(inRecon)} (đợt này) ≠ ${fmtPctTight(cur)} (căn)` : fmtPctTight(cur)}
+                  />
+                );
+              })()}
+              {(() => {
+                const cur = Number(product.kpiAdminRate ?? 0);
+                const inRecon = Number(recon?.kpiRate ?? 0);
+                const diff = isEdit && costType === "kpi_admin" && inRecon > 0 && Math.abs(inRecon - cur) > 0.0001;
+                return (
+                  <RefInfo
+                    label={diff ? "%KPI Admin ⚠" : "%KPI Admin"}
+                    value={diff ? `${fmtPctTight(inRecon)} (đợt này) ≠ ${fmtPctTight(cur)} (căn)` : fmtPctTight(cur)}
+                  />
+                );
+              })()}
               <RefInfo label="Thưởng CĐT sale" value={fmtMoney(product.cdtBonusSale)} />
               <RefInfo label="Thưởng CĐT QL" value={fmtMoney(product.cdtBonusManager)} />
               <RefInfo label="Thưởng NVKD (CTY)" value={fmtMoney(product.bonusSale)} />
@@ -596,6 +636,48 @@ export default function CostForm({
                 Đợt này giữ mức cũ {fmtPctTight(mAtRecon)}; các con số bên dưới đã tính theo mức mới {fmtPctTight(mCurrent)}.
               </div>
             )}
+            {(() => {
+              // Cảnh báo khi mức trong đợt đối chiếu khác mức hiện tại của căn
+              // (VD: sau khi tạo đợt, có người sửa mức trên căn nhưng đợt cũ giữ nguyên)
+              if (!isEdit) return null;
+              const alerts: string[] = [];
+              if (showCommission) {
+                const cur = Number(product.saleCommissionRate ?? 0);
+                const inRecon = Number(recon?.commissionRate ?? 0);
+                if (inRecon > 0 && Math.abs(inRecon - cur) > 0.0001) {
+                  alerts.push(`%HH sale: đợt này ${fmtPctTight(inRecon)}, căn hiện tại ${fmtPctTight(cur)}`);
+                }
+              }
+              const kpiPairs: Array<{ label: string; cur: number }> = [
+                { label: "%KPI CEO", cur: Number(product.kpiCeoRate ?? 0) },
+                { label: "%KPI TPKD", cur: Number(product.kpiTpkdRate ?? 0) },
+                { label: "%KPI Admin", cur: Number(product.kpiAdminRate ?? 0) },
+              ];
+              if (costType.startsWith("kpi_")) {
+                const kpiIdx = costType === "kpi_ceo" ? 0 : costType === "kpi_tpkd" ? 1 : 2;
+                const pair = kpiPairs[kpiIdx];
+                const inRecon = Number(recon?.kpiRate ?? 0);
+                if (inRecon > 0 && Math.abs(inRecon - pair.cur) > 0.0001) {
+                  alerts.push(`${pair.label}: đợt này ${fmtPctTight(inRecon)}, căn hiện tại ${fmtPctTight(pair.cur)}`);
+                }
+              }
+              if (alerts.length === 0) return null;
+              return (
+                <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+                  <div className="font-semibold mb-1">⚠️ Mức trong đợt đối chiếu này khác mức của căn:</div>
+                  <ul className="list-disc list-inside space-y-0.5">
+                    {alerts.map((a, i) => <li key={i}>{a}</li>)}
+                  </ul>
+                  <div className="mt-2 text-[11px]">
+                    Đợt này đang giữ mức cũ (frozen tại lúc tạo). Nếu mức của căn mới là đúng,
+                    sửa số tiền bên dưới và{" "}
+                    <a href={`/products/${product.id}/edit`} className="text-blue-700 underline">
+                      xem lại thông tin căn
+                    </a>.
+                  </div>
+                </div>
+              );
+            })()}
           </Section>
         );
       })()}
