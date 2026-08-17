@@ -39,13 +39,14 @@ async function assertRateMatchesProduct(data: {
   const editUrl = `/products/${data.productId}/edit`;
   const eq2 = (a: number, b: number) => Math.abs(a - b) < 0.00001;
 
+  const suffix = ` Vào căn ${label} để sửa mức phí trước, rồi quay lại đợt này.`;
+
   // %HH sale
   if (data.costType === "sale_commission" && data.commissionRate != null && data.commissionRate > 0) {
     const cur = Number(p.saleCommissionRate ?? 0);
     if (!eq2(Number(data.commissionRate), cur)) {
       throw new Error(
-        `Mức HH sale (${(Number(data.commissionRate) * 100).toFixed(2)}%) khác mức của căn ${label} (${(cur * 100).toFixed(2)}%). ` +
-        `Vui lòng sửa mức trong thông tin căn trước (${editUrl}) rồi quay lại đợt đối chiếu.`,
+        `Không lưu được: mức HH sale đợt này ${(Number(data.commissionRate) * 100).toFixed(2)}% khác mức của căn ${(cur * 100).toFixed(2)}%.` + suffix,
       );
     }
   }
@@ -61,24 +62,21 @@ async function assertRateMatchesProduct(data: {
     if (!eq2(Number(data.kpiRate), cur)) {
       const name = data.costType === "kpi_ceo" ? "KPI CEO" : data.costType === "kpi_tpkd" ? "KPI TPKD" : "KPI Admin";
       throw new Error(
-        `Mức ${name} (${(Number(data.kpiRate) * 100).toFixed(2)}%) khác mức của căn ${label} (${(cur * 100).toFixed(2)}%). ` +
-        `Vui lòng sửa mức trong thông tin căn trước (${editUrl}) rồi quay lại đợt đối chiếu.`,
+        `Không lưu được: mức ${name} đợt này ${(Number(data.kpiRate) * 100).toFixed(2)}% khác mức của căn ${(cur * 100).toFixed(2)}%.` + suffix,
       );
     }
   }
 
-  // %PMG_LK_sale (mức M của căn) — dùng cho các loại có công thức
+  // %PMG_LK_sale — cho phép mức đợt ≤ mức trần của căn (Excel M = MIN(trần, đã thu))
   if (
     ["sale_commission", "kpi_ceo", "kpi_tpkd", "kpi_admin"].includes(data.costType) &&
     data.pmgLkSaleRate != null &&
     data.pmgLkSaleRate > 0
   ) {
     const cur = Number(p.pmgSaleRate ?? 0);
-    // Cho phép mức trong đợt ≤ mức trần của căn (theo Excel M = MIN(trần, đã thu))
     if (Number(data.pmgLkSaleRate) > cur + 0.00001) {
       throw new Error(
-        `Mức %PMG_LK_sale (${(Number(data.pmgLkSaleRate) * 100).toFixed(2)}%) vượt mức trần của căn ${label} (${(cur * 100).toFixed(2)}%). ` +
-        `Vui lòng sửa mức trong thông tin căn trước (${editUrl}) rồi quay lại đợt đối chiếu.`,
+        `Không lưu được: mức %PMG_LK_sale đợt này ${(Number(data.pmgLkSaleRate) * 100).toFixed(2)}% vượt trần của căn ${(cur * 100).toFixed(2)}%.` + suffix,
       );
     }
   }
