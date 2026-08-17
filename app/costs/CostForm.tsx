@@ -663,17 +663,17 @@ export default function CostForm({
               }
               if (alerts.length === 0) return null;
               return (
-                <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
-                  <div className="font-semibold mb-1">⚠️ Mức trong đợt đối chiếu này khác mức của căn:</div>
+                <div className="mt-3 rounded-lg border border-red-400 bg-red-50 p-3 text-xs text-red-900">
+                  <div className="font-semibold mb-1">🚫 Không lưu được — mức đợt này khác mức của căn:</div>
                   <ul className="list-disc list-inside space-y-0.5">
                     {alerts.map((a, i) => <li key={i}>{a}</li>)}
                   </ul>
                   <div className="mt-2 text-[11px]">
-                    Đợt này đang giữ mức cũ (frozen tại lúc tạo). Nếu mức của căn mới là đúng,
-                    sửa số tiền bên dưới và{" "}
-                    <a href={`/products/${product.id}/edit`} className="text-blue-700 underline">
-                      xem lại thông tin căn
-                    </a>.
+                    Phải sửa mức trong{" "}
+                    <a href={`/products/${product.id}/edit`} className="text-blue-700 underline font-semibold">
+                      thông tin căn
+                    </a>{" "}
+                    trước, rồi mở lại đợt này. Nếu cố lưu, server sẽ báo lỗi.
                   </div>
                 </div>
               );

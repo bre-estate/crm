@@ -2,13 +2,87 @@
 
 import { requirePermission } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { costReconciliations, paymentsOut } from "@/lib/schema";
+import { costReconciliations, paymentsOut, products } from "@/lib/schema";
 import { toTitleCase } from "@/lib/format";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { logActivity } from "@/lib/audit";
 import { toNum, toStr, toStrOrNull, toPct } from "@/lib/parse";
+
+/**
+ * Chặn cứng: mức HH sale + các KPI trong đợt đối chiếu PHẢI khớp mức của căn.
+ * Nếu lệch, người dùng phải sửa mức trong "căn chốt" trước → mở lại đối chiếu.
+ * Tránh trường hợp mức căn đã đổi nhưng đợt cũ giữ mức cũ → lệch tiền/kế toán.
+ */
+async function assertRateMatchesProduct(data: {
+  productId: number;
+  costType: string;
+  commissionRate?: number | null;
+  kpiRate?: number | null;
+  pmgLkSaleRate?: number | null;
+}) {
+  const [p] = await db
+    .select({
+      productCode: products.productCode,
+      pmgSaleRate: products.pmgSaleRate,
+      saleCommissionRate: products.saleCommissionRate,
+      kpiCeoRate: products.kpiCeoRate,
+      kpiTpkdRate: products.kpiTpkdRate,
+      kpiAdminRate: products.kpiAdminRate,
+    })
+    .from(products)
+    .where(eq(products.id, data.productId));
+  if (!p) return; // không có căn thì action khác sẽ báo lỗi
+
+  const label = p.productCode;
+  const editUrl = `/products/${data.productId}/edit`;
+  const eq2 = (a: number, b: number) => Math.abs(a - b) < 0.00001;
+
+  // %HH sale
+  if (data.costType === "sale_commission" && data.commissionRate != null && data.commissionRate > 0) {
+    const cur = Number(p.saleCommissionRate ?? 0);
+    if (!eq2(Number(data.commissionRate), cur)) {
+      throw new Error(
+        `Mức HH sale (${(Number(data.commissionRate) * 100).toFixed(2)}%) khác mức của căn ${label} (${(cur * 100).toFixed(2)}%). ` +
+        `Vui lòng sửa mức trong thông tin căn trước (${editUrl}) rồi quay lại đợt đối chiếu.`,
+      );
+    }
+  }
+
+  // %KPI
+  const kpiMap: Record<string, number> = {
+    kpi_ceo: Number(p.kpiCeoRate ?? 0),
+    kpi_tpkd: Number(p.kpiTpkdRate ?? 0),
+    kpi_admin: Number(p.kpiAdminRate ?? 0),
+  };
+  if (data.costType in kpiMap && data.kpiRate != null && data.kpiRate > 0) {
+    const cur = kpiMap[data.costType];
+    if (!eq2(Number(data.kpiRate), cur)) {
+      const name = data.costType === "kpi_ceo" ? "KPI CEO" : data.costType === "kpi_tpkd" ? "KPI TPKD" : "KPI Admin";
+      throw new Error(
+        `Mức ${name} (${(Number(data.kpiRate) * 100).toFixed(2)}%) khác mức của căn ${label} (${(cur * 100).toFixed(2)}%). ` +
+        `Vui lòng sửa mức trong thông tin căn trước (${editUrl}) rồi quay lại đợt đối chiếu.`,
+      );
+    }
+  }
+
+  // %PMG_LK_sale (mức M của căn) — dùng cho các loại có công thức
+  if (
+    ["sale_commission", "kpi_ceo", "kpi_tpkd", "kpi_admin"].includes(data.costType) &&
+    data.pmgLkSaleRate != null &&
+    data.pmgLkSaleRate > 0
+  ) {
+    const cur = Number(p.pmgSaleRate ?? 0);
+    // Cho phép mức trong đợt ≤ mức trần của căn (theo Excel M = MIN(trần, đã thu))
+    if (Number(data.pmgLkSaleRate) > cur + 0.00001) {
+      throw new Error(
+        `Mức %PMG_LK_sale (${(Number(data.pmgLkSaleRate) * 100).toFixed(2)}%) vượt mức trần của căn ${label} (${(cur * 100).toFixed(2)}%). ` +
+        `Vui lòng sửa mức trong thông tin căn trước (${editUrl}) rồi quay lại đợt đối chiếu.`,
+      );
+    }
+  }
+}
 
 const VALID_COST_TYPES = [
   "sale_commission",
@@ -80,6 +154,7 @@ export async function createCost(fd: FormData) {
   const data = buildCostData(fd);
   if (!data.productId) throw new Error("Chọn căn (sản phẩm)");
   if (!data.employeeName) throw new Error("Nhập tên người được đối chiếu");
+  await assertRateMatchesProduct(data);
 
   // KPI Admin: chỉ được ĐC 1 lần / căn (chốt với team - vì số nhỏ).
   if (data.costType === "kpi_admin") {
@@ -139,6 +214,7 @@ export async function updateCost(id: number, fd: FormData, returnTo?: string | n
   const data = buildCostData(fd);
   if (!data.productId) throw new Error("Chọn căn (sản phẩm)");
   if (!data.employeeName) throw new Error("Nhập tên người được đối chiếu");
+  await assertRateMatchesProduct(data);
 
   const [before] = await db
     .select()
