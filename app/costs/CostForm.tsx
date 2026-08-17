@@ -683,12 +683,15 @@ export default function CostForm({
       })()}
 
       {/* Progress + Payment cho đợt này */}
-      <Section title="📊 Tiến độ chi trả">
+      <Section title="📊 Số tiền cần trả (đối chiếu theo đợt)">
         <div className="text-xs text-slate-500 -mt-2 mb-3">
           Loại chi phí: <b>{costTypeLabel(costType)}</b>
           {product?.salesPerson && costType === "sale_commission" && (
             <span> · Cho: {product.salesPerson}</span>
           )}
+          <div className="mt-1 text-[11px] text-amber-700">
+            Đây là số <b>CẦN TRẢ</b> theo tiến độ CĐT thu tiền khách. Số <b>ĐÃ TRẢ thực</b> xem ở phần "💸 Đã chi tiền chưa?" phía dưới.
+          </div>
         </div>
 
         {/* Progress bar trực quan cho loại chi phí đang chọn */}
@@ -723,7 +726,7 @@ export default function CostForm({
             <div className="mb-4">
               <div className="flex items-center justify-between mb-1.5">
                 <div className="text-xs font-semibold text-slate-700">
-                  Tiến độ chi cho <span className="text-orange-700">{costTypeLabel(costType)}</span> của căn này
+                  Số <span className="text-orange-700">{costTypeLabel(costType)}</span> đã đối chiếu (các đợt cộng dồn, chưa phải đã trả)
                 </div>
                 <span
                   className={`text-[11px] px-2 py-0.5 rounded border font-medium ${badgeCls}`}
@@ -974,10 +977,12 @@ export default function CostForm({
           name="pmgBasePriceSale"
           value={String(recon?.pmgBasePriceSale ?? product?.pmgBasePrice ?? 0)}
         />
+        {/* mNum ở dạng thập phân (0.0575 = 5.75%). Backend dùng toPct() sẽ chia /100
+            → phải gửi dạng % (5.75) để về đúng 0.0575 sau khi parse. */}
         <input
           type="hidden"
           name="pmgLkSaleRate"
-          value={String(mNum)}
+          value={String(mNum * 100)}
         />
         <input
           type="hidden"
