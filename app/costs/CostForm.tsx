@@ -689,9 +689,6 @@ export default function CostForm({
           {product?.salesPerson && costType === "sale_commission" && (
             <span> · Cho: {product.salesPerson}</span>
           )}
-          <div className="mt-1 text-[11px] text-amber-700">
-            Đây là số <b>CẦN TRẢ</b> theo tiến độ CĐT thu tiền khách. Số <b>ĐÃ TRẢ thực</b> xem ở phần "💸 Đã chi tiền chưa?" phía dưới.
-          </div>
         </div>
 
         {/* Progress bar trực quan cho loại chi phí đang chọn */}
@@ -705,17 +702,15 @@ export default function CostForm({
           const totalPct = beforePct + thisPct;
           const isDone = paidBefore + thisAmountDisplay >= targetForType - 1000;
           const isZero = paidBefore < 1000 && thisAmountDisplay < 1000;
-          // Edit: "đợt này" = đợt đang sửa (đã tồn tại). Create: đợt sắp lưu.
-          const thisLabel = isEdit ? "đợt đang sửa" : "đợt này";
           const label = isZero
             ? "Chưa chi đợt nào"
             : isDone
-              ? "Đã chi đủ target"
+              ? "Đã chi đủ mức tối đa"
               : paidBefore < 1000
-                ? `${thisPctVal.toFixed(0)}% (${thisLabel})`
-                : `Đã chi ${paidBeforePct.toFixed(0)}% các đợt trước` +
+                ? `Đợt này ${thisPctVal.toFixed(0)}%`
+                : `Đợt trước ${paidBeforePct.toFixed(0)}%` +
                   (thisAmountDisplay > 0
-                    ? ` (+${thisPctVal.toFixed(0)}% ${thisLabel} · tổng ${totalPct.toFixed(0)}%)`
+                    ? ` + đợt này ${thisPctVal.toFixed(0)}% (tổng ${totalPct.toFixed(0)}%)`
                     : "");
           const badgeCls = isDone
             ? "bg-green-100 text-green-700 border-green-300"
