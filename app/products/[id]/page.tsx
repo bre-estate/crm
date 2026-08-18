@@ -1679,10 +1679,14 @@ function Info({
   accent?: "green" | "orange" | "red" | "slate";
   tooltip?: string;
 }) {
+  // Detect value "trống" (0, 0%, 0,00%, 0.00%) → dim toàn card để không nổi
+  // bằng field có giá trị thật. Không hide vì user cần thấy field có tồn tại.
+  const isZero = /^0([.,]0+)?\s*%?$/.test(value.trim()) || value.trim() === "—";
   const valueCls = [
     "font-medium tabular-nums mt-0.5",
     small ? "text-xs" : "text-sm",
     mono ? "font-mono" : "",
+    isZero ? "text-slate-400" :
     accent === "green"
       ? "text-green-700"
       : accent === "orange"
@@ -1696,8 +1700,8 @@ function Info({
     .filter(Boolean)
     .join(" ");
   return (
-    <div className="bg-slate-50 rounded-lg px-3 py-2">
-      <div className="text-xs text-slate-500 flex items-center gap-1">
+    <div className={`rounded-lg px-3 py-2 ${isZero ? "bg-slate-50/60" : "bg-slate-50"}`}>
+      <div className={`text-xs flex items-center gap-1 ${isZero ? "text-slate-400" : "text-slate-500"}`}>
         <span>{label}</span>
         {tooltip && (
           <Tooltip>
