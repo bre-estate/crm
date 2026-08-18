@@ -31,7 +31,9 @@ type Props = {
   onSave: (fd: FormData) => Promise<void>;
   onDelete?: () => Promise<void>;
   returnTo?: string | null;
-  // Nếu true → khóa 3 field pmgBase / pmgRate / adminFee (dùng "Điều chỉnh thông tin căn" thay)
+  // Nếu true → khóa các field ảnh hưởng đối chiếu (giá, %PMG_LK, phí admin,
+  // %HH sale, %KPI CEO/TPKD/Admin) — dùng "Điều chỉnh thông tin căn" thay để
+  // giữ history + gắn ngày hiệu lực. Trigger khi căn đã có ≥1 recon.
   lockCoreFields?: boolean;
   // Sum recon cdt_bonus_sale/manager để pre-check khi user giảm config
   reconCdtBonusSaleSum?: number;
@@ -664,49 +666,69 @@ export default function ProductForm({
           )}
           <Field label="%HH sale (NVKD)">
             <PercentInput
-              name="saleCommissionRate"
+              name={lockCoreFields ? "_locked_saleCommissionRate" : "saleCommissionRate"}
               defaultValue={pctDisplay(product?.saleCommissionRate)}
-              className="input"
+              disabled={lockCoreFields}
+              className={`input ${lockCoreFields ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}`}
               onChange={(e) => {
                 const n = Number(e.target.value.replace(/,/g, "."));
                 setSaleCommRateLive(isNaN(n) ? 0 : n / 100);
               }}
             />
+            {lockCoreFields && (
+              <input type="hidden" name="saleCommissionRate" value={pctDisplay(product?.saleCommissionRate)} />
+            )}
+            {lockCoreFields && <LockedFieldHint />}
           </Field>
           {!isSecondary && (
             <>
               <Field label="%KPI TPKD (Trưởng phòng)">
                 <PercentInput
-                  name="kpiTpkdRate"
+                  name={lockCoreFields ? "_locked_kpiTpkdRate" : "kpiTpkdRate"}
                   defaultValue={pctDisplay(product?.kpiTpkdRate)}
-                  className="input"
+                  disabled={lockCoreFields}
+                  className={`input ${lockCoreFields ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}`}
                   onChange={(e) => {
                     const n = Number(e.target.value.replace(/,/g, "."));
                     setKpiTpkdRateLive(isNaN(n) ? 0 : n / 100);
                   }}
                 />
+                {lockCoreFields && (
+                  <input type="hidden" name="kpiTpkdRate" value={pctDisplay(product?.kpiTpkdRate)} />
+                )}
+                {lockCoreFields && <LockedFieldHint />}
               </Field>
               <Field label="%KPI CEO">
                 <PercentInput
-                  name="kpiCeoRate"
+                  name={lockCoreFields ? "_locked_kpiCeoRate" : "kpiCeoRate"}
                   defaultValue={pctDisplay(product?.kpiCeoRate)}
-                  className="input"
+                  disabled={lockCoreFields}
+                  className={`input ${lockCoreFields ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}`}
                   onChange={(e) => {
                     const n = Number(e.target.value.replace(/,/g, "."));
                     setKpiCeoRateLive(isNaN(n) ? 0 : n / 100);
                   }}
                 />
+                {lockCoreFields && (
+                  <input type="hidden" name="kpiCeoRate" value={pctDisplay(product?.kpiCeoRate)} />
+                )}
+                {lockCoreFields && <LockedFieldHint />}
               </Field>
               <Field label="%KPI Admin">
                 <PercentInput
-                  name="kpiAdminRate"
+                  name={lockCoreFields ? "_locked_kpiAdminRate" : "kpiAdminRate"}
                   defaultValue={pctDisplay(product?.kpiAdminRate)}
-                  className="input"
+                  disabled={lockCoreFields}
+                  className={`input ${lockCoreFields ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}`}
                   onChange={(e) => {
                     const n = Number(e.target.value.replace(/,/g, "."));
                     setKpiAdminRateLive(isNaN(n) ? 0 : n / 100);
                   }}
                 />
+                {lockCoreFields && (
+                  <input type="hidden" name="kpiAdminRate" value={pctDisplay(product?.kpiAdminRate)} />
+                )}
+                {lockCoreFields && <LockedFieldHint />}
               </Field>
             </>
           )}
@@ -772,8 +794,9 @@ export default function ProductForm({
         <div id="adjustments-block" className="scroll-mt-20">
         <Section title="⚙️ Điều chỉnh thông tin căn">
           <div className="text-xs text-slate-500 -mt-2">
-            Khi CĐT tăng %HH, sửa giá, hoặc đổi phí admin — dùng nút bên dưới. Điều
-            chỉnh được lưu cùng lúc với nút Lưu ở cuối form.
+            Căn đã có đối chiếu → các mức phí (giá, %PMG_LK, phí admin, %HH sale,
+            %KPI) khoá ở form trên. Muốn đổi phải thêm điều chỉnh bên dưới kèm
+            <b> ngày hiệu lực</b> để giữ lịch sử. Nhấn Lưu ở cuối form để áp dụng.
           </div>
           {/* Serialize pending vào FormData → server apply khi Lưu */}
           <input
@@ -871,6 +894,10 @@ export default function ProductForm({
                 pmgBasePrice: pmgBase,
                 pmgRate: pmgRateLive,
                 adminFee: adminFeeLive,
+                saleCommissionRate: saleCommRateLive,
+                kpiCeoRate: kpiCeoRateLive,
+                kpiTpkdRate: kpiTpkdRateLive,
+                kpiAdminRate: kpiAdminRateLive,
               }}
               action={async (fd) => {
                 // Fake action: chỉ append vào state, KHÔNG gọi server.
@@ -911,6 +938,22 @@ export default function ProductForm({
                 if (isChanged("adminFee")) {
                   const v = parseMoney(fd.get("adminFee"), "Phí admin");
                   if (!isNaN(v)) fields.adminFee = v;
+                }
+                if (isChanged("saleCommissionRate")) {
+                  const v = parsePct(fd.get("saleCommissionRate"), "%HH sale");
+                  if (!isNaN(v)) fields.saleCommissionRate = v;
+                }
+                if (isChanged("kpiTpkdRate")) {
+                  const v = parsePct(fd.get("kpiTpkdRate"), "%KPI TPKD");
+                  if (!isNaN(v)) fields.kpiTpkdRate = v;
+                }
+                if (isChanged("kpiCeoRate")) {
+                  const v = parsePct(fd.get("kpiCeoRate"), "%KPI CEO");
+                  if (!isNaN(v)) fields.kpiCeoRate = v;
+                }
+                if (isChanged("kpiAdminRate")) {
+                  const v = parsePct(fd.get("kpiAdminRate"), "%KPI Admin");
+                  if (!isNaN(v)) fields.kpiAdminRate = v;
                 }
                 if (invalid.length > 0) {
                   toast.error("Nhập giá trị chưa hợp lệ", {

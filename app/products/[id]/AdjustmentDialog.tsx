@@ -19,6 +19,10 @@ type ProductSnapshot = {
   pmgBasePrice: number;
   pmgRate: number;
   adminFee: number;
+  saleCommissionRate: number;
+  kpiCeoRate: number;
+  kpiTpkdRate: number;
+  kpiAdminRate: number;
 };
 
 type FieldDef = {
@@ -27,13 +31,15 @@ type FieldDef = {
   type: "money" | "percent";
 };
 
-// Trước mắt chỉ cho điều chỉnh 3 trường liên quan tới CĐT
-// (giá + %HH CĐT trả BRE + phí admin CĐT trừ).
-// Các trường nội bộ (%HH sale, KPI, thưởng...) sửa trực tiếp qua ProductForm.
+// Mọi field ảnh hưởng đối chiếu — khi căn đã có recon, phải qua đây (giữ history).
 const FIELDS: FieldDef[] = [
   { key: "pmgBasePrice", label: "Giá tính PMG (= giá bán căn)", type: "money" },
   { key: "pmgRate", label: "%PMG_LK (CĐT trả BRE)", type: "percent" },
   { key: "adminFee", label: "Phí admin (CĐT giữ, gồm VAT)", type: "money" },
+  { key: "saleCommissionRate", label: "%HH sale (NVKD)", type: "percent" },
+  { key: "kpiTpkdRate", label: "%KPI TPKD (Trưởng phòng)", type: "percent" },
+  { key: "kpiCeoRate", label: "%KPI CEO", type: "percent" },
+  { key: "kpiAdminRate", label: "%KPI Admin", type: "percent" },
 ];
 
 const fmtValue = (v: number, type: "money" | "percent") =>
