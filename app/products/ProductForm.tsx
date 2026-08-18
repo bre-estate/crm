@@ -769,6 +769,7 @@ export default function ProductForm({
       </Section>
 
       {isEdit && !isSecondary && lockCoreFields && (
+        <div id="adjustments-block" className="scroll-mt-20">
         <Section title="⚙️ Điều chỉnh thông tin căn">
           <div className="text-xs text-slate-500 -mt-2">
             Khi CĐT tăng %HH, sửa giá, hoặc đổi phí admin — dùng nút bên dưới. Điều
@@ -926,6 +927,7 @@ export default function ProductForm({
             />
           </div>
         </Section>
+        </div>
       )}
 
       <div className="flex justify-end gap-3 pt-2">
