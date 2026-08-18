@@ -71,15 +71,36 @@ async function main() {
     sourceFile: "BAO CAO DOANH THU.xlsx",
     targetTable: "cost_reconciliations",
   }, async (log) => {
-  // Build unit_code -> product_id map (normalized)
+  // Build unit_code -> product map (normalized) — kèm rates để cross-check
+  // với Excel row, warn khi lệch mức căn (bug: Excel gõ mức khác căn → recon
+  // lệch, không có ai biết cho tới khi report kiểm tra tay).
   const products = await db
-    .select({ id: schema.products.id, unitCode: schema.products.unitCode })
+    .select({
+      id: schema.products.id,
+      unitCode: schema.products.unitCode,
+      productCode: schema.products.productCode,
+      saleCommissionRate: schema.products.saleCommissionRate,
+      kpiCeoRate: schema.products.kpiCeoRate,
+      kpiTpkdRate: schema.products.kpiTpkdRate,
+      kpiAdminRate: schema.products.kpiAdminRate,
+      pmgSaleRate: schema.products.pmgSaleRate,
+    })
     .from(schema.products);
-  const productByUnitCode = new Map<string, number>();
+  const productByUnitCode = new Map<string, typeof products[number]>();
   for (const p of products) {
-    productByUnitCode.set(normalizeUnit(p.unitCode), p.id);
+    productByUnitCode.set(normalizeUnit(p.unitCode), p);
   }
   console.log(`Loaded ${productByUnitCode.size} products`);
+
+  // Thu thập rate mismatch để in báo cáo cuối import (không throw — chỉ warn).
+  const rateMismatches: {
+    row: number;
+    productCode: string;
+    field: string;
+    excel: number;
+    product: number;
+  }[] = [];
+  const eqRate = (a: number, b: number) => Math.abs(a - b) < 0.0001;
 
   console.log("\n=== Reading sheet 2.3_Gia von ===");
   const rows = sheet("2.3_Gia von");
@@ -92,8 +113,8 @@ async function main() {
     if (!row) continue;
     const unitCode = toStr(row[4]);
     if (!unitCode) continue;
-    const pid = productByUnitCode.get(normalizeUnit(unitCode));
-    if (pid) affectedProductIds.add(pid);
+    const p = productByUnitCode.get(normalizeUnit(unitCode));
+    if (p) affectedProductIds.add(p.id);
   }
   console.log(`Clearing cost reconciliations cho ${affectedProductIds.size} products...`);
   if (affectedProductIds.size > 0) {
@@ -127,8 +148,8 @@ async function main() {
       skipped++;
       continue;
     }
-    const productId = productByUnitCode.get(normalizeUnit(unitCode));
-    if (!productId) {
+    const prod = productByUnitCode.get(normalizeUnit(unitCode));
+    if (!prod) {
       skipped++;
       continue;
     }
@@ -216,21 +237,56 @@ async function main() {
       });
     }
 
+    // Rate từ Excel — check với mức căn hiện tại
+    const excelCommissionRate = toNum(row[15]);
+    const excelPmgLkSaleRate = toNum(row[12]);
+    // Sale commission: chỉ check khi Excel có ghi rate + căn có rate
+    if (excelCommissionRate > 0 && Number(prod.saleCommissionRate ?? 0) > 0 &&
+        !eqRate(excelCommissionRate, Number(prod.saleCommissionRate))) {
+      rateMismatches.push({
+        row: i + 1, productCode: prod.productCode,
+        field: "%HH sale", excel: excelCommissionRate, product: Number(prod.saleCommissionRate),
+      });
+    }
+    // %PMG_LK_sale: warn khi vượt trần pmg_sale_rate của căn (thấp hơn thì OK)
+    if (excelPmgLkSaleRate > 0 && Number(prod.pmgSaleRate ?? 0) > 0 &&
+        excelPmgLkSaleRate > Number(prod.pmgSaleRate) + 0.0001) {
+      rateMismatches.push({
+        row: i + 1, productCode: prod.productCode,
+        field: "%PMG_LK_sale (VƯỢT TRẦN)", excel: excelPmgLkSaleRate, product: Number(prod.pmgSaleRate),
+      });
+    }
+
     for (const [idx, ins] of rowsToInsert.entries()) {
+      // KPI rate warn khi lệch với căn
+      const kpiFieldMap: Record<string, keyof typeof prod> = {
+        kpi_ceo: "kpiCeoRate", kpi_tpkd: "kpiTpkdRate", kpi_admin: "kpiAdminRate",
+      };
+      const kpiFieldName = kpiFieldMap[ins.costType];
+      if (kpiFieldName && ins.kpiRate > 0) {
+        const prodKpi = Number(prod[kpiFieldName] ?? 0);
+        if (prodKpi > 0 && !eqRate(ins.kpiRate, prodKpi)) {
+          rateMismatches.push({
+            row: i + 1, productCode: prod.productCode,
+            field: `%${ins.costType.toUpperCase()}`, excel: ins.kpiRate, product: prodKpi,
+          });
+        }
+      }
+
       const [rec] = await db
         .insert(schema.costReconciliations)
         .values({
-          productId,
+          productId: prod.id,
           reconciliationDate: toDateStr(row[1]),
           employeeName,
           costType: ins.costType,
           pmgBasePriceSale: toNum(row[11]),
-          pmgLkSaleRate: toNum(row[12]),
+          pmgLkSaleRate: excelPmgLkSaleRate,
           // Cột N Excel = "Tiến độ PMG đã thu tiền (%)" — đây là N (khách
           // trả CĐT), map vào paymentProgressPct chứ KHÔNG pmgProgressAmount.
           paymentProgressPct: toNum(row[13]),
           pmgCumulativePctSale: toNum(row[14]),
-          commissionRate: toNum(row[15]),
+          commissionRate: excelCommissionRate,
           adminFeeSale: toNum(row[16]),
           customerSupport: ins.costType === "customer_support" ? csVal : 0,
           fiscalYear: toNum(row[18]) || null,
@@ -264,9 +320,24 @@ async function main() {
   console.log(`\nInserted ${costRecCount} cost reconciliations`);
   console.log(`Inserted ${paymentOutCount} payments_out`);
   console.log(`Skipped ${skipped} rows (empty or unit not found)`);
+
+  if (rateMismatches.length > 0) {
+    console.log(`\n⚠️  RATE LỆCH MỨC CĂN: ${rateMismatches.length} case`);
+    console.log("   (Excel gõ rate khác mức căn hiện tại — kiểm tra lại Excel hoặc căn)\n");
+    for (const m of rateMismatches) {
+      console.log(
+        `   row ${m.row} ${m.productCode.padEnd(30)} ${m.field.padEnd(30)} ` +
+        `Excel=${(m.excel * 100).toFixed(2)}%  vs Căn=${(m.product * 100).toFixed(2)}%`,
+      );
+    }
+    console.log(`\n   → Đã import tất cả. Verify bằng script check_recon_mismatch_history.ts`);
+  } else {
+    console.log(`\n✓ Không có rate lệch mức căn.`);
+  }
+
     log.created = costRecCount;
     log.skipped = skipped;
-    log.details = { payments_out: paymentOutCount };
+    log.details = { payments_out: paymentOutCount, rate_mismatches: rateMismatches.length };
   });
 }
 
