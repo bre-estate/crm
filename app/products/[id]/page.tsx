@@ -1395,22 +1395,24 @@ export default async function ProductDetailPage({
                         {expectedHHSale > 0 ? Math.round((paidHHSale / expectedHHSale) * 100) : 0}%
                       </div>
                     </div>
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                      <div className="flex items-baseline justify-between mb-1">
-                        <span className="text-xs font-semibold text-amber-800">🟡 Thưởng nóng CĐT</span>
-                        <span className="text-xs text-slate-600">
-                          <b className="text-amber-700 tabular-nums">{fmtMoney(paidBonus)}</b>
-                          {" / "}
-                          <span className="tabular-nums">{fmtMoney(expectedBonus)}</span>
-                        </span>
+                    {(expectedBonus > 0 || paidBonus > 0) && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                        <div className="flex items-baseline justify-between mb-1">
+                          <span className="text-xs font-semibold text-amber-800">🟡 Thưởng nóng CĐT</span>
+                          <span className="text-xs text-slate-600">
+                            <b className="text-amber-700 tabular-nums">{fmtMoney(paidBonus)}</b>
+                            {" / "}
+                            <span className="tabular-nums">{fmtMoney(expectedBonus)}</span>
+                          </span>
+                        </div>
+                        <div className="h-2 bg-amber-100 rounded overflow-hidden">
+                          <div className="h-full bg-amber-500" style={{ width: `${bnPct}%` }} />
+                        </div>
+                        <div className="text-right text-xs mt-1 tabular-nums text-amber-700 font-semibold">
+                          {expectedBonus > 0 ? Math.round((paidBonus / expectedBonus) * 100) : 0}%
+                        </div>
                       </div>
-                      <div className="h-2 bg-amber-100 rounded overflow-hidden">
-                        <div className="h-full bg-amber-500" style={{ width: `${bnPct}%` }} />
-                      </div>
-                      <div className="text-right text-xs mt-1 tabular-nums text-amber-700 font-semibold">
-                        {expectedBonus > 0 ? Math.round((paidBonus / expectedBonus) * 100) : 0}%
-                      </div>
-                    </div>
+                    )}
                   </>
                 );
               })()}
