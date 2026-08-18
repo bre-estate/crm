@@ -662,26 +662,19 @@ export default function CostForm({
                 }
               }
               if (alerts.length === 0) return null;
-              const backUrl = typeof window !== "undefined" ? window.location.pathname + window.location.search : "";
-              const editProductUrl = `/products/${product.id}/edit?returnTo=${encodeURIComponent(backUrl)}`;
               return (
-                <div className="mt-3 rounded-lg border border-red-400 bg-red-50 p-3 text-sm text-red-900">
-                  <div className="font-semibold mb-2">
-                    🚫 Không lưu được đợt này — mức phí đang lệch với căn:
-                  </div>
-                  <ul className="list-disc list-inside space-y-0.5 text-xs mb-3">
+                <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+                  <div className="font-semibold mb-1">⚠️ Mức trong đợt đối chiếu này khác mức của căn:</div>
+                  <ul className="list-disc list-inside space-y-0.5">
                     {alerts.map((a, i) => <li key={i}>{a}</li>)}
                   </ul>
-                  <div className="text-xs mb-2">
-                    Trước khi lưu đợt này, phải vào căn <b>{product.productCode}</b> để đổi mức phí về đúng.
-                    Sau khi lưu căn xong, sẽ được đưa quay lại đây.
+                  <div className="mt-2 text-[11px]">
+                    Đợt này đang giữ mức cũ (frozen tại lúc tạo). Nếu mức của căn mới là đúng,
+                    sửa số tiền bên dưới và{" "}
+                    <a href={`/products/${product.id}/edit`} className="text-blue-700 underline">
+                      xem lại thông tin căn
+                    </a>.
                   </div>
-                  <a
-                    href={editProductUrl}
-                    className="inline-block bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-3 py-1.5 rounded-md"
-                  >
-                    Đi tới căn {product.productCode} để sửa mức phí →
-                  </a>
                 </div>
               );
             })()}
