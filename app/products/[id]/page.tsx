@@ -31,6 +31,7 @@ import { deleteProduct } from "@/lib/actions/products";
 import { hasPermission } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { getEmployeeOverpaid } from "@/lib/employee-overpaid";
 
 export const dynamic = "force-dynamic";
 
@@ -122,6 +123,9 @@ export default async function ProductDetailPage({
   if (!row) notFound();
   const p = row.product;
   const isSecondary = p.saleType === "secondary";
+
+  // Chi dư thưởng nóng — BRE đã trả NV nhưng CĐT hoàn/không đủ → NV nợ cty
+  const overpaidList = await getEmployeeOverpaid(id);
 
   // Lookup NVKD trong employees để phân biệt CTV (chưa phân phòng)
   // → không hiển thị text Excel legacy misleading.
@@ -310,6 +314,37 @@ export default async function ProductDetailPage({
         </div>
         <ActivityHistoryButton activities={activities} />
       </div>
+
+      {overpaidList.length > 0 && (
+        <div className="rounded-lg border-2 border-red-300 bg-red-50 p-3">
+          <div className="flex items-baseline justify-between mb-1.5">
+            <div className="text-sm font-semibold text-red-900">
+              ⚠️ Nhân viên nợ công ty — chi dư thưởng nóng
+            </div>
+            <Link
+              href="/reports/commissions"
+              className="text-xs text-red-700 hover:underline"
+            >
+              Xem báo cáo →
+            </Link>
+          </div>
+          <div className="text-xs text-red-800 mb-2">
+            BRE đã trả NV thưởng nóng nhưng CĐT hoàn/không đủ. Số này sẽ khấu trừ
+            khi trả HH sale đợt sau cho NV.
+          </div>
+          <ul className="text-xs space-y-1">
+            {overpaidList.map((r, i) => (
+              <li key={i} className="flex items-baseline gap-2">
+                <span className="text-red-900 font-semibold">{r.employeeName}</span>
+                <span className="text-red-700">nợ {fmtMoney(r.overpaid)}</span>
+                <span className="text-red-500">
+                  ({r.costType === "cdt_bonus_sale" ? "T.nóng sale" : "T.nóng QL"} — đã trả {fmtMoney(r.paid)}, CĐT ròng {fmtMoney(r.revenueTotal)})
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="flex justify-between items-start gap-4">
         <div>

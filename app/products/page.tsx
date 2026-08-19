@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import AutoDismissBanner from "@/components/AutoDismissBanner";
+import { getProductOverpaidSummary } from "@/lib/employee-overpaid";
 
 export const dynamic = "force-dynamic";
 
@@ -32,10 +33,12 @@ type SearchParams = Promise<{
   to?: string;
   unitCode?: string;
   justCreated?: string;
+  overpaidOnly?: string;
 }>;
 
 export default async function ProductsPage({ searchParams }: { searchParams: SearchParams }) {
-  const { projectId, departmentId, salesPerson, tab, from, to, unitCode, justCreated } = await searchParams;
+  const { projectId, departmentId, salesPerson, tab, from, to, unitCode, justCreated, overpaidOnly } = await searchParams;
+  const filterOverpaidOnly = overpaidOnly === "1";
   // Parse ids vừa tạo (comma-separated). Set để O(1) lookup.
   const justCreatedIds = new Set<number>(
     (justCreated ?? "")
@@ -470,6 +473,16 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
             />
           </div>
           <input type="hidden" name="tab" value={activeTab} />
+          <label className="flex items-center gap-1.5 text-xs whitespace-nowrap cursor-pointer">
+            <input
+              type="checkbox"
+              name="overpaidOnly"
+              value="1"
+              defaultChecked={filterOverpaidOnly}
+              className="cursor-pointer"
+            />
+            <span>Chỉ căn có NV nợ cty</span>
+          </label>
           <Button type="submit" variant="secondary" size="sm">
             Lọc
           </Button>
@@ -478,7 +491,8 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
             filterSalesPerson ||
             dateFrom ||
             dateTo ||
-            filterUnitCode) && (
+            filterUnitCode ||
+            filterOverpaidOnly) && (
             <Button variant="outline" size="sm" render={<Link href={`/products?tab=${activeTab}`} />}>
               Reset
             </Button>
@@ -486,7 +500,8 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
         </form>
       </Card>
 
-      {(() => {
+      {await (async () => {
+        const overpaidByProduct = await getProductOverpaidSummary();
         const tableRows: ProductRow[] = rows.map((r) => {
           const stats = statsByProduct.get(r.id) ?? {
             expectedHH: 0,
@@ -523,11 +538,16 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
             receivedHH: stats.receivedHH,
             phaseCount: stats.phaseCount,
             invoiceCount: stats.invoiceIds.size,
+            overpaid: overpaidByProduct.get(r.id)?.totalOverpaid ?? 0,
+            overpaidEmployees: overpaidByProduct.get(r.id)?.employees ?? [],
           };
         });
+        const displayRows = filterOverpaidOnly
+          ? tableRows.filter((r) => (r.overpaid ?? 0) > 0)
+          : tableRows;
         return (
           <ProductsTable
-            rows={tableRows}
+            rows={displayRows}
             detailQs={detailQs}
             justCreatedIds={justCreatedIds}
             onBulkDelete={async (ids) => {

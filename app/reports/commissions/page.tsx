@@ -8,6 +8,7 @@ import { sql, and, gte, lte, eq, desc } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { getEmployeeOverpaid } from "@/lib/employee-overpaid";
 
 export const dynamic = "force-dynamic";
 const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
@@ -59,6 +60,18 @@ export default async function CommissionReportPage({ searchParams }: { searchPar
 
   const totalAccrued = rows.reduce((s, r) => s + Number(r.accrued), 0);
   const totalPaid = rows.reduce((s, r) => s + Number(r.paid), 0);
+
+  // "Chi dư thưởng nóng": BRE đã trả NV thưởng nóng nhưng CĐT hoàn/không đủ
+  // → NV nợ cty, sẽ khấu trừ HH sale đợt sau.
+  const overpaidRows = await getEmployeeOverpaid();
+  const overpaidByEmp = new Map<string, { totalOverpaid: number; items: typeof overpaidRows }>();
+  for (const r of overpaidRows) {
+    const cur = overpaidByEmp.get(r.employeeName) ?? { totalOverpaid: 0, items: [] };
+    cur.totalOverpaid += r.overpaid;
+    cur.items.push(r);
+    overpaidByEmp.set(r.employeeName, cur);
+  }
+  const overpaidTotal = overpaidRows.reduce((s, r) => s + r.overpaid, 0);
 
   const years = [2024, 2025, 2026];
   const quarters = [1, 2, 3, 4];
@@ -150,6 +163,67 @@ export default async function CommissionReportPage({ searchParams }: { searchPar
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Chi dư thưởng nóng — BRE đã trả NV nhưng CĐT hoàn/không đủ */}
+      <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
+        <div className="p-3 border-b border-slate-100 flex items-baseline justify-between">
+          <div>
+            <div className="text-sm font-semibold">⚠️ Chi dư thưởng nóng · NV nợ công ty</div>
+            <div className="text-xs text-slate-500 mt-0.5">
+              BRE đã trả NV nhưng CĐT hoàn/không đủ. Số này sẽ khấu trừ khi trả HH sale đợt sau.
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">Tổng nợ</div>
+            <div className="text-lg font-bold tabular-nums text-red-700">{fmt(overpaidTotal)}</div>
+          </div>
+        </div>
+        {overpaidRows.length === 0 ? (
+          <div className="p-6 text-center text-sm text-slate-400">
+            Chưa có trường hợp chi dư. ✓
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="text-xs text-slate-500 bg-slate-50">
+              <tr>
+                <th className="text-left p-2">Nhân viên</th>
+                <th className="text-left p-2">Căn</th>
+                <th className="text-left p-2">Loại</th>
+                <th className="text-right p-2">Đã trả</th>
+                <th className="text-right p-2">CĐT trả căn (ròng)</th>
+                <th className="text-right p-2">NV nợ cty</th>
+              </tr>
+            </thead>
+            <tbody>
+              {overpaidRows.map((r, i) => (
+                <tr key={i} className="border-t hover:bg-slate-50">
+                  <td className="p-2 font-medium">{r.employeeName}</td>
+                  <td className="p-2 font-mono text-xs">
+                    <Link
+                      href={`/products/${r.productId}`}
+                      className="text-blue-600 hover:underline"
+                    >
+                      {r.productCode}
+                    </Link>
+                  </td>
+                  <td className="p-2 text-xs">
+                    {r.costType === "cdt_bonus_sale" ? "Thưởng nóng sale" : "Thưởng nóng QL"}
+                  </td>
+                  <td className="p-2 text-right tabular-nums">{fmt(r.paid)}</td>
+                  <td className="p-2 text-right tabular-nums text-slate-500">{fmt(r.revenueTotal)}</td>
+                  <td className="p-2 text-right tabular-nums font-semibold text-red-700">
+                    {fmt(r.overpaid)}
+                  </td>
+                </tr>
+              ))}
+              <tr className="border-t-2 border-slate-300 bg-slate-100 font-bold">
+                <td className="p-2" colSpan={5}>TỔNG NV NỢ CTY</td>
+                <td className="p-2 text-right tabular-nums text-red-700">{fmt(overpaidTotal)}</td>
+              </tr>
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
