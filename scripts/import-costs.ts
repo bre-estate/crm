@@ -14,6 +14,7 @@ import { eq, inArray } from "drizzle-orm";
 import path from "path";
 import fs from "fs";
 import * as dotenv from "dotenv";
+import { toTitleCase } from "../lib/format";
 dotenv.config({ path: ".env.local" });
 
 const EXCEL_PATH = path.join(process.cwd(), "data-excel", "BAO CAO DOANH THU.xlsx");
@@ -142,7 +143,9 @@ async function main() {
   for (let i = 4; i < rows.length; i++) {
     const row = rows[i];
     if (!row) continue;
-    const employeeName = toStr(row[2]); // col C
+    // Normalize case: Excel chị Kim gõ ALL CAPS lẫn Title Case → phải chuẩn
+    // về Title Case để /reports/commissions không tách 1 người thành 2 rows.
+    const employeeName = toTitleCase(toStr(row[2])); // col C
     const unitCode = toStr(row[4]); // col E
     if (!employeeName || !unitCode) {
       skipped++;
