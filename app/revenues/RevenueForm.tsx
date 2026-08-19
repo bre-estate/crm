@@ -106,15 +106,14 @@ export default function RevenueForm({
   // Recon notes JSONB (khi edit). Với create → {}.
   const initialNotes: Record<string, string> = (recon?.notes as Record<string, string> | null) ?? {};
 
-  // Init reconType (loại row 0) khi EDIT — dựa vào amount dominant:
-  //   - Có revenueThisTime > 0 → commission (main), bonus (nếu có) ở extra rows
-  //   - Chỉ có cdtBonusSale > 0 → bonus_sale
-  //   - Chỉ có cdtBonusManager > 0 → bonus_manager
+  // Init reconType (loại row 0) khi EDIT — dựa vào amount dominant.
+  // Dùng !== 0 (không phải > 0) để handle đợt HOÀN — amount âm cũng detect
+  // đúng loại (VD hoàn thưởng nóng: cdtBonusSale = -11tr → vẫn là bonus_sale).
   const initialReconType = ((): string => {
     if (!recon) return "commission";
-    if (Number(recon.revenueThisTime ?? 0) > 0) return "commission";
-    if (Number(recon.cdtBonusSale ?? 0) > 0) return "bonus_sale";
-    if (Number(recon.cdtBonusManager ?? 0) > 0) return "bonus_manager";
+    if (Number(recon.revenueThisTime ?? 0) !== 0) return "commission";
+    if (Number(recon.cdtBonusSale ?? 0) !== 0) return "bonus_sale";
+    if (Number(recon.cdtBonusManager ?? 0) !== 0) return "bonus_manager";
     return "commission";
   })();
   const [reconType, setReconType] = useState(initialReconType);
@@ -127,14 +126,14 @@ export default function RevenueForm({
     if (initialReconType === "commission") {
       const bs = Number(recon.cdtBonusSale ?? 0);
       const bm = Number(recon.cdtBonusManager ?? 0);
-      if (bs > 0) rows.push({ type: "bonus_sale", amount: bs, note: initialNotes.bonus_sale ?? "" });
-      if (bm > 0) rows.push({ type: "bonus_manager", amount: bm, note: initialNotes.bonus_manager ?? "" });
+      if (bs !== 0) rows.push({ type: "bonus_sale", amount: bs, note: initialNotes.bonus_sale ?? "" });
+      if (bm !== 0) rows.push({ type: "bonus_manager", amount: bm, note: initialNotes.bonus_manager ?? "" });
     } else if (initialReconType === "bonus_sale") {
       const bm = Number(recon.cdtBonusManager ?? 0);
-      if (bm > 0) rows.push({ type: "bonus_manager", amount: bm, note: initialNotes.bonus_manager ?? "" });
+      if (bm !== 0) rows.push({ type: "bonus_manager", amount: bm, note: initialNotes.bonus_manager ?? "" });
     } else if (initialReconType === "bonus_manager") {
       const bs = Number(recon.cdtBonusSale ?? 0);
-      if (bs > 0) rows.push({ type: "bonus_sale", amount: bs, note: initialNotes.bonus_sale ?? "" });
+      if (bs !== 0) rows.push({ type: "bonus_sale", amount: bs, note: initialNotes.bonus_sale ?? "" });
     }
     return rows;
   })();
@@ -513,24 +512,14 @@ export default function RevenueForm({
                         </option>
                       ));
                     }
+                    // Luôn hiện đủ 3 options — user cần chọn "Thưởng nóng"
+                    // cho cả case hoàn thưởng (căn config = 0 nhưng đợt trước
+                    // đã có thưởng, cần nhập âm để hoàn).
                     const opts: { v: string; label: string }[] = [
                       { v: "commission", label: "Hoa hồng" },
+                      { v: "bonus_sale", label: "Thưởng nóng cho sale" },
+                      { v: "bonus_manager", label: "Thưởng nóng cho quản lý sàn" },
                     ];
-                    if (
-                      Number(product?.cdtBonusSale ?? 0) > 0 ||
-                      reconType === "bonus_sale"
-                    ) {
-                      opts.push({ v: "bonus_sale", label: "Thưởng nóng cho sale" });
-                    }
-                    if (
-                      Number(product?.cdtBonusManager ?? 0) > 0 ||
-                      reconType === "bonus_manager"
-                    ) {
-                      opts.push({
-                        v: "bonus_manager",
-                        label: "Thưởng nóng cho quản lý sàn",
-                      });
-                    }
                     return opts.map((o) => (
                       <option key={o.v} value={o.v}>
                         {o.label}
@@ -548,8 +537,12 @@ export default function RevenueForm({
                   inputMode="numeric"
                   value={amountDisplay}
                   onChange={(e) => {
-                    const digits = e.target.value.replace(/\D/g, "");
-                    setAmount(digits ? Number(digits) : 0);
+                    // Cho phép dấu "-" ở đầu để nhập số âm (đợt hoàn tiền).
+                    const raw = e.target.value.replace(/[^\d-]/g, "");
+                    const neg = raw.startsWith("-");
+                    const digits = raw.replace(/-/g, "");
+                    const n = digits ? Number(digits) : 0;
+                    setAmount(neg ? -n : n);
                   }}
                   onFocus={(e) => e.currentTarget.select()}
                   className="input"

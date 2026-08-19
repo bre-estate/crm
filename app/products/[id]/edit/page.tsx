@@ -104,16 +104,19 @@ export default async function EditProductPage({
     .where(eq(productAdjustments.productId, id))
     .orderBy(desc(productAdjustments.effectiveDate), desc(productAdjustments.id));
 
-  // Nếu căn đã có recon doanh thu hoặc giá vốn → khóa 3 field (pmgBase/pmgRate/adminFee)
-  // và bắt buộc dùng "Điều chỉnh thông tin căn" để giữ lịch sử. Chưa có recon → edit trực tiếp.
+  // Lock các field ảnh hưởng giá/HH/KPI khi căn đã có recon "core":
+  // - Revenue recon có revenue_this_time != 0 (đợt HH sale chính)
+  // - Cost recon KHÔNG thuộc thưởng nóng (cdt_bonus_sale/manager là số cụ
+  //   thể per đợt, không phụ thuộc rate/price của căn → không cần lock).
+  // Chỉ có đợt thưởng nóng → vẫn cho edit trực tiếp.
   const [{ revC = 0 }] = await db
     .select({ revC: sql<number>`count(*)::int` })
     .from(revenueReconciliations)
-    .where(eq(revenueReconciliations.productId, id));
+    .where(sql`${revenueReconciliations.productId} = ${id} AND ${revenueReconciliations.revenueThisTime} != 0`);
   const [{ costC = 0 }] = await db
     .select({ costC: sql<number>`count(*)::int` })
     .from(costReconciliations)
-    .where(eq(costReconciliations.productId, id));
+    .where(sql`${costReconciliations.productId} = ${id} AND ${costReconciliations.costType} NOT IN ('cdt_bonus_sale', 'cdt_bonus_manager')`);
   const hasRecons = Number(revC) + Number(costC) > 0;
 
   // Sum recon cdt_bonus_sale/manager — để form pre-check trước khi submit
