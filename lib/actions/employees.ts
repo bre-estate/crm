@@ -7,21 +7,14 @@ import { eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-// Position: 5 preset dùng cho logic (isCtv, dept detection) + custom text
-// tự do (Marketing, Content...). Normalize: preset input case-insensitive
-// → lowercase value; custom giữ nguyên as-typed (trim).
-const PRESET_POSITIONS = ["ceo", "tpkd", "nvkd", "admin", "ctv"];
-const normalizePosition = (v: string): string => {
-  const t = v.trim();
-  const low = t.toLowerCase();
-  return PRESET_POSITIONS.includes(low) ? low : t;
-};
-
 const EmployeeSchema = z.object({
   name: z.string().trim().min(1, "Tên bắt buộc"),
   email: z.string().trim().optional().nullable(),
   phone: z.string().trim().optional().nullable(),
-  position: z.string().trim().min(1, "Vị trí bắt buộc").max(50, "Vị trí quá dài").transform(normalizePosition),
+  position: z.enum([
+    "ceo", "tpkd", "nvkd", "admin", "ctv",
+    "hr", "content_writer", "video_editor", "accountant",
+  ]),
   departmentId: z.coerce.number().int().nullable().optional(),
   aliasOfId: z.coerce.number().int().nullable().optional(),
   active: z.boolean().optional(),

@@ -476,9 +476,13 @@ export const employees = pgTable("employees", {
   name: text("name").notNull(),
   email: text("email"),
   phone: text("phone"),
-  // 5 preset dùng cho logic app (isCtv, dept detection...); ngoài ra user
-  // có thể thêm custom (Marketing, Content, HR...) — text tự do, DB không enum.
-  position: text("position").notNull().default("nvkd"),
+  // Preset cứng — thêm mới bằng cách sửa enum + POSITION_LABEL/COLOR ở
+  // app/employees/EmployeesManager.tsx. Không dùng bảng positions riêng.
+  position: text("position", {
+    enum: ["ceo", "tpkd", "nvkd", "admin", "ctv", "hr", "content_writer", "video_editor", "accountant"],
+  })
+    .notNull()
+    .default("nvkd"),
   departmentId: integer("department_id").references(() => departments.id),
   active: boolean("active").default(true),
   note: text("note"),
