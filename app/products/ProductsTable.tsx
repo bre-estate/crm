@@ -295,13 +295,13 @@ export default function ProductsTable({
                   <td className="p-2 text-center text-xs">
                     {r.overpaid && r.overpaid > 0 ? (
                       <span
-                        className="px-2 py-0.5 rounded bg-red-100 text-red-700 font-semibold tabular-nums"
+                        className="px-2 py-0.5 rounded bg-amber-100 text-amber-700 font-semibold tabular-nums"
                         title={`NV nợ cty: ${(r.overpaidEmployees ?? []).join(", ")}`}
                       >
                         {fmtMoney(r.overpaid)}
                       </span>
                     ) : (
-                      <span className="text-slate-300">—</span>
+                      <span className="text-slate-300">-</span>
                     )}
                   </td>
                   <td className="p-2 text-right">
