@@ -476,9 +476,9 @@ export const employees = pgTable("employees", {
   name: text("name").notNull(),
   email: text("email"),
   phone: text("phone"),
-  position: text("position", { enum: ["ceo", "tpkd", "nvkd", "admin", "ctv"] })
-    .notNull()
-    .default("nvkd"),
+  // 5 preset dùng cho logic app (isCtv, dept detection...); ngoài ra user
+  // có thể thêm custom (Marketing, Content, HR...) — text tự do, DB không enum.
+  position: text("position").notNull().default("nvkd"),
   departmentId: integer("department_id").references(() => departments.id),
   active: boolean("active").default(true),
   note: text("note"),

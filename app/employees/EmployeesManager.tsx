@@ -36,7 +36,9 @@ type Props = {
   onDelete: (id: number) => Promise<void>;
 };
 
-const POSITION_LABEL: Record<string, string> = {
+// 5 preset dùng cho logic (isCtv, dept detection). Custom positions
+// (Marketing, Content...) chỉ để phân loại NV, không có logic đặc biệt.
+const POSITION_PRESET_LABEL: Record<string, string> = {
   ceo: "CEO",
   tpkd: "TPKD",
   nvkd: "NVKD",
@@ -44,13 +46,29 @@ const POSITION_LABEL: Record<string, string> = {
   ctv: "CTV",
 };
 
-const POSITION_COLOR: Record<string, string> = {
+const POSITION_PRESET_COLOR: Record<string, string> = {
   ceo: "bg-red-100 text-red-700",
   tpkd: "bg-orange-100 text-orange-700",
   nvkd: "bg-blue-100 text-blue-700",
   admin: "bg-yellow-100 text-yellow-700",
   ctv: "bg-purple-100 text-purple-700",
 };
+
+// Preset options hiện ở dropdown datalist. Custom positions từ DB được
+// merge dynamic để user re-select mà không cần gõ lại.
+const POSITION_PRESET_OPTIONS = [
+  { value: "nvkd", label: "NVKD" },
+  { value: "tpkd", label: "TPKD" },
+  { value: "ceo", label: "CEO" },
+  { value: "admin", label: "Admin" },
+  { value: "ctv", label: "CTV" },
+];
+
+const positionLabel = (p: string): string =>
+  POSITION_PRESET_LABEL[p.toLowerCase()] ?? p;
+
+const positionColor = (p: string): string =>
+  POSITION_PRESET_COLOR[p.toLowerCase()] ?? "bg-slate-100 text-slate-700";
 
 export default function EmployeesManager({
   employees,
@@ -67,6 +85,19 @@ export default function EmployeesManager({
   const [deptFilter, setDeptFilter] = useState<string>("");
   const [showInactive, setShowInactive] = useState(false);
 
+  // Distinct positions từ DB không thuộc 5 preset — gợi ý trong datalist
+  // để user re-select mà không cần gõ lại.
+  const customPositions = useMemo(() => {
+    const preset = new Set(POSITION_PRESET_OPTIONS.map((o) => o.value));
+    const set = new Set<string>();
+    for (const e of employees) {
+      if (e.position && !preset.has(e.position.toLowerCase())) {
+        set.add(e.position);
+      }
+    }
+    return Array.from(set).sort();
+  }, [employees]);
+
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
     return employees.filter((e) => {
@@ -78,7 +109,7 @@ export default function EmployeesManager({
       }
       if (!s) return true;
       const hay =
-        `${e.name} ${e.email ?? ""} ${e.phone ?? ""} ${POSITION_LABEL[e.position] ?? e.position}`.toLowerCase();
+        `${e.name} ${e.email ?? ""} ${e.phone ?? ""} ${positionLabel(e.position)}`.toLowerCase();
       return hay.includes(s);
     });
   }, [employees, q, deptFilter, showInactive]);
@@ -211,9 +242,9 @@ export default function EmployeesManager({
                 </td>
                 <td className="p-3">
                   <span
-                    className={`text-xs px-2 py-1 rounded-md ${POSITION_COLOR[e.position] ?? "bg-slate-100 text-slate-700"}`}
+                    className={`text-xs px-2 py-1 rounded-md ${positionColor(e.position)}`}
                   >
-                    {POSITION_LABEL[e.position] ?? e.position}
+                    {positionLabel(e.position)}
                   </span>
                 </td>
                 <td className="p-3 text-slate-600 text-xs">{e.departmentName ?? "—"}</td>
@@ -281,17 +312,26 @@ export default function EmployeesManager({
                   />
                 </Field>
                 <Field label="Vị trí" required>
-                  <select
+                  <input
                     name="position"
-                    defaultValue={editing?.position ?? "nvkd"}
+                    list="position-options"
+                    defaultValue={editing ? positionLabel(editing.position) : "NVKD"}
                     className="input"
-                  >
-                    <option value="nvkd">NVKD (Nhân viên kinh doanh)</option>
-                    <option value="tpkd">TPKD (Trưởng phòng)</option>
-                    <option value="ceo">CEO</option>
-                    <option value="admin">Admin</option>
-                    <option value="ctv">CTV / Freelance</option>
-                  </select>
+                    required
+                    autoComplete="off"
+                    placeholder="NVKD, TPKD, CEO, Admin, CTV hoặc gõ mới..."
+                  />
+                  <datalist id="position-options">
+                    {POSITION_PRESET_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.label} />
+                    ))}
+                    {customPositions.map((p) => (
+                      <option key={p} value={p} />
+                    ))}
+                  </datalist>
+                  <div className="text-[10px] text-slate-500 mt-1">
+                    Chọn preset hoặc gõ vị trí mới (VD: Marketing, Content Writer).
+                  </div>
                 </Field>
                 <Field label="Phòng KD">
                   <select
@@ -334,7 +374,7 @@ export default function EmployeesManager({
                       .map((x) => ({
                         value: x.id,
                         label: x.name,
-                        sublabel: `${POSITION_LABEL[x.position] ?? x.position}${x.departmentName ? " · " + x.departmentName : ""}`,
+                        sublabel: `${positionLabel(x.position)}${x.departmentName ? " · " + x.departmentName : ""}`,
                       }))}
                   />
                   <div className="text-[10px] text-slate-500 mt-1">
