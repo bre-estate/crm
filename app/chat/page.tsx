@@ -1,10 +1,10 @@
-import { requirePermission } from "@/lib/auth";
+import { requireOwner } from "@/lib/auth";
 import ChatUI from "./ChatUI";
 
 export const dynamic = "force-dynamic";
 
 export default async function ChatPage() {
-  await requirePermission("reports.commissions", "view");
+  await requireOwner();
   return (
     <div className="space-y-3">
       <div className="border-b border-slate-100 pb-2">

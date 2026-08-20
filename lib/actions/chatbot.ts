@@ -1,6 +1,6 @@
 "use server";
 
-import { requirePermission } from "@/lib/auth";
+import { requireOwner } from "@/lib/auth";
 import OpenAI from "openai";
 import { TOOL_SCHEMAS, TOOL_IMPL } from "@/lib/chatbot/tools";
 
@@ -28,7 +28,7 @@ export async function chatQuery(
   history: ChatMessage[],
   question: string,
 ): Promise<{ answer: string; toolCalls: string[] }> {
-  await requirePermission("reports.commissions", "view");
+  await requireOwner();
 
   if (!process.env.OPENAI_API_KEY) {
     throw new Error(
