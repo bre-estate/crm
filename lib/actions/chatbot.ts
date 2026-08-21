@@ -54,7 +54,12 @@ async function chatQueryInner(
     );
   }
 
-  const client = new OpenAI({ apiKey: process.env.BRE_CRM_KEY });
+  // Dùng Google Gemini qua OpenAI-compatible endpoint (miễn phí 15 req/phút,
+  // 1M tokens/day). Giữ tên env BRE_CRM_KEY, chỉ đổi value = Gemini API key.
+  const client = new OpenAI({
+    apiKey: process.env.BRE_CRM_KEY,
+    baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
+  });
 
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     { role: "system", content: SYSTEM_PROMPT },
@@ -67,7 +72,7 @@ async function chatQueryInner(
   // Loop tối đa 5 turn tool-call để tránh infinite (LLM misbehave).
   for (let turn = 0; turn < 5; turn++) {
     const response = await client.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gemini-2.5-flash",
       messages,
       tools: TOOL_SCHEMAS,
       tool_choice: "auto",
