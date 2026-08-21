@@ -7,6 +7,8 @@
  * - Emit "status" events giữa turns để UI show progress.
  */
 import { getCurrentUser } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { chatLogs } from "@/lib/schema";
 import OpenAI from "openai";
 import {
   TOOL_SCHEMAS,
@@ -28,7 +30,7 @@ QUY TẮC TUYỆT ĐỐI:
    - "CĐT nào ưu đãi thưởng nóng tốt" → sort desc theo cdtThuongNongSale_phoBien
    - "CĐT nào ưu đãi tổng thể tốt nhất" → combo pctPMG_LK + cdtThuongNongSale
    - "CĐT nào chốt được nhiều căn" → sort desc theo soCan
-   LƯU Ý QUAN TRỌNG: %HH sale là chính sách NỘI BỘ BRE trả NVKD theo bậc KPI lũy tiến, KHÔNG phải CĐT trả. Đừng dùng %HH sale để so sánh CĐT.
+   Note nội bộ (KHÔNG lặp lại trong câu trả lời cho user): %HH sale là chính sách nội bộ BRE trả NVKD, không phải CĐT trả. Đừng dùng %HH sale để rank CĐT, cũng đừng giải thích vì sao trong câu trả lời (user đã biết).
 4. Nếu user hỏi ranking bán tốt nhất theo doanh số → dùng getTopProjects (số căn + doanh thu + HH).
 5. Nếu user hỏi 1 căn cụ thể → dùng getUnitInfo.
 6. Nếu user hỏi:
@@ -93,6 +95,12 @@ export async function POST(req: Request) {
     baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
   });
 
+  const startedAt = Date.now();
+  let finalAnswer = "";
+  const toolsUsed: string[] = [];
+  let logSuccess = true;
+  let logError: string | null = null;
+
   const stream = new ReadableStream({
     async start(controller) {
       const encoder = new TextEncoder();
@@ -100,6 +108,24 @@ export async function POST(req: Request) {
         controller.enqueue(
           encoder.encode(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`),
         );
+      };
+
+      // Log record khi close (dùng try/finally để log cả khi throw)
+      const flushLog = async () => {
+        try {
+          await db.insert(chatLogs).values({
+            userEmail: user.email,
+            userRole: user.role,
+            question: body.question,
+            answer: finalAnswer || null,
+            toolsUsed: toolsUsed,
+            success: logSuccess,
+            errorMessage: logError,
+            latencyMs: Date.now() - startedAt,
+          });
+        } catch (e) {
+          console.error("chat_logs insert failed:", e);
+        }
       };
 
       const systemPrompt =
@@ -145,6 +171,7 @@ export async function POST(req: Request) {
             for (const tc of msg.tool_calls) {
               if (tc.type !== "function") continue;
               ts(`Đang tra ${tc.function.name}`);
+              toolsUsed.push(tc.function.name);
               const fn = TOOL_IMPL[tc.function.name];
               let result: unknown;
               if (!fn) {
@@ -183,35 +210,43 @@ export async function POST(req: Request) {
           // trong content luôn (single-shot). Emit + close.
           if (msg.content) {
             ts("Đang trả lời");
-            // Chia thành chunks nhỏ để UI thấy chữ chảy dần (fake streaming
-            // vì non-stream already đã có full text, chunk client-side để UX)
+            finalAnswer = msg.content;
             const chunkSize = 40;
             for (let i = 0; i < msg.content.length; i += chunkSize) {
               emit("delta", { text: msg.content.slice(i, i + chunkSize) });
             }
             emit("done", {});
             controller.close();
+            await flushLog();
             return;
           }
 
-          // Fallback edge case: không content, không tool → thoát
-          emit("delta", { text: "(Không có phản hồi)" });
+          finalAnswer = "(Không có phản hồi)";
+          logSuccess = false;
+          emit("delta", { text: finalAnswer });
           emit("done", {});
           controller.close();
+          await flushLog();
           return;
         }
 
-        emit("delta", { text: "Quá nhiều bước xử lý, vui lòng hỏi lại câu ngắn hơn." });
+        finalAnswer = "Quá nhiều bước xử lý, vui lòng hỏi lại câu ngắn hơn.";
+        logSuccess = false;
+        emit("delta", { text: finalAnswer });
         emit("done", {});
         controller.close();
+        await flushLog();
       } catch (e) {
         const err = e as Error & { status?: number; code?: string };
+        logSuccess = false;
+        logError = `${err.message}${err.status ? ` (${err.status})` : ""}`;
         emit("error", {
           message: err.message,
           status: err.status,
           code: err.code,
         });
         controller.close();
+        await flushLog();
       }
     },
   });

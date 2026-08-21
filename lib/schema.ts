@@ -870,5 +870,19 @@ export const generalExpenses = pgTable("general_expenses", {
 export type GeneralExpense = typeof generalExpenses.$inferSelect;
 export type NewGeneralExpense = typeof generalExpenses.$inferInsert;
 
+// Log conversation chatbot để phân tích + tối ưu.
+export const chatLogs = pgTable("chat_logs", {
+  id: serial("id").primaryKey(),
+  userEmail: text("user_email").notNull(),
+  userRole: text("user_role"),
+  question: text("question").notNull(),
+  answer: text("answer"),
+  toolsUsed: jsonb("tools_used").default([]),
+  success: boolean("success").notNull().default(true),
+  errorMessage: text("error_message"),
+  latencyMs: integer("latency_ms"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Used in raw SQL for profile auto-create trigger
 export const _sql = sql;
