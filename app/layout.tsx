@@ -106,7 +106,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </SidebarInset>
           </SidebarProvider>
         </TooltipProvider>
-        {isOwner && <ChatBubble />}
+        <ChatBubble />{/* Mọi user login đều thấy; server-side lọc tool theo role */}
         <Toaster position="top-right" richColors closeButton />
       </body>
     </html>

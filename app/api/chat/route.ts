@@ -6,14 +6,19 @@
  * - Turn synthesis cuối: streaming (msg dài, cải thiện perceived speed)
  * - Emit "status" events giữa turns để UI show progress.
  */
-import { requireOwner } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import OpenAI from "openai";
-import { TOOL_SCHEMAS, TOOL_IMPL } from "@/lib/chatbot/tools";
+import {
+  TOOL_SCHEMAS,
+  TOOL_IMPL,
+  SENSITIVE_TOOL_NAMES,
+  SENSITIVE_ALLOWED_ROLES,
+} from "@/lib/chatbot/tools";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const SYSTEM_PROMPT = `Bạn là trợ lý CRM của BRE. Chỉ trả lời dựa trên data từ tool.
+const SYSTEM_PROMPT_BASE = `Bạn là trợ lý CRM của BRE. Chỉ trả lời dựa trên data từ tool.
 
 QUY TẮC TUYỆT ĐỐI:
 1. CHỈ dùng số liệu từ tool. TUYỆT ĐỐI KHÔNG bịa, KHÔNG tự ước lượng ("khoảng X%"), KHÔNG generalize từ 1-2 mẫu.
@@ -52,17 +57,24 @@ Nguồn dữ liệu:
 - Thưởng nóng CĐT: khoản CĐT chi thêm mỗi đợt bán được (có thể bị hoàn nếu huỷ).
 - Chi dư: NV đã nhận nhưng CĐT hoàn, sẽ khấu trừ đợt HH sale sau.`;
 
+const SYSTEM_PROMPT_SENSITIVE_SUFFIX = `\n\nBạn đang phục vụ chủ tài khoản hoặc quản lý. Có quyền truy cập TẤT CẢ tools bao gồm P&L, điểm hòa vốn, tổng doanh thu, biên gộp dự án, nghĩa vụ tài chính, chi dư nội bộ.`;
+
+const SYSTEM_PROMPT_PUBLIC_SUFFIX = `\n\nBạn đang phục vụ nhân viên (không phải chủ/quản lý). CHỈ có tools: tra thông tin căn, list căn dự án, HH sale + công nợ 1 NV, tuổi nợ CĐT (AR aging), tuổi nợ mình (AP aging), chính sách 1 dự án. KHÔNG có tools về tổng DT/lợi nhuận/hòa vốn/nghĩa vụ tài chính — nếu user hỏi mấy cái này, nói rõ: "Thông tin này chỉ chủ tài khoản và quản lý xem được. Bạn có thể hỏi về HH của bạn, thông tin căn, đối chiếu, hoặc CĐT nào còn nợ."`;
+
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
 export async function POST(req: Request) {
-  try {
-    await requireOwner();
-  } catch (e) {
+  const user = await getCurrentUser();
+  if (!user) {
     return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Unauthorized" }),
+      JSON.stringify({ error: "Chưa đăng nhập" }),
       { status: 403, headers: { "Content-Type": "application/json" } },
     );
   }
+  const canSensitive = SENSITIVE_ALLOWED_ROLES.has(user.role);
+  const allowedTools = canSensitive
+    ? TOOL_SCHEMAS
+    : TOOL_SCHEMAS.filter((t) => !SENSITIVE_TOOL_NAMES.has(t.function.name));
 
   if (!process.env.BRE_CRM_KEY) {
     return new Response(
@@ -86,8 +98,12 @@ export async function POST(req: Request) {
         );
       };
 
+      const systemPrompt =
+        SYSTEM_PROMPT_BASE +
+        (canSensitive ? SYSTEM_PROMPT_SENSITIVE_SUFFIX : SYSTEM_PROMPT_PUBLIC_SUFFIX);
+
       const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: systemPrompt },
         ...body.history.map((m) => ({ role: m.role, content: m.content })),
         { role: "user", content: body.question },
       ];
@@ -113,7 +129,7 @@ export async function POST(req: Request) {
           const res = await client.chat.completions.create({
             model: MODEL,
             messages,
-            tools: TOOL_SCHEMAS,
+            tools: allowedTools,
             tool_choice: "auto",
             temperature: 0.2,
           });
@@ -129,6 +145,16 @@ export async function POST(req: Request) {
               let result: unknown;
               if (!fn) {
                 result = { ok: false, error: `Unknown tool: ${tc.function.name}` };
+              } else if (
+                SENSITIVE_TOOL_NAMES.has(tc.function.name) &&
+                !canSensitive
+              ) {
+                // Defense in depth: LLM có thể hallucinate call sensitive
+                // tool dù không có trong schema. Chặn server-side.
+                result = {
+                  ok: false,
+                  error: `Bạn không có quyền xem thông tin này. Chỉ chủ tài khoản và quản lý mới xem được tổng hợp doanh thu, lợi nhuận, nghĩa vụ tài chính.`,
+                };
               } else {
                 try {
                   const args = JSON.parse(tc.function.arguments);

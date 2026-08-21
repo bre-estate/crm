@@ -1,10 +1,12 @@
-import { requireOwner } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
+import { notFound } from "next/navigation";
 import ChatUI from "./ChatUI";
 
 export const dynamic = "force-dynamic";
 
 export default async function ChatPage() {
-  await requireOwner();
+  const user = await getCurrentUser();
+  if (!user) notFound();
   return (
     <div className="space-y-3">
       <div className="border-b border-slate-100 pb-2">

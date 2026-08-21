@@ -1332,6 +1332,22 @@ async function getBreakEven(args: { year?: number }): Promise<ToolResult> {
   };
 }
 
+// Tools nhạy cảm: chỉ owner + manager xem được. NV khác gọi → refuse.
+// Sensitive = số liệu tổng thể công ty (P&L, tổng DT, biên gộp, hòa vốn,
+// nghĩa vụ tài chính, ranking cross-project, chi dư nội bộ).
+export const SENSITIVE_TOOL_NAMES = new Set([
+  "getObligations",
+  "getPnL",
+  "getBreakEven",
+  "getSalesReport",
+  "getProjectProfitability",
+  "getTopProjects",
+  "listAllProjectPolicies",
+  "getEmployeeOverpaidList",
+]);
+
+export const SENSITIVE_ALLOWED_ROLES = new Set(["owner", "manager"]);
+
 export const TOOL_IMPL: Record<string, (args: any) => Promise<ToolResult>> = {
   getEmployeeCommission,
   getEmployeeOverpaidList,
