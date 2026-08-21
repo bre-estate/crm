@@ -108,6 +108,39 @@ export const TOOL_SCHEMAS = [
   {
     type: "function" as const,
     function: {
+      name: "listUnitsNeedingCollection",
+      description:
+        "Liệt kê các CĂN đã đối chiếu doanh thu nhưng CĐT chưa trả đủ tiền (cần thu tiếp). Trả về mã căn + tên khách + số tiền còn phải nhận + số ngày quá hạn. Dùng khi user hỏi 'căn nào chưa nhận đủ tiền', 'căn nào cần thu tiếp', 'lô nào CĐT chưa trả'.",
+      parameters: {
+        type: "object",
+        properties: {
+          partnerName: { type: "string", description: "Lọc theo tên CĐT (optional)." },
+          minDaysOverdue: {
+            type: "integer",
+            description: "Chỉ lấy căn quá hạn ≥ N ngày (default 0 = lấy hết).",
+          },
+          limit: { type: "integer", description: "Số căn tối đa (default 30)." },
+        },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "listUnitsMissingHHRecon",
+      description:
+        "Liệt kê các CĂN đã có doanh thu nhưng CHƯA đối chiếu HH sale với NVKD (cost_reconciliations chưa có type=sale_commission). Cần đối chiếu để ghi nợ HH cho NV. Trả về mã căn + NVKD + doanh thu ghi nhận.",
+      parameters: {
+        type: "object",
+        properties: {
+          limit: { type: "integer", description: "Số căn tối đa (default 30)." },
+        },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
       name: "getARAging",
       description:
         "Tuổi nợ phải THU (AR aging): CĐT nào còn nợ BRE bao lâu, chia bucket 0-30/31-60/61-90/>90 ngày kể từ ngày đối chiếu doanh thu. Dùng khi user hỏi 'CĐT nào nợ mình', 'khoản còn thu bao nhiêu', 'nợ quá 90 ngày'.",
@@ -788,6 +821,139 @@ async function listAllProjectPolicies(args: {
 // REPORT-BASED TOOLS (wrap logic từ /reports/* pages)
 // ═══════════════════════════════════════════════════════════════════
 
+async function listUnitsNeedingCollection(args: {
+  partnerName?: string;
+  minDaysOverdue?: number;
+  limit?: number;
+}): Promise<ToolResult> {
+  const today = new Date().toISOString().slice(0, 10);
+  const limit = Math.min(args.limit ?? 30, 100);
+  const minDays = args.minDaysOverdue ?? 0;
+  const partnerFilter = args.partnerName
+    ? sql`AND partner ILIKE ${'%' + args.partnerName + '%'}`
+    : sql``;
+
+  const rows = (await db.execute(sql`
+    WITH recon AS (
+      SELECT
+        p.id AS product_id,
+        p.product_code,
+        p.unit_code,
+        p.customer_name,
+        p.sales_person,
+        pj.name AS project_name,
+        COALESCE(pa_inv.name, pa_pj.name, 'Không rõ') AS partner,
+        SUM(r.total_receivable_this_time)::float8 AS receivable,
+        SUM(COALESCE((SELECT SUM(amount) FROM payments_in pi WHERE pi.reconciliation_id = r.id), 0))::float8 AS paid,
+        MAX(r.reconciliation_date) AS latest_recon_date
+      FROM revenue_reconciliations r
+      JOIN products p ON p.id = r.product_id
+      LEFT JOIN projects pj ON pj.id = p.project_id
+      LEFT JOIN partners pa_pj ON pa_pj.id = pj.partner_id
+      LEFT JOIN invoices i ON i.id = r.invoice_id
+      LEFT JOIN partners pa_inv ON pa_inv.id = i.partner_id
+      WHERE r.total_receivable_this_time > 0
+      GROUP BY p.id, p.product_code, p.unit_code, p.customer_name, p.sales_person,
+               pj.name, pa_inv.name, pa_pj.name
+    )
+    SELECT
+      product_id, product_code, unit_code, customer_name, sales_person,
+      project_name, partner,
+      receivable, paid,
+      (receivable - paid)::float8 AS remaining,
+      (${today}::date - latest_recon_date::date)::int AS days_overdue
+    FROM recon
+    WHERE (receivable - paid) > 0
+      AND (${today}::date - latest_recon_date::date) >= ${minDays}
+      ${partnerFilter}
+    ORDER BY days_overdue DESC, remaining DESC
+    LIMIT ${limit}
+  `)) as unknown as Array<{
+    product_id: number;
+    product_code: string;
+    unit_code: string;
+    customer_name: string | null;
+    sales_person: string | null;
+    project_name: string | null;
+    partner: string;
+    receivable: number;
+    paid: number;
+    remaining: number;
+    days_overdue: number;
+  }>;
+
+  return {
+    ok: true,
+    data: {
+      soCan: rows.length,
+      tongConThu: Math.round(rows.reduce((s, r) => s + Number(r.remaining), 0)),
+      items: rows.map((r) => ({
+        maCan: r.product_code,
+        duAn: r.project_name,
+        cdt: r.partner,
+        khach: r.customer_name,
+        nvkd: r.sales_person,
+        conPhaiThu: Math.round(Number(r.remaining)),
+        daNhan: Math.round(Number(r.paid)),
+        canhanTong: Math.round(Number(r.receivable)),
+        soNgayTuLanDCCuoi: r.days_overdue,
+        linkChiTiet: `/products/${r.product_id}`,
+      })),
+    },
+  };
+}
+
+async function listUnitsMissingHHRecon(args: {
+  limit?: number;
+}): Promise<ToolResult> {
+  const limit = Math.min(args.limit ?? 30, 100);
+  const rows = (await db.execute(sql`
+    SELECT
+      p.id, p.product_code, p.unit_code, p.customer_name, p.sales_person,
+      pr.name AS project_name,
+      SUM(r.total_receivable_this_time)::float8 AS revenue_recognized,
+      p.deposit_date
+    FROM products p
+    JOIN projects pr ON pr.id = p.project_id
+    JOIN revenue_reconciliations r ON r.product_id = p.id
+    WHERE NOT EXISTS (
+      SELECT 1 FROM cost_reconciliations c
+      WHERE c.product_id = p.id AND c.cost_type = 'sale_commission'
+    )
+    GROUP BY p.id, p.product_code, p.unit_code, p.customer_name, p.sales_person,
+             pr.name, p.deposit_date
+    HAVING SUM(r.total_receivable_this_time) > 0
+    ORDER BY p.deposit_date ASC NULLS LAST
+    LIMIT ${limit}
+  `)) as unknown as Array<{
+    id: number;
+    product_code: string;
+    unit_code: string;
+    customer_name: string | null;
+    sales_person: string | null;
+    project_name: string | null;
+    revenue_recognized: number;
+    deposit_date: string | null;
+  }>;
+
+  return {
+    ok: true,
+    data: {
+      soCan: rows.length,
+      tongDT: Math.round(rows.reduce((s, r) => s + Number(r.revenue_recognized), 0)),
+      items: rows.map((r) => ({
+        maCan: r.product_code,
+        duAn: r.project_name,
+        khach: r.customer_name,
+        nvkd: r.sales_person,
+        doanhThuGhiNhan: Math.round(Number(r.revenue_recognized)),
+        ngayCoc: r.deposit_date,
+        linkChiTiet: `/products/${r.id}`,
+      })),
+    },
+  };
+}
+
 async function getARAging(args: { partnerName?: string }): Promise<ToolResult> {
   const today = new Date().toISOString().slice(0, 10);
   const filter = args.partnerName
@@ -1356,6 +1522,8 @@ export const TOOL_IMPL: Record<string, (args: any) => Promise<ToolResult>> = {
   getProjectPolicy,
   listAllProjectPolicies,
   getTopProjects,
+  listUnitsNeedingCollection,
+  listUnitsMissingHHRecon,
   getARAging,
   getAPAging,
   getObligations,

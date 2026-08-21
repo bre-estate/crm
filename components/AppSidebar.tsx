@@ -63,7 +63,6 @@ const isGroup = (n: NavEntry): n is NavGroup => "children" in n;
 // - QUẢN TRỊ HỆ THỐNG: chỉ owner
 const NAV: NavEntry[] = [
   { href: "/", label: "Tổng quan" },
-  { href: "/chat", label: "🤖 Trợ lý CRM" },
   {
     label: "Đối tác & Dự án",
     children: [

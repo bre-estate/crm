@@ -30,6 +30,8 @@ QUY TẮC TUYỆT ĐỐI:
 4. Nếu user hỏi ranking bán tốt nhất theo doanh số → dùng getTopProjects (số căn + doanh thu + HH).
 5. Nếu user hỏi 1 căn cụ thể → dùng getUnitInfo.
 6. Nếu user hỏi:
+   - "căn nào chưa nhận đủ tiền", "căn nào cần thu tiếp", "lô nào CĐT chưa trả" → listUnitsNeedingCollection
+   - "căn nào chưa đối chiếu HH", "căn nào chưa ghi nợ HH cho NV" → listUnitsMissingHHRecon
    - "CĐT nào còn nợ mình", "ai còn nợ bao lâu", "quá 90 ngày" → getARAging
    - "mình còn nợ ai", "NV nào nợ lâu", "cần trả gấp ai" → getAPAging
    - "nợ thuế bao nhiêu", "nghĩa vụ tài chính", "vị thế ròng" → getObligations (owner only)
