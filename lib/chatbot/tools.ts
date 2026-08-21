@@ -91,6 +91,23 @@ export const TOOL_SCHEMAS = [
   {
     type: "function" as const,
     function: {
+      name: "listAllProjectPolicies",
+      description:
+        "AGGREGATE mức phổ biến của TẤT CẢ dự án (mode %PMG, %HH sale, phí admin, thưởng nóng) — 1 row per dự án. Dùng khi user hỏi 'chính sách CĐT nào tốt nhất', 'so sánh chính sách các dự án', 'CĐT nào trả HH cao nhất'. Bot tự sort theo tiêu chí user hỏi (VD %HH sale cao = tốt cho BRE, thưởng nóng nhiều = ưu đãi tốt).",
+      parameters: {
+        type: "object",
+        properties: {
+          minUnits: {
+            type: "integer",
+            description: "Chỉ lấy dự án có ≥ N căn (default 1, để tránh dự án 1 căn skew ranking).",
+          },
+        },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
       name: "getTopProjects",
       description:
         "AGGREGATE ranking dự án theo số căn đã bán, tổng doanh thu ghi nhận, tổng HH sale. Dùng khi user hỏi 'dự án nào BRE bán tốt nhất', 'top dự án theo doanh số', 'dự án nào nhiều căn nhất'.",
@@ -560,11 +577,93 @@ async function getTopProjects(args: {
   };
 }
 
+async function listAllProjectPolicies(args: {
+  minUnits?: number;
+}): Promise<ToolResult> {
+  const minUnits = args.minUnits ?? 1;
+
+  const rows = (await db.execute(sql`
+    SELECT
+      pr.id, pr.name,
+      p.pmg_rate, p.pmg_sale_rate, p.sale_commission_rate, p.admin_fee,
+      p.cdt_bonus_sale, p.cdt_bonus_manager
+    FROM projects pr
+    JOIN products p ON p.project_id = pr.id
+  `)) as unknown as Array<{
+    id: number;
+    name: string;
+    pmg_rate: number;
+    pmg_sale_rate: number;
+    sale_commission_rate: number;
+    admin_fee: number;
+    cdt_bonus_sale: number;
+    cdt_bonus_manager: number;
+  }>;
+
+  const byProject = new Map<string, {
+    id: number;
+    name: string;
+    pmgRates: number[];
+    pmgSaleRates: number[];
+    hhSaleRates: number[];
+    adminFees: number[];
+    cdtBonusSales: number[];
+    cdtBonusMgrs: number[];
+  }>();
+
+  for (const r of rows) {
+    // Merge project trùng tên (data quality: có 2 project cùng name)
+    const key = r.name.trim();
+    if (!byProject.has(key)) {
+      byProject.set(key, {
+        id: r.id,
+        name: key,
+        pmgRates: [],
+        pmgSaleRates: [],
+        hhSaleRates: [],
+        adminFees: [],
+        cdtBonusSales: [],
+        cdtBonusMgrs: [],
+      });
+    }
+    const p = byProject.get(key)!;
+    p.pmgRates.push(Number(r.pmg_rate));
+    p.pmgSaleRates.push(Number(r.pmg_sale_rate));
+    p.hhSaleRates.push(Number(r.sale_commission_rate));
+    p.adminFees.push(Number(r.admin_fee));
+    p.cdtBonusSales.push(Number(r.cdt_bonus_sale));
+    p.cdtBonusMgrs.push(Number(r.cdt_bonus_manager));
+  }
+
+  const items = Array.from(byProject.values())
+    .filter((p) => p.pmgRates.length >= minUnits)
+    .map((p) => ({
+      duAn: p.name,
+      soCan: p.pmgRates.length,
+      pctPMG_LK_phoBien: stats(p.pmgRates).mode,
+      pctPMG_LK_sale_phoBien: stats(p.pmgSaleRates).mode,
+      pctHHSale_phoBien: stats(p.hhSaleRates).mode,
+      phiAdmin_phoBien: stats(p.adminFees).mode,
+      cdtThuongNongSale_phoBien: stats(p.cdtBonusSales).mode,
+      cdtThuongNongQL_phoBien: stats(p.cdtBonusMgrs).mode,
+    }))
+    .sort((a, b) => b.soCan - a.soCan);
+
+  return {
+    ok: true,
+    data: {
+      soDuAn: items.length,
+      items,
+    },
+  };
+}
+
 export const TOOL_IMPL: Record<string, (args: any) => Promise<ToolResult>> = {
   getEmployeeCommission,
   getEmployeeOverpaidList,
   getUnitInfo,
   listUnitsByProject,
   getProjectPolicy,
+  listAllProjectPolicies,
   getTopProjects,
 };
