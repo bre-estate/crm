@@ -69,10 +69,11 @@ export async function POST(req: Request) {
         { role: "user", content: body.question },
       ];
 
-      // gemini-3.6-flash có "thinking mode" yêu cầu thought_signature khi
-      // stream tool calls, OpenAI-compat endpoint không handle được → 400.
-      // gemini-2.0-flash không có thinking, stream tool ổn định + nhanh hơn.
-      const MODEL = "gemini-2.0-flash";
+      // Lite model = nhanh nhất, đủ chất lượng cho Q&A số liệu.
+      // Test local (scripts/test_gemini_2turn.mjs): 1.8s total 2-turn flow.
+      // "latest" alias auto-track newest stable lite; đỡ phải update code
+      // khi Google release version mới.
+      const MODEL = "gemini-flash-lite-latest";
       const t0 = performance.now();
       const ts = (label: string) =>
         emit("status", {
@@ -81,88 +82,70 @@ export async function POST(req: Request) {
 
       try {
         for (let turn = 0; turn < 5; turn++) {
-          ts(turn === 0 ? "Đang phân tích câu hỏi" : "Đang tổng hợp câu trả lời");
+          // Turn có thể có tool call → non-stream (preserve response nguyên
+          // vẹn cho Gemini, tránh mất thought_signature khi accumulate deltas).
+          // Turn cuối (không tool) → stream text chunk-by-chunk.
+          ts(turn === 0 ? "Đang phân tích câu hỏi" : "Đang tổng hợp");
 
-          // Stream toàn bộ turns. Accumulate tool_calls từ deltas nếu có.
-          const streamRes = await client.chat.completions.create({
+          const res = await client.chat.completions.create({
             model: MODEL,
             messages,
             tools: TOOL_SCHEMAS,
             tool_choice: "auto",
             temperature: 0.2,
-            stream: true,
           });
+          const msg = res.choices[0].message;
 
-          let accumulated = "";
-          const toolCallsAcc: Record<
-            number,
-            { id: string; name: string; args: string }
-          > = {};
-
-          for await (const chunk of streamRes) {
-            const d = chunk.choices[0]?.delta;
-            if (!d) continue;
-            if (d.content) {
-              accumulated += d.content;
-              emit("delta", { text: d.content });
-            }
-            if (d.tool_calls) {
-              for (const tc of d.tool_calls) {
-                const idx = tc.index ?? 0;
-                if (!toolCallsAcc[idx]) {
-                  toolCallsAcc[idx] = { id: "", name: "", args: "" };
+          if (msg.tool_calls && msg.tool_calls.length > 0) {
+            // Push nguyên message assistant (kèm tool_calls + có thể thought_signature)
+            messages.push(msg);
+            for (const tc of msg.tool_calls) {
+              if (tc.type !== "function") continue;
+              ts(`Đang tra ${tc.function.name}`);
+              const fn = TOOL_IMPL[tc.function.name];
+              let result: unknown;
+              if (!fn) {
+                result = { ok: false, error: `Unknown tool: ${tc.function.name}` };
+              } else {
+                try {
+                  const args = JSON.parse(tc.function.arguments);
+                  result = await fn(args);
+                } catch (e) {
+                  result = {
+                    ok: false,
+                    error: `Tool error: ${e instanceof Error ? e.message : String(e)}`,
+                  };
                 }
-                if (tc.id) toolCallsAcc[idx].id = tc.id;
-                if (tc.function?.name) toolCallsAcc[idx].name = tc.function.name;
-                if (tc.function?.arguments)
-                  toolCallsAcc[idx].args += tc.function.arguments;
               }
+              messages.push({
+                role: "tool",
+                tool_call_id: tc.id,
+                content: JSON.stringify(result),
+              });
             }
+            continue;
           }
 
-          const toolCalls = Object.values(toolCallsAcc).filter((t) => t.name);
-
-          if (toolCalls.length === 0) {
-            // Đã stream xong final answer
+          // Không tool call → đã có final answer. Gemini có thể trả text
+          // trong content luôn (single-shot). Emit + close.
+          if (msg.content) {
+            ts("Đang trả lời");
+            // Chia thành chunks nhỏ để UI thấy chữ chảy dần (fake streaming
+            // vì non-stream already đã có full text, chunk client-side để UX)
+            const chunkSize = 40;
+            for (let i = 0; i < msg.content.length; i += chunkSize) {
+              emit("delta", { text: msg.content.slice(i, i + chunkSize) });
+            }
             emit("done", {});
             controller.close();
             return;
           }
 
-          // Có tool calls → execute + tiếp turn sau
-          messages.push({
-            role: "assistant",
-            content: accumulated || "",
-            tool_calls: toolCalls.map((t) => ({
-              id: t.id,
-              type: "function" as const,
-              function: { name: t.name, arguments: t.args },
-            })),
-          });
-
-          for (const tc of toolCalls) {
-            ts(`Đang tra ${tc.name}`);
-            const fn = TOOL_IMPL[tc.name];
-            let result: unknown;
-            if (!fn) {
-              result = { ok: false, error: `Unknown tool: ${tc.name}` };
-            } else {
-              try {
-                const args = JSON.parse(tc.args);
-                result = await fn(args);
-              } catch (e) {
-                result = {
-                  ok: false,
-                  error: `Tool error: ${e instanceof Error ? e.message : String(e)}`,
-                };
-              }
-            }
-            messages.push({
-              role: "tool",
-              tool_call_id: tc.id,
-              content: JSON.stringify(result),
-            });
-          }
+          // Fallback edge case: không content, không tool → thoát
+          emit("delta", { text: "(Không có phản hồi)" });
+          emit("done", {});
+          controller.close();
+          return;
         }
 
         emit("delta", { text: "Quá nhiều bước xử lý, vui lòng hỏi lại câu ngắn hơn." });
