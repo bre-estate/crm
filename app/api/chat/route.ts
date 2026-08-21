@@ -69,76 +69,97 @@ export async function POST(req: Request) {
         { role: "user", content: body.question },
       ];
 
+      const MODEL = "gemini-3.6-flash-lite";
+      const t0 = performance.now();
+      const ts = (label: string) =>
+        emit("status", {
+          message: `${label} (${Math.round(performance.now() - t0)}ms)`,
+        });
+
       try {
         for (let turn = 0; turn < 5; turn++) {
-          const response = await client.chat.completions.create({
-            model: "gemini-3.6-flash",
+          ts(turn === 0 ? "Đang phân tích câu hỏi" : "Đang tổng hợp câu trả lời");
+
+          // Stream toàn bộ turns. Accumulate tool_calls từ deltas nếu có.
+          const streamRes = await client.chat.completions.create({
+            model: MODEL,
             messages,
             tools: TOOL_SCHEMAS,
             tool_choice: "auto",
-            temperature: 0.3,
+            temperature: 0.2,
+            stream: true,
           });
 
-          const msg = response.choices[0].message;
+          let accumulated = "";
+          const toolCallsAcc: Record<
+            number,
+            { id: string; name: string; args: string }
+          > = {};
 
-          if (msg.tool_calls && msg.tool_calls.length > 0) {
-            messages.push({
-              role: "assistant",
-              content: msg.content ?? "",
-              tool_calls: msg.tool_calls,
-            });
-            for (const tc of msg.tool_calls) {
-              if (tc.type !== "function") continue;
-              emit("status", { message: `Đang tra ${tc.function.name}...` });
-              const fn = TOOL_IMPL[tc.function.name];
-              let result: unknown;
-              if (!fn) {
-                result = { ok: false, error: `Unknown tool: ${tc.function.name}` };
-              } else {
-                try {
-                  const args = JSON.parse(tc.function.arguments);
-                  result = await fn(args);
-                } catch (e) {
-                  result = {
-                    ok: false,
-                    error: `Tool error: ${e instanceof Error ? e.message : String(e)}`,
-                  };
-                }
-              }
-              messages.push({
-                role: "tool",
-                tool_call_id: tc.id,
-                content: JSON.stringify(result),
-              });
+          for await (const chunk of streamRes) {
+            const d = chunk.choices[0]?.delta;
+            if (!d) continue;
+            if (d.content) {
+              accumulated += d.content;
+              emit("delta", { text: d.content });
             }
-            continue;
+            if (d.tool_calls) {
+              for (const tc of d.tool_calls) {
+                const idx = tc.index ?? 0;
+                if (!toolCallsAcc[idx]) {
+                  toolCallsAcc[idx] = { id: "", name: "", args: "" };
+                }
+                if (tc.id) toolCallsAcc[idx].id = tc.id;
+                if (tc.function?.name) toolCallsAcc[idx].name = tc.function.name;
+                if (tc.function?.arguments)
+                  toolCallsAcc[idx].args += tc.function.arguments;
+              }
+            }
           }
 
-          // Không tool call → có content luôn (thường Gemini trả về single-shot)
-          // OR: cần synthesize final answer với streaming.
-          if (msg.content) {
-            // Emit toàn bộ content 1 lần (đã có sẵn từ non-stream response)
-            emit("delta", { text: msg.content });
+          const toolCalls = Object.values(toolCallsAcc).filter((t) => t.name);
+
+          if (toolCalls.length === 0) {
+            // Đã stream xong final answer
             emit("done", {});
             controller.close();
             return;
           }
 
-          // Fallback: gọi lại với streaming để lấy answer
-          emit("status", { message: "Đang tổng hợp..." });
-          const streamRes = await client.chat.completions.create({
-            model: "gemini-3.6-flash",
-            messages,
-            stream: true,
-            temperature: 0.3,
+          // Có tool calls → execute + tiếp turn sau
+          messages.push({
+            role: "assistant",
+            content: accumulated || "",
+            tool_calls: toolCalls.map((t) => ({
+              id: t.id,
+              type: "function" as const,
+              function: { name: t.name, arguments: t.args },
+            })),
           });
-          for await (const chunk of streamRes) {
-            const delta = chunk.choices[0]?.delta?.content;
-            if (delta) emit("delta", { text: delta });
+
+          for (const tc of toolCalls) {
+            ts(`Đang tra ${tc.name}`);
+            const fn = TOOL_IMPL[tc.name];
+            let result: unknown;
+            if (!fn) {
+              result = { ok: false, error: `Unknown tool: ${tc.name}` };
+            } else {
+              try {
+                const args = JSON.parse(tc.args);
+                result = await fn(args);
+              } catch (e) {
+                result = {
+                  ok: false,
+                  error: `Tool error: ${e instanceof Error ? e.message : String(e)}`,
+                };
+              }
+            }
+            messages.push({
+              role: "tool",
+              tool_call_id: tc.id,
+              content: JSON.stringify(result),
+            });
           }
-          emit("done", {});
-          controller.close();
-          return;
         }
 
         emit("delta", { text: "Quá nhiều bước xử lý, vui lòng hỏi lại câu ngắn hơn." });
