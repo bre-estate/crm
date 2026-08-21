@@ -181,7 +181,33 @@ async function getUnitInfo(args: { unitCode: string }): Promise<ToolResult> {
       p.sale_commission_rate, p.admin_fee,
       pr.name AS project_name,
       (SELECT COUNT(*)::int FROM cost_reconciliations WHERE product_id = p.id) AS n_cost_recons,
-      (SELECT COUNT(*)::int FROM revenue_reconciliations WHERE product_id = p.id) AS n_rev_recons
+      (SELECT COUNT(*)::int FROM revenue_reconciliations WHERE product_id = p.id) AS n_rev_recons,
+      -- Doanh thu ròng ghi nhận với CĐT (revenue chính + thưởng nóng)
+      COALESCE((
+        SELECT SUM(rr.revenue_this_time + COALESCE(rr.cdt_bonus_sale, 0) + COALESCE(rr.cdt_bonus_manager, 0))
+        FROM revenue_reconciliations rr WHERE rr.product_id = p.id
+      ), 0)::float8 AS revenue_recognized,
+      -- Đã nhận thực tế từ CĐT (payments_in)
+      COALESCE((
+        SELECT SUM(pi.amount) FROM payments_in pi
+        WHERE pi.reconciliation_id IN (
+          SELECT id FROM revenue_reconciliations WHERE product_id = p.id
+        )
+      ), 0)::float8 AS revenue_received,
+      -- HH sale ghi nhận cho NV (cost recon)
+      COALESCE((
+        SELECT SUM(cr.amount_payable_this_time)
+        FROM cost_reconciliations cr
+        WHERE cr.product_id = p.id AND cr.cost_type = 'sale_commission'
+      ), 0)::float8 AS hh_recognized,
+      -- HH sale đã trả cho NV (payments_out)
+      COALESCE((
+        SELECT SUM(po.amount) FROM payments_out po
+        WHERE po.cost_reconciliation_id IN (
+          SELECT id FROM cost_reconciliations
+          WHERE product_id = p.id AND cost_type = 'sale_commission'
+        )
+      ), 0)::float8 AS hh_paid
     FROM products p
     LEFT JOIN projects pr ON pr.id = p.project_id
     WHERE UPPER(p.unit_code) = UPPER(${code}) OR UPPER(p.product_code) LIKE UPPER(${'%' + code + '%'})
@@ -204,6 +230,10 @@ async function getUnitInfo(args: { unitCode: string }): Promise<ToolResult> {
     project_name: string | null;
     n_cost_recons: number;
     n_rev_recons: number;
+    revenue_recognized: number;
+    revenue_received: number;
+    hh_recognized: number;
+    hh_paid: number;
   }>;
 
   if (rows.length === 0) {
@@ -214,25 +244,43 @@ async function getUnitInfo(args: { unitCode: string }): Promise<ToolResult> {
     ok: true,
     data: {
       soLuong: rows.length,
-      items: rows.map((r) => ({
-        id: r.id,
-        maCan: r.product_code,
-        maSp: r.unit_code,
-        duAn: r.project_name,
-        loaiGiaoDich: r.sale_type === "primary" ? "Sơ cấp" : "Thứ cấp",
-        khach: r.customer_name,
-        nvkd: r.sales_person,
-        phong: r.dept_name,
-        ngayCoc: r.deposit_date,
-        giaTinhPMG: Math.round(Number(r.pmg_base_price)),
-        pctPMG: Number(r.pmg_rate),
-        pctPMGSale: Number(r.pmg_sale_rate),
-        pctHHSale: Number(r.sale_commission_rate),
-        phiAdmin: Math.round(Number(r.admin_fee)),
-        soDoiChieuGiaVon: r.n_cost_recons,
-        soDoiChieuDoanhThu: r.n_rev_recons,
-        linkChiTiet: `/products/${r.id}`,
-      })),
+      items: rows.map((r) => {
+        const revRecognized = Number(r.revenue_recognized ?? 0);
+        const revReceived = Number(r.revenue_received ?? 0);
+        const hhRecognized = Number(r.hh_recognized ?? 0);
+        const hhPaid = Number(r.hh_paid ?? 0);
+        return {
+          id: r.id,
+          maCan: r.product_code,
+          maSp: r.unit_code,
+          duAn: r.project_name,
+          loaiGiaoDich: r.sale_type === "primary" ? "Sơ cấp" : "Thứ cấp",
+          khach: r.customer_name,
+          nvkd: r.sales_person,
+          phong: r.dept_name,
+          ngayCoc: r.deposit_date,
+          giaTinhPMG: Math.round(Number(r.pmg_base_price)),
+          pctPMG: Number(r.pmg_rate),
+          pctPMGSale: Number(r.pmg_sale_rate),
+          pctHHSale: Number(r.sale_commission_rate),
+          phiAdmin: Math.round(Number(r.admin_fee)),
+          soDoiChieuGiaVon: r.n_cost_recons,
+          soDoiChieuDoanhThu: r.n_rev_recons,
+          // Payment status: CĐT
+          doanhThuGhiNhan: Math.round(revRecognized),
+          daNhanTuCDT: Math.round(revReceived),
+          conPhaiNhanTuCDT: Math.max(0, Math.round(revRecognized - revReceived)),
+          pctDaNhanTuCDT:
+            revRecognized > 0
+              ? Math.round((revReceived / revRecognized) * 100)
+              : 0,
+          // HH sale status: NV
+          hhSaleGhiNhan: Math.round(hhRecognized),
+          hhSaleDaTraNV: Math.round(hhPaid),
+          hhSaleConNoNV: Math.max(0, Math.round(hhRecognized - hhPaid)),
+          linkChiTiet: `/products/${r.id}`,
+        };
+      }),
     },
   };
 }
