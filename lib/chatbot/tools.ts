@@ -108,6 +108,75 @@ export const TOOL_SCHEMAS = [
   {
     type: "function" as const,
     function: {
+      name: "getARAging",
+      description:
+        "Tuổi nợ phải THU (AR aging): CĐT nào còn nợ BRE bao lâu, chia bucket 0-30/31-60/61-90/>90 ngày kể từ ngày đối chiếu doanh thu. Dùng khi user hỏi 'CĐT nào nợ mình', 'khoản còn thu bao nhiêu', 'nợ quá 90 ngày'.",
+      parameters: {
+        type: "object",
+        properties: {
+          partnerName: {
+            type: "string",
+            description: "Lọc theo tên CĐT (partial match, optional).",
+          },
+        },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "getAPAging",
+      description:
+        "Tuổi nợ phải TRẢ (AP aging): BRE còn nợ NVKD/CTV nào bao lâu, chia bucket 0-30/31-60/61-90/>90 ngày kể từ ngày đối chiếu giá vốn. Dùng khi user hỏi 'mình còn nợ ai', 'khoản NV nào nợ lâu nhất', 'cần trả gấp cho ai'.",
+      parameters: {
+        type: "object",
+        properties: {
+          employeeName: {
+            type: "string",
+            description: "Lọc theo tên NV (partial match, optional).",
+          },
+        },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "getObligations",
+      description:
+        "Nghĩa vụ tài chính tổng hợp (OWNER ONLY): còn thu từ CĐT, còn nợ sale team, nợ thuế (TK 3334/3335/33311), nợ BHXH (TK 3383/3384/3386), vị thế ròng. Dùng khi user hỏi 'còn nợ thuế bao nhiêu', 'nợ BHXH', 'vị thế tài chính'.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "getSalesReport",
+      description:
+        "Báo cáo doanh thu (BCDT kế toán) theo kỳ, group theo 1 trong 4 chiều: dự án / CĐT / NVKD / phòng KD. Dùng khi user hỏi 'DT quý 2', 'DT dự án X năm 2026', 'top NVKD doanh số', 'phòng nào DT cao'.",
+      parameters: {
+        type: "object",
+        properties: {
+          year: { type: "integer", description: "Năm (VD 2026). Default năm hiện tại." },
+          period: {
+            type: "string",
+            enum: ["year", "quarter", "month"],
+            description: "Kỳ: cả năm / theo quý / theo tháng. Default year.",
+          },
+          quarter: { type: "integer", description: "Q1-Q4 (khi period=quarter)." },
+          month: { type: "integer", description: "1-12 (khi period=month)." },
+          groupBy: {
+            type: "string",
+            enum: ["project", "partner", "sales_person", "department"],
+            description: "Chiều group. Default project.",
+          },
+        },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
       name: "getTopProjects",
       description:
         "AGGREGATE ranking dự án theo số căn đã bán, tổng doanh thu ghi nhận, tổng HH sale. Dùng khi user hỏi 'dự án nào BRE bán tốt nhất', 'top dự án theo doanh số', 'dự án nào nhiều căn nhất'.",
@@ -658,6 +727,325 @@ async function listAllProjectPolicies(args: {
   };
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// REPORT-BASED TOOLS (wrap logic từ /reports/* pages)
+// ═══════════════════════════════════════════════════════════════════
+
+async function getARAging(args: { partnerName?: string }): Promise<ToolResult> {
+  const today = new Date().toISOString().slice(0, 10);
+  const filter = args.partnerName
+    ? sql`WHERE partner ILIKE ${'%' + args.partnerName + '%'}`
+    : sql``;
+
+  const rows = (await db.execute(sql`
+    WITH recon AS (
+      SELECT
+        r.id,
+        COALESCE(pa_inv.name, pa_pj.name, 'Không rõ') AS partner,
+        r.reconciliation_date,
+        r.total_receivable_this_time,
+        COALESCE((SELECT SUM(amount) FROM payments_in pi WHERE pi.reconciliation_id = r.id), 0) AS paid
+      FROM revenue_reconciliations r
+      LEFT JOIN products p ON p.id = r.product_id
+      LEFT JOIN projects pj ON pj.id = p.project_id
+      LEFT JOIN partners pa_pj ON pa_pj.id = pj.partner_id
+      LEFT JOIN invoices i ON i.id = r.invoice_id
+      LEFT JOIN partners pa_inv ON pa_inv.id = i.partner_id
+      WHERE r.total_receivable_this_time > 0
+    )
+    SELECT * FROM (
+      SELECT
+        partner,
+        COUNT(*)::int AS count,
+        SUM(CASE WHEN (${today}::date - reconciliation_date::date) <= 30
+          THEN GREATEST(0, total_receivable_this_time - paid) ELSE 0 END)::float8 AS b0_30,
+        SUM(CASE WHEN (${today}::date - reconciliation_date::date) BETWEEN 31 AND 60
+          THEN GREATEST(0, total_receivable_this_time - paid) ELSE 0 END)::float8 AS b31_60,
+        SUM(CASE WHEN (${today}::date - reconciliation_date::date) BETWEEN 61 AND 90
+          THEN GREATEST(0, total_receivable_this_time - paid) ELSE 0 END)::float8 AS b61_90,
+        SUM(CASE WHEN (${today}::date - reconciliation_date::date) > 90
+          THEN GREATEST(0, total_receivable_this_time - paid) ELSE 0 END)::float8 AS b91,
+        SUM(GREATEST(0, total_receivable_this_time - paid))::float8 AS total
+      FROM recon
+      GROUP BY partner
+      HAVING SUM(GREATEST(0, total_receivable_this_time - paid)) > 0
+    ) x ${filter}
+    ORDER BY total DESC
+  `)) as unknown as Array<{
+    partner: string;
+    count: number;
+    b0_30: number;
+    b31_60: number;
+    b61_90: number;
+    b91: number;
+    total: number;
+  }>;
+
+  const totalOwed = rows.reduce((s, r) => s + Number(r.total), 0);
+  return {
+    ok: true,
+    data: {
+      soCDT: rows.length,
+      tongConThu: Math.round(totalOwed),
+      chotNgay: today,
+      items: rows.map((r) => ({
+        cdt: r.partner,
+        soDot: r.count,
+        buc0_30ngay: Math.round(Number(r.b0_30)),
+        buc31_60ngay: Math.round(Number(r.b31_60)),
+        buc61_90ngay: Math.round(Number(r.b61_90)),
+        bucTren90ngay: Math.round(Number(r.b91)),
+        tongCDTnayNo: Math.round(Number(r.total)),
+      })),
+    },
+  };
+}
+
+async function getAPAging(args: { employeeName?: string }): Promise<ToolResult> {
+  const today = new Date().toISOString().slice(0, 10);
+  const filter = args.employeeName
+    ? sql`WHERE name ILIKE ${'%' + args.employeeName + '%'}`
+    : sql``;
+
+  const rows = (await db.execute(sql`
+    WITH recon AS (
+      SELECT
+        c.id, c.employee_name, c.reconciliation_date, c.amount_payable_this_time,
+        COALESCE((SELECT SUM(amount) FROM payments_out po WHERE po.cost_reconciliation_id = c.id), 0) AS paid
+      FROM cost_reconciliations c
+      WHERE c.amount_payable_this_time > 0
+    )
+    SELECT * FROM (
+      SELECT
+        employee_name AS name,
+        COUNT(*)::int AS count,
+        SUM(CASE WHEN (${today}::date - reconciliation_date::date) <= 30
+          THEN GREATEST(0, amount_payable_this_time - paid) ELSE 0 END)::float8 AS b0_30,
+        SUM(CASE WHEN (${today}::date - reconciliation_date::date) BETWEEN 31 AND 60
+          THEN GREATEST(0, amount_payable_this_time - paid) ELSE 0 END)::float8 AS b31_60,
+        SUM(CASE WHEN (${today}::date - reconciliation_date::date) BETWEEN 61 AND 90
+          THEN GREATEST(0, amount_payable_this_time - paid) ELSE 0 END)::float8 AS b61_90,
+        SUM(CASE WHEN (${today}::date - reconciliation_date::date) > 90
+          THEN GREATEST(0, amount_payable_this_time - paid) ELSE 0 END)::float8 AS b91,
+        SUM(GREATEST(0, amount_payable_this_time - paid))::float8 AS total
+      FROM recon
+      GROUP BY employee_name
+      HAVING SUM(GREATEST(0, amount_payable_this_time - paid)) > 0
+    ) x ${filter}
+    ORDER BY total DESC
+  `)) as unknown as Array<{
+    name: string;
+    count: number;
+    b0_30: number;
+    b31_60: number;
+    b61_90: number;
+    b91: number;
+    total: number;
+  }>;
+
+  const totalOwed = rows.reduce((s, r) => s + Number(r.total), 0);
+  return {
+    ok: true,
+    data: {
+      soNV: rows.length,
+      tongConNo: Math.round(totalOwed),
+      chotNgay: today,
+      items: rows.map((r) => ({
+        nvkd: r.name,
+        soDot: r.count,
+        buc0_30ngay: Math.round(Number(r.b0_30)),
+        buc31_60ngay: Math.round(Number(r.b31_60)),
+        buc61_90ngay: Math.round(Number(r.b61_90)),
+        bucTren90ngay: Math.round(Number(r.b91)),
+        tongNVnayCtyNo: Math.round(Number(r.total)),
+      })),
+    },
+  };
+}
+
+async function getObligations(): Promise<ToolResult> {
+  const { getCurrentUser } = await import("@/lib/auth");
+  const u = await getCurrentUser();
+  if (u?.role !== "owner") {
+    return { ok: false, error: "Chỉ owner mới xem được nghĩa vụ tài chính tổng hợp" };
+  }
+
+  const [rev] = (await db.execute(sql`
+    SELECT COALESCE(SUM(total_receivable_this_time), 0)::float8 AS s
+    FROM revenue_reconciliations
+  `)) as unknown as Array<{ s: number }>;
+  const [pIn] = (await db.execute(sql`
+    SELECT COALESCE(SUM(amount), 0)::float8 AS s FROM payments_in
+  `)) as unknown as Array<{ s: number }>;
+  const receivable = Math.max(0, Number(rev?.s ?? 0) - Number(pIn?.s ?? 0));
+
+  const [costAccrual] = (await db.execute(sql`
+    SELECT COALESCE(SUM(amount_payable_this_time), 0)::float8 AS s FROM cost_reconciliations
+  `)) as unknown as Array<{ s: number }>;
+  const [saleCash] = (await db.execute(sql`
+    SELECT COALESCE(SUM(ABS(debit_amount)), 0)::float8 AS s
+    FROM bank_transactions
+    WHERE debit_amount IS NOT NULL
+      AND partner_name IN (
+        'DOAN LE BACH','HO NGUYEN CONG THANH','TRAN MINH NHAT',
+        'TRAN THI KHANH LINH','LE THI CAM GIANG','LE TRINH THANH THUY','VU DUC THINH'
+      )
+  `)) as unknown as Array<{ s: number }>;
+  const owedSaleTeam = Math.max(0, Number(costAccrual?.s ?? 0) - Number(saleCash?.s ?? 0));
+
+  const [taxAccrual] = (await db.execute(sql`
+    SELECT COALESCE(SUM(amount), 0)::float8 AS s FROM accounting_journal
+    WHERE credit_account IN ('3334','3335','33311')
+      AND debit_account != '911'
+      AND substr(entry_date, 1, 4) IN ('2025','2026')
+  `)) as unknown as Array<{ s: number }>;
+  const [taxCash] = (await db.execute(sql`
+    SELECT COALESCE(SUM(ABS(debit_amount)), 0)::float8 AS s FROM bank_transactions
+    WHERE debit_amount IS NOT NULL
+      AND (partner_name ILIKE '%KHO BAC%' OR partner_name ILIKE '%KBNN%')
+  `)) as unknown as Array<{ s: number }>;
+  const owedTax = Math.max(0, Number(taxAccrual?.s ?? 0) - Number(taxCash?.s ?? 0));
+
+  const [bhxhAccrual] = (await db.execute(sql`
+    SELECT COALESCE(SUM(amount), 0)::float8 AS s FROM accounting_journal
+    WHERE credit_account IN ('3383','3384','3386')
+      AND debit_account != '911'
+      AND substr(entry_date, 1, 4) IN ('2025','2026')
+  `)) as unknown as Array<{ s: number }>;
+  const [bhxhCash] = (await db.execute(sql`
+    SELECT COALESCE(SUM(ABS(debit_amount)), 0)::float8 AS s FROM bank_transactions
+    WHERE debit_amount IS NOT NULL AND partner_name ILIKE '%BAO HIEM XA HOI%'
+  `)) as unknown as Array<{ s: number }>;
+  const owedBhxh = Math.max(0, Number(bhxhAccrual?.s ?? 0) - Number(bhxhCash?.s ?? 0));
+
+  const totalOwed = owedSaleTeam + owedTax + owedBhxh;
+  return {
+    ok: true,
+    data: {
+      conThuTuCDT: Math.round(receivable),
+      conNoSaleTeam: Math.round(owedSaleTeam),
+      conNoThue: Math.round(owedTax),
+      conNoBHXH: Math.round(owedBhxh),
+      tongNo: Math.round(totalOwed),
+      viTheRong: Math.round(receivable - totalOwed),
+    },
+  };
+}
+
+async function getSalesReport(args: {
+  year?: number;
+  period?: "year" | "quarter" | "month";
+  quarter?: number;
+  month?: number;
+  groupBy?: "project" | "partner" | "sales_person" | "department";
+}): Promise<ToolResult> {
+  const year = args.year ?? new Date().getUTCFullYear();
+  const period = args.period ?? "year";
+  const groupBy = args.groupBy ?? "project";
+
+  let start: string, end: string, label: string;
+  if (period === "month" && args.month) {
+    start = `${year}-${String(args.month).padStart(2, "0")}-01`;
+    end = new Date(year, args.month, 0).toISOString().slice(0, 10);
+    label = `T${args.month}/${year}`;
+  } else if (period === "quarter" && args.quarter) {
+    const sm = (args.quarter - 1) * 3 + 1;
+    start = `${year}-${String(sm).padStart(2, "0")}-01`;
+    end = new Date(year, sm + 2, 0).toISOString().slice(0, 10);
+    label = `Q${args.quarter}/${year}`;
+  } else {
+    start = `${year}-01-01`;
+    end = `${year}-12-31`;
+    label = `Năm ${year}`;
+  }
+
+  const [totals] = (await db.execute(sql`
+    SELECT
+      COALESCE(SUM(total_receivable_this_time), 0)::float8 AS total_rev,
+      COUNT(*)::int AS cnt_recon,
+      COUNT(DISTINCT product_id)::int AS cnt_units
+    FROM revenue_reconciliations
+    WHERE reconciliation_date BETWEEN ${start} AND ${end}
+  `)) as unknown as Array<{ total_rev: number; cnt_recon: number; cnt_units: number }>;
+
+  let breakdown: Array<{ label: string; rev: number; count: number; units: number }> = [];
+
+  if (groupBy === "project") {
+    const rows = (await db.execute(sql`
+      SELECT pr.name AS label,
+        COALESCE(SUM(rr.total_receivable_this_time), 0)::float8 AS rev,
+        COUNT(*)::int AS count,
+        COUNT(DISTINCT rr.product_id)::int AS units
+      FROM revenue_reconciliations rr
+      JOIN products p ON p.id = rr.product_id
+      JOIN projects pr ON pr.id = p.project_id
+      WHERE rr.reconciliation_date BETWEEN ${start} AND ${end}
+      GROUP BY pr.name
+      ORDER BY rev DESC
+    `)) as unknown as typeof breakdown;
+    breakdown = rows;
+  } else if (groupBy === "partner") {
+    const rows = (await db.execute(sql`
+      SELECT COALESCE(pa.name, '(Chưa gán CĐT)') AS label,
+        COALESCE(SUM(rr.total_receivable_this_time), 0)::float8 AS rev,
+        COUNT(*)::int AS count,
+        COUNT(DISTINCT rr.product_id)::int AS units
+      FROM revenue_reconciliations rr
+      JOIN products p ON p.id = rr.product_id
+      JOIN projects pj ON pj.id = p.project_id
+      LEFT JOIN partners pa ON pa.id = pj.partner_id
+      WHERE rr.reconciliation_date BETWEEN ${start} AND ${end}
+      GROUP BY pa.name
+      ORDER BY rev DESC
+    `)) as unknown as typeof breakdown;
+    breakdown = rows;
+  } else if (groupBy === "sales_person") {
+    const rows = (await db.execute(sql`
+      SELECT COALESCE(p.sales_person, '(Không rõ)') AS label,
+        COALESCE(SUM(rr.total_receivable_this_time), 0)::float8 AS rev,
+        COUNT(*)::int AS count,
+        COUNT(DISTINCT rr.product_id)::int AS units
+      FROM revenue_reconciliations rr
+      JOIN products p ON p.id = rr.product_id
+      WHERE rr.reconciliation_date BETWEEN ${start} AND ${end}
+      GROUP BY p.sales_person
+      ORDER BY rev DESC
+    `)) as unknown as typeof breakdown;
+    breakdown = rows;
+  } else {
+    const rows = (await db.execute(sql`
+      SELECT COALESCE(d.name, p.dept_name, '(Chưa phân phòng)') AS label,
+        COALESCE(SUM(rr.total_receivable_this_time), 0)::float8 AS rev,
+        COUNT(*)::int AS count,
+        COUNT(DISTINCT rr.product_id)::int AS units
+      FROM revenue_reconciliations rr
+      JOIN products p ON p.id = rr.product_id
+      LEFT JOIN departments d ON d.id = p.department_id
+      WHERE rr.reconciliation_date BETWEEN ${start} AND ${end}
+      GROUP BY d.name, p.dept_name
+      ORDER BY rev DESC
+    `)) as unknown as typeof breakdown;
+    breakdown = rows;
+  }
+
+  return {
+    ok: true,
+    data: {
+      ky: label,
+      groupBy,
+      tongDT: Math.round(Number(totals?.total_rev ?? 0)),
+      soDoiChieu: totals?.cnt_recon ?? 0,
+      soCanCoDT: totals?.cnt_units ?? 0,
+      breakdown: breakdown.map((b) => ({
+        [groupBy === "project" ? "duAn" : groupBy === "partner" ? "cdt" : groupBy === "sales_person" ? "nvkd" : "phong"]: b.label,
+        doanhThu: Math.round(Number(b.rev)),
+        soDot: b.count,
+        soCan: b.units,
+      })),
+    },
+  };
+}
+
 export const TOOL_IMPL: Record<string, (args: any) => Promise<ToolResult>> = {
   getEmployeeCommission,
   getEmployeeOverpaidList,
@@ -666,4 +1054,8 @@ export const TOOL_IMPL: Record<string, (args: any) => Promise<ToolResult>> = {
   getProjectPolicy,
   listAllProjectPolicies,
   getTopProjects,
+  getARAging,
+  getAPAging,
+  getObligations,
+  getSalesReport,
 };
