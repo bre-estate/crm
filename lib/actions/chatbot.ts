@@ -27,6 +27,24 @@ export type ChatMessage = {
 export async function chatQuery(
   history: ChatMessage[],
   question: string,
+): Promise<{ answer: string; toolCalls: string[]; error?: string }> {
+  try {
+    return await chatQueryInner(history, question);
+  } catch (e) {
+    const err = e as Error & { status?: number; code?: string; type?: string };
+    const detail = [
+      `Message: ${err.message}`,
+      err.status ? `Status: ${err.status}` : "",
+      err.code ? `Code: ${err.code}` : "",
+      err.type ? `Type: ${err.type}` : "",
+    ].filter(Boolean).join(" · ");
+    return { answer: `⚠️ Lỗi: ${detail}`, toolCalls: [], error: detail };
+  }
+}
+
+async function chatQueryInner(
+  history: ChatMessage[],
+  question: string,
 ): Promise<{ answer: string; toolCalls: string[] }> {
   await requireOwner();
 
