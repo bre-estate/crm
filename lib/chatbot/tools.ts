@@ -51,6 +51,28 @@ export const TOOL_SCHEMAS = [
   {
     type: "function" as const,
     function: {
+      name: "listUnitsByProject",
+      description:
+        "Liệt kê các căn thuộc 1 dự án (search theo tên dự án, VD 'Emerald Boulevard', 'Astral', 'The Emerald Garden View'). Trả về ngắn gọn mã căn + NVKD + trạng thái đối chiếu. Dùng khi user hỏi 'dự án X có căn nào', 'còn căn nào chưa đối chiếu', v.v. KHÔNG dùng để trả lời 'chính sách chung' vì mỗi căn có mức riêng.",
+      parameters: {
+        type: "object",
+        properties: {
+          projectName: {
+            type: "string",
+            description: "Tên dự án (partial match, case-insensitive).",
+          },
+          limit: {
+            type: "integer",
+            description: "Số căn tối đa trả về (default 50).",
+          },
+        },
+        required: ["projectName"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
       name: "getUnitInfo",
       description:
         "Tra cứu thông tin căn theo mã căn (unit_code như 'A-07-09', 'B2-09-16'). Trả về NVKD, giá bán, %HH, %PMG, phòng KD, tình trạng đối chiếu.",
@@ -285,8 +307,74 @@ async function getUnitInfo(args: { unitCode: string }): Promise<ToolResult> {
   };
 }
 
+async function listUnitsByProject(args: {
+  projectName: string;
+  limit?: number;
+}): Promise<ToolResult> {
+  const name = args.projectName.trim();
+  if (!name) return { ok: false, error: "Thiếu tên dự án" };
+  const limit = Math.min(args.limit ?? 50, 200);
+
+  const rows = (await db.execute(sql`
+    SELECT
+      p.id, p.product_code, p.unit_code, p.customer_name, p.sales_person,
+      p.sale_type, p.deposit_date, p.pmg_rate, p.sale_commission_rate,
+      pr.name AS project_name,
+      (SELECT COUNT(*)::int FROM cost_reconciliations WHERE product_id = p.id) AS n_cost_recons,
+      (SELECT COUNT(*)::int FROM revenue_reconciliations WHERE product_id = p.id) AS n_rev_recons
+    FROM products p
+    JOIN projects pr ON pr.id = p.project_id
+    WHERE UPPER(pr.name) ILIKE UPPER(${'%' + name + '%'})
+    ORDER BY p.deposit_date DESC NULLS LAST, p.id DESC
+    LIMIT ${limit}
+  `)) as unknown as Array<{
+    id: number;
+    product_code: string;
+    unit_code: string;
+    customer_name: string | null;
+    sales_person: string | null;
+    sale_type: string;
+    deposit_date: string | null;
+    pmg_rate: number;
+    sale_commission_rate: number;
+    project_name: string;
+    n_cost_recons: number;
+    n_rev_recons: number;
+  }>;
+
+  if (rows.length === 0) {
+    return { ok: false, error: `Không tìm thấy dự án khớp "${name}"` };
+  }
+
+  const distinctProjects = Array.from(new Set(rows.map((r) => r.project_name)));
+
+  return {
+    ok: true,
+    data: {
+      duAnTimThay: distinctProjects,
+      soCan: rows.length,
+      items: rows.map((r) => ({
+        id: r.id,
+        maCan: r.product_code,
+        maSp: r.unit_code,
+        duAn: r.project_name,
+        loaiGiaoDich: r.sale_type === "primary" ? "Sơ cấp" : "Thứ cấp",
+        khach: r.customer_name,
+        nvkd: r.sales_person,
+        ngayCoc: r.deposit_date,
+        pctPMG: Number(r.pmg_rate),
+        pctHHSale: Number(r.sale_commission_rate),
+        soDoiChieuGiaVon: r.n_cost_recons,
+        soDoiChieuDoanhThu: r.n_rev_recons,
+        linkChiTiet: `/products/${r.id}`,
+      })),
+    },
+  };
+}
+
 export const TOOL_IMPL: Record<string, (args: any) => Promise<ToolResult>> = {
   getEmployeeCommission,
   getEmployeeOverpaidList,
   getUnitInfo,
+  listUnitsByProject,
 };
