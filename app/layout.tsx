@@ -15,6 +15,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { resolvePermissions, hasPermission as checkPerm } from "@/lib/permissions";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
+import ChatBubble from "@/components/ChatBubble";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -105,6 +106,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </SidebarInset>
           </SidebarProvider>
         </TooltipProvider>
+        {isOwner && <ChatBubble />}
         <Toaster position="top-right" richColors closeButton />
       </body>
     </html>

@@ -49,13 +49,6 @@ function renderRichText(text: string): React.ReactNode[] {
   return parts;
 }
 
-const SUGGESTIONS = [
-  "HH sale của Đoàn Lê Bách năm 2026 bao nhiêu?",
-  "Ai đang nợ công ty do chi dư thưởng nóng?",
-  "Căn A-07-09 có thông tin gì và đã thanh toán bao nhiêu %?",
-  "Tô Rô Ly Na có nợ gì không?",
-];
-
 // Parse 1 block SSE: `event: X\ndata: {...}\n\n` → [event, data]
 function parseSSEBlock(block: string): { event: string; data: unknown } | null {
   const lines = block.split("\n");
@@ -150,19 +143,8 @@ export default function ChatUI() {
     <div className="flex flex-col h-[calc(100vh-8rem)] max-w-3xl mx-auto">
       <div className="flex-1 overflow-y-auto space-y-3 p-2">
         {messages.length === 0 && (
-          <div className="text-center py-8">
-            <div className="text-slate-400 text-sm mb-4">Thử hỏi:</div>
-            <div className="flex flex-col gap-2 items-center">
-              {SUGGESTIONS.map((s, i) => (
-                <button
-                  key={i}
-                  onClick={() => send(s)}
-                  className="text-xs text-left px-3 py-2 rounded-lg bg-slate-50 hover:bg-slate-100 max-w-md w-full text-slate-700"
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
+          <div className="text-center py-16 text-slate-400 text-sm">
+            Hỏi gì đó về số liệu HH, căn, dự án...
           </div>
         )}
         {messages.map((m, i) => (
