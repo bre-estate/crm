@@ -69,7 +69,7 @@ export async function POST(req: Request) {
         { role: "user", content: body.question },
       ];
 
-      const MODEL = "gemini-3.6-flash-lite";
+      const MODEL = "gemini-3.6-flash";
       const t0 = performance.now();
       const ts = (label: string) =>
         emit("status", {
