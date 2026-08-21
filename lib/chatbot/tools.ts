@@ -177,6 +177,63 @@ export const TOOL_SCHEMAS = [
   {
     type: "function" as const,
     function: {
+      name: "getProjectProfitability",
+      description:
+        "Lãi/lỗ per dự án: DT − Giá vốn (COGS) − biên gộp %. Chia theo kỳ. Dùng khi user hỏi 'dự án nào lỗ', 'biên gộp Emerald bao nhiêu', 'top lãi', 'so sánh profit dự án'.",
+      parameters: {
+        type: "object",
+        properties: {
+          year: { type: "integer", description: "Năm (default năm hiện tại)." },
+          period: {
+            type: "string",
+            enum: ["year", "quarter", "month"],
+            description: "Kỳ (default year).",
+          },
+          quarter: { type: "integer" },
+          month: { type: "integer" },
+          projectName: { type: "string", description: "Lọc theo dự án (optional)." },
+        },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "getBreakEven",
+      description:
+        "Phân tích điểm hòa vốn năm: DT cần để hòa vốn, số căn cần bán, biên an toàn %, gap còn thiếu. Dùng khi user hỏi 'cần bán bao nhiêu căn hòa vốn', 'biên an toàn', 'điểm hòa vốn năm nay'.",
+      parameters: {
+        type: "object",
+        properties: {
+          year: { type: "integer", description: "Năm (default năm hiện tại)." },
+        },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "getPnL",
+      description:
+        "Báo cáo lãi/lỗ compact (P&L quản trị): DT ròng, giá vốn, lãi gộp + biên %, chi phí cố định, lãi trước thuế, thuế TNDN, lãi sau thuế. Dùng khi user hỏi 'lãi năm nay', 'P&L quý 2', 'công ty đang lãi hay lỗ'.",
+      parameters: {
+        type: "object",
+        properties: {
+          year: { type: "integer", description: "Năm (default năm hiện tại)." },
+          period: {
+            type: "string",
+            enum: ["year", "quarter", "month"],
+            description: "Kỳ (default year).",
+          },
+          quarter: { type: "integer" },
+          month: { type: "integer" },
+        },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
       name: "getTopProjects",
       description:
         "AGGREGATE ranking dự án theo số căn đã bán, tổng doanh thu ghi nhận, tổng HH sale. Dùng khi user hỏi 'dự án nào BRE bán tốt nhất', 'top dự án theo doanh số', 'dự án nào nhiều căn nhất'.",
@@ -1046,6 +1103,235 @@ async function getSalesReport(args: {
   };
 }
 
+function periodDates(year: number, period: string, q?: number, month?: number) {
+  if (period === "month" && month) {
+    return {
+      start: `${year}-${String(month).padStart(2, "0")}-01`,
+      end: new Date(year, month, 0).toISOString().slice(0, 10),
+      label: `T${month}/${year}`,
+    };
+  }
+  if (period === "quarter" && q) {
+    const sm = (q - 1) * 3 + 1;
+    return {
+      start: `${year}-${String(sm).padStart(2, "0")}-01`,
+      end: new Date(year, sm + 2, 0).toISOString().slice(0, 10),
+      label: `Q${q}/${year}`,
+    };
+  }
+  return { start: `${year}-01-01`, end: `${year}-12-31`, label: `Năm ${year}` };
+}
+
+async function getProjectProfitability(args: {
+  year?: number;
+  period?: "year" | "quarter" | "month";
+  quarter?: number;
+  month?: number;
+  projectName?: string;
+}): Promise<ToolResult> {
+  const year = args.year ?? new Date().getUTCFullYear();
+  const { start, end, label } = periodDates(year, args.period ?? "year", args.quarter, args.month);
+  const projectFilter = args.projectName
+    ? sql`AND pr.name ILIKE ${'%' + args.projectName + '%'}`
+    : sql``;
+
+  const revRows = (await db.execute(sql`
+    SELECT
+      p.project_id AS project_id,
+      pr.name AS project_name,
+      COALESCE(SUM(rr.total_receivable_this_time), 0)::float8 AS rev,
+      COUNT(DISTINCT rr.product_id)::int AS units
+    FROM revenue_reconciliations rr
+    JOIN products p ON p.id = rr.product_id
+    JOIN projects pr ON pr.id = p.project_id
+    WHERE rr.reconciliation_date BETWEEN ${start} AND ${end}
+      ${projectFilter}
+    GROUP BY p.project_id, pr.name
+  `)) as unknown as Array<{ project_id: number; project_name: string; rev: number; units: number }>;
+
+  const costRows = (await db.execute(sql`
+    SELECT
+      p.project_id AS project_id,
+      COALESCE(SUM(c.amount_payable_this_time), 0)::float8 AS cogs
+    FROM cost_reconciliations c
+    JOIN products p ON p.id = c.product_id
+    JOIN projects pr ON pr.id = p.project_id
+    WHERE c.reconciliation_date BETWEEN ${start} AND ${end}
+      ${projectFilter}
+    GROUP BY p.project_id
+  `)) as unknown as Array<{ project_id: number; cogs: number }>;
+
+  const cogsMap = new Map<number, number>();
+  for (const c of costRows) cogsMap.set(c.project_id, Number(c.cogs));
+
+  const merged = revRows
+    .map((r) => {
+      const revGross = Number(r.rev);
+      const revNet = revGross / 1.1;
+      const cogs = cogsMap.get(r.project_id) ?? 0;
+      const laiGop = revNet - cogs;
+      const marginPct = revNet > 0 ? (laiGop / revNet) * 100 : 0;
+      return {
+        duAn: r.project_name,
+        soCan: r.units,
+        doanhThuGross: Math.round(revGross),
+        doanhThuNet: Math.round(revNet),
+        giaVon: Math.round(cogs),
+        laiGop: Math.round(laiGop),
+        bienGopPct: Math.round(marginPct * 10) / 10,
+      };
+    })
+    .sort((a, b) => b.doanhThuNet - a.doanhThuNet);
+
+  const totalRevGross = merged.reduce((s, r) => s + r.doanhThuGross, 0);
+  const totalCogs = merged.reduce((s, r) => s + r.giaVon, 0);
+  const totalRevNet = totalRevGross / 1.1;
+  const totalLaiGop = totalRevNet - totalCogs;
+
+  return {
+    ok: true,
+    data: {
+      ky: label,
+      soDuAn: merged.length,
+      tongDTNet: Math.round(totalRevNet),
+      tongGiaVon: Math.round(totalCogs),
+      tongLaiGop: Math.round(totalLaiGop),
+      tongBienGopPct: totalRevNet > 0 ? Math.round((totalLaiGop / totalRevNet) * 1000) / 10 : 0,
+      items: merged,
+    },
+  };
+}
+
+async function getPnLData(year: number, start: string, end: string) {
+  const [rev] = (await db.execute(sql`
+    SELECT COALESCE(SUM(total_receivable_this_time), 0)::float8 AS total
+    FROM revenue_reconciliations
+    WHERE reconciliation_date BETWEEN ${start} AND ${end}
+  `)) as unknown as Array<{ total: number }>;
+  const dtGross = Number(rev?.total ?? 0);
+  const dtNet = dtGross / 1.1;
+
+  const nkc = (await db.execute(sql`
+    SELECT category, COALESCE(SUM(amount), 0)::float8 AS s
+    FROM accounting_journal
+    WHERE entry_date BETWEEN ${start} AND ${end}
+      AND credit_account != '911'
+      AND category IS NOT NULL
+    GROUP BY category
+  `)) as unknown as Array<{ category: string; s: number }>;
+  const catMap = new Map<string, number>();
+  for (const r of nkc) catMap.set(r.category, Number(r.s));
+
+  // Trích trước cuối năm (áp năm 2025 fixed)
+  if (year === 2025) {
+    const [ac] = (await db.execute(sql`
+      SELECT
+        COALESCE(SUM(hh_sale), 0)::float8 hh,
+        COALESCE(SUM(cdt_bonus_sale), 0)::float8 cdt,
+        COALESCE(SUM(cty_bonus_ql), 0)::float8 ql,
+        COALESCE(SUM(kpi_ceo), 0)::float8 ceo,
+        COALESCE(SUM(kpi_tpkd), 0)::float8 tpkd,
+        COALESCE(SUM(bonus_admin), 0)::float8 adm,
+        COALESCE(SUM(customer_support), 0)::float8 ct
+      FROM year_end_accruals
+    `)) as unknown as Array<{ hh: number; cdt: number; ql: number; ceo: number; tpkd: number; adm: number; ct: number }>;
+    const addTo = (k: string, v: number) => catMap.set(k, (catMap.get(k) ?? 0) + v);
+    addTo("hh_sale", Number(ac?.hh ?? 0));
+    addTo("cdt_thuong_nvkd", Number(ac?.cdt ?? 0));
+    addTo("cty_thuong_ql", Number(ac?.ql ?? 0));
+    addTo("cty_thuong_ceo", Number(ac?.ceo ?? 0));
+    addTo("cty_thuong_tpkd", Number(ac?.tpkd ?? 0));
+    addTo("cty_thuong_admin", Number(ac?.adm ?? 0));
+    addTo("ho_tro_khach", Number(ac?.ct ?? 0));
+  }
+
+  const get = (k: string) => catMap.get(k) ?? 0;
+  const cogs = [
+    "hh_sale", "ho_tro_khach", "cdt_thuong_nvkd", "cdt_thuong_ql",
+    "cty_thuong_ql", "cty_thuong_tpkd", "cty_thuong_admin", "cty_thuong_ceo",
+  ].reduce((s, k) => s + get(k), 0);
+  const fixed = [
+    "luong_nvkd", "thuong_ds_sale", "luong_admin", "marketing", "thue_vp",
+    "do_dung_vp", "di_lai", "tiep_khach", "dich_vu_ngoai", "thue_phi_le_phi", "opex_khac",
+  ].reduce((s, k) => s + get(k), 0);
+
+  const laiGop = dtNet - cogs;
+  const laiTruocThue = laiGop - fixed;
+  const thueTNDN = Math.max(0, laiTruocThue * 0.2);
+  const laiSauThue = laiTruocThue - thueTNDN;
+
+  return { dtGross, dtNet, cogs, fixed, laiGop, laiTruocThue, thueTNDN, laiSauThue };
+}
+
+async function getPnL(args: {
+  year?: number;
+  period?: "year" | "quarter" | "month";
+  quarter?: number;
+  month?: number;
+}): Promise<ToolResult> {
+  const year = args.year ?? new Date().getUTCFullYear();
+  const { start, end, label } = periodDates(year, args.period ?? "year", args.quarter, args.month);
+  const p = await getPnLData(year, start, end);
+
+  return {
+    ok: true,
+    data: {
+      ky: label,
+      doanhThuNet: Math.round(p.dtNet),
+      giaVon: Math.round(p.cogs),
+      laiGop: Math.round(p.laiGop),
+      bienGopPct: p.dtNet > 0 ? Math.round((p.laiGop / p.dtNet) * 1000) / 10 : 0,
+      chiPhiCoDinh: Math.round(p.fixed),
+      laiTruocThue: Math.round(p.laiTruocThue),
+      thueTNDN: Math.round(p.thueTNDN),
+      laiSauThue: Math.round(p.laiSauThue),
+      bienLaiSauThuePct: p.dtNet > 0 ? Math.round((p.laiSauThue / p.dtNet) * 1000) / 10 : 0,
+    },
+  };
+}
+
+async function getBreakEven(args: { year?: number }): Promise<ToolResult> {
+  const year = args.year ?? new Date().getUTCFullYear();
+  const start = `${year}-01-01`;
+  const end = `${year}-12-31`;
+
+  const [rev] = (await db.execute(sql`
+    SELECT COALESCE(SUM(total_receivable_this_time), 0)::float8 AS total,
+      COUNT(DISTINCT product_id)::int AS units
+    FROM revenue_reconciliations
+    WHERE reconciliation_date BETWEEN ${start} AND ${end}
+  `)) as unknown as Array<{ total: number; units: number }>;
+  const units = Number(rev?.units ?? 0);
+
+  const p = await getPnLData(year, start, end);
+  const cogsRate = p.dtNet > 0 ? p.cogs / p.dtNet : 0;
+  const grossMarginRate = 1 - cogsRate;
+  const breakEvenRev = grossMarginRate > 0 ? p.fixed / grossMarginRate : 0;
+  const breakEvenUnits = units > 0 && p.dtNet > 0 ? (breakEvenRev / p.dtNet) * units : 0;
+  const marginOfSafety = p.dtNet > 0 ? ((p.dtNet - breakEvenRev) / p.dtNet) * 100 : 0;
+  const gap = p.dtNet < breakEvenRev ? breakEvenRev - p.dtNet : 0;
+  const gapUnits = gap > 0 && units > 0 && p.dtNet > 0 ? Math.ceil((gap / p.dtNet) * units) : 0;
+  const avgUnitsPerMonth = units / 12;
+
+  return {
+    ok: true,
+    data: {
+      nam: year,
+      doanhThuHienTai: Math.round(p.dtNet),
+      soCanBanHienTai: units,
+      diemHoaVonDT: Math.round(breakEvenRev),
+      diemHoaVonSoCan: Math.round(breakEvenUnits),
+      bienGopHienTai: Math.round(grossMarginRate * 1000) / 10,
+      chiPhiCoDinh: Math.round(p.fixed),
+      bienAnToanPct: Math.round(marginOfSafety * 10) / 10,
+      trangThai: p.dtNet >= breakEvenRev ? "Đã vượt điểm hòa vốn" : "Chưa hòa vốn",
+      conThieuDT: Math.round(gap),
+      conThieuSoCan: gapUnits,
+      trungBinhCanBanMoiThang: Math.round(avgUnitsPerMonth * 10) / 10,
+    },
+  };
+}
+
 export const TOOL_IMPL: Record<string, (args: any) => Promise<ToolResult>> = {
   getEmployeeCommission,
   getEmployeeOverpaidList,
@@ -1058,4 +1344,7 @@ export const TOOL_IMPL: Record<string, (args: any) => Promise<ToolResult>> = {
   getAPAging,
   getObligations,
   getSalesReport,
+  getProjectProfitability,
+  getPnL,
+  getBreakEven,
 };
