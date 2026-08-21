@@ -69,7 +69,10 @@ export async function POST(req: Request) {
         { role: "user", content: body.question },
       ];
 
-      const MODEL = "gemini-3.6-flash";
+      // gemini-3.6-flash có "thinking mode" yêu cầu thought_signature khi
+      // stream tool calls, OpenAI-compat endpoint không handle được → 400.
+      // gemini-2.0-flash không có thinking, stream tool ổn định + nhanh hơn.
+      const MODEL = "gemini-2.0-flash";
       const t0 = performance.now();
       const ts = (label: string) =>
         emit("status", {
