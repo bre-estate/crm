@@ -30,13 +30,13 @@ export async function chatQuery(
 ): Promise<{ answer: string; toolCalls: string[] }> {
   await requireOwner();
 
-  if (!process.env.OPENAI_API_KEY) {
+  if (!process.env.BRE_CRM_KEY) {
     throw new Error(
-      "Thiếu OPENAI_API_KEY. Add vào .env.local (local) hoặc Vercel Environment Variables (production).",
+      "Thiếu BRE_CRM_KEY. Add vào .env.local (local) hoặc Vercel Environment Variables (production).",
     );
   }
 
-  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const client = new OpenAI({ apiKey: process.env.BRE_CRM_KEY });
 
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     { role: "system", content: SYSTEM_PROMPT },
