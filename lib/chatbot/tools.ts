@@ -73,6 +73,45 @@ export const TOOL_SCHEMAS = [
   {
     type: "function" as const,
     function: {
+      name: "getProjectPolicy",
+      description:
+        "AGGREGATE mức áp dụng phổ biến của 1 dự án dựa trên các căn ĐÃ CHỐT: %HH sale, %PMG_LK, %PMG_LK_sale, phí admin, thưởng nóng CĐT. Trả về min/median/max + mode (mức phổ biến nhất). Dùng khi user hỏi 'chính sách dự án X', 'mức phổ biến của dự án X'. KHÔNG dùng nếu user hỏi về 1 căn cụ thể.",
+      parameters: {
+        type: "object",
+        properties: {
+          projectName: {
+            type: "string",
+            description: "Tên dự án (partial match, case-insensitive).",
+          },
+        },
+        required: ["projectName"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "getTopProjects",
+      description:
+        "AGGREGATE ranking dự án theo số căn đã bán, tổng doanh thu ghi nhận, tổng HH sale. Dùng khi user hỏi 'dự án nào BRE bán tốt nhất', 'top dự án theo doanh số', 'dự án nào nhiều căn nhất'.",
+      parameters: {
+        type: "object",
+        properties: {
+          year: {
+            type: "integer",
+            description: "Năm lọc theo ngày cọc (VD 2026). Bỏ trống = tất cả.",
+          },
+          limit: {
+            type: "integer",
+            description: "Số dự án top (default 10).",
+          },
+        },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
       name: "getUnitInfo",
       description:
         "Tra cứu thông tin căn theo mã căn (unit_code như 'A-07-09', 'B2-09-16'). Trả về NVKD, giá bán, %HH, %PMG, phòng KD, tình trạng đối chiếu.",
@@ -372,9 +411,160 @@ async function listUnitsByProject(args: {
   };
 }
 
+// Helper: median + mode cho array số. Ignore null/0.
+function stats(values: number[]): {
+  count: number;
+  min: number;
+  max: number;
+  median: number;
+  mode: number;
+} {
+  const nums = values.filter((v) => v != null && !isNaN(v) && v !== 0);
+  if (nums.length === 0) return { count: 0, min: 0, max: 0, median: 0, mode: 0 };
+  const sorted = [...nums].sort((a, b) => a - b);
+  const median =
+    sorted.length % 2 === 0
+      ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2
+      : sorted[Math.floor(sorted.length / 2)];
+  const freq = new Map<number, number>();
+  for (const n of nums) {
+    // Round rate về 4 decimals để mode meaningful (0.0575 vs 0.05750001)
+    const key = Math.round(n * 10000) / 10000;
+    freq.set(key, (freq.get(key) ?? 0) + 1);
+  }
+  let mode = nums[0];
+  let maxFreq = 0;
+  for (const [k, v] of freq) {
+    if (v > maxFreq) {
+      mode = k;
+      maxFreq = v;
+    }
+  }
+  return { count: nums.length, min: sorted[0], max: sorted[sorted.length - 1], median, mode };
+}
+
+async function getProjectPolicy(args: {
+  projectName: string;
+}): Promise<ToolResult> {
+  const name = args.projectName.trim();
+  if (!name) return { ok: false, error: "Thiếu tên dự án" };
+
+  const rows = (await db.execute(sql`
+    SELECT
+      p.pmg_rate, p.pmg_sale_rate, p.sale_commission_rate, p.admin_fee,
+      p.cdt_bonus_sale, p.cdt_bonus_manager,
+      p.kpi_ceo_rate, p.kpi_tpkd_rate, p.kpi_admin_rate,
+      pr.name AS project_name
+    FROM products p
+    JOIN projects pr ON pr.id = p.project_id
+    WHERE UPPER(pr.name) ILIKE UPPER(${'%' + name + '%'})
+  `)) as unknown as Array<{
+    pmg_rate: number;
+    pmg_sale_rate: number;
+    sale_commission_rate: number;
+    admin_fee: number;
+    cdt_bonus_sale: number;
+    cdt_bonus_manager: number;
+    kpi_ceo_rate: number;
+    kpi_tpkd_rate: number;
+    kpi_admin_rate: number;
+    project_name: string;
+  }>;
+
+  if (rows.length === 0) {
+    return { ok: false, error: `Không tìm thấy dự án khớp "${name}"` };
+  }
+
+  const distinctProjects = Array.from(new Set(rows.map((r) => r.project_name)));
+
+  const fmt = (s: ReturnType<typeof stats>) => ({
+    soCanCoData: s.count,
+    min: s.min,
+    max: s.max,
+    trungVi: s.median,
+    phoBienNhat: s.mode,
+  });
+
+  return {
+    ok: true,
+    data: {
+      duAn: distinctProjects,
+      soCanTong: rows.length,
+      pctPMG_LK: fmt(stats(rows.map((r) => Number(r.pmg_rate)))),
+      pctPMG_LK_sale: fmt(stats(rows.map((r) => Number(r.pmg_sale_rate)))),
+      pctHHSale: fmt(stats(rows.map((r) => Number(r.sale_commission_rate)))),
+      phiAdmin: fmt(stats(rows.map((r) => Number(r.admin_fee)))),
+      cdtThuongNongSale: fmt(stats(rows.map((r) => Number(r.cdt_bonus_sale)))),
+      cdtThuongNongQL: fmt(stats(rows.map((r) => Number(r.cdt_bonus_manager)))),
+      pctKPICEO: fmt(stats(rows.map((r) => Number(r.kpi_ceo_rate)))),
+      pctKPITPKD: fmt(stats(rows.map((r) => Number(r.kpi_tpkd_rate)))),
+      pctKPIAdmin: fmt(stats(rows.map((r) => Number(r.kpi_admin_rate)))),
+    },
+  };
+}
+
+async function getTopProjects(args: {
+  year?: number;
+  limit?: number;
+}): Promise<ToolResult> {
+  const limit = Math.min(args.limit ?? 10, 30);
+  const dateFilter = args.year
+    ? sql`AND p.deposit_date BETWEEN ${args.year + "-01-01"} AND ${args.year + "-12-31"}`
+    : sql``;
+
+  const rows = (await db.execute(sql`
+    SELECT
+      pr.id, pr.name AS project_name,
+      COUNT(p.id)::int AS n_units,
+      COALESCE(SUM(rr.total_revenue), 0)::float8 AS revenue_recognized,
+      COALESCE(SUM(cc.total_hh), 0)::float8 AS hh_total
+    FROM projects pr
+    LEFT JOIN products p ON p.project_id = pr.id ${dateFilter}
+    LEFT JOIN LATERAL (
+      SELECT SUM(revenue_this_time + COALESCE(cdt_bonus_sale, 0) + COALESCE(cdt_bonus_manager, 0)) AS total_revenue
+      FROM revenue_reconciliations WHERE product_id = p.id
+    ) rr ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT SUM(amount_payable_this_time) AS total_hh
+      FROM cost_reconciliations WHERE product_id = p.id AND cost_type = 'sale_commission'
+    ) cc ON TRUE
+    GROUP BY pr.id, pr.name
+    HAVING COUNT(p.id) > 0
+    ORDER BY n_units DESC, revenue_recognized DESC
+    LIMIT ${limit}
+  `)) as unknown as Array<{
+    id: number;
+    project_name: string;
+    n_units: number;
+    revenue_recognized: number;
+    hh_total: number;
+  }>;
+
+  if (rows.length === 0) {
+    return { ok: true, data: { message: "Chưa có căn nào trong kỳ", items: [] } };
+  }
+
+  return {
+    ok: true,
+    data: {
+      ky: args.year ?? "tất cả",
+      soLuong: rows.length,
+      items: rows.map((r, i) => ({
+        hang: i + 1,
+        duAn: r.project_name,
+        soCan: r.n_units,
+        doanhThuGhiNhan: Math.round(Number(r.revenue_recognized)),
+        hhSaleGhiNhan: Math.round(Number(r.hh_total)),
+      })),
+    },
+  };
+}
+
 export const TOOL_IMPL: Record<string, (args: any) => Promise<ToolResult>> = {
   getEmployeeCommission,
   getEmployeeOverpaidList,
   getUnitInfo,
   listUnitsByProject,
+  getProjectPolicy,
+  getTopProjects,
 };
