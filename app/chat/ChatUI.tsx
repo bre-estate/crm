@@ -2,8 +2,6 @@
 
 import { useState, useTransition, useRef, useEffect } from "react";
 import { toast } from "sonner";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { chatQuery, type ChatMessage } from "@/lib/actions/chatbot";
 
@@ -74,15 +72,7 @@ export default function ChatUI() {
                   : "bg-slate-100 text-slate-900"
               }`}
             >
-              {m.role === "assistant" ? (
-                <div className="prose prose-sm max-w-none prose-slate">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {m.content}
-                  </ReactMarkdown>
-                </div>
-              ) : (
-                <div className="whitespace-pre-wrap">{m.content}</div>
-              )}
+              <div className="whitespace-pre-wrap">{m.content}</div>
             </div>
           </div>
         ))}
