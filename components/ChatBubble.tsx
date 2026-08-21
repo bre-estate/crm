@@ -68,6 +68,7 @@ const QUICK_QUESTIONS = [
 
 export default function ChatBubble() {
   const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
@@ -159,7 +160,13 @@ export default function ChatBubble() {
 
       {/* Chat panel */}
       {open && (
-        <div className="fixed bottom-5 right-5 z-50 w-[400px] max-w-[calc(100vw-2rem)] h-[600px] max-h-[calc(100vh-2rem)] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden">
+        <div
+          className={
+            expanded
+              ? "fixed inset-4 md:inset-8 z-50 bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden"
+              : "fixed bottom-5 right-5 z-50 w-[400px] max-w-[calc(100vw-2rem)] h-[600px] max-h-[calc(100vh-2rem)] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden"
+          }
+        >
           {/* Header với gradient + avatar */}
           <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white">
             <div className="flex items-center gap-3">
@@ -174,21 +181,47 @@ export default function ChatBubble() {
                 </div>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/15 transition"
-              aria-label="Đóng"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
+            <div className="flex items-center gap-0.5">
+              <button
+                type="button"
+                onClick={() => setExpanded((v) => !v)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/15 transition"
+                title={expanded ? "Thu gọn" : "Bung to"}
+                aria-label={expanded ? "Thu gọn" : "Bung to"}
+              >
+                {expanded ? (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="4 14 10 14 10 20" />
+                    <polyline points="20 10 14 10 14 4" />
+                    <line x1="14" y1="10" x2="21" y2="3" />
+                    <line x1="3" y1="21" x2="10" y2="14" />
+                  </svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="15 3 21 3 21 9" />
+                    <polyline points="9 21 3 21 3 15" />
+                    <line x1="21" y1="3" x2="14" y2="10" />
+                    <line x1="3" y1="21" x2="10" y2="14" />
+                  </svg>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/15 transition"
+                aria-label="Đóng"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
           </div>
 
           {/* Messages area */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50">
+          <div className="flex-1 overflow-y-auto bg-slate-50">
+          <div className={`p-4 space-y-3 ${expanded ? "max-w-3xl mx-auto" : ""}`}>
             {messages.length === 0 && (
               <div className="space-y-4 py-4">
                 <div className="flex justify-start">
@@ -261,6 +294,7 @@ export default function ChatBubble() {
             )}
             <div ref={bottomRef} />
           </div>
+          </div>
 
           {/* Input */}
           <form
@@ -268,7 +302,7 @@ export default function ChatBubble() {
               e.preventDefault();
               send(input);
             }}
-            className="flex gap-2 p-3 border-t border-slate-100 bg-white"
+            className={`flex gap-2 p-3 border-t border-slate-100 bg-white ${expanded ? "max-w-3xl mx-auto w-full" : ""}`}
           >
             <input
               ref={inputRef}

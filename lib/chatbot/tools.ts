@@ -93,7 +93,7 @@ export const TOOL_SCHEMAS = [
     function: {
       name: "listAllProjectPolicies",
       description:
-        "AGGREGATE mức phổ biến của TẤT CẢ dự án (mode %PMG, %HH sale, phí admin, thưởng nóng) — 1 row per dự án. Dùng khi user hỏi 'chính sách CĐT nào tốt nhất', 'so sánh chính sách các dự án', 'CĐT nào trả HH cao nhất'. Bot tự sort theo tiêu chí user hỏi (VD %HH sale cao = tốt cho BRE, thưởng nóng nhiều = ưu đãi tốt).",
+        "AGGREGATE mức CHÍNH SÁCH CĐT của TẤT CẢ dự án (mode %PMG_LK, %PMG_LK_sale, phí admin, thưởng nóng CĐT) — 1 row per dự án. Dùng khi user hỏi 'chính sách CĐT nào tốt nhất', 'CĐT nào trả %PMG cao', 'CĐT nào ưu đãi thưởng nóng nhiều'. LƯU Ý: KHÔNG có %HH sale vì đây là chính sách nội bộ BRE trả NV (theo bậc KPI lũy tiến), không phải CĐT.",
       parameters: {
         type: "object",
         properties: {
@@ -799,12 +799,14 @@ async function listAllProjectPolicies(args: {
     .map((p) => ({
       duAn: p.name,
       soCan: p.pmgRates.length,
+      // Chính sách CĐT (những gì CĐT chi cho BRE)
       pctPMG_LK_phoBien: stats(p.pmgRates).mode,
       pctPMG_LK_sale_phoBien: stats(p.pmgSaleRates).mode,
-      pctHHSale_phoBien: stats(p.hhSaleRates).mode,
       phiAdmin_phoBien: stats(p.adminFees).mode,
       cdtThuongNongSale_phoBien: stats(p.cdtBonusSales).mode,
       cdtThuongNongQL_phoBien: stats(p.cdtBonusMgrs).mode,
+      // KHÔNG include pctHHSale_phoBien — %HH sale là chính sách nội bộ
+      // BRE trả NV theo bậc KPI, không phải CĐT.
     }))
     .sort((a, b) => b.soCan - a.soCan);
 
