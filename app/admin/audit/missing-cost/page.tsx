@@ -8,22 +8,7 @@ const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
 
 export default async function MissingCostAuditPage() {
   await requireOwner();
-  const data = await getMissingCostReport();
-
-  if (!data.hasExcel) {
-    return (
-      <div className="max-w-4xl mx-auto p-6">
-        <h1 className="text-xl font-bold mb-2">Kiểm tra giá vốn Excel vs App</h1>
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm">
-          Không tìm thấy file <code>data-excel/BAO CAO DOANH THU.xlsx</code>.
-          Trên môi trường production Vercel không có file này (chỉ có local).
-          Chạy trang này trên máy dev để xem báo cáo.
-        </div>
-      </div>
-    );
-  }
-
-  const { rows, excelTotal, dbTotal, totalDiff } = data;
+  const { rows, excelTotal, dbTotal, totalDiff, snapshotAt } = await getMissingCostReport();
 
   return (
     <div className="space-y-4">
@@ -33,12 +18,15 @@ export default async function MissingCostAuditPage() {
         </div>
         <h1 className="text-2xl font-bold mt-1">Kiểm tra giá vốn: Excel vs App</h1>
         <p className="text-sm text-slate-500 mt-1">
-          So sánh sheet <code>2.3_Gia von</code> của file <code>BAO CAO DOANH THU.xlsx</code> với
-          bảng <code>cost_reconciliations</code>. Match theo mã căn + loại chi phí + số tiền (chênh &lt; 1.000 VND).
+          So sánh sheet <code>2.3_Gia von</code> của <code>BAO CAO DOANH THU.xlsx</code> với
+          <code>cost_reconciliations</code>. Match theo mã căn + loại phí + số tiền (chênh &lt; 1.000 VND).
+        </p>
+        <p className="text-xs text-slate-400 mt-1">
+          Snapshot Excel: {new Date(snapshotAt).toLocaleString("vi-VN")}. DB query live.
+          Cập nhật snapshot: chạy <code>node scripts/snapshot_cost_excel.mjs</code> local + commit lại JSON.
         </p>
       </div>
 
-      {/* Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card label="Tổng Excel" value={fmt(excelTotal)} color="slate" />
         <Card label="Tổng App" value={fmt(dbTotal)} color="slate" />
@@ -62,8 +50,8 @@ export default async function MissingCostAuditPage() {
                 <tr>
                   <th className="text-left p-2">#</th>
                   <th className="text-left p-2">Mã căn</th>
-                  <th className="text-center p-2" title="Số dòng trong Excel 2.3">Excel</th>
-                  <th className="text-center p-2" title="Số recon trong app">App</th>
+                  <th className="text-center p-2" title="Số dòng Excel">Excel</th>
+                  <th className="text-center p-2" title="Số recon app">App</th>
                   <th className="text-right p-2">Tổng Excel</th>
                   <th className="text-right p-2">Tổng App</th>
                   <th className="text-right p-2">Chênh</th>
@@ -79,6 +67,7 @@ export default async function MissingCostAuditPage() {
                       {r.productId ? (
                         <Link
                           href={`/products/${r.productId}`}
+                          target="_blank"
                           className="text-blue-600 hover:underline"
                         >
                           {r.productCode}
@@ -112,9 +101,7 @@ export default async function MissingCostAuditPage() {
                     <td className="p-2 text-xs">
                       {r.actors.length > 0 ? (
                         <div className="space-y-0.5">
-                          {r.actors.map((a) => (
-                            <div key={a}>{a}</div>
-                          ))}
+                          {r.actors.map((a) => <div key={a}>{a}</div>)}
                         </div>
                       ) : r.dbCount === 0 ? (
                         <span className="text-slate-400 italic">chưa nhập</span>
@@ -131,10 +118,9 @@ export default async function MissingCostAuditPage() {
       )}
 
       <div className="text-xs text-slate-500 pt-2 border-t border-slate-100">
-        Ghi chú: cột <em>Người nhập app</em> lấy từ <code>activity_logs</code> action=create.
-        <br />
-        <em>"bulk import"</em> = recon có trong app nhưng được nạp qua script <code>import-costs.ts</code>{" "}
-        (chưa có audit log). <em>"chưa nhập"</em> = app chưa có recon nào cho căn này.
+        <em>&quot;bulk import&quot;</em> = recon nạp qua script (chưa có audit log).
+        {" · "}
+        <em>&quot;chưa nhập&quot;</em> = app chưa có recon nào cho căn này.
       </div>
     </div>
   );

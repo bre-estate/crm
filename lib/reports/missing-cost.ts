@@ -1,15 +1,17 @@
 /**
- * Compare cost_reconciliations (App) vs Excel BC DOANH THU sheet "2.3_Gia von".
- * Trả về list căn có sai lệch (Excel có mà App thiếu, hoặc ngược lại).
+ * So sánh cost_reconciliations (App DB) vs snapshot Excel 2.3_Gia von.
  *
- * Excel path: data-excel/BAO CAO DOANH THU.xlsx (relative to project root).
- * Nếu file không tồn tại (env production trên Vercel), throw để page catch.
+ * Snapshot được precompute local qua `scripts/snapshot_cost_excel.mjs` và
+ * commit vào repo (lib/reports/cost-audit-snapshot.json). Mỗi lần Excel BC DT
+ * cập nhật, chạy script lại + commit lại JSON.
+ *
+ * Lý do dùng snapshot thay vì read Excel live: file gitignored, không lên
+ * Vercel. User không muốn upload lại mỗi lần. Snapshot cân bằng: Excel data
+ * stable trong repo, DB data query live → diff luôn cập nhật khi có recon mới.
  */
-import * as XLSX from "xlsx";
-import path from "path";
-import fs from "fs";
 import { db } from "@/lib/db";
 import { sql } from "drizzle-orm";
+import snapshot from "./cost-audit-snapshot.json";
 
 export type MissingItem = {
   loai: string;
@@ -30,6 +32,20 @@ export type MissingCostRow = {
   actors: string[];
 };
 
+type ExcelEntry = {
+  excelRow: number;
+  employee: string | null;
+  items: { loai: string; amt: number }[];
+  total: number;
+};
+type Snapshot = {
+  snapshotAt: string;
+  sourceFile: string;
+  sheet: string;
+  totalRows: number;
+  perProduct: Record<string, ExcelEntry[]>;
+};
+
 const COST_TYPE_LABEL: Record<string, string> = {
   sale_commission: "HH sale",
   customer_support: "Hỗ trợ khách",
@@ -44,59 +60,15 @@ function excelLoaiToCostType(loai: string): string | undefined {
   return Object.entries(COST_TYPE_LABEL).find(([, v]) => v === loai)?.[0];
 }
 
-function parseExcelRow(r: (string | number | null)[]) {
-  const items: { loai: string; amt: number }[] = [];
-  const push = (loai: string, amt: number) => {
-    if (amt && Math.abs(amt) > 0.5) items.push({ loai, amt });
-  };
-  push("HH sale", Number(r[21] ?? 0));
-  push("Hỗ trợ khách", Number(r[24] ?? 0));
-  push("CĐT thưởng NVKD", Number(r[25] ?? 0));
-  push("CĐT thưởng QL", Number(r[27] ?? 0));
-  push("KPI CEO", Number(r[31] ?? 0));
-  push("KPI TPKD", Number(r[35] ?? 0));
-  push("KPI Admin", Number(r[37] ?? 0));
-  return items;
-}
-
 export async function getMissingCostReport(): Promise<{
   rows: MissingCostRow[];
   excelTotal: number;
   dbTotal: number;
   totalDiff: number;
-  hasExcel: boolean;
+  snapshotAt: string;
 }> {
-  const excelPath = path.join(process.cwd(), "data-excel", "BAO CAO DOANH THU.xlsx");
-  if (!fs.existsSync(excelPath)) {
-    return { rows: [], excelTotal: 0, dbTotal: 0, totalDiff: 0, hasExcel: false };
-  }
+  const snap = snapshot as Snapshot;
 
-  const wb = XLSX.readFile(excelPath, { cellDates: true, cellNF: false });
-  const rows = XLSX.utils.sheet_to_json(wb.Sheets["2.3_Gia von"], {
-    header: 1,
-    raw: true,
-    defval: null,
-  }) as (string | number | null)[][];
-
-  const excelPerProduct = new Map<
-    string,
-    { excelRow: number; employee: string | null; items: { loai: string; amt: number }[]; total: number }[]
-  >();
-
-  for (let i = 4; i < rows.length; i++) {
-    const r = rows[i];
-    if (!r) continue;
-    const productCode = r[3];
-    const total = Number(r[38] ?? 0);
-    if (!productCode || !total) continue;
-    const items = parseExcelRow(r);
-    const employee = r[2] ? String(r[2]) : null;
-    const cur = excelPerProduct.get(String(productCode)) || [];
-    cur.push({ excelRow: i + 1, employee, items, total });
-    excelPerProduct.set(String(productCode), cur);
-  }
-
-  // Load DB cost_reconciliations + actor (from activity_logs)
   const dbRows = (await db.execute(sql`
     SELECT p.id AS product_id, p.product_code, cr.id, cr.cost_type,
       cr.employee_name, cr.reconciliation_date, cr.amount_payable_this_time,
@@ -127,7 +99,7 @@ export async function getMissingCostReport(): Promise<{
   let excelTotal = 0;
   let dbTotal = 0;
 
-  for (const [code, excelRows] of excelPerProduct) {
+  for (const [code, excelRows] of Object.entries(snap.perProduct)) {
     const dbList = dbPerProduct.get(code) || [];
     const dbUsed = new Set<number>();
     const missingItems: MissingItem[] = [];
@@ -179,6 +151,6 @@ export async function getMissingCostReport(): Promise<{
     excelTotal,
     dbTotal,
     totalDiff: excelTotal - dbTotal,
-    hasExcel: true,
+    snapshotAt: snap.snapshotAt,
   };
 }
