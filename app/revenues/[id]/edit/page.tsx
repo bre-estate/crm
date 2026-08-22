@@ -12,6 +12,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import RevenueForm from "../../RevenueForm";
 import PaymentsEditor from "./PaymentsEditor";
+import RecordAuditInfo from "@/components/RecordAuditInfo";
 import {
   updateRevenue,
   deleteRevenue,
@@ -129,7 +130,10 @@ export default async function EditRevenuePage({
         <span className="text-slate-400">/</span>
         <span>Sửa đợt #{id}</span>
       </div>
-      <h1 className="text-2xl font-bold">Sửa đợt đối chiếu doanh thu</h1>
+      <div className="flex items-baseline justify-between gap-4 flex-wrap">
+        <h1 className="text-2xl font-bold">Sửa đợt đối chiếu doanh thu</h1>
+        <RecordAuditInfo entityType="revenue_reconciliation" entityId={id} />
+      </div>
 
       <RevenueForm
         recon={recon}

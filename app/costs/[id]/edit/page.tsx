@@ -20,6 +20,7 @@ import {
   deletePaymentOut,
 } from "@/lib/actions/costs";
 import AutoDismissBanner from "@/components/AutoDismissBanner";
+import RecordAuditInfo from "@/components/RecordAuditInfo";
 
 export default async function EditCostPage({
   params,
@@ -118,7 +119,10 @@ export default async function EditCostPage({
         <span className="text-slate-400">/</span>
         <span>Sửa dòng #{id}</span>
       </div>
-      <h1 className="text-2xl font-bold">Sửa đối chiếu giá vốn</h1>
+      <div className="flex items-baseline justify-between gap-4 flex-wrap">
+        <h1 className="text-2xl font-bold">Sửa đối chiếu giá vốn</h1>
+        <RecordAuditInfo entityType="cost_reconciliation" entityId={id} />
+      </div>
 
       {justCreated && (
         <AutoDismissBanner variant="success" clearParams={["created"]}>

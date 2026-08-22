@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 import { eq, desc } from "drizzle-orm";
 import { asc } from "drizzle-orm";
 import ActivityHistoryButton from "./ActivityHistoryButton";
+import RecordAuditInfo from "@/components/RecordAuditInfo";
 import DeleteProductButton from "./DeleteProductButton";
 import { deleteProduct } from "@/lib/actions/products";
 import { hasPermission } from "@/lib/auth";
@@ -312,7 +313,10 @@ export default async function ProductDetailPage({
           <span className="text-slate-400">/</span>
           <span className="font-mono">{p.productCode}</span>
         </div>
-        <ActivityHistoryButton activities={activities} />
+        <div className="flex items-center gap-3">
+          <RecordAuditInfo entityType="product" entityId={id} />
+          <ActivityHistoryButton activities={activities} />
+        </div>
       </div>
 
       {overpaidList.length > 0 && (
