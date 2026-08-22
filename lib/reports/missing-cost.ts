@@ -46,11 +46,13 @@ type Snapshot = {
   perProduct: Record<string, ExcelEntry[]>;
 };
 
+// Label ↔ cost_type mapping. Cột Excel → xem scripts/snapshot_cost_excel.mjs.
 const COST_TYPE_LABEL: Record<string, string> = {
   sale_commission: "HH sale",
   customer_support: "Hỗ trợ khách",
   cdt_bonus_sale: "CĐT thưởng NVKD",
   cdt_bonus_manager: "CĐT thưởng QL",
+  bonus_manager: "CTY thưởng QL",
   kpi_ceo: "KPI CEO",
   kpi_tpkd: "KPI TPKD",
   kpi_admin: "KPI Admin",

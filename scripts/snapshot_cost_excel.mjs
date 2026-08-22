@@ -12,16 +12,19 @@ const outPath = "/Users/trietnguyen/Documents/Company/BRE/App/CRM/lib/reports/co
 const wb = XLSX.readFile(excelPath, { cellDates: true, cellNF: false });
 const rows = XLSX.utils.sheet_to_json(wb.Sheets["2.3_Gia von"], { header: 1, raw: true, defval: null });
 
+// Mapping cột sheet "2.3_Gia von" → cost_type DB (verified 2026-08-22).
+// Header row idx=3. Xem doc trong lib/reports/missing-cost.ts.
 function parseExcelRow(r) {
   const items = [];
   const push = (loai, amt) => { if (amt && Math.abs(amt) > 0.5) items.push({ loai, amt }); };
-  push("HH sale", Number(r[21] ?? 0));
-  push("Hỗ trợ khách", Number(r[24] ?? 0));
-  push("CĐT thưởng NVKD", Number(r[25] ?? 0));
-  push("CĐT thưởng QL", Number(r[27] ?? 0));
-  push("KPI CEO", Number(r[31] ?? 0));
-  push("KPI TPKD", Number(r[35] ?? 0));
-  push("KPI Admin", Number(r[37] ?? 0));
+  push("HH sale", Number(r[21] ?? 0));            // Col U: PMG phai tra dot nay (gross)
+  push("Hỗ trợ khách", Number(r[23] ?? 0));       // Col W: Chi hỗ trợ cho khách (chi thực tế)
+  push("CĐT thưởng NVKD", Number(r[24] ?? 0));    // Col X: CĐT thưởng sale (trừ VAT)
+  push("CĐT thưởng QL", Number(r[25] ?? 0));      // Col Y: CĐT thưởng QL sàn
+  push("CTY thưởng QL", Number(r[27] ?? 0));      // Col AA: CTY thưởng quản lý → bonus_manager
+  push("KPI CEO", Number(r[31] ?? 0));            // Col AE: KPI CEO còn tt đợt này
+  push("KPI TPKD", Number(r[35] ?? 0));           // Col AI: KPI TPKD còn tt đợt này
+  push("KPI Admin", Number(r[37] ?? 0));          // Col AK: Thưởng Admin
   return items;
 }
 

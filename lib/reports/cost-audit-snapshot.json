@@ -1,5 +1,5 @@
 {
-  "snapshotAt": "2026-08-22T10:21:11.147Z",
+  "snapshotAt": "2026-08-22T10:36:48.207Z",
   "sourceFile": "BAO CAO DOANH THU.xlsx",
   "sheet": "2.3_Gia von",
   "totalRows": 10976,
@@ -106,7 +106,7 @@
             "amt": 46502393
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 20000000
           }
         ],
@@ -128,7 +128,7 @@
         "employee": "ĐOÀN LÊ BÁCH",
         "items": [
           {
-            "loai": "CĐT thưởng QL",
+            "loai": "CTY thưởng QL",
             "amt": 10000000
           }
         ],
@@ -216,7 +216,12 @@
       {
         "excelRow": 15,
         "employee": "Đoàn Lê Bách",
-        "items": [],
+        "items": [
+          {
+            "loai": "Hỗ trợ khách",
+            "amt": 25950000
+          }
+        ],
         "total": 25950000
       },
       {
@@ -241,7 +246,7 @@
             "amt": 36156219
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 20000000
           }
         ],
@@ -263,7 +268,7 @@
         "employee": "ĐOÀN LÊ BÁCH",
         "items": [
           {
-            "loai": "CĐT thưởng QL",
+            "loai": "CTY thưởng QL",
             "amt": 5000000
           }
         ],
@@ -313,7 +318,7 @@
             "amt": 45986844
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 20000000
           }
         ],
@@ -335,7 +340,7 @@
         "employee": "ĐOÀN LÊ BÁCH",
         "items": [
           {
-            "loai": "CĐT thưởng QL",
+            "loai": "CTY thưởng QL",
             "amt": 10000000
           }
         ],
@@ -385,7 +390,7 @@
             "amt": 53655375
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 20000000
           }
         ],
@@ -418,7 +423,7 @@
         "employee": "ĐOÀN LÊ BÁCH",
         "items": [
           {
-            "loai": "CĐT thưởng QL",
+            "loai": "CTY thưởng QL",
             "amt": 10000000
           }
         ],
@@ -508,7 +513,12 @@
       {
         "excelRow": 60,
         "employee": "TỐNG THỊ HỒNG THẮM",
-        "items": [],
+        "items": [
+          {
+            "loai": "Hỗ trợ khách",
+            "amt": 10352845.722727273
+          }
+        ],
         "total": 10352845.72
       },
       {
@@ -538,7 +548,12 @@
       {
         "excelRow": 20,
         "employee": "TỐNG THỊ NHUNG",
-        "items": [],
+        "items": [
+          {
+            "loai": "Hỗ trợ khách",
+            "amt": 27236671.10454545
+          }
+        ],
         "total": 27236671.1
       },
       {
@@ -570,7 +585,7 @@
         "employee": "ĐOÀN LÊ BÁCH",
         "items": [
           {
-            "loai": "CĐT thưởng NVKD",
+            "loai": "CĐT thưởng QL",
             "amt": 10000000
           }
         ],
@@ -581,7 +596,7 @@
         "employee": "Trần Minh Nhật",
         "items": [
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 20000000
           }
         ],
@@ -642,7 +657,7 @@
             "amt": 43664560
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 20000000
           }
         ],
@@ -653,7 +668,7 @@
         "employee": "ĐOÀN LÊ BÁCH",
         "items": [
           {
-            "loai": "CĐT thưởng NVKD",
+            "loai": "CĐT thưởng QL",
             "amt": 10000000
           }
         ],
@@ -710,7 +725,7 @@
         "employee": "ĐOÀN LÊ BÁCH",
         "items": [
           {
-            "loai": "CĐT thưởng QL",
+            "loai": "CTY thưởng QL",
             "amt": 10000000
           }
         ],
@@ -725,7 +740,7 @@
             "amt": 60621467
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 20000000
           }
         ],
@@ -804,7 +819,7 @@
         "employee": "ĐOÀN LÊ BÁCH",
         "items": [
           {
-            "loai": "CĐT thưởng QL",
+            "loai": "CTY thưởng QL",
             "amt": 5000000
           }
         ],
@@ -819,7 +834,7 @@
             "amt": 36958313
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 20000000
           }
         ],
@@ -898,7 +913,7 @@
         "employee": "ĐOÀN LÊ BÁCH",
         "items": [
           {
-            "loai": "CĐT thưởng QL",
+            "loai": "CTY thưởng QL",
             "amt": 5000000
           }
         ],
@@ -913,7 +928,7 @@
             "amt": 36237384
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 20000000
           }
         ],
@@ -992,7 +1007,7 @@
         "employee": "ĐOÀN LÊ BÁCH",
         "items": [
           {
-            "loai": "CĐT thưởng QL",
+            "loai": "CTY thưởng QL",
             "amt": 10000000
           }
         ],
@@ -1007,7 +1022,7 @@
             "amt": 50858039
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 20000000
           }
         ],
@@ -1086,7 +1101,7 @@
         "employee": "ĐOÀN LÊ BÁCH",
         "items": [
           {
-            "loai": "CĐT thưởng QL",
+            "loai": "CTY thưởng QL",
             "amt": 10000000
           }
         ],
@@ -1101,7 +1116,7 @@
             "amt": 39953033
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 20000000
           }
         ],
@@ -1180,7 +1195,7 @@
         "employee": "ĐOÀN LÊ BÁCH",
         "items": [
           {
-            "loai": "CĐT thưởng QL",
+            "loai": "CTY thưởng QL",
             "amt": 5000000
           }
         ],
@@ -1195,7 +1210,7 @@
             "amt": 23725894
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 20000000
           }
         ],
@@ -1320,7 +1335,7 @@
         "employee": "ĐOÀN LÊ BÁCH",
         "items": [
           {
-            "loai": "CĐT thưởng QL",
+            "loai": "CTY thưởng QL",
             "amt": 5000000
           }
         ],
@@ -1335,7 +1350,7 @@
             "amt": 23146801
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 20000000
           }
         ],
@@ -1412,7 +1427,12 @@
       {
         "excelRow": 76,
         "employee": "VŨ ĐỨC THỊNH",
-        "items": [],
+        "items": [
+          {
+            "loai": "Hỗ trợ khách",
+            "amt": 10000000
+          }
+        ],
         "total": 10000000
       },
       {
@@ -1424,7 +1444,7 @@
             "amt": 36752868
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 20000000
           }
         ],
@@ -1479,7 +1499,7 @@
         "employee": "Đoàn Lê Bách",
         "items": [
           {
-            "loai": "CĐT thưởng QL",
+            "loai": "CTY thưởng QL",
             "amt": 10000000
           }
         ],
@@ -1518,7 +1538,7 @@
             "amt": 39332415
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 20000000
           }
         ],
@@ -1529,7 +1549,7 @@
         "employee": "ĐOÀN LÊ BÁCH",
         "items": [
           {
-            "loai": "CĐT thưởng QL",
+            "loai": "CTY thưởng QL",
             "amt": 10000000
           }
         ],
@@ -1590,7 +1610,7 @@
             "amt": 39411871
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 20000000
           }
         ],
@@ -1601,7 +1621,7 @@
         "employee": "ĐOÀN LÊ BÁCH",
         "items": [
           {
-            "loai": "CĐT thưởng QL",
+            "loai": "CTY thưởng QL",
             "amt": 10000000
           }
         ],
@@ -1658,7 +1678,7 @@
         "employee": "ĐOÀN LÊ BÁCH",
         "items": [
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 20000000
           }
         ],
@@ -1673,11 +1693,11 @@
             "amt": 47804755
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 20000000
           },
           {
-            "loai": "CĐT thưởng QL",
+            "loai": "CTY thưởng QL",
             "amt": 10000000
           }
         ],
@@ -1699,7 +1719,7 @@
         "employee": "Đoàn Lê Bách",
         "items": [
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": -20000000
           }
         ],
@@ -1738,7 +1758,7 @@
             "amt": 56865839
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 18181818.18181818
           }
         ],
@@ -1777,7 +1797,7 @@
             "amt": 62692233
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 18181818
           }
         ],
@@ -1827,7 +1847,7 @@
             "amt": 56604770
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 18181818.18181818
           }
         ],
@@ -1888,7 +1908,7 @@
             "amt": 55080465
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 18181818.18
           }
         ],
@@ -1916,7 +1936,7 @@
             "amt": 47352417
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 13636363.636363635
           }
         ],
@@ -1955,7 +1975,7 @@
             "amt": 63735507
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 18181818
           }
         ],
@@ -2075,7 +2095,7 @@
             "amt": 40369470
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 35000000
           }
         ],
@@ -2108,7 +2128,7 @@
         "employee": "Đoàn Lê Bách",
         "items": [
           {
-            "loai": "CĐT thưởng QL",
+            "loai": "CTY thưởng QL",
             "amt": 10000000
           }
         ],
@@ -2136,7 +2156,7 @@
             "amt": 39929131
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 20000000
           }
         ],
@@ -2230,7 +2250,7 @@
             "amt": 46329965
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 35000000
           }
         ],
@@ -2250,7 +2270,12 @@
       {
         "excelRow": 217,
         "employee": "PHAN THỊ HUYỀN",
-        "items": [],
+        "items": [
+          {
+            "loai": "Hỗ trợ khách",
+            "amt": 10000000
+          }
+        ],
         "total": 10000000
       },
       {
@@ -2269,7 +2294,7 @@
         "employee": "Đoàn Lê Bách",
         "items": [
           {
-            "loai": "CĐT thưởng QL",
+            "loai": "CTY thưởng QL",
             "amt": 10000000
           }
         ],
@@ -2308,7 +2333,7 @@
             "amt": 49908855
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 35000000
           }
         ],
@@ -2341,7 +2366,7 @@
         "employee": "Đoàn Lê Bách",
         "items": [
           {
-            "loai": "CĐT thưởng QL",
+            "loai": "CTY thưởng QL",
             "amt": 10000000
           }
         ],
@@ -2380,7 +2405,7 @@
             "amt": 45800603
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 20000000
           }
         ],
@@ -2452,7 +2477,7 @@
             "amt": 32557624
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 10000000
           }
         ],
@@ -2546,7 +2571,7 @@
             "amt": 28948697
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 20000000
           }
         ],
@@ -2588,7 +2613,12 @@
       {
         "excelRow": 262,
         "employee": "NGUYỄN ĐỨC CƯỜNG",
-        "items": [],
+        "items": [
+          {
+            "loai": "Hỗ trợ khách",
+            "amt": 36321996
+          }
+        ],
         "total": 36321996
       },
       {
@@ -2646,7 +2676,7 @@
             "amt": 21987319
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 20000000
           }
         ],
@@ -2688,7 +2718,12 @@
       {
         "excelRow": 263,
         "employee": "TRIỆU TẤN ĐẠT",
-        "items": [],
+        "items": [
+          {
+            "loai": "Hỗ trợ khách",
+            "amt": 28132140
+          }
+        ],
         "total": 28132140
       },
       {
@@ -2746,7 +2781,7 @@
             "amt": 46050728
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 20000000
           }
         ],
@@ -2777,7 +2812,12 @@
       {
         "excelRow": 265,
         "employee": "Hồ Nguyễn Công Thành",
-        "items": [],
+        "items": [
+          {
+            "loai": "Hỗ trợ khách",
+            "amt": 10000000
+          }
+        ],
         "total": 10000000
       },
       {
@@ -2785,7 +2825,7 @@
         "employee": "Hồ Nguyễn Công Thành",
         "items": [
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 10000000
           }
         ],
@@ -2829,7 +2869,7 @@
         "employee": "Hồ Nguyễn Công Thành",
         "items": [
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": -10000000
           }
         ],
@@ -2857,7 +2897,7 @@
             "amt": 28285340
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 20000000
           }
         ],
@@ -2899,7 +2939,12 @@
       {
         "excelRow": 266,
         "employee": "Trần Sỹ Phú",
-        "items": [],
+        "items": [
+          {
+            "loai": "Hỗ trợ khách",
+            "amt": 10000000
+          }
+        ],
         "total": 10000000
       },
       {
@@ -2957,7 +3002,7 @@
             "amt": 25163277
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 10000000
           }
         ],
@@ -3051,7 +3096,7 @@
             "amt": 27542323
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 10000000
           }
         ],
@@ -3145,7 +3190,7 @@
             "amt": 29877051
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 20000000
           }
         ],
@@ -3187,7 +3232,12 @@
       {
         "excelRow": 264,
         "employee": "ĐẶNG PHÚC LỘC",
-        "items": [],
+        "items": [
+          {
+            "loai": "Hỗ trợ khách",
+            "amt": 37414177
+          }
+        ],
         "total": 37414177
       },
       {
@@ -3208,7 +3258,7 @@
         "employee": "Lê Trịnh Thanh Thúy",
         "items": [
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 20000000
           }
         ],
@@ -3239,7 +3289,12 @@
       {
         "excelRow": 215,
         "employee": "TRẦN THỊ THẢO",
-        "items": [],
+        "items": [
+          {
+            "loai": "Hỗ trợ khách",
+            "amt": 10000000
+          }
+        ],
         "total": 10000000
       },
       {
@@ -3297,11 +3352,11 @@
             "amt": 49980913
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 20000000
           },
           {
-            "loai": "CĐT thưởng QL",
+            "loai": "CTY thưởng QL",
             "amt": 10000000
           }
         ],
@@ -3351,7 +3406,7 @@
             "amt": 24201757
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 9090909.091
           }
         ],
@@ -3379,7 +3434,7 @@
             "amt": 46776063
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 20000000
           }
         ],
@@ -3440,7 +3495,7 @@
             "amt": 34107430
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 20000000
           }
         ],
@@ -3460,7 +3515,12 @@
       {
         "excelRow": 216,
         "employee": "LƯU HỒNG VÂN",
-        "items": [],
+        "items": [
+          {
+            "loai": "Hỗ trợ khách",
+            "amt": 10000000
+          }
+        ],
         "total": 10000000
       },
       {
@@ -3518,7 +3578,7 @@
             "amt": 34156051
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 20000000
           }
         ],
@@ -3538,7 +3598,12 @@
       {
         "excelRow": 214,
         "employee": "NGUYỄN ĐỨC CƯỜNG",
-        "items": [],
+        "items": [
+          {
+            "loai": "Hỗ trợ khách",
+            "amt": 33305585.715
+          }
+        ],
         "total": 33305585.72
       },
       {
@@ -3596,7 +3661,7 @@
             "amt": 52440158
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 20000000
           }
         ],
@@ -3616,7 +3681,12 @@
       {
         "excelRow": 332,
         "employee": "Trần Thị Hoa",
-        "items": [],
+        "items": [
+          {
+            "loai": "Hỗ trợ khách",
+            "amt": 10000000
+          }
+        ],
         "total": 10000000
       },
       {
@@ -3659,7 +3729,7 @@
         "employee": "Đoàn Lê Bách",
         "items": [
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 5000000
           }
         ],
@@ -3685,7 +3755,7 @@
             "amt": 35085892
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 5000000
           }
         ],
@@ -3731,7 +3801,7 @@
         "employee": "Đoàn Lê Bách",
         "items": [
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 10000000
           }
         ],
@@ -3757,7 +3827,7 @@
             "amt": 52556989
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 10000000
           }
         ],
@@ -3803,7 +3873,7 @@
         "employee": "Đoàn Lê Bách",
         "items": [
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 10000000
           }
         ],
@@ -3829,7 +3899,7 @@
             "amt": 51687733
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 10000000
           }
         ],
@@ -3875,7 +3945,7 @@
         "employee": "Bùi Thị Hạ Uyên",
         "items": [
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 10000000
           }
         ],
@@ -3901,7 +3971,7 @@
             "amt": 53138859
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 10000000
           }
         ],
@@ -3958,7 +4028,7 @@
         "employee": "Bùi Thị Hạ Uyên",
         "items": [
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 10000000
           }
         ],
@@ -3984,7 +4054,7 @@
             "amt": 51824772
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 10000000
           }
         ],
@@ -4041,7 +4111,7 @@
         "employee": "Tô Rô Ly Na",
         "items": [
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 10000000
           }
         ],
@@ -4054,7 +4124,7 @@
         "employee": "Trần Thị Khánh Linh",
         "items": [
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 10000000
           }
         ],
@@ -4080,7 +4150,7 @@
             "amt": 50565574
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 10000000
           }
         ],
@@ -4137,7 +4207,7 @@
         "employee": "Trần Minh Nhật",
         "items": [
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 5000000
           }
         ],
@@ -4163,7 +4233,7 @@
             "amt": 33903862
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 5000000
           }
         ],
@@ -4220,7 +4290,7 @@
         "employee": "Hồ Nguyễn Công Thành",
         "items": [
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 15000000
           }
         ],
@@ -4246,7 +4316,7 @@
             "amt": 86441536
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 15000000
           }
         ],
@@ -4255,7 +4325,12 @@
       {
         "excelRow": 331,
         "employee": "Ngô Mai Thùy",
-        "items": [],
+        "items": [
+          {
+            "loai": "Hỗ trợ khách",
+            "amt": 10000000
+          }
+        ],
         "total": 10000000
       },
       {
@@ -4287,7 +4362,7 @@
         "employee": "Hồ Nguyễn Công Thành",
         "items": [
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 5000000
           }
         ],
@@ -4313,7 +4388,7 @@
             "amt": 39632333
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 10000000
           }
         ],
@@ -4322,7 +4397,12 @@
       {
         "excelRow": 330,
         "employee": "Nguyễn Hải Đăng",
-        "items": [],
+        "items": [
+          {
+            "loai": "Hỗ trợ khách",
+            "amt": 10000000
+          }
+        ],
         "total": 10000000
       },
       {
@@ -4352,7 +4432,7 @@
         "employee": "Hồ Nguyễn Công Thành",
         "items": [
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 5000000
           }
         ],
@@ -4376,7 +4456,7 @@
         "employee": "Hồ Nguyễn Công Thành",
         "items": [
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 5000000
           }
         ],
@@ -4398,7 +4478,7 @@
         "employee": "Hồ Nguyễn Công Thành",
         "items": [
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 10000000
           }
         ],
@@ -4442,7 +4522,7 @@
         "employee": "Hồ Nguyễn Công Thành",
         "items": [
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 5000000
           }
         ],
@@ -4466,7 +4546,7 @@
         "employee": "Lê Thị Cẩm Giang",
         "items": [
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 10000000
           }
         ],
@@ -4492,7 +4572,7 @@
             "amt": 47437076
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 10000000
           }
         ],
@@ -4538,7 +4618,7 @@
         "employee": "Bùi Thị Hạ Uyên",
         "items": [
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 10000000
           }
         ],
@@ -4564,7 +4644,7 @@
             "amt": 50713657
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 10000000
           }
         ],
@@ -4614,7 +4694,7 @@
             "amt": 43708838
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 10000000
           }
         ],
@@ -4682,7 +4762,7 @@
         "employee": "Hồ Nguyễn Công Thành",
         "items": [
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 20000000
           }
         ],
@@ -4706,7 +4786,7 @@
         "employee": "Hồ Đắc Thạch",
         "items": [
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 46540000
           }
         ],
@@ -4719,7 +4799,7 @@
         "employee": "Hồ Nguyễn Công Thành",
         "items": [
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 10000000
           }
         ],
@@ -4776,7 +4856,7 @@
         "employee": null,
         "items": [
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 8500000
           }
         ],
@@ -4822,7 +4902,7 @@
         "employee": null,
         "items": [
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 20000000
           }
         ],
@@ -4857,7 +4937,7 @@
         "employee": null,
         "items": [
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 18000000
           }
         ],
@@ -4885,7 +4965,7 @@
             "amt": 36514915
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 16272727
           }
         ],
@@ -4913,7 +4993,7 @@
             "amt": 28826509
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 16272727
           }
         ],
@@ -4941,7 +5021,7 @@
             "amt": 28495484
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 16272727
           }
         ],
@@ -4969,7 +5049,7 @@
             "amt": 27716469
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 16272727
           }
         ],
@@ -4997,7 +5077,7 @@
             "amt": 26899485
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 16272727
           }
         ],
@@ -5025,7 +5105,7 @@
             "amt": 25501265
           },
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 16272727
           }
         ],
@@ -5119,7 +5199,7 @@
         "employee": "Đinh Viết Hân",
         "items": [
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 30000000
           }
         ],
@@ -5154,7 +5234,7 @@
         "employee": "Đinh Viết Hân",
         "items": [
           {
-            "loai": "Hỗ trợ khách",
+            "loai": "CĐT thưởng NVKD",
             "amt": 60000000
           }
         ],
