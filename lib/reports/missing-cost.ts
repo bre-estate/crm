@@ -5,7 +5,7 @@
  * Excel path: data-excel/BAO CAO DOANH THU.xlsx (relative to project root).
  * Nếu file không tồn tại (env production trên Vercel), throw để page catch.
  */
-import XLSX from "xlsx";
+import * as XLSX from "xlsx";
 import path from "path";
 import fs from "fs";
 import { db } from "@/lib/db";
