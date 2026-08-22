@@ -9,6 +9,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { logActivity } from "@/lib/audit";
 import { toNum, toStr, toStrOrNull, toPct } from "@/lib/parse";
+import {
+  assertCostCapNotExceeded,
+  assertPaymentProgressPctInRange,
+} from "@/lib/actions/cap-guards";
 
 const VALID_COST_TYPES = [
   "sale_commission",
@@ -99,6 +103,14 @@ export async function createCost(fd: FormData) {
     }
   }
 
+  // Guard trần hợp đồng theo loại chi phí + N tiến độ ≤ 100%.
+  assertPaymentProgressPctInRange(Number(data.paymentProgressPct ?? 0));
+  await assertCostCapNotExceeded(
+    data.productId,
+    data.costType,
+    Number(data.amountPayableThisTime ?? 0),
+  );
+
   const [rec] = await db
     .insert(costReconciliations)
     .values(data)
@@ -144,6 +156,16 @@ export async function updateCost(id: number, fd: FormData, returnTo?: string | n
     .select()
     .from(costReconciliations)
     .where(eq(costReconciliations.id, id));
+
+  // Guard trần hợp đồng (loại trừ chính dòng đang sửa khỏi tổng cũ).
+  assertPaymentProgressPctInRange(Number(data.paymentProgressPct ?? 0));
+  await assertCostCapNotExceeded(
+    data.productId,
+    data.costType,
+    Number(data.amountPayableThisTime ?? 0),
+    id,
+  );
+
   await db.update(costReconciliations).set(data).where(eq(costReconciliations.id, id));
   await logActivity({
     entityType: "cost_reconciliation",

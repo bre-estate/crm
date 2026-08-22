@@ -8,6 +8,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { logActivity } from "@/lib/audit";
 import { toNum, toStr, toStrOrNull, toPct } from "@/lib/parse";
+import {
+  assertRevenueCapNotExceeded,
+  assertPhasePctNotExceeded,
+  assertPmgCumulativePctInRange,
+} from "@/lib/actions/cap-guards";
 
 // Suy partner_id từ product → project → partner_id.
 // Mỗi CĐT có sổ HĐ riêng, số HĐ có thể trùng giữa các CĐT → partner_id
@@ -200,6 +205,11 @@ export async function createRevenue(fd: FormData) {
     throw new Error("Đợt đối chiếu trống — cần có ngày ĐC hoặc số tiền > 0");
   }
 
+  // Guard: không cho vượt trần hợp đồng.
+  assertPmgCumulativePctInRange(Number(data.pmgCumulativePct ?? 0));
+  await assertRevenueCapNotExceeded(data.productId, totalReceivable);
+  await assertPhasePctNotExceeded(data.productId, Number(data.phasePctThisTime ?? 0));
+
   const [rec] = await db
     .insert(revenueReconciliations)
     .values({
@@ -289,6 +299,11 @@ export async function updateRevenue(id: number, fd: FormData) {
   const finalCdtMgr = Number(data.cdtBonusManager ?? 0) + cdtBonusManager;
   const totalReceivable =
     Number(data.revenueThisTime ?? 0) + finalCdtSale + finalCdtMgr;
+
+  // Guard trần hợp đồng (loại trừ chính dòng đang sửa khỏi tổng cũ).
+  assertPmgCumulativePctInRange(Number(data.pmgCumulativePct ?? 0));
+  await assertRevenueCapNotExceeded(data.productId, totalReceivable, id);
+  await assertPhasePctNotExceeded(data.productId, Number(data.phasePctThisTime ?? 0), id);
 
   await db
     .update(revenueReconciliations)
