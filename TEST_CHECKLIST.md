@@ -137,6 +137,44 @@ Chạy checklist này cho UI flows.
 
 ---
 
+## 9. Chặn đối chiếu vượt trần hợp đồng (cap-guards)
+
+Spec: [docs/SPEC-cap-guards.md](docs/SPEC-cap-guards.md).
+Unit test: `npm test tests/cap-guards.test.ts` (12 pure tests + 20 DB tests skip).
+
+### 9.1. Chặn doanh thu vượt trần (case #4301)
+- [ ] Vào `/revenues/new`, chọn căn `ATSR_DXMD_A-05-07`
+- [ ] Nhập DT = 140.900.000 (đã có #4088 145.1M rồi)
+- [ ] Bấm Lưu
+- [ ] **Expected**: Toast/error đỏ chứa: `"Vượt trần doanh thu căn ATSR_DXMD_A-05-07"`, hiện tổng dự kiến + % vượt (~117%)
+- [ ] Recon KHÔNG được tạo — /revenues không có dòng mới
+
+### 9.2. Cho qua khi trong trần
+- [ ] Vào `/revenues/new`, chọn căn `ATSR_DXMD_A-05-07`
+- [ ] Nhập DT = 10.000.000 (còn dư trong trần)
+- [ ] Bấm Lưu → thành công, redirect /revenues
+
+### 9.3. Chặn giá vốn HH sale vượt trần
+- [ ] Vào `/costs/new`, chọn 1 căn có PMG target, chọn loại "HH sale"
+- [ ] Nhập amount lớn hơn `PMG × %PMG_LK × %HH sale` (VD 500M nếu trần 27M)
+- [ ] Bấm Lưu
+- [ ] **Expected**: Error chứa `"Vượt trần HH sale (PMG × %HH sale)"` + % vượt
+
+### 9.4. Update (sửa) — loại trừ chính mình
+- [ ] Mở 1 recon DT có sẵn, VD #4088 (145M cho ATSR, đang 59.5% target)
+- [ ] Sửa amount → 200M (còn trong trần 243.7M) → Lưu
+- [ ] **Expected**: cho qua (dù nếu tính thêm chính nó vào cumulative sẽ vượt)
+
+### 9.5. % PMG lũy kế > 100%
+- [ ] Vào form DT, nhập `pmg_cumulative_pct` = 110% (nếu form có field)
+- [ ] **Expected**: block với `"% PMG lũy kế = 110.0% > 100%"`
+
+### 9.6. Product chưa nhập PMG target → skip guard
+- [ ] Tạo product mới với `pmg_base_price = 0`
+- [ ] Nhập recon DT bất kỳ số → **Expected**: cho qua (không block vì không có cap để check)
+
+---
+
 ## Ghi chú khi test fail
 
 Nếu 1 case fail, ghi lại:
