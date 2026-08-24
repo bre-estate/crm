@@ -125,14 +125,22 @@ export default function CostForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productId, costType]);
 
-  // previousRecons: nếu edit → dùng prop từ server. Nếu new (có allRecons) → filter client-side.
+  // previousRecons: ưu tiên filter client-side từ allRecons theo cost_type HIỆN TẠI
+  // (reactive khi user đổi dropdown loại chi phí). Loại trừ chính dòng đang edit.
+  // Fallback về previousReconsProp (server-side) khi không có allRecons.
   const previousRecons = useMemo<PreviousRecon[]>(() => {
-    if (previousReconsProp.length > 0) return previousReconsProp;
-    if (!allRecons || !productId) return [];
-    return allRecons
-      .filter((r) => r.productId === productId && r.costType === costType)
-      .map((r) => ({ id: r.id, date: r.date, amount: r.amount, note: r.note, progressN: r.progressN }));
-  }, [previousReconsProp, allRecons, productId, costType]);
+    if (allRecons && productId) {
+      return allRecons
+        .filter(
+          (r) =>
+            r.productId === productId &&
+            r.costType === costType &&
+            (!isEdit || r.id !== recon?.id),
+        )
+        .map((r) => ({ id: r.id, date: r.date, amount: r.amount, note: r.note, progressN: r.progressN }));
+    }
+    return previousReconsProp;
+  }, [previousReconsProp, allRecons, productId, costType, isEdit, recon?.id]);
 
   // Max N (Tiến độ) của các đợt trước → N đợt này phải ≥ giá trị này (không lùi tiến độ)
   const maxPrevN = useMemo(() => {

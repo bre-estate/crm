@@ -110,6 +110,23 @@ export default async function EditCostPage({
     .where(eq(employees.active, true))
     .orderBy(asc(employees.name));
 
+  // allRecons: cho phép CostForm re-filter previous theo cost_type khi user
+  // đổi dropdown ("HH sale" → "thưởng nóng" chẳng hạn). Nếu không có, form
+  // dùng previousRecons đã filter server-side theo cost_type CŨ → hiển thị sai.
+  const allRecons = await db
+    .select({
+      id: costReconciliations.id,
+      productId: costReconciliations.productId,
+      costType: costReconciliations.costType,
+      date: costReconciliations.reconciliationDate,
+      amount: costReconciliations.amountPayableThisTime,
+      progressN: costReconciliations.paymentProgressPct,
+      employeeName: costReconciliations.employeeName,
+      note: costReconciliations.note,
+    })
+    .from(costReconciliations)
+    .orderBy(asc(costReconciliations.reconciliationDate));
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 text-sm">
@@ -145,6 +162,7 @@ export default async function EditCostPage({
         recon={recon}
         products={productOptions}
         previousRecons={previousRecons}
+        allRecons={allRecons}
         employees={allEmployees}
         onSave={async (fd) => {
           "use server";
