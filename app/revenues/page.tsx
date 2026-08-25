@@ -29,6 +29,7 @@ type SearchParams = Promise<{
   tab?: string;
   status?: string;
   age?: string;
+  type?: string; // "commission" | "bonus" | "all"
   justCreated?: string;
 }>;
 
@@ -38,6 +39,12 @@ const STATUS_OPTIONS = [
   { key: "waiting_pay", label: "Đã ĐC", icon: "" },
   { key: "partial", label: "Đã ĐC · TT 1 phần", icon: "" },
   { key: "no_date", label: "Chưa ĐC", icon: "" },
+] as const;
+
+const TYPE_OPTIONS = [
+  { key: "all", label: "Tất cả" },
+  { key: "commission", label: "HH Sale" },
+  { key: "bonus", label: "Thưởng nóng CĐT" },
 ] as const;
 
 // Bucket theo số ngày CĐT chưa trả từ ngày ĐC. Chỉ áp dụng cho recon chưa
@@ -51,13 +58,14 @@ const AGE_OPTIONS = [
 
 export default async function RevenuesPage({ searchParams }: { searchParams: SearchParams }) {
   const canDelete = await hasPermission("revenues", "delete");
-  const { projectId, unitCode, tab, status, age, justCreated } = await searchParams;
+  const { projectId, unitCode, tab, status, age, type, justCreated } = await searchParams;
   const filterProjectId = projectId ? Number(projectId) : null;
   const filterUnitCode = unitCode?.trim() || null;
   // Thứ cấp đã có trang riêng — /revenues chỉ show DT sơ cấp
   const activeTab: "primary" = "primary";
   const activeStatus = (STATUS_OPTIONS.find((s) => s.key === status)?.key ?? "all") as (typeof STATUS_OPTIONS)[number]["key"];
   const activeAge = (AGE_OPTIONS.find((a) => a.key === age)?.key ?? "all") as (typeof AGE_OPTIONS)[number]["key"];
+  const activeType = (TYPE_OPTIONS.find((t) => t.key === type)?.key ?? "all") as (typeof TYPE_OPTIONS)[number]["key"];
   const justCreatedIds = new Set<number>(
     (justCreated ?? "")
       .split(",")
@@ -71,6 +79,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
   if (tab) returnToParams.set("tab", String(tab));
   if (status) returnToParams.set("status", String(status));
   if (age) returnToParams.set("age", String(age));
+  if (type) returnToParams.set("type", String(type));
   const returnToQs = returnToParams.toString();
   const returnTo = returnToQs ? `/revenues?${returnToQs}` : "/revenues";
   const editQs = `?returnTo=${encodeURIComponent(returnTo)}`;
@@ -193,9 +202,20 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
     ? rowsWithStatus
     : rowsWithStatus.filter((x) => x.status === activeStatus);
 
-  const filteredRows = skipFilters || activeAge === "all"
+  const filteredByAge = skipFilters || activeAge === "all"
     ? filteredByStatus
     : filteredByStatus.filter((x) => x.ageKey === activeAge && x.daysUnpaid >= 0);
+
+  // Filter loại DT: hoa hồng (revThis > 0) vs thưởng nóng CĐT (revThis = 0 + có bonus)
+  const filteredRows = skipFilters || activeType === "all"
+    ? filteredByAge
+    : filteredByAge.filter((x) => {
+        const revThis = Number(x.r.revThis ?? 0);
+        const bonus = Number(x.r.cdtBonusSale ?? 0) + Number(x.r.cdtBonusManager ?? 0);
+        if (activeType === "commission") return revThis > 0;
+        if (activeType === "bonus") return revThis === 0 && bonus > 0;
+        return true;
+      });
 
   const rows2 = filteredRows.map((x) => x.r);
   const statusOf = new Map(filteredRows.map((x) => [x.r.id, x.status]));
@@ -222,6 +242,16 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
     filteredByStatus.filter((x) => x.daysUnpaid >= 0).length,
   );
 
+  // Count per type — tính từ rowsWithStatus (không phụ thuộc status/age filter)
+  const typeCounts = new Map<string, number>();
+  typeCounts.set("all", rowsWithStatus.length);
+  for (const x of rowsWithStatus) {
+    const revThis = Number(x.r.revThis ?? 0);
+    const bonus = Number(x.r.cdtBonusSale ?? 0) + Number(x.r.cdtBonusManager ?? 0);
+    if (revThis > 0) typeCounts.set("commission", (typeCounts.get("commission") ?? 0) + 1);
+    else if (bonus > 0) typeCounts.set("bonus", (typeCounts.get("bonus") ?? 0) + 1);
+  }
+
   return (
     <div className="space-y-4">
       <HighlightManager />
@@ -245,7 +275,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
         <div>
           <h1 className="text-2xl font-bold">Đối chiếu doanh thu</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Tương ứng sheet 2.2_Doanh thu. Mỗi dòng = 1 sản phẩm × 1 đợt × 1 hóa đơn.
+            Mỗi dòng = 1 đợt CĐT ghi nhận doanh thu cho BRE (HH sale theo tiến độ khách trả, hoặc thưởng nóng), kèm 1 hóa đơn.
           </p>
         </div>
         <div className="flex gap-2">
@@ -263,6 +293,37 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
 
 
 
+      {/* Loại DT filter pills — hoa hồng vs thưởng nóng CĐT */}
+      <div className="flex flex-wrap gap-2 items-center">
+        <span className="text-xs text-slate-500 mr-1">Loại:</span>
+        {TYPE_OPTIONS.map((t) => {
+          const isActive = activeType === t.key;
+          const count = typeCounts.get(t.key) ?? 0;
+          if (t.key !== "all" && count === 0) return null;
+          const params = new URLSearchParams();
+          params.set("tab", activeTab);
+          if (filterProjectId) params.set("projectId", String(filterProjectId));
+          if (filterUnitCode) params.set("unitCode", filterUnitCode);
+          if (activeStatus !== "all") params.set("status", activeStatus);
+          if (activeAge !== "all") params.set("age", activeAge);
+          if (t.key !== "all") params.set("type", t.key);
+          return (
+            <Link
+              key={t.key}
+              href={`/revenues?${params.toString()}`}
+              className={`text-xs px-3 py-1 rounded-full border transition ${
+                isActive
+                  ? "bg-orange-500 text-white border-orange-500"
+                  : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
+              }`}
+            >
+              {t.label}
+              <span className={`ml-1 ${isActive ? "text-blue-100" : "text-slate-400"}`}>({count})</span>
+            </Link>
+          );
+        })}
+      </div>
+
       {/* Status filter pills */}
       <div className="flex flex-wrap gap-2 items-center">
         <span className="text-xs text-slate-500 mr-1">Trạng thái:</span>
@@ -275,6 +336,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
           if (filterUnitCode) params.set("unitCode", filterUnitCode);
           if (s.key !== "all") params.set("status", s.key);
           if (activeAge !== "all") params.set("age", activeAge);
+          if (activeType !== "all") params.set("type", activeType);
           return (
             <Link
               key={s.key}
@@ -305,6 +367,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
             if (filterUnitCode) params.set("unitCode", filterUnitCode);
             if (activeStatus !== "all") params.set("status", activeStatus);
             if (a.key !== "all") params.set("age", a.key);
+            if (activeType !== "all") params.set("type", activeType);
             const color =
               a.key === "0_30"
                 ? "text-emerald-700 border-emerald-300"
@@ -422,7 +485,6 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
               {activeTab === "primary" && (
                 <>
                   <th className="text-right p-2" title="%PMG_LK toàn hợp đồng của căn">Tổng %PMG</th>
-                  <th className="text-center p-2">Đợt</th>
                   <th className="text-right p-2">%PMG lũy kế</th>
                 </>
               )}
@@ -506,9 +568,6 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
                         ) : (
                           <span className="text-slate-400">—</span>
                         )}
-                      </td>
-                      <td className="p-2 text-center text-xs">
-                        {r.note?.trim() ? r.note : r.phase ? `Đợt ${r.phase}` : "—"}
                       </td>
                       <td className="p-2 text-right tabular-nums text-xs">
                         {r.pmgCumPct ? fmtPct(r.pmgCumPct) : "—"}
