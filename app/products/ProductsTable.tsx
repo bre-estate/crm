@@ -158,7 +158,6 @@ export default function ProductsTable({
               <th className="text-center p-2 whitespace-nowrap">% thu</th>
               <th className="text-center p-2 whitespace-nowrap">Lần</th>
               <th className="text-center p-2 whitespace-nowrap">HĐ</th>
-              <th className="text-center p-2 whitespace-nowrap" title="NV nợ cty do chi dư thưởng nóng">Chi dư</th>
               <th className="text-right p-2"></th>
             </tr>
           </thead>
@@ -278,36 +277,24 @@ export default function ProductsTable({
                       <span className="text-slate-400">—</span>
                     )}
                   </td>
-                  <td className="p-2 text-center text-xs">
+                  <td className="p-2 text-center text-xs whitespace-nowrap">
                     {r.invoiceCount > 0 ? (
                       <span
-                        className="px-2 py-0.5 rounded bg-green-100 text-green-700 font-medium"
+                        className="inline-block px-2 py-0.5 rounded bg-green-100 text-green-700 font-medium whitespace-nowrap"
                         title={`${r.invoiceCount} hóa đơn`}
                       >
                         ✓ {r.invoiceCount}
                       </span>
                     ) : (
-                      <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-500">
+                      <span className="inline-block px-2 py-0.5 rounded bg-slate-100 text-slate-500">
                         —
                       </span>
                     )}
                   </td>
-                  <td className="p-2 text-center text-xs">
-                    {r.overpaid && r.overpaid > 0 ? (
-                      <span
-                        className="px-2 py-0.5 rounded bg-amber-100 text-amber-700 font-semibold tabular-nums"
-                        title={`NV nợ cty: ${(r.overpaidEmployees ?? []).join(", ")}`}
-                      >
-                        {fmtMoney(r.overpaid)}
-                      </span>
-                    ) : (
-                      <span className="text-slate-300">-</span>
-                    )}
-                  </td>
-                  <td className="p-2 text-right">
+                  <td className="p-2 text-right whitespace-nowrap">
                     <Link
                       href={`/products/${r.id}${detailQs}`}
-                      className="text-blue-600 hover:underline text-sm"
+                      className="text-blue-600 hover:underline text-sm whitespace-nowrap"
                     >
                       Chi tiết
                     </Link>
