@@ -126,11 +126,14 @@ export default function RevenuesFilterForm({
           options={nvkdOptions}
         />
       </div>
-      <Button type="submit" variant="secondary">
+      <Button
+        type="submit"
+        className="h-[38px] px-4 bg-slate-900 text-white hover:bg-slate-700"
+      >
         Lọc
       </Button>
       {hasFilter && (
-        <Button variant="outline" render={<Link href={resetUrl} />}>
+        <Button variant="outline" className="h-[38px] px-4" render={<Link href={resetUrl} />}>
           Reset
         </Button>
       )}

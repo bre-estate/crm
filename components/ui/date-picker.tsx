@@ -70,28 +70,43 @@ export function DatePicker({
         </svg>
       </PopoverTrigger>
       <PopoverContent className="p-2 w-auto">
-        <DayPicker
-          mode="single"
-          selected={isValidSelected}
-          onSelect={handleSelect}
-          locale={vi}
-          weekStartsOn={1}
-          showOutsideDays
-          captionLayout="dropdown"
-          startMonth={new Date(2020, 0)}
-          endMonth={new Date(2035, 11)}
-          footer={
-            isValidSelected ? (
-              <button
-                type="button"
-                onClick={() => handleSelect(undefined)}
-                className="mt-2 text-xs text-blue-600 hover:underline"
-              >
-                Xóa
-              </button>
-            ) : null
+        <div
+          style={
+            {
+              "--rdp-day-height": "1.75rem",
+              "--rdp-day-width": "1.75rem",
+              "--rdp-day_button-height": "1.75rem",
+              "--rdp-day_button-width": "1.75rem",
+              "--rdp-nav_button-height": "1.75rem",
+              "--rdp-nav_button-width": "1.75rem",
+              "--rdp-font-family": "inherit",
+            } as React.CSSProperties
           }
-        />
+          className="text-xs"
+        >
+          <DayPicker
+            mode="single"
+            selected={isValidSelected}
+            onSelect={handleSelect}
+            locale={vi}
+            weekStartsOn={1}
+            showOutsideDays
+            captionLayout="dropdown"
+            startMonth={new Date(2020, 0)}
+            endMonth={new Date(2035, 11)}
+            footer={
+              isValidSelected ? (
+                <button
+                  type="button"
+                  onClick={() => handleSelect(undefined)}
+                  className="mt-2 text-xs text-blue-600 hover:underline"
+                >
+                  Xóa
+                </button>
+              ) : null
+            }
+          />
+        </div>
       </PopoverContent>
     </Popover>
   );

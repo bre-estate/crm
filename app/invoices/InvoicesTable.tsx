@@ -138,11 +138,11 @@ export default function InvoicesTable({ rows }: { rows: InvoiceRow[] }) {
               ))}
             </select>
           </div>
-          <Button type="submit" variant="secondary">
+          <Button type="submit" className="h-[38px] px-4 bg-slate-900 text-white hover:bg-slate-700">
             Lọc
           </Button>
           {hasApplied && (
-            <Button type="button" variant="outline" onClick={clearAll}>
+            <Button type="button" variant="outline" className="h-[38px] px-4" onClick={clearAll}>
               Reset
             </Button>
           )}
