@@ -18,7 +18,6 @@ type Props = {
   filterSalesPerson?: string;
   dateFrom?: string;
   dateTo?: string;
-  filterOverpaidOnly?: boolean;
   hasFilter: boolean;
 };
 
@@ -107,26 +106,16 @@ export default function ProductsFilterForm(props: Props) {
         <label className="block text-[11px] text-slate-600 mb-1">Đến ngày cọc</label>
         <DatePicker value={dateTo} onChange={setDateTo} className="w-40" />
       </div>
-      <label className="flex items-center gap-1.5 text-xs whitespace-nowrap cursor-pointer h-[38px]">
-        <input
-          type="checkbox"
-          name="overpaidOnly"
-          value="1"
-          defaultChecked={props.filterOverpaidOnly}
-          className="cursor-pointer"
-        />
-        <span>Chỉ căn có NV nợ cty</span>
-      </label>
       <Button
         type="submit"
-        className="h-[38px] px-5 bg-slate-100 text-slate-900 border border-slate-300 hover:bg-slate-200"
+        className="h-[36px] px-4 bg-slate-100 text-slate-900 border border-slate-300 hover:bg-slate-200 self-end"
       >
         Lọc
       </Button>
       {props.hasFilter && (
         <Button
           variant="outline"
-          className="h-[38px] px-4"
+          className="h-[36px] px-4 self-end"
           render={<Link href={`/products?tab=${props.activeTab}`} />}
         >
           Reset

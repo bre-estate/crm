@@ -384,7 +384,6 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
           filterSalesPerson={filterSalesPerson ?? undefined}
           dateFrom={dateFrom ?? undefined}
           dateTo={dateTo ?? undefined}
-          filterOverpaidOnly={filterOverpaidOnly}
           hasFilter={
             !!(
               filterProjectId ||
