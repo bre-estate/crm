@@ -6,11 +6,13 @@ import {
   partners,
   invoices,
   paymentsIn,
+  employees,
 } from "@/lib/schema";
 import { fmtMoney, fmtDate, fmtPct, displayPartnerName } from "@/lib/format";
 import { eq, desc, sum, and, ilike, type SQL } from "drizzle-orm";
 import Link from "next/link";
 import SearchableSelect from "@/components/SearchableSelect";
+import RevenuesFilterForm from "./RevenuesFilterForm";
 import HighlightManager from "../HighlightManager";
 import BulkDeleteBar from "../BulkDeleteBar";
 import { deleteRevenueBulk } from "@/lib/actions/revenues";
@@ -26,6 +28,7 @@ export const dynamic = "force-dynamic";
 type SearchParams = Promise<{
   projectId?: string;
   unitCode?: string;
+  salesPerson?: string;
   tab?: string;
   status?: string;
   age?: string;
@@ -58,9 +61,10 @@ const AGE_OPTIONS = [
 
 export default async function RevenuesPage({ searchParams }: { searchParams: SearchParams }) {
   const canDelete = await hasPermission("revenues", "delete");
-  const { projectId, unitCode, tab, status, age, type, justCreated } = await searchParams;
+  const { projectId, unitCode, salesPerson, tab, status, age, type, justCreated } = await searchParams;
   const filterProjectId = projectId ? Number(projectId) : null;
   const filterUnitCode = unitCode?.trim() || null;
+  const filterSalesPerson = salesPerson?.trim() || null;
   // Thứ cấp đã có trang riêng — /revenues chỉ show DT sơ cấp
   const activeTab: "primary" = "primary";
   const activeStatus = (STATUS_OPTIONS.find((s) => s.key === status)?.key ?? "all") as (typeof STATUS_OPTIONS)[number]["key"];
@@ -80,14 +84,25 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
   if (status) returnToParams.set("status", String(status));
   if (age) returnToParams.set("age", String(age));
   if (type) returnToParams.set("type", String(type));
+  if (salesPerson) returnToParams.set("salesPerson", String(salesPerson));
   const returnToQs = returnToParams.toString();
   const returnTo = returnToQs ? `/revenues?${returnToQs}` : "/revenues";
   const editQs = `?returnTo=${encodeURIComponent(returnTo)}`;
 
-  const allProjects = await db
-    .select({ id: projects.id, name: projects.name, fullCode: projects.fullCode })
-    .from(projects)
-    .orderBy(projects.name);
+  const [allProjects, nvkdOptions] = await Promise.all([
+    db
+      .select({ id: projects.id, name: projects.name, fullCode: projects.fullCode })
+      .from(projects)
+      .orderBy(projects.name),
+    db
+      .select({ name: employees.name, position: employees.position })
+      .from(employees)
+      .where(and(eq(employees.active, true), eq(employees.position, "nvkd")))
+      .orderBy(employees.name)
+      .then((rows) =>
+        rows.map((r) => ({ value: r.name, label: r.name, sublabel: "NVKD" })),
+      ),
+  ]);
 
   const selectCols = {
     id: revenueReconciliations.id,
@@ -106,6 +121,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
     unitCode: products.unitCode,
     productPmgRate: products.pmgRate,
     productSaleType: products.saleType,
+    salesPerson: products.salesPerson,
     projectName: projects.name,
     partnerName: partners.name,
     projectId: projects.id,
@@ -117,6 +133,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
   if (!skipFilters) {
     if (filterProjectId) whereParts.push(eq(products.projectId, filterProjectId));
     if (filterUnitCode) whereParts.push(ilike(products.unitCode, `%${filterUnitCode}%`));
+    if (filterSalesPerson) whereParts.push(ilike(products.salesPerson, `%${filterSalesPerson}%`));
   }
 
   const baseQuery = db
@@ -293,67 +310,6 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
 
 
 
-      {/* Loại DT filter pills — hoa hồng vs thưởng nóng CĐT */}
-      <div className="flex flex-wrap gap-2 items-center">
-        <span className="text-xs text-slate-500 mr-1">Loại:</span>
-        {TYPE_OPTIONS.map((t) => {
-          const isActive = activeType === t.key;
-          const count = typeCounts.get(t.key) ?? 0;
-          if (t.key !== "all" && count === 0) return null;
-          const params = new URLSearchParams();
-          params.set("tab", activeTab);
-          if (filterProjectId) params.set("projectId", String(filterProjectId));
-          if (filterUnitCode) params.set("unitCode", filterUnitCode);
-          if (activeStatus !== "all") params.set("status", activeStatus);
-          if (activeAge !== "all") params.set("age", activeAge);
-          if (t.key !== "all") params.set("type", t.key);
-          return (
-            <Link
-              key={t.key}
-              href={`/revenues?${params.toString()}`}
-              className={`text-xs px-3 py-1 rounded-full border transition ${
-                isActive
-                  ? "bg-orange-500 text-white border-orange-500"
-                  : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
-              }`}
-            >
-              {t.label}
-              <span className={`ml-1 ${isActive ? "text-blue-100" : "text-slate-400"}`}>({count})</span>
-            </Link>
-          );
-        })}
-      </div>
-
-      {/* Status filter pills */}
-      <div className="flex flex-wrap gap-2 items-center">
-        <span className="text-xs text-slate-500 mr-1">Trạng thái:</span>
-        {STATUS_OPTIONS.map((s) => {
-          const isActive = activeStatus === s.key;
-          const count = statusCounts.get(s.key) ?? 0;
-          const params = new URLSearchParams();
-          params.set("tab", activeTab);
-          if (filterProjectId) params.set("projectId", String(filterProjectId));
-          if (filterUnitCode) params.set("unitCode", filterUnitCode);
-          if (s.key !== "all") params.set("status", s.key);
-          if (activeAge !== "all") params.set("age", activeAge);
-          if (activeType !== "all") params.set("type", activeType);
-          return (
-            <Link
-              key={s.key}
-              href={`/revenues?${params.toString()}`}
-              className={`text-xs px-3 py-1 rounded-full border transition ${
-                isActive
-                  ? "bg-orange-500 text-white border-orange-500"
-                  : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
-              }`}
-            >
-              {s.icon} {s.label}
-              <span className={`ml-1 ${isActive ? "text-blue-100" : "text-slate-400"}`}>({count})</span>
-            </Link>
-          );
-        })}
-      </div>
-
       {/* Age filter pills — chỉ ý nghĩa cho recon chưa thu đủ */}
       {(activeStatus === "all" || activeStatus === "waiting_pay" || activeStatus === "partial") && (
         <div className="flex flex-wrap gap-2 items-center">
@@ -397,42 +353,18 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
       )}
 
       <Card className="[--card-spacing:1rem] px-4 py-3 gap-4">
-        <form className="flex gap-2 items-end flex-wrap">
-          <input type="hidden" name="tab" value={activeTab} />
-          {activeStatus !== "all" && <input type="hidden" name="status" value={activeStatus} />}
-          {activeAge !== "all" && <input type="hidden" name="age" value={activeAge} />}
-          <div>
-            <label className="block text-xs text-slate-600 mb-1">Mã căn</label>
-            <input
-              type="text"
-              name="unitCode"
-              defaultValue={filterUnitCode ?? ""}
-              className="input min-w-32"
-              placeholder="vd: A.25.26"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-slate-600 mb-1">Lọc theo dự án</label>
-            <SearchableSelect
-              name="projectId"
-              defaultValue={projectId ?? ""}
-              emptyOption="— Tất cả —"
-              placeholder="Gõ tên dự án..."
-              className="min-w-72"
-              options={allProjects.map((p) => ({
-                value: p.id,
-                label: p.name,
-                sublabel: p.fullCode,
-              }))}
-            />
-          </div>
-          <Button type="submit" variant="secondary">Lọc</Button>
-          {(filterProjectId || filterUnitCode) && (
-            <Button variant="outline" render={<Link href={`/revenues?tab=${activeTab}`} />}>
-              Reset
-            </Button>
-          )}
-        </form>
+        <RevenuesFilterForm
+          activeTab={activeTab}
+          activeStatus={activeStatus}
+          activeAge={activeAge}
+          activeType={activeType}
+          allProjects={allProjects}
+          nvkdOptions={nvkdOptions}
+          projectIdParam={projectId}
+          unitCodeParam={filterUnitCode ?? undefined}
+          salesPersonParam={filterSalesPerson ?? undefined}
+          hasFilter={!!(filterProjectId || filterUnitCode || filterSalesPerson || activeStatus !== "all" || activeType !== "all")}
+        />
       </Card>
 
       {/* Stats — nhỏ gọn, dưới filter (thống nhất với /costs, /products) */}
