@@ -384,7 +384,7 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
             tooltip: "Tổng số tiền BRE đã thực chi (payments_out).",
           },
           {
-            label: "Chưa trả (BRE nợ NV)",
+            label: "Chưa trả",
             value: fmtMoney(totalPayable - totalPaid),
             color:
               Math.abs(totalPayable - totalPaid) < 1000 ? "text-slate-400" : "text-red-600",
