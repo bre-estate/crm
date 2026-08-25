@@ -146,7 +146,7 @@ export default function InvoicesTable({ rows }: { rows: InvoiceRow[] }) {
               Reset
             </Button>
           )}
-          <div className="text-xs text-slate-500 ml-auto">
+          <div className="text-xs text-slate-500 ml-auto self-end h-[36px] flex items-center">
             {filtered.length}/{rows.length} hóa đơn
           </div>
         </form>
