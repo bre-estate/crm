@@ -17,6 +17,7 @@ import BulkDeleteBar from "../BulkDeleteBar";
 import { deleteCostBulk } from "@/lib/actions/costs";
 import { hasPermission } from "@/lib/auth";
 import CostReconRow, { type CostReconPayment } from "./CostReconRow";
+import CostsFilterForm from "./CostsFilterForm";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -1070,66 +1071,20 @@ function PageChrome(props: PageChromeProps) {
         </div>
       )}
 
-      {/* Filter bar: cùng field cùng thứ tự cho cả 2 view */}
+      {/* Filter bar: 3 field (mã căn / dự án / NVKD). Cost type dùng sub-tabs pill trên. */}
       <Card className="[--card-spacing:1rem] px-4 gap-4 flex-row flex-wrap items-end">
-        <form className="flex gap-2 items-end flex-wrap">
-          {viewMode !== "recon" && <input type="hidden" name="view" value={viewMode} />}
-          {statusParam && <input type="hidden" name="status" value={statusParam} />}
-          <div>
-            <label className="block text-xs text-slate-600 mb-1">Mã căn</label>
-            <input
-              type="text"
-              name="unitCode"
-              defaultValue={unitCodeParam ?? ""}
-              className="input min-w-32"
-              placeholder="vd: A.25.26"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-slate-600 mb-1">Dự án</label>
-            <SearchableSelect
-              name="projectId"
-              defaultValue={projectIdParam ?? ""}
-              emptyOption="— Tất cả —"
-              placeholder="Gõ tên dự án..."
-              className="min-w-72"
-              options={allProjects.map((p) => ({
-                value: p.id,
-                label: p.name,
-                sublabel: p.fullCode,
-              }))}
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-slate-600 mb-1">NVKD</label>
-            <SearchableSelect
-              name="salesPerson"
-              defaultValue={salesPersonParam ?? ""}
-              emptyOption="— Tất cả —"
-              placeholder="Gõ tên NVKD..."
-              className="min-w-56"
-              options={nvkdOptions}
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-slate-600 mb-1">Loại chi phí</label>
-            {/* Native select cho form submit (shadcn Select là controlled/JS-only) */}
-            <select name="costType" defaultValue={costTypeParam ?? ""} className="input min-w-48">
-              <option value="">— Tất cả —</option>
-              {COST_TYPE_OPTIONS.map((t) => (
-                <option key={t.v} value={t.v}>
-                  {t.l}
-                </option>
-              ))}
-            </select>
-          </div>
-          <Button type="submit" variant="secondary">Lọc</Button>
-          {hasFilter && (
-            <Button variant="outline" render={<Link href={resetUrl} />}>
-              Reset
-            </Button>
-          )}
-        </form>
+        <CostsFilterForm
+          viewMode={viewMode}
+          allProjects={allProjects}
+          nvkdOptions={nvkdOptions}
+          projectIdParam={projectIdParam}
+          costTypeParam={costTypeParam}
+          unitCodeParam={unitCodeParam}
+          salesPersonParam={salesPersonParam}
+          statusParam={statusParam}
+          hasFilter={hasFilter}
+          resetUrl={resetUrl}
+        />
         <div className="flex gap-6 text-sm ml-auto">
           {stats.map((s, i) => (
             <div key={i}>
