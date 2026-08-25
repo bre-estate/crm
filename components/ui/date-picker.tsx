@@ -77,12 +77,17 @@ export function DatePicker({
               "--rdp-day-width": "1.75rem",
               "--rdp-day_button-height": "1.75rem",
               "--rdp-day_button-width": "1.75rem",
-              "--rdp-nav_button-height": "1.75rem",
-              "--rdp-nav_button-width": "1.75rem",
+              "--rdp-nav_button-height": "1.5rem",
+              "--rdp-nav_button-width": "1.5rem",
+              "--rdp-nav-height": "2rem",
+              "--rdp-weekday-padding": "0.15rem 0rem",
+              "--rdp-months-gap": "0.5rem",
               "--rdp-font-family": "inherit",
+              "--rdp-accent-color": "var(--primary)",
+              "--rdp-accent-background-color": "color-mix(in oklch, var(--primary) 15%, transparent)",
             } as React.CSSProperties
           }
-          className="text-xs"
+          className="text-xs [&_.rdp-week]:leading-none [&_table]:border-spacing-0 [&_table]:border-collapse [&_td]:p-0"
         >
           <DayPicker
             mode="single"

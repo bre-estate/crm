@@ -128,7 +128,7 @@ export default function RevenuesFilterForm({
       </div>
       <Button
         type="submit"
-        className="h-[38px] px-4 bg-slate-900 text-white hover:bg-slate-700"
+        className="h-[38px] px-5 bg-slate-700 text-white hover:bg-slate-800"
       >
         Lọc
       </Button>

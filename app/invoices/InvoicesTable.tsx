@@ -110,7 +110,7 @@ export default function InvoicesTable({ rows }: { rows: InvoiceRow[] }) {
               value={draft.date}
               onChange={(v) => setDraft({ ...draft, date: v })}
               placeholder="Chọn ngày"
-              className="w-44"
+              className="w-52"
             />
           </div>
           <div>
@@ -121,7 +121,7 @@ export default function InvoicesTable({ rows }: { rows: InvoiceRow[] }) {
               options={partnerOptions}
               emptyOption="— Tất cả —"
               placeholder="Gõ tên CĐT..."
-              className="w-64"
+              className="w-72"
             />
           </div>
           <div>
@@ -138,7 +138,7 @@ export default function InvoicesTable({ rows }: { rows: InvoiceRow[] }) {
               ))}
             </select>
           </div>
-          <Button type="submit" className="h-[38px] px-4 bg-slate-900 text-white hover:bg-slate-700">
+          <Button type="submit" className="h-[38px] px-5 bg-slate-700 text-white hover:bg-slate-800">
             Lọc
           </Button>
           {hasApplied && (
