@@ -49,9 +49,9 @@ type SearchParams = Promise<{
   updated?: string;
 }>;
 
-// Pill shortcut chọn nhanh cost_type (thay dropdown filter).
-// Active = filter costType hiện tại (nếu không có param → "Tất cả" active).
-function CostTypePill({ label, active, href }: { label: string; active: boolean; href: string }) {
+// Pill shortcut chung — dùng cho cost_type filter + status filter.
+// Active fill cam, inactive white border.
+function FilterPill({ label, active, href }: { label: string; active: boolean; href: string }) {
   return (
     <Link
       href={href}
@@ -769,6 +769,24 @@ async function AggregatedCostsView(props: AggregatedProps) {
         unitCodeParam={props.unitCodeParam}
         salesPersonParam={props.salesPersonParam}
         statusParam={props.statusParam}
+        statusPills={
+          <div className="flex gap-1.5 flex-wrap items-center">
+            <span className="text-xs text-slate-500 mr-1">Trạng thái:</span>
+            <FilterPill
+              label={`Tất cả (${scopeRows.length})`}
+              active={!filterStatus}
+              href={buildStatusHref(null)}
+            />
+            {(["not_started", "partial", "over", "done"] as const).map((s) => (
+              <FilterPill
+                key={s}
+                label={`${statusLabels[s].label} (${statusCounts[s] ?? 0})`}
+                active={filterStatus === s}
+                href={buildStatusHref(s)}
+              />
+            ))}
+          </div>
+        }
         stats={[
           { label: "Số (căn × loại)", value: String(filtered.length) },
           {
@@ -794,37 +812,7 @@ async function AggregatedCostsView(props: AggregatedProps) {
         ]}
       />
 
-      {/* Status chips (click để filter theo trạng thái) */}
-      <div className="flex gap-2 flex-wrap items-center">
-        <span className="text-xs text-slate-500 mr-1">Trạng thái:</span>
-        <Link
-          href={buildStatusHref(null)}
-          className={`text-xs px-3 py-1.5 rounded-lg border ${
-            !filterStatus
-              ? "text-xs text-slate-500 border-slate-800"
-              : "bg-white text-slate-600 border-slate-300 hover:bg-slate-50"
-          }`}
-        >
-          Tất cả ({scopeRows.length})
-        </Link>
-        {(["not_started", "partial", "over", "done"] as const).map((s) => {
-          const info = statusLabels[s];
-          const isActive = filterStatus === s;
-          return (
-            <Link
-              key={s}
-              href={buildStatusHref(s)}
-              className={`text-xs px-3 py-1.5 rounded-lg border ${
-                isActive ? info.cls + " font-semibold" : "bg-white text-slate-600 border-slate-300 hover:bg-slate-50"
-              }`}
-            >
-              {info.label} ({statusCounts[s] ?? 0})
-            </Link>
-          );
-        })}
-      </div>
-
-      {/* Table */}
+      {/* Table (status pills đã render trong PageChrome, ngay dưới cost-type pills) */}
       <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-xs text-slate-600">
@@ -956,6 +944,8 @@ type PageChromeProps = {
   salesPersonParam?: string;
   statusParam?: string;
   stats: { label: string; value: string; color?: string; tooltip?: string }[];
+  // Sub-pills của view "Theo căn × loại": render giữa cost-type pills và filter card.
+  statusPills?: React.ReactNode;
 };
 
 function PageChrome(props: PageChromeProps) {
@@ -969,6 +959,7 @@ function PageChrome(props: PageChromeProps) {
     salesPersonParam,
     statusParam,
     stats,
+    statusPills,
   } = props;
   const hasFilter = !!(
     projectIdParam ||
@@ -996,7 +987,7 @@ function PageChrome(props: PageChromeProps) {
         ? "/costs?view=byTime"
         : "/costs";
 
-  const showCostTypePills = viewMode === "recon" || viewMode === "byTime";
+  const showFilterPills = viewMode === "recon" || viewMode === "byTime";
 
   return (
     <>
@@ -1049,9 +1040,9 @@ function PageChrome(props: PageChromeProps) {
       </div>
 
       {/* Sub-tabs cost_type — chuyển nhanh giữa các loại (chỉ hiện view flat) */}
-      {showCostTypePills && (
+      {showFilterPills && (
         <div className="flex gap-1.5 flex-wrap">
-          <CostTypePill label="Tất cả" active={!costTypeParam} href={buildViewUrl(viewMode, { clearCostType: true })} />
+          <FilterPill label="Tất cả" active={!costTypeParam} href={buildViewUrl(viewMode, { clearCostType: true })} />
           {COST_TYPE_OPTIONS.map((t) => {
             const qs = new URLSearchParams();
             if (viewMode !== "recon") qs.set("view", viewMode);
@@ -1060,7 +1051,7 @@ function PageChrome(props: PageChromeProps) {
             if (unitCodeParam) qs.set("unitCode", unitCodeParam);
             if (salesPersonParam) qs.set("salesPerson", salesPersonParam);
             return (
-              <CostTypePill
+              <FilterPill
                 key={t.v}
                 label={t.l}
                 active={costTypeParam === t.v}
@@ -1070,6 +1061,9 @@ function PageChrome(props: PageChromeProps) {
           })}
         </div>
       )}
+
+      {/* Status pills (chỉ view "Theo căn × loại") — cùng vị trí + style với cost-type pills */}
+      {statusPills}
 
       {/* Filter bar: 3 field (mã căn / dự án / NVKD). Cost type dùng sub-tabs pill trên. */}
       <Card className="[--card-spacing:1rem] px-4 gap-4 flex-row flex-wrap items-end">
