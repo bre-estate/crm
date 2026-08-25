@@ -5,6 +5,7 @@ import Link from "next/link";
 import { fmtMoney } from "@/lib/format";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import SearchableSelect from "@/components/SearchableSelect";
 import { cn } from "@/lib/utils";
 
 export type InvoiceRow = {
@@ -23,15 +24,27 @@ export default function InvoicesTable({ rows }: { rows: InvoiceRow[] }) {
   const [qDate, setQDate] = useState("");
   const [qPartner, setQPartner] = useState("");
 
+  // Danh sách CĐT unique cho autocomplete.
+  const partnerOptions = useMemo(() => {
+    const names = new Set<string>();
+    for (const r of rows) {
+      if (r.partnerName) names.add(r.partnerName);
+    }
+    return Array.from(names)
+      .sort((a, b) => a.localeCompare(b, "vi"))
+      .map((name) => ({ value: name, label: name }));
+  }, [rows]);
+
   const filtered = useMemo(() => {
     const n = qNumber.trim().toLowerCase();
-    const d = qDate.trim().toLowerCase();
+    const d = qDate.trim();
     const p = qPartner.trim().toLowerCase();
     if (!n && !d && !p) return rows;
     return rows.filter((r) => {
       if (n && !r.number.toLowerCase().includes(n)) return false;
-      if (d && !(r.date ?? "").toLowerCase().includes(d)) return false;
-      if (p && !(r.partnerName ?? "").toLowerCase().includes(p)) return false;
+      // qDate từ type="date" là yyyy-mm-dd chuẩn → so sánh exact với r.date
+      if (d && r.date !== d) return false;
+      if (p && (r.partnerName ?? "").toLowerCase() !== p) return false;
       return true;
     });
   }, [rows, qNumber, qDate, qPartner]);
@@ -59,21 +72,21 @@ export default function InvoicesTable({ rows }: { rows: InvoiceRow[] }) {
         <div>
           <label className="block text-xs text-slate-600 mb-1">Ngày HĐ</label>
           <input
-            type="search"
+            type="date"
             value={qDate}
             onChange={(e) => setQDate(e.target.value)}
-            placeholder="vd: 2026-07 hoặc 2026-07-15"
-            className="input w-64"
+            className="input w-44"
           />
         </div>
         <div>
           <label className="block text-xs text-slate-600 mb-1">CĐT</label>
-          <input
-            type="search"
+          <SearchableSelect
             value={qPartner}
-            onChange={(e) => setQPartner(e.target.value)}
-            placeholder="vd: Dataloca"
-            className="input w-56"
+            onChange={(v) => setQPartner(v)}
+            options={partnerOptions}
+            emptyOption="— Tất cả —"
+            placeholder="Gõ tên CĐT..."
+            className="w-64"
           />
         </div>
         {hasFilter && (

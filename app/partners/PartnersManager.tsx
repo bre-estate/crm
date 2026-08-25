@@ -100,7 +100,6 @@ export default function PartnersManager({ partners, onCreate, onUpdate, onDelete
               <th className="text-left p-2 whitespace-nowrap">MST</th>
               <th className="text-left p-2">Địa chỉ</th>
               <th className="text-left p-2 whitespace-nowrap">SĐT</th>
-              <th className="text-left p-2">Email</th>
               <th className="text-right p-2 whitespace-nowrap">Thao tác</th>
             </tr>
           </thead>
@@ -130,9 +129,6 @@ export default function PartnersManager({ partners, onCreate, onUpdate, onDelete
                   <div className="max-w-[240px] truncate" title={p.address ?? undefined}>{p.address ?? "—"}</div>
                 </td>
                 <td className="p-2 text-xs whitespace-nowrap">{p.phone ?? "—"}</td>
-                <td className="p-2 text-xs">
-                  <div className="max-w-[180px] truncate" title={p.email ?? undefined}>{p.email ?? "—"}</div>
-                </td>
                 <td className="p-2 text-right space-x-3 whitespace-nowrap">
                   <button
                     type="button"
@@ -155,7 +151,7 @@ export default function PartnersManager({ partners, onCreate, onUpdate, onDelete
             ))}
             {partners.length === 0 && (
               <tr>
-                <td colSpan={9} className="p-6 text-center text-slate-500 text-sm">
+                <td colSpan={8} className="p-6 text-center text-slate-500 text-sm">
                   Chưa có đối tác nào.
                 </td>
               </tr>
