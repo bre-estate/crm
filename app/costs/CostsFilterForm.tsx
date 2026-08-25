@@ -46,7 +46,8 @@ export default function CostsFilterForm({
     const qs = new URLSearchParams();
 
     // View + costType + status: preserve từ URL cũ, không phải input form.
-    if (viewMode !== "recon") qs.set("view", viewMode);
+    // "byUnit" là default → không cần add view= vào URL.
+    if (viewMode !== "byUnit") qs.set("view", viewMode);
     if (costTypeParam) qs.set("costType", costTypeParam);
     if (statusParam) qs.set("status", statusParam);
 

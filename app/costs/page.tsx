@@ -95,8 +95,9 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
   const canDelete = await hasPermission("costs", "delete");
   const { projectId, costType, unitCode, salesPerson, status, view, deleted, updated } =
     await searchParams;
+  // Default view = byUnit ("Theo căn × loại") — theo user, view thường dùng nhất
   const viewMode: "recon" | "byUnit" | "byTime" =
-    view === "byUnit" ? "byUnit" : view === "byTime" ? "byTime" : "recon";
+    view === "recon" ? "recon" : view === "byTime" ? "byTime" : "byUnit";
 
   if (viewMode === "byUnit") {
     return (
@@ -434,7 +435,8 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
             {rows.map((r, idx) => {
               const paid = paidMap.get(r.id) ?? 0;
               const prevType = idx > 0 ? rows[idx - 1].costType : null;
-              const isFirstOfGroup = r.costType !== prevType;
+              // "Theo thời gian" hiện flat theo created_at DESC, không group
+              const isFirstOfGroup = viewMode !== "byTime" && r.costType !== prevType;
               const subtotal = subtotalByType.get(r.costType);
               const editHref = `/costs/${r.id}/edit${
                 returnToQS ? `?returnTo=${encodeURIComponent(returnTo)}` : ""
@@ -977,9 +979,10 @@ function PageChrome(props: PageChromeProps) {
   );
 
   // Build URL cho 1 view khác — giữ toàn bộ filter param hiện tại.
+  // "byUnit" là default → không cần thêm view= vào URL.
   const buildViewUrl = (target: ViewMode, opts?: { clearCostType?: boolean }) => {
     const qs = new URLSearchParams();
-    if (target !== "recon") qs.set("view", target);
+    if (target !== "byUnit") qs.set("view", target);
     if (projectIdParam) qs.set("projectId", projectIdParam);
     if (costTypeParam && !opts?.clearCostType) qs.set("costType", costTypeParam);
     if (unitCodeParam) qs.set("unitCode", unitCodeParam);
@@ -989,10 +992,10 @@ function PageChrome(props: PageChromeProps) {
 
   const resetUrl =
     viewMode === "byUnit"
-      ? "/costs?view=byUnit"
+      ? "/costs"
       : viewMode === "byTime"
         ? "/costs?view=byTime"
-        : "/costs";
+        : "/costs?view=recon";
 
   const showFilterPills = viewMode === "recon" || viewMode === "byTime";
 
@@ -1025,16 +1028,16 @@ function PageChrome(props: PageChromeProps) {
         <Tabs value={viewMode}>
           <TabsList>
             <TabsTrigger
-              value="recon"
-              render={viewMode === "recon" ? <span /> : <Link href={buildViewUrl("recon")} />}
-            >
-              Theo nhóm
-            </TabsTrigger>
-            <TabsTrigger
               value="byUnit"
               render={viewMode === "byUnit" ? <span /> : <Link href={buildViewUrl("byUnit")} />}
             >
               Theo căn × loại
+            </TabsTrigger>
+            <TabsTrigger
+              value="recon"
+              render={viewMode === "recon" ? <span /> : <Link href={buildViewUrl("recon")} />}
+            >
+              Theo nhóm
             </TabsTrigger>
             <TabsTrigger
               value="byTime"
@@ -1053,7 +1056,8 @@ function PageChrome(props: PageChromeProps) {
           <FilterPill label="Tất cả" active={!costTypeParam} href={buildViewUrl(viewMode, { clearCostType: true })} />
           {COST_TYPE_OPTIONS.filter((t) => (costTypeCounts?.[t.v] ?? 0) > 0).map((t) => {
             const qs = new URLSearchParams();
-            if (viewMode !== "recon") qs.set("view", viewMode);
+            // Trong scope showFilterPills, viewMode luôn khác "byUnit" (default) → luôn add view
+            qs.set("view", viewMode);
             if (projectIdParam) qs.set("projectId", projectIdParam);
             qs.set("costType", t.v);
             if (unitCodeParam) qs.set("unitCode", unitCodeParam);
