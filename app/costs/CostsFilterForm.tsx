@@ -100,12 +100,12 @@ export default function CostsFilterForm({
       </div>
       <Button
         type="submit"
-        className="h-[38px] px-5 bg-slate-100 text-slate-900 border border-slate-300 hover:bg-slate-200"
+        className="h-[36px] px-4 bg-slate-100 text-slate-900 border border-slate-300 hover:bg-slate-200 self-end"
       >
         Lọc
       </Button>
       {hasFilter && (
-        <Button variant="outline" className="h-[38px] px-4" render={<Link href={resetUrl} />}>
+        <Button variant="outline" className="h-[36px] px-4 self-end" render={<Link href={resetUrl} />}>
           Reset
         </Button>
       )}
