@@ -524,7 +524,9 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
                       remaining < 1000 ? "text-slate-400" : "text-red-600 font-semibold"
                     }`}
                   >
-                    {remaining > 0 ? fmtMoney(remaining) : "—"}
+                    {/* Threshold khớp style: <1.000 VND (bao gồm 0, âm, float residue
+                        như 0.30 VND) đều coi như đã thu đủ → hiển thị "—". */}
+                    {remaining >= 1000 ? fmtMoney(remaining) : "—"}
                   </td>
                   <td className="p-2">
                     {(() => {
