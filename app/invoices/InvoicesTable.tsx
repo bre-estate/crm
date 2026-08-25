@@ -6,6 +6,7 @@ import { fmtMoney } from "@/lib/format";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import SearchableSelect from "@/components/SearchableSelect";
+import { DatePicker } from "@/components/ui/date-picker";
 import { cn } from "@/lib/utils";
 
 export type InvoiceRow = {
@@ -105,11 +106,11 @@ export default function InvoicesTable({ rows }: { rows: InvoiceRow[] }) {
           </div>
           <div>
             <label className="block text-xs text-slate-600 mb-1">Ngày HĐ</label>
-            <input
-              type="date"
+            <DatePicker
               value={draft.date}
-              onChange={(e) => setDraft({ ...draft, date: e.target.value })}
-              className="input w-44"
+              onChange={(v) => setDraft({ ...draft, date: v })}
+              placeholder="Chọn ngày"
+              className="w-44"
             />
           </div>
           <div>
