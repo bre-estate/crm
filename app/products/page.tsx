@@ -371,37 +371,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
         </div>
       </div>
 
-      <Card className="[--card-spacing:1rem] px-4 gap-3">
-        <div className="flex gap-6 text-sm flex-wrap">
-          <div>
-            <div className="text-xs text-slate-500">Số căn</div>
-            <div className="font-bold tabular-nums">{rows.length}</div>
-          </div>
-          <div>
-            <div className="text-xs text-slate-500">Tổng DT (dự kiến)</div>
-            <div className="font-bold tabular-nums">{fmtMoney(totalRev)}</div>
-          </div>
-          <div>
-            <div className="text-xs text-slate-500">Đã ĐC (biên bản)</div>
-            <div className="font-bold tabular-nums text-blue-700">{fmtMoney(totalRecognized)}</div>
-          </div>
-          <div>
-            <div className="text-xs text-slate-500">Đã thu (vào TK)</div>
-            <div className="font-bold tabular-nums text-green-700">{fmtMoney(totalPaid)}</div>
-          </div>
-          <div>
-            <div className="text-xs text-slate-500" title="= Đã ĐC − Đã thu (giống Excel col AD)">Còn phải thu</div>
-            <div
-              className={cn(
-                "font-bold tabular-nums",
-                totalRecognized - totalPaid > 1000 ? "text-orange-700" : "text-slate-400",
-              )}
-            >
-              {fmtMoney(Math.max(0, totalRecognized - totalPaid))}
-            </div>
-          </div>
-        </div>
-
+      <Card className="[--card-spacing:1rem] px-4 py-3 gap-3">
         <form className="flex gap-2 items-end flex-wrap">
           <div>
             <label className="block text-[11px] text-slate-600 mb-1">Mã căn</label>
@@ -499,6 +469,39 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
           )}
         </form>
       </Card>
+
+      {/* Stats — nhỏ gọn, dưới filter (thống nhất với /costs, /revenues) */}
+      <div className="flex gap-6 text-sm flex-wrap px-1">
+        <div>
+          <div className="text-xs text-slate-500">Số căn</div>
+          <div className="font-bold tabular-nums">{rows.length}</div>
+        </div>
+        <div>
+          <div className="text-xs text-slate-500">Tổng DT (dự kiến)</div>
+          <div className="font-bold tabular-nums">{fmtMoney(totalRev)}</div>
+        </div>
+        <div>
+          <div className="text-xs text-slate-500">Đã ĐC (biên bản)</div>
+          <div className="font-bold tabular-nums text-blue-700">{fmtMoney(totalRecognized)}</div>
+        </div>
+        <div>
+          <div className="text-xs text-slate-500">Đã thu (vào TK)</div>
+          <div className="font-bold tabular-nums text-green-700">{fmtMoney(totalPaid)}</div>
+        </div>
+        <div>
+          <div className="text-xs text-slate-500" title="= Đã ĐC − Đã thu (giống Excel col AD)">
+            Còn phải thu
+          </div>
+          <div
+            className={cn(
+              "font-bold tabular-nums",
+              totalRecognized - totalPaid > 1000 ? "text-orange-700" : "text-slate-400",
+            )}
+          >
+            {fmtMoney(Math.max(0, totalRecognized - totalPaid))}
+          </div>
+        </div>
+      </div>
 
       {await (async () => {
         const overpaidByProduct = await getProductOverpaidSummary();

@@ -69,12 +69,12 @@ function FilterPill({ label, active, href }: { label: string; active: boolean; h
 
 // Cost types dùng chung cho cả 3 view
 const COST_TYPE_OPTIONS = [
-  { v: "sale_commission", l: "Hoa hồng sale" },
+  { v: "sale_commission", l: "HH Sale" },
   { v: "customer_support", l: "Hỗ trợ khách" },
-  { v: "bonus_sale", l: "Thưởng NVKD (CTY)" },
-  { v: "bonus_manager", l: "Thưởng TPKD (CTY)" },
-  { v: "cdt_bonus_sale", l: "Thưởng nóng CĐT (NVKD)" },
-  { v: "cdt_bonus_manager", l: "Thưởng nóng CĐT (TPKD)" },
+  { v: "bonus_sale", l: "CTY thưởng NVKD" },
+  { v: "bonus_manager", l: "CTY thưởng TPKD" },
+  { v: "cdt_bonus_sale", l: "CĐT thưởng NVKD" },
+  { v: "cdt_bonus_manager", l: "CĐT thưởng TPKD" },
   { v: "kpi_ceo", l: "KPI CEO" },
   { v: "kpi_tpkd", l: "KPI TPKD" },
   { v: "kpi_admin", l: "KPI Admin" },
@@ -370,6 +370,10 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
         unitCodeParam={unitCode}
         salesPersonParam={salesPerson}
         statusParam={status}
+        costTypeCounts={allRows.reduce<Record<string, number>>((acc, r) => {
+          acc[r.costType] = (acc[r.costType] ?? 0) + 1;
+          return acc;
+        }, {})}
         stats={[
           { label: "Số dòng ĐC", value: String(rows.length) },
           {
@@ -946,6 +950,8 @@ type PageChromeProps = {
   stats: { label: string; value: string; color?: string; tooltip?: string }[];
   // Sub-pills của view "Theo căn × loại": render giữa cost-type pills và filter card.
   statusPills?: React.ReactNode;
+  // Count các cost_type có recon để ẩn pill loại rỗng.
+  costTypeCounts?: Record<string, number>;
 };
 
 function PageChrome(props: PageChromeProps) {
@@ -960,6 +966,7 @@ function PageChrome(props: PageChromeProps) {
     statusParam,
     stats,
     statusPills,
+    costTypeCounts,
   } = props;
   const hasFilter = !!(
     projectIdParam ||
@@ -996,7 +1003,7 @@ function PageChrome(props: PageChromeProps) {
         <div>
           <h1 className="text-2xl font-bold">Đối chiếu giá vốn</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Tương ứng sheet 2.3_Gia von. Mỗi dòng = 1 cá nhân × 1 căn × 1 lần đối chiếu.{" "}
+            Mỗi dòng = 1 cá nhân × 1 căn × 1 lần đối chiếu.{" "}
             <span className="text-red-600">Số âm = điều chỉnh / hoàn trả</span> (vd thưởng đã trả thừa).
           </p>
         </div>
@@ -1039,11 +1046,12 @@ function PageChrome(props: PageChromeProps) {
         </Tabs>
       </div>
 
-      {/* Sub-tabs cost_type — chuyển nhanh giữa các loại (chỉ hiện view flat) */}
+      {/* Sub-tabs cost_type — chuyển nhanh giữa các loại (chỉ hiện view flat).
+          Ẩn pill loại rỗng — chỉ hiện loại có ≥ 1 recon trong DB. */}
       {showFilterPills && (
         <div className="flex gap-1.5 flex-wrap">
           <FilterPill label="Tất cả" active={!costTypeParam} href={buildViewUrl(viewMode, { clearCostType: true })} />
-          {COST_TYPE_OPTIONS.map((t) => {
+          {COST_TYPE_OPTIONS.filter((t) => (costTypeCounts?.[t.v] ?? 0) > 0).map((t) => {
             const qs = new URLSearchParams();
             if (viewMode !== "recon") qs.set("view", viewMode);
             if (projectIdParam) qs.set("projectId", projectIdParam);
@@ -1061,30 +1069,6 @@ function PageChrome(props: PageChromeProps) {
           })}
         </div>
       )}
-
-      {/* Stats grid — KPI cards, hàng riêng cho gọn (trước đây trơ trọi trong filter card) */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {stats.map((s, i) => (
-          <Card key={i} className="[--card-spacing:0.75rem] px-4 py-3 gap-1">
-            <div className="text-xs text-slate-500 flex items-center gap-1">
-              <span>{s.label}</span>
-              {s.tooltip && (
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-300 text-white text-[9px] cursor-help select-none">
-                        ?
-                      </span>
-                    }
-                  />
-                  <TooltipContent className="max-w-xs">{s.tooltip}</TooltipContent>
-                </Tooltip>
-              )}
-            </div>
-            <div className={cn("text-lg font-bold tabular-nums", s.color)}>{s.value}</div>
-          </Card>
-        ))}
-      </div>
 
       {/* Status pills (chỉ view "Theo căn × loại") — cùng vị trí + style với cost-type pills */}
       {statusPills}
@@ -1104,6 +1088,30 @@ function PageChrome(props: PageChromeProps) {
           resetUrl={resetUrl}
         />
       </Card>
+
+      {/* Stats — nhỏ gọn, ngay dưới filter (KPI summary theo scope sau filter) */}
+      <div className="flex gap-6 text-sm flex-wrap px-1">
+        {stats.map((s, i) => (
+          <div key={i}>
+            <div className="text-xs text-slate-500 flex items-center gap-1">
+              <span>{s.label}</span>
+              {s.tooltip && (
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-300 text-white text-[9px] cursor-help select-none">
+                        ?
+                      </span>
+                    }
+                  />
+                  <TooltipContent className="max-w-xs">{s.tooltip}</TooltipContent>
+                </Tooltip>
+              )}
+            </div>
+            <div className={cn("font-bold tabular-nums", s.color)}>{s.value}</div>
+          </div>
+        ))}
+      </div>
     </>
   );
 }

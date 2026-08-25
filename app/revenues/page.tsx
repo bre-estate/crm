@@ -333,7 +333,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
         </div>
       )}
 
-      <Card className="[--card-spacing:1rem] px-4 gap-4 flex-row flex-wrap items-end">
+      <Card className="[--card-spacing:1rem] px-4 py-3 gap-4">
         <form className="flex gap-2 items-end flex-wrap">
           <input type="hidden" name="tab" value={activeTab} />
           {activeStatus !== "all" && <input type="hidden" name="status" value={activeStatus} />}
@@ -370,32 +370,34 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
             </Button>
           )}
         </form>
-        <div className="flex gap-6 text-sm ml-auto">
-          <div>
-            <div className="text-xs text-slate-500">Số đợt ĐC</div>
-            <div className="font-bold">{rows2.length}</div>
-          </div>
-          <div>
-            <div className="text-xs text-slate-500">Tổng phải thu</div>
-            <div className="font-bold tabular-nums">{fmtMoney(totalReceivable)}</div>
-          </div>
-          <div>
-            <div className="text-xs text-slate-500">Đã thu</div>
-            <div className="font-bold tabular-nums text-green-700">{fmtMoney(totalPaid)}</div>
-          </div>
-          <div>
-            <div className="text-xs text-slate-500">Còn phải thu</div>
-            <div
-              className={cn(
-                "font-bold tabular-nums",
-                totalReceivable - totalPaid < 1000 ? "text-slate-400" : "text-red-600",
-              )}
-            >
-              {fmtMoney(totalReceivable - totalPaid)}
-            </div>
+      </Card>
+
+      {/* Stats — nhỏ gọn, dưới filter (thống nhất với /costs, /products) */}
+      <div className="flex gap-6 text-sm flex-wrap px-1">
+        <div>
+          <div className="text-xs text-slate-500">Số đợt ĐC</div>
+          <div className="font-bold">{rows2.length}</div>
+        </div>
+        <div>
+          <div className="text-xs text-slate-500">Tổng phải thu</div>
+          <div className="font-bold tabular-nums">{fmtMoney(totalReceivable)}</div>
+        </div>
+        <div>
+          <div className="text-xs text-slate-500">Đã thu</div>
+          <div className="font-bold tabular-nums text-green-700">{fmtMoney(totalPaid)}</div>
+        </div>
+        <div>
+          <div className="text-xs text-slate-500">Còn phải thu</div>
+          <div
+            className={cn(
+              "font-bold tabular-nums",
+              totalReceivable - totalPaid < 1000 ? "text-slate-400" : "text-red-600",
+            )}
+          >
+            {fmtMoney(totalReceivable - totalPaid)}
           </div>
         </div>
-      </Card>
+      </div>
 
       {canDelete && (
         <BulkDeleteBar
