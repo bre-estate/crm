@@ -33,14 +33,22 @@ const PAY_STATUS_OPTIONS: { key: PayStatus | "all"; label: string }[] = [
   { key: "paid", label: "Đã thu đủ" },
   { key: "partial", label: "Thu 1 phần" },
   { key: "unpaid", label: "Chưa thu" },
-  { key: "empty", label: "Trống (chưa có ĐC)" },
 ];
 
+// State draft (đang gõ) vs applied (đã bấm Lọc).
+type Filters = {
+  number: string;
+  date: string;
+  partner: string;
+  status: PayStatus | "all";
+};
+
+const EMPTY: Filters = { number: "", date: "", partner: "", status: "all" };
+
 export default function InvoicesTable({ rows }: { rows: InvoiceRow[] }) {
-  const [qNumber, setQNumber] = useState("");
-  const [qDate, setQDate] = useState("");
-  const [qPartner, setQPartner] = useState("");
-  const [qStatus, setQStatus] = useState<PayStatus | "all">("all");
+  // draft: state input hiện tại. applied: state đã Lọc — dùng để filter rows.
+  const [draft, setDraft] = useState<Filters>(EMPTY);
+  const [applied, setApplied] = useState<Filters>(EMPTY);
 
   // Danh sách CĐT unique cho autocomplete.
   const partnerOptions = useMemo(() => {
@@ -54,83 +62,93 @@ export default function InvoicesTable({ rows }: { rows: InvoiceRow[] }) {
   }, [rows]);
 
   const filtered = useMemo(() => {
-    const n = qNumber.trim().toLowerCase();
-    const d = qDate.trim();
-    const p = qPartner.trim().toLowerCase();
-    if (!n && !d && !p && qStatus === "all") return rows;
+    const n = applied.number.trim().toLowerCase();
+    const d = applied.date.trim();
+    const p = applied.partner.trim().toLowerCase();
+    const s = applied.status;
+    if (!n && !d && !p && s === "all") return rows;
     return rows.filter((r) => {
       if (n && !r.number.toLowerCase().includes(n)) return false;
-      // qDate từ type="date" là yyyy-mm-dd chuẩn → so sánh exact với r.date
       if (d && r.date !== d) return false;
       if (p && (r.partnerName ?? "").toLowerCase() !== p) return false;
-      if (qStatus !== "all" && computeStatus(r) !== qStatus) return false;
+      if (s !== "all" && computeStatus(r) !== s) return false;
       return true;
     });
-  }, [rows, qNumber, qDate, qPartner, qStatus]);
+  }, [rows, applied]);
+
+  const applyFilter = (e: React.FormEvent) => {
+    e.preventDefault();
+    setApplied(draft);
+  };
 
   const clearAll = () => {
-    setQNumber("");
-    setQDate("");
-    setQPartner("");
-    setQStatus("all");
+    setDraft(EMPTY);
+    setApplied(EMPTY);
   };
-  const hasFilter = qNumber || qDate || qPartner || qStatus !== "all";
+
+  const hasApplied =
+    !!applied.number || !!applied.date || !!applied.partner || applied.status !== "all";
 
   return (
     <>
-      <Card className="[--card-spacing:0.75rem] px-4 gap-3 flex-row flex-wrap items-end">
-        <div>
-          <label className="block text-xs text-slate-600 mb-1">Số HĐ</label>
-          <input
-            type="search"
-            value={qNumber}
-            onChange={(e) => setQNumber(e.target.value)}
-            placeholder="vd: 29"
-            className="input w-40"
-          />
-        </div>
-        <div>
-          <label className="block text-xs text-slate-600 mb-1">Ngày HĐ</label>
-          <input
-            type="date"
-            value={qDate}
-            onChange={(e) => setQDate(e.target.value)}
-            className="input w-44"
-          />
-        </div>
-        <div>
-          <label className="block text-xs text-slate-600 mb-1">CĐT</label>
-          <SearchableSelect
-            value={qPartner}
-            onChange={(v) => setQPartner(v)}
-            options={partnerOptions}
-            emptyOption="— Tất cả —"
-            placeholder="Gõ tên CĐT..."
-            className="w-64"
-          />
-        </div>
-        <div>
-          <label className="block text-xs text-slate-600 mb-1">Trạng thái thu</label>
-          <select
-            value={qStatus}
-            onChange={(e) => setQStatus(e.target.value as PayStatus | "all")}
-            className="input w-44"
-          >
-            {PAY_STATUS_OPTIONS.map((o) => (
-              <option key={o.key} value={o.key}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        {hasFilter && (
-          <Button variant="ghost" size="sm" onClick={clearAll}>
-            Xóa lọc
+      <Card className="[--card-spacing:0.75rem] px-4 py-3 gap-3">
+        <form onSubmit={applyFilter} className="flex gap-2 items-end flex-wrap">
+          <div>
+            <label className="block text-xs text-slate-600 mb-1">Số HĐ</label>
+            <input
+              type="search"
+              value={draft.number}
+              onChange={(e) => setDraft({ ...draft, number: e.target.value })}
+              placeholder="vd: 29"
+              className="input w-40"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-600 mb-1">Ngày HĐ</label>
+            <input
+              type="date"
+              value={draft.date}
+              onChange={(e) => setDraft({ ...draft, date: e.target.value })}
+              className="input w-44"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-600 mb-1">CĐT</label>
+            <SearchableSelect
+              value={draft.partner}
+              onChange={(v) => setDraft({ ...draft, partner: v })}
+              options={partnerOptions}
+              emptyOption="— Tất cả —"
+              placeholder="Gõ tên CĐT..."
+              className="w-64"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-600 mb-1">Trạng thái thu</label>
+            <select
+              value={draft.status}
+              onChange={(e) => setDraft({ ...draft, status: e.target.value as PayStatus | "all" })}
+              className="input w-40"
+            >
+              {PAY_STATUS_OPTIONS.map((o) => (
+                <option key={o.key} value={o.key}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <Button type="submit" variant="secondary">
+            Lọc
           </Button>
-        )}
-        <div className="text-xs text-slate-500 ml-auto">
-          {filtered.length}/{rows.length} hóa đơn
-        </div>
+          {hasApplied && (
+            <Button type="button" variant="outline" onClick={clearAll}>
+              Reset
+            </Button>
+          )}
+          <div className="text-xs text-slate-500 ml-auto">
+            {filtered.length}/{rows.length} hóa đơn
+          </div>
+        </form>
       </Card>
 
       <Card className="p-0 gap-0 overflow-hidden mt-3">
