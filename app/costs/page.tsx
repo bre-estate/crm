@@ -48,7 +48,25 @@ type SearchParams = Promise<{
   updated?: string;
 }>;
 
-// Cost types dùng chung cho cả 2 view
+// Pill shortcut chọn nhanh cost_type (thay dropdown filter).
+// Active = filter costType hiện tại (nếu không có param → "Tất cả" active).
+function CostTypePill({ label, active, href }: { label: string; active: boolean; href: string }) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "inline-flex items-center rounded-full px-3 py-1 text-xs border transition-colors",
+        active
+          ? "bg-orange-500 text-white border-orange-500"
+          : "bg-white text-slate-700 border-slate-300 hover:bg-slate-100",
+      )}
+    >
+      {label}
+    </Link>
+  );
+}
+
+// Cost types dùng chung cho cả 3 view
 const COST_TYPE_OPTIONS = [
   { v: "sale_commission", l: "Hoa hồng sale" },
   { v: "customer_support", l: "Hỗ trợ khách" },
@@ -76,7 +94,8 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
   const canDelete = await hasPermission("costs", "delete");
   const { projectId, costType, unitCode, salesPerson, status, view, deleted, updated } =
     await searchParams;
-  const viewMode: "recon" | "byUnit" = view === "byUnit" ? "byUnit" : "recon";
+  const viewMode: "recon" | "byUnit" | "byTime" =
+    view === "byUnit" ? "byUnit" : view === "byTime" ? "byTime" : "recon";
 
   if (viewMode === "byUnit") {
     return (
@@ -117,6 +136,7 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
       id: costReconciliations.id,
       productId: costReconciliations.productId,
       date: costReconciliations.reconciliationDate,
+      createdAt: costReconciliations.createdAt,
       employee: costReconciliations.employeeName,
       costType: costReconciliations.costType,
       commissionRate: costReconciliations.commissionRate,
@@ -166,24 +186,33 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
     return true;
   });
 
-  // Sort: group theo loại (đúng thứ tự nghiệp vụ) + date DESC trong nhóm
-  const costTypeOrder: Record<string, number> = {
-    sale_commission: 1,
-    customer_support: 2,
-    bonus_sale: 3,
-    bonus_manager: 4,
-    cdt_bonus_sale: 5,
-    cdt_bonus_manager: 6,
-    kpi_ceo: 7,
-    kpi_tpkd: 8,
-    kpi_admin: 9,
-  };
-  rows.sort((a, b) => {
-    const oA = costTypeOrder[a.costType] ?? 99;
-    const oB = costTypeOrder[b.costType] ?? 99;
-    if (oA !== oB) return oA - oB;
-    return (b.date ?? "").localeCompare(a.date ?? "");
-  });
+  if (viewMode === "byTime") {
+    // Tab "Theo thời gian": mới tạo lên đầu, không group theo loại
+    rows.sort((a, b) => {
+      const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return tB - tA;
+    });
+  } else {
+    // Tab "Theo nhóm": group theo loại (đúng thứ tự nghiệp vụ) + date DESC trong nhóm
+    const costTypeOrder: Record<string, number> = {
+      sale_commission: 1,
+      customer_support: 2,
+      bonus_sale: 3,
+      bonus_manager: 4,
+      cdt_bonus_sale: 5,
+      cdt_bonus_manager: 6,
+      kpi_ceo: 7,
+      kpi_tpkd: 8,
+      kpi_admin: 9,
+    };
+    rows.sort((a, b) => {
+      const oA = costTypeOrder[a.costType] ?? 99;
+      const oB = costTypeOrder[b.costType] ?? 99;
+      if (oA !== oB) return oA - oB;
+      return (b.date ?? "").localeCompare(a.date ?? "");
+    });
+  }
 
   // Load raw payments để vừa tính paidMap (total per recon) vừa dựng list
   // chi tiết payments trong expand row.
@@ -332,7 +361,7 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
         </AutoDismissBanner>
       )}
       <PageChrome
-        viewMode="recon"
+        viewMode={viewMode}
         allProjects={allProjects}
         nvkdOptions={nvkdOptions}
         projectIdParam={projectId}
@@ -703,7 +732,7 @@ async function AggregatedCostsView(props: AggregatedProps) {
   const statusLabels: Record<string, { label: string; cls: string }> = {
     not_started: { label: "Chưa chi", cls: "bg-amber-100 text-amber-700 border-amber-300" },
     partial: { label: "Đang chi", cls: "bg-blue-100 text-blue-700 border-blue-300" },
-    done: { label: "Đã đủ", cls: "bg-green-100 text-green-700 border-green-300" },
+    done: { label: "Hoàn thành", cls: "bg-green-100 text-green-700 border-green-300" },
     over: { label: "Chi quá", cls: "bg-purple-100 text-purple-700 border-purple-300" },
   };
 
@@ -915,8 +944,9 @@ async function AggregatedCostsView(props: AggregatedProps) {
 // PageChrome — header + toggle + action buttons + filter bar + stats.
 // Cả 2 view (recon + byUnit) đều render qua đây → switch view KHÔNG nhảy UI.
 // ============================================================================
+type ViewMode = "recon" | "byUnit" | "byTime";
 type PageChromeProps = {
-  viewMode: "recon" | "byUnit";
+  viewMode: ViewMode;
   allProjects: { id: number; name: string; fullCode: string }[];
   nvkdOptions: { value: string; label: string; sublabel?: string }[];
   projectIdParam?: string;
@@ -946,21 +976,30 @@ function PageChrome(props: PageChromeProps) {
     salesPersonParam ||
     statusParam
   );
-  const otherViewUrl = (() => {
-    const target = viewMode === "recon" ? "byUnit" : "recon";
+
+  // Build URL cho 1 view khác — giữ toàn bộ filter param hiện tại.
+  const buildViewUrl = (target: ViewMode, opts?: { clearCostType?: boolean }) => {
     const qs = new URLSearchParams();
-    if (target === "byUnit") qs.set("view", "byUnit");
+    if (target !== "recon") qs.set("view", target);
     if (projectIdParam) qs.set("projectId", projectIdParam);
-    if (costTypeParam) qs.set("costType", costTypeParam);
+    if (costTypeParam && !opts?.clearCostType) qs.set("costType", costTypeParam);
     if (unitCodeParam) qs.set("unitCode", unitCodeParam);
     if (salesPersonParam) qs.set("salesPerson", salesPersonParam);
     return `/costs${qs.toString() ? "?" + qs.toString() : ""}`;
-  })();
-  const resetUrl = viewMode === "byUnit" ? "/costs?view=byUnit" : "/costs";
+  };
+
+  const resetUrl =
+    viewMode === "byUnit"
+      ? "/costs?view=byUnit"
+      : viewMode === "byTime"
+        ? "/costs?view=byTime"
+        : "/costs";
+
+  const showCostTypePills = viewMode === "recon" || viewMode === "byTime";
 
   return (
     <>
-      {/* Header: title + toggle + action buttons */}
+      {/* Header: title (trái) + action buttons (phải) */}
       <div className="flex justify-between items-start flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold">Đối chiếu giá vốn</h1>
@@ -970,26 +1009,6 @@ function PageChrome(props: PageChromeProps) {
           </p>
         </div>
         <div className="flex gap-2 items-center flex-wrap">
-          <Tabs value={viewMode}>
-            <TabsList>
-              <TabsTrigger
-                value="recon"
-                render={
-                  viewMode === "recon" ? <span /> : <Link href={otherViewUrl} />
-                }
-              >
-                Theo dòng
-              </TabsTrigger>
-              <TabsTrigger
-                value="byUnit"
-                render={
-                  viewMode === "byUnit" ? <span /> : <Link href={otherViewUrl} />
-                }
-              >
-                Theo căn × loại
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
           <Button variant="secondary" render={<Link href="/costs/bulk" />}>
             📊 Nhập hàng loạt
           </Button>
@@ -1002,10 +1021,59 @@ function PageChrome(props: PageChromeProps) {
         </div>
       </div>
 
+      {/* View mode tabs (row riêng, không dính actions) */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <Tabs value={viewMode}>
+          <TabsList>
+            <TabsTrigger
+              value="recon"
+              render={viewMode === "recon" ? <span /> : <Link href={buildViewUrl("recon")} />}
+            >
+              Theo nhóm
+            </TabsTrigger>
+            <TabsTrigger
+              value="byUnit"
+              render={viewMode === "byUnit" ? <span /> : <Link href={buildViewUrl("byUnit")} />}
+            >
+              Theo căn × loại
+            </TabsTrigger>
+            <TabsTrigger
+              value="byTime"
+              render={viewMode === "byTime" ? <span /> : <Link href={buildViewUrl("byTime")} />}
+            >
+              Theo thời gian
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
+      {/* Sub-tabs cost_type — chuyển nhanh giữa các loại (chỉ hiện view flat) */}
+      {showCostTypePills && (
+        <div className="flex gap-1.5 flex-wrap">
+          <CostTypePill label="Tất cả" active={!costTypeParam} href={buildViewUrl(viewMode, { clearCostType: true })} />
+          {COST_TYPE_OPTIONS.map((t) => {
+            const qs = new URLSearchParams();
+            if (viewMode !== "recon") qs.set("view", viewMode);
+            if (projectIdParam) qs.set("projectId", projectIdParam);
+            qs.set("costType", t.v);
+            if (unitCodeParam) qs.set("unitCode", unitCodeParam);
+            if (salesPersonParam) qs.set("salesPerson", salesPersonParam);
+            return (
+              <CostTypePill
+                key={t.v}
+                label={t.l}
+                active={costTypeParam === t.v}
+                href={`/costs?${qs.toString()}`}
+              />
+            );
+          })}
+        </div>
+      )}
+
       {/* Filter bar: cùng field cùng thứ tự cho cả 2 view */}
       <Card className="[--card-spacing:1rem] px-4 gap-4 flex-row flex-wrap items-end">
         <form className="flex gap-2 items-end flex-wrap">
-          {viewMode === "byUnit" && <input type="hidden" name="view" value="byUnit" />}
+          {viewMode !== "recon" && <input type="hidden" name="view" value={viewMode} />}
           {statusParam && <input type="hidden" name="status" value={statusParam} />}
           <div>
             <label className="block text-xs text-slate-600 mb-1">Mã căn</label>
