@@ -70,9 +70,21 @@ export function DatePicker({
         </svg>
       </PopoverTrigger>
       <PopoverContent className="p-2 w-auto">
-        <div
-          style={
-            {
+        <DayPicker
+          mode="single"
+          selected={isValidSelected}
+          onSelect={handleSelect}
+          locale={vi}
+          weekStartsOn={1}
+          showOutsideDays
+          captionLayout="dropdown"
+          startMonth={new Date(2020, 0)}
+          endMonth={new Date(2035, 11)}
+          className="text-xs"
+          // Inline style trên .rdp-root — override được default vars (vars khai
+          // báo trên .rdp-root nên set từ ancestor div KHÔNG có tác dụng).
+          styles={{
+            root: {
               "--rdp-day-height": "1.75rem",
               "--rdp-day-width": "1.75rem",
               "--rdp-day_button-height": "1.75rem",
@@ -84,34 +96,22 @@ export function DatePicker({
               "--rdp-months-gap": "0.5rem",
               "--rdp-font-family": "inherit",
               "--rdp-accent-color": "var(--primary)",
-              "--rdp-accent-background-color": "color-mix(in oklch, var(--primary) 15%, transparent)",
-            } as React.CSSProperties
+              "--rdp-accent-background-color":
+                "color-mix(in oklch, var(--primary) 15%, transparent)",
+            } as React.CSSProperties,
+          }}
+          footer={
+            isValidSelected ? (
+              <button
+                type="button"
+                onClick={() => handleSelect(undefined)}
+                className="mt-2 text-xs text-blue-600 hover:underline"
+              >
+                Xóa
+              </button>
+            ) : null
           }
-          className="text-xs [&_.rdp-week]:leading-none [&_table]:border-spacing-0 [&_table]:border-collapse [&_td]:p-0"
-        >
-          <DayPicker
-            mode="single"
-            selected={isValidSelected}
-            onSelect={handleSelect}
-            locale={vi}
-            weekStartsOn={1}
-            showOutsideDays
-            captionLayout="dropdown"
-            startMonth={new Date(2020, 0)}
-            endMonth={new Date(2035, 11)}
-            footer={
-              isValidSelected ? (
-                <button
-                  type="button"
-                  onClick={() => handleSelect(undefined)}
-                  className="mt-2 text-xs text-blue-600 hover:underline"
-                >
-                  Xóa
-                </button>
-              ) : null
-            }
-          />
-        </div>
+        />
       </PopoverContent>
     </Popover>
   );
