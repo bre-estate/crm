@@ -12,6 +12,7 @@ import { fmtMoney, fmtDate, fmtPctTight, fmtPctRaw, displayPartnerName } from "@
 import { eq, asc, desc, and, gte, lte, ilike, inArray, sql, type SQL } from "drizzle-orm";
 import Link from "next/link";
 import SearchableSelect from "@/components/SearchableSelect";
+import ProductsFilterForm from "./ProductsFilterForm";
 import ProductsTable, { type ProductRow } from "./ProductsTable";
 import { deleteProductBulk } from "@/lib/actions/products";
 import HighlightManager from "../HighlightManager";
@@ -372,102 +373,30 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
       </div>
 
       <Card className="[--card-spacing:1rem] px-4 py-3 gap-3">
-        <form className="flex gap-2 items-end flex-wrap">
-          <div>
-            <label className="block text-[11px] text-slate-600 mb-1">Mã căn</label>
-            <input
-              type="text"
-              name="unitCode"
-              defaultValue={filterUnitCode ?? ""}
-              className="input w-24 text-sm"
-              placeholder="A.25.26"
-            />
-          </div>
-          <div>
-            <label className="block text-[11px] text-slate-600 mb-1">Dự án</label>
-            <SearchableSelect
-              name="projectId"
-              defaultValue={projectId ?? ""}
-              emptyOption="— Tất cả —"
-              placeholder="Dự án..."
-              className="w-40"
-              options={allProjects.map((p) => ({
-                value: p.id,
-                label: p.name,
-                sublabel: p.fullCode,
-              }))}
-            />
-          </div>
-          <div>
-            <label className="block text-[11px] text-slate-600 mb-1">Phòng</label>
-            <SearchableSelect
-              name="departmentId"
-              defaultValue={departmentId ?? ""}
-              emptyOption="— Tất cả —"
-              placeholder="Phòng..."
-              className="w-32"
-              options={allDepts.map((d) => ({ value: d.id, label: d.name }))}
-            />
-          </div>
-          <div>
-            <label className="block text-[11px] text-slate-600 mb-1">NVKD</label>
-            <SearchableSelect
-              name="salesPerson"
-              defaultValue={filterSalesPerson ?? ""}
-              emptyOption="— Tất cả —"
-              placeholder="NVKD..."
-              className="w-40"
-              options={salesPersonOptions.map((s) => ({
-                value: s.name,
-                label: s.name,
-                sublabel: s.isCtv ? "CTV" : s.position ? s.position.toUpperCase() : undefined,
-              }))}
-            />
-          </div>
-          <div>
-            <label className="block text-[11px] text-slate-600 mb-1">Từ ngày cọc</label>
-            <input
-              type="date"
-              name="from"
-              defaultValue={dateFrom ?? ""}
-              className="input w-36 text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-[11px] text-slate-600 mb-1">Đến ngày cọc</label>
-            <input
-              type="date"
-              name="to"
-              defaultValue={dateTo ?? ""}
-              className="input w-36 text-sm"
-            />
-          </div>
-          <input type="hidden" name="tab" value={activeTab} />
-          <label className="flex items-center gap-1.5 text-xs whitespace-nowrap cursor-pointer">
-            <input
-              type="checkbox"
-              name="overpaidOnly"
-              value="1"
-              defaultChecked={filterOverpaidOnly}
-              className="cursor-pointer"
-            />
-            <span>Chỉ căn có NV nợ cty</span>
-          </label>
-          <Button type="submit" variant="secondary" size="sm">
-            Lọc
-          </Button>
-          {(filterProjectId ||
-            filterDeptId ||
-            filterSalesPerson ||
-            dateFrom ||
-            dateTo ||
-            filterUnitCode ||
-            filterOverpaidOnly) && (
-            <Button variant="outline" size="sm" render={<Link href={`/products?tab=${activeTab}`} />}>
-              Reset
-            </Button>
-          )}
-        </form>
+        <ProductsFilterForm
+          activeTab={activeTab}
+          allProjects={allProjects}
+          allDepts={allDepts}
+          salesPersonOptions={salesPersonOptions}
+          filterUnitCode={filterUnitCode ?? undefined}
+          projectId={projectId ?? undefined}
+          departmentId={departmentId ?? undefined}
+          filterSalesPerson={filterSalesPerson ?? undefined}
+          dateFrom={dateFrom ?? undefined}
+          dateTo={dateTo ?? undefined}
+          filterOverpaidOnly={filterOverpaidOnly}
+          hasFilter={
+            !!(
+              filterProjectId ||
+              filterDeptId ||
+              filterSalesPerson ||
+              dateFrom ||
+              dateTo ||
+              filterUnitCode ||
+              filterOverpaidOnly
+            )
+          }
+        />
       </Card>
 
       {/* Stats — nhỏ gọn, dưới filter (thống nhất với /costs, /revenues) */}

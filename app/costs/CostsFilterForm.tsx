@@ -100,7 +100,7 @@ export default function CostsFilterForm({
       </div>
       <Button
         type="submit"
-        className="h-[38px] px-5 bg-slate-700 text-white hover:bg-slate-800"
+        className="h-[38px] px-5 bg-slate-100 text-slate-900 border border-slate-300 hover:bg-slate-200"
       >
         Lọc
       </Button>

@@ -85,14 +85,14 @@ export function DatePicker({
           // báo trên .rdp-root nên set từ ancestor div KHÔNG có tác dụng).
           styles={{
             root: {
-              "--rdp-day-height": "1.75rem",
-              "--rdp-day-width": "1.75rem",
-              "--rdp-day_button-height": "1.75rem",
-              "--rdp-day_button-width": "1.75rem",
-              "--rdp-nav_button-height": "1.5rem",
-              "--rdp-nav_button-width": "1.5rem",
-              "--rdp-nav-height": "2rem",
-              "--rdp-weekday-padding": "0.15rem 0rem",
+              "--rdp-day-height": "2.25rem",
+              "--rdp-day-width": "2.25rem",
+              "--rdp-day_button-height": "2rem",
+              "--rdp-day_button-width": "2rem",
+              "--rdp-nav_button-height": "1.75rem",
+              "--rdp-nav_button-width": "1.75rem",
+              "--rdp-nav-height": "2.25rem",
+              "--rdp-weekday-padding": "0.4rem 0rem",
               "--rdp-months-gap": "0.5rem",
               "--rdp-font-family": "inherit",
               "--rdp-accent-color": "var(--primary)",

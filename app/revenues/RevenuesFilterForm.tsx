@@ -87,7 +87,7 @@ export default function RevenuesFilterForm({
           defaultValue={projectIdParam ?? ""}
           emptyOption="— Tất cả —"
           placeholder="Gõ tên dự án..."
-          className="min-w-64"
+          className="min-w-52"
           options={allProjects.map((p) => ({
             value: p.id,
             label: p.name,
@@ -97,7 +97,7 @@ export default function RevenuesFilterForm({
       </div>
       <div>
         <label className="block text-xs text-slate-600 mb-1">Loại</label>
-        <select name="type" defaultValue={activeType} className="input min-w-40">
+        <select name="type" defaultValue={activeType} className="input min-w-36">
           {TYPE_OPTIONS.map((t) => (
             <option key={t.key} value={t.key}>
               {t.label}
@@ -107,7 +107,7 @@ export default function RevenuesFilterForm({
       </div>
       <div>
         <label className="block text-xs text-slate-600 mb-1">Trạng thái</label>
-        <select name="status" defaultValue={activeStatus} className="input min-w-44">
+        <select name="status" defaultValue={activeStatus} className="input min-w-40">
           {STATUS_OPTIONS.map((s) => (
             <option key={s.key} value={s.key}>
               {s.label}
@@ -122,13 +122,13 @@ export default function RevenuesFilterForm({
           defaultValue={salesPersonParam ?? ""}
           emptyOption="— Tất cả —"
           placeholder="Gõ tên NVKD..."
-          className="min-w-52"
+          className="min-w-44"
           options={nvkdOptions}
         />
       </div>
       <Button
         type="submit"
-        className="h-[38px] px-5 bg-slate-700 text-white hover:bg-slate-800"
+        className="h-[38px] px-5 bg-slate-100 text-slate-900 border border-slate-300 hover:bg-slate-200"
       >
         Lọc
       </Button>
