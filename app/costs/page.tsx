@@ -1062,11 +1062,35 @@ function PageChrome(props: PageChromeProps) {
         </div>
       )}
 
+      {/* Stats grid — KPI cards, hàng riêng cho gọn (trước đây trơ trọi trong filter card) */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {stats.map((s, i) => (
+          <Card key={i} className="[--card-spacing:0.75rem] px-4 py-3 gap-1">
+            <div className="text-xs text-slate-500 flex items-center gap-1">
+              <span>{s.label}</span>
+              {s.tooltip && (
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-300 text-white text-[9px] cursor-help select-none">
+                        ?
+                      </span>
+                    }
+                  />
+                  <TooltipContent className="max-w-xs">{s.tooltip}</TooltipContent>
+                </Tooltip>
+              )}
+            </div>
+            <div className={cn("text-lg font-bold tabular-nums", s.color)}>{s.value}</div>
+          </Card>
+        ))}
+      </div>
+
       {/* Status pills (chỉ view "Theo căn × loại") — cùng vị trí + style với cost-type pills */}
       {statusPills}
 
       {/* Filter bar: 3 field (mã căn / dự án / NVKD). Cost type dùng sub-tabs pill trên. */}
-      <Card className="[--card-spacing:1rem] px-4 gap-4 flex-row flex-wrap items-end">
+      <Card className="[--card-spacing:1rem] px-4 py-3 gap-4">
         <CostsFilterForm
           viewMode={viewMode}
           allProjects={allProjects}
@@ -1079,28 +1103,6 @@ function PageChrome(props: PageChromeProps) {
           hasFilter={hasFilter}
           resetUrl={resetUrl}
         />
-        <div className="flex gap-6 text-sm ml-auto">
-          {stats.map((s, i) => (
-            <div key={i}>
-              <div className="text-xs text-slate-500 flex items-center gap-1">
-                <span>{s.label}</span>
-                {s.tooltip && (
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-300 text-white text-[9px] cursor-help select-none">
-                          ?
-                        </span>
-                      }
-                    />
-                    <TooltipContent className="max-w-xs">{s.tooltip}</TooltipContent>
-                  </Tooltip>
-                )}
-              </div>
-              <div className={cn("font-bold tabular-nums", s.color)}>{s.value}</div>
-            </div>
-          ))}
-        </div>
       </Card>
     </>
   );
