@@ -10,6 +10,7 @@ import { fmtMoney, fmtDate, fmtPctTight, toTitleCase } from "@/lib/format";
 import AdjustmentDialog from "./[id]/AdjustmentDialog";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 type ProjectWithPartner = Project & {
   partnerName?: string | null;
@@ -648,8 +649,20 @@ export default function ProductForm({
 
           {/* 3 loại tổng doanh thu (live compute) */}
           <div className="mt-6 border-t border-slate-200 pt-4">
-            <div className="text-xs text-slate-500 uppercase font-semibold mb-2">
-              Tổng doanh thu — tự động cập nhật khi anh chỉnh %PMG hoặc phí admin
+            <div className="text-xs text-slate-500 uppercase font-semibold mb-2 flex items-center gap-1.5">
+              <span>Tổng doanh thu</span>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-300 text-white text-[9px] cursor-help select-none normal-case">
+                      ?
+                    </span>
+                  }
+                />
+                <TooltipContent className="max-w-xs">
+                  Tự động cập nhật khi chỉnh các thông số liên quan (ví dụ %PMG, phí admin).
+                </TooltipContent>
+              </Tooltip>
             </div>
             <div className={`grid grid-cols-1 md:grid-cols-${dtThangDu > 0 ? 3 : 2} gap-3`}>
               <div className="rounded-lg border border-blue-200 bg-blue-50/60 p-3">
