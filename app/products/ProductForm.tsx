@@ -467,7 +467,6 @@ export default function ProductForm({
               className="input"
               placeholder="vd: 65.5"
             />
-            <div className="text-[10px] text-slate-500 mt-1">Chuẩn pháp lý + sổ đỏ</div>
           </Field>
           <Field label="DT tim tường (m²)">
             <input
@@ -479,7 +478,6 @@ export default function ProductForm({
               className="input"
               placeholder="vd: 72.0"
             />
-            <div className="text-[10px] text-slate-500 mt-1">Marketing CĐT · gross</div>
           </Field>
           <Field label="Ngày cọc">
             <input
@@ -498,12 +496,6 @@ export default function ProductForm({
               options={employeeOptions}
             />
             <input type="hidden" name="salesPerson" value={salesPersonName} />
-            <div className="text-[10px] text-slate-500 mt-1">
-              Chọn xong tự điền Phòng.{" "}
-              <a href="/employees" className="text-blue-600 hover:underline">
-                Thêm NV mới
-              </a>
-            </div>
           </Field>
           <Field label="Phòng kinh doanh">
             <SearchableSelect
@@ -635,9 +627,6 @@ export default function ProductForm({
                 className="input"
                 onValueChange={setAdminFeeSaleLive}
               />
-              <div className="text-[10px] text-slate-500 mt-1">
-                Số ghi trong công thức hoa hồng sale. Chênh công ty tự chịu.
-              </div>
             </Field>
             <Field label="CĐT thưởng nóng cho sale">
               <MoneyInput
