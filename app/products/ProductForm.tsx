@@ -31,10 +31,19 @@ type Props = {
   onSave: (fd: FormData) => Promise<void>;
   onDelete?: () => Promise<void>;
   returnTo?: string | null;
-  // Nếu true → khóa các field ảnh hưởng đối chiếu (giá, %PMG_LK, phí admin,
-  // %HH sale, %KPI CEO/TPKD/Admin) — dùng "Điều chỉnh thông tin căn" thay để
-  // giữ history + gắn ngày hiệu lực. Trigger khi căn đã có ≥1 recon.
+  // Nếu true → khóa base config (giá, %PMG_LK, phí admin, phí admin sale,
+  // %PMG_LK_sale) — dùng "Điều chỉnh thông tin căn" thay. Trigger khi căn
+  // đã có ≥1 recon rev/cost core (non-bonus).
   lockCoreFields?: boolean;
+  // Option B2: per-field lock. Rate riêng lock nếu có recon LOẠI tương ứng.
+  // Common lock = base config (giá, %PMG_LK, phí admin, adminFeeSale).
+  locks?: {
+    common: boolean;
+    saleCommission: boolean;
+    kpiCeo: boolean;
+    kpiTpkd: boolean;
+    kpiAdmin: boolean;
+  };
   // Sum recon cdt_bonus_sale/manager để pre-check khi user giảm config
   reconCdtBonusSaleSum?: number;
   reconCdtBonusMgrSum?: number;
@@ -109,10 +118,19 @@ export default function ProductForm({
   onDelete,
   returnTo,
   lockCoreFields = false,
+  locks,
   reconCdtBonusSaleSum = 0,
   reconCdtBonusMgrSum = 0,
   existingAdjustments = [],
 }: Props) {
+  // Fallback nếu chưa pass locks (giữ compat call-site cũ)
+  const effLocks = locks ?? {
+    common: lockCoreFields,
+    saleCommission: lockCoreFields,
+    kpiCeo: lockCoreFields,
+    kpiTpkd: lockCoreFields,
+    kpiAdmin: lockCoreFields,
+  };
   const [pending, start] = useTransition();
   const router = useRouter();
   const isEdit = !!product;
@@ -713,69 +731,69 @@ export default function ProductForm({
           )}
           <Field label="%HH sale (NVKD)">
             <PercentInput
-              name={lockCoreFields ? "_locked_saleCommissionRate" : "saleCommissionRate"}
+              name={effLocks.saleCommission ? "_locked_saleCommissionRate" : "saleCommissionRate"}
               defaultValue={pctDisplay(product?.saleCommissionRate)}
-              disabled={lockCoreFields}
-              className={`input ${lockCoreFields ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}`}
+              disabled={effLocks.saleCommission}
+              className={`input ${effLocks.saleCommission ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}`}
               onChange={(e) => {
                 const n = Number(e.target.value.replace(/,/g, "."));
                 setSaleCommRateLive(isNaN(n) ? 0 : n / 100);
               }}
             />
-            {lockCoreFields && (
+            {effLocks.saleCommission && (
               <input type="hidden" name="saleCommissionRate" value={pctDisplay(product?.saleCommissionRate)} />
             )}
-            {lockCoreFields && <LockedFieldHint />}
+            {effLocks.saleCommission && <LockedFieldHint />}
           </Field>
           {!isSecondary && (
             <>
-              <Field label="%KPI TPKD (Trưởng phòng)">
+              <Field label="%KPI TPKD">
                 <PercentInput
-                  name={lockCoreFields ? "_locked_kpiTpkdRate" : "kpiTpkdRate"}
+                  name={effLocks.kpiTpkd ? "_locked_kpiTpkdRate" : "kpiTpkdRate"}
                   defaultValue={pctDisplay(product?.kpiTpkdRate)}
-                  disabled={lockCoreFields}
-                  className={`input ${lockCoreFields ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}`}
+                  disabled={effLocks.kpiTpkd}
+                  className={`input ${effLocks.kpiTpkd ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}`}
                   onChange={(e) => {
                     const n = Number(e.target.value.replace(/,/g, "."));
                     setKpiTpkdRateLive(isNaN(n) ? 0 : n / 100);
                   }}
                 />
-                {lockCoreFields && (
+                {effLocks.kpiTpkd && (
                   <input type="hidden" name="kpiTpkdRate" value={pctDisplay(product?.kpiTpkdRate)} />
                 )}
-                {lockCoreFields && <LockedFieldHint />}
+                {effLocks.kpiTpkd && <LockedFieldHint />}
               </Field>
               <Field label="%KPI CEO">
                 <PercentInput
-                  name={lockCoreFields ? "_locked_kpiCeoRate" : "kpiCeoRate"}
+                  name={effLocks.kpiCeo ? "_locked_kpiCeoRate" : "kpiCeoRate"}
                   defaultValue={pctDisplay(product?.kpiCeoRate)}
-                  disabled={lockCoreFields}
-                  className={`input ${lockCoreFields ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}`}
+                  disabled={effLocks.kpiCeo}
+                  className={`input ${effLocks.kpiCeo ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}`}
                   onChange={(e) => {
                     const n = Number(e.target.value.replace(/,/g, "."));
                     setKpiCeoRateLive(isNaN(n) ? 0 : n / 100);
                   }}
                 />
-                {lockCoreFields && (
+                {effLocks.kpiCeo && (
                   <input type="hidden" name="kpiCeoRate" value={pctDisplay(product?.kpiCeoRate)} />
                 )}
-                {lockCoreFields && <LockedFieldHint />}
+                {effLocks.kpiCeo && <LockedFieldHint />}
               </Field>
               <Field label="%KPI Admin">
                 <PercentInput
-                  name={lockCoreFields ? "_locked_kpiAdminRate" : "kpiAdminRate"}
+                  name={effLocks.kpiAdmin ? "_locked_kpiAdminRate" : "kpiAdminRate"}
                   defaultValue={pctDisplay(product?.kpiAdminRate)}
-                  disabled={lockCoreFields}
-                  className={`input ${lockCoreFields ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}`}
+                  disabled={effLocks.kpiAdmin}
+                  className={`input ${effLocks.kpiAdmin ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}`}
                   onChange={(e) => {
                     const n = Number(e.target.value.replace(/,/g, "."));
                     setKpiAdminRateLive(isNaN(n) ? 0 : n / 100);
                   }}
                 />
-                {lockCoreFields && (
+                {effLocks.kpiAdmin && (
                   <input type="hidden" name="kpiAdminRate" value={pctDisplay(product?.kpiAdminRate)} />
                 )}
-                {lockCoreFields && <LockedFieldHint />}
+                {effLocks.kpiAdmin && <LockedFieldHint />}
               </Field>
             </>
           )}

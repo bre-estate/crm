@@ -37,7 +37,7 @@ const FIELDS: FieldDef[] = [
   { key: "pmgRate", label: "%PMG_LK (CĐT trả BRE)", type: "percent" },
   { key: "adminFee", label: "Phí admin (CĐT giữ, gồm VAT)", type: "money" },
   { key: "saleCommissionRate", label: "%HH sale (NVKD)", type: "percent" },
-  { key: "kpiTpkdRate", label: "%KPI TPKD (Trưởng phòng)", type: "percent" },
+  { key: "kpiTpkdRate", label: "%KPI TPKD", type: "percent" },
   { key: "kpiCeoRate", label: "%KPI CEO", type: "percent" },
   { key: "kpiAdminRate", label: "%KPI Admin", type: "percent" },
 ];

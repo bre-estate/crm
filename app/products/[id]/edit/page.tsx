@@ -104,20 +104,37 @@ export default async function EditProductPage({
     .where(eq(productAdjustments.productId, id))
     .orderBy(desc(productAdjustments.effectiveDate), desc(productAdjustments.id));
 
-  // Lock các field ảnh hưởng giá/HH/KPI khi căn đã có recon "core":
-  // - Revenue recon có revenue_this_time != 0 (đợt HH sale chính)
-  // - Cost recon KHÔNG thuộc thưởng nóng (cdt_bonus_sale/manager là số cụ
-  //   thể per đợt, không phụ thuộc rate/price của căn → không cần lock).
-  // Chỉ có đợt thưởng nóng → vẫn cho edit trực tiếp.
+  // Per-field lock (Option B2): mỗi field khoá theo loại recon tương ứng.
+  //   Base config (pmgBasePrice/pmgRate/adminFee/adminFeeSale/pmgSaleRate):
+  //     khoá nếu CÓ recon core (rev != 0 hoặc cost non-bonus) — ảnh hưởng
+  //     công thức chung DT + HH.
+  //   %HH sale: khoá riêng nếu có recon cost_type=sale_commission.
+  //   %KPI CEO/TPKD/Admin: khoá riêng nếu có recon cost_type tương ứng.
+  //   Thưởng nóng CĐT (cdt_bonus_sale/manager) đã có sum-check riêng, không lock.
   const [{ revC = 0 }] = await db
     .select({ revC: sql<number>`count(*)::int` })
     .from(revenueReconciliations)
     .where(sql`${revenueReconciliations.productId} = ${id} AND ${revenueReconciliations.revenueThisTime} != 0`);
-  const [{ costC = 0 }] = await db
-    .select({ costC: sql<number>`count(*)::int` })
+  const costCountsByType = await db
+    .select({
+      costType: costReconciliations.costType,
+      c: sql<number>`count(*)::int`,
+    })
     .from(costReconciliations)
-    .where(sql`${costReconciliations.productId} = ${id} AND ${costReconciliations.costType} NOT IN ('cdt_bonus_sale', 'cdt_bonus_manager')`);
-  const hasRecons = Number(revC) + Number(costC) > 0;
+    .where(sql`${costReconciliations.productId} = ${id}`)
+    .groupBy(costReconciliations.costType);
+  const costCountMap = new Map<string, number>();
+  for (const r of costCountsByType) costCountMap.set(r.costType, Number(r.c ?? 0));
+  const hasNonBonusCost = Array.from(costCountMap.entries())
+    .filter(([t]) => t !== "cdt_bonus_sale" && t !== "cdt_bonus_manager")
+    .some(([, c]) => c > 0);
+  const locks = {
+    common: Number(revC) > 0 || hasNonBonusCost,
+    saleCommission: (costCountMap.get("sale_commission") ?? 0) > 0,
+    kpiCeo: (costCountMap.get("kpi_ceo") ?? 0) > 0,
+    kpiTpkd: (costCountMap.get("kpi_tpkd") ?? 0) > 0,
+    kpiAdmin: (costCountMap.get("kpi_admin") ?? 0) > 0,
+  };
 
   // Sum recon cdt_bonus_sale/manager — để form pre-check trước khi submit
   // (chặn user giảm config bên dưới sum đã ĐC + toast warning trực tiếp).
@@ -158,7 +175,8 @@ export default async function EditProductPage({
         departments={allDepts}
         employees={allEmployees}
         returnTo={returnTo}
-        lockCoreFields={hasRecons}
+        lockCoreFields={locks.common}
+        locks={locks}
         reconCdtBonusSaleSum={reconCdtBonusSaleSum}
         reconCdtBonusMgrSum={reconCdtBonusMgrSum}
         existingAdjustments={adjustments}
