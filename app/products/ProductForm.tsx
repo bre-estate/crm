@@ -53,6 +53,53 @@ type PendingAdjustment = {
 const pctDisplay = (v: number | null | undefined): string =>
   v == null ? "" : String(Number((Number(v) * 100).toFixed(4)));
 
+// Diễn giải các field thay đổi trong 1 adjustment (bảng "Điều chỉnh thông tin căn").
+// Match tất cả field mà AdjustmentDialog cho phép chọn.
+type AdjustmentFields = {
+  pmgBasePrice?: number | null;
+  pmgRate?: number | null;
+  pmgSaleRate?: number | null;
+  adminFee?: number | null;
+  adminFeeSale?: number | null;
+  saleCommissionRate?: number | null;
+  kpiCeoRate?: number | null;
+  kpiTpkdRate?: number | null;
+  kpiAdminRate?: number | null;
+  cdtBonusSale?: number | null;
+  cdtBonusManager?: number | null;
+  bonusSale?: number | null;
+  bonusManager?: number | null;
+  customerSupport?: number | null;
+};
+function describeAdjustmentChanges(a: AdjustmentFields | Record<string, number>): string[] {
+  const asAny = a as Record<string, unknown>;
+  const val = (k: string): number | null => {
+    const v = asAny[k];
+    return v == null || v === undefined ? null : Number(v);
+  };
+  const pushIf = (out: string[], k: string, label: string, fmt: (n: number) => string) => {
+    const v = val(k);
+    if (v == null) return;
+    out.push(`${label} = ${fmt(v)}`);
+  };
+  const out: string[] = [];
+  pushIf(out, "pmgBasePrice", "Giá PMG", fmtMoney);
+  pushIf(out, "pmgRate", "%PMG_LK", fmtPctTight);
+  pushIf(out, "pmgSaleRate", "%PMG sale", fmtPctTight);
+  pushIf(out, "adminFee", "Phí admin", fmtMoney);
+  pushIf(out, "adminFeeSale", "Phí admin sale", fmtMoney);
+  pushIf(out, "saleCommissionRate", "%HH sale", fmtPctTight);
+  pushIf(out, "kpiCeoRate", "%KPI CEO", fmtPctTight);
+  pushIf(out, "kpiTpkdRate", "%KPI TPKD", fmtPctTight);
+  pushIf(out, "kpiAdminRate", "%KPI Admin", fmtPctTight);
+  pushIf(out, "cdtBonusSale", "CĐT thưởng NVKD", fmtMoney);
+  pushIf(out, "cdtBonusManager", "CĐT thưởng TPKD", fmtMoney);
+  pushIf(out, "bonusSale", "CTY thưởng NVKD", fmtMoney);
+  pushIf(out, "bonusManager", "CTY thưởng TPKD", fmtMoney);
+  pushIf(out, "customerSupport", "Hỗ trợ khách", fmtMoney);
+  return out;
+}
+
 export default function ProductForm({
   product,
   projects,
@@ -816,13 +863,7 @@ export default function ProductForm({
               </thead>
               <tbody>
                 {existingAdjustments.map((a) => {
-                  const changes: string[] = [];
-                  if (a.pmgBasePrice != null)
-                    changes.push(`Giá PMG = ${fmtMoney(a.pmgBasePrice)}`);
-                  if (a.pmgRate != null)
-                    changes.push(`%PMG_LK = ${fmtPctTight(a.pmgRate)}`);
-                  if (a.adminFee != null)
-                    changes.push(`Phí admin = ${fmtMoney(a.adminFee)}`);
+                  const changes = describeAdjustmentChanges(a);
                   return (
                     <tr key={a.id} className="border-t border-slate-100">
                       <td className="p-2 whitespace-nowrap font-medium">
@@ -837,13 +878,7 @@ export default function ProductForm({
                   );
                 })}
                 {pendingAdjustments.map((a, i) => {
-                  const changes: string[] = [];
-                  if (a.fields.pmgBasePrice != null)
-                    changes.push(`Giá PMG = ${fmtMoney(a.fields.pmgBasePrice)}`);
-                  if (a.fields.pmgRate != null)
-                    changes.push(`%PMG_LK = ${fmtPctTight(a.fields.pmgRate)}`);
-                  if (a.fields.adminFee != null)
-                    changes.push(`Phí admin = ${fmtMoney(a.fields.adminFee)}`);
+                  const changes = describeAdjustmentChanges(a.fields);
                   return (
                     <tr key={`pending-${i}`} className="border-t border-slate-100 bg-amber-50">
                       <td className="p-2 whitespace-nowrap font-medium">
