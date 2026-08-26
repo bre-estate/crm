@@ -11,9 +11,10 @@ export type EntityType =
   | "revenue_reconciliation"
   | "cost_reconciliation"
   | "project"
-  | "partner";
+  | "partner"
+  | "expense_request";
 
-export type ActionType = "create" | "update" | "delete";
+export type ActionType = "create" | "update" | "delete" | "submit" | "approve" | "reject" | "pay";
 
 type Changes = Record<string, { from: unknown; to: unknown }>;
 

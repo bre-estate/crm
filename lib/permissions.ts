@@ -26,11 +26,14 @@ export const RESOURCE_ACTIONS: Record<string, Action[]> = {
   partners: ["view", "edit", "delete"],
   departments: ["view", "edit", "delete"],
   employees: ["view", "edit", "delete"],
+  expenses: ["view", "edit", "delete"],
   "admin.users": ["view", "edit", "delete"],
   // View + Edit (không xóa)
   finance: ["view", "edit"],
   "finance.bank-review": ["view", "edit"],
   "costs-report": ["view", "edit"],
+  // Duyệt chi — view = thấy queue duyệt, edit = approve/reject
+  "expenses.approve": ["view", "edit"],
   // View only (report / log / help)
   alerts: ["view"],
   "admin.activity": ["view"],
@@ -49,6 +52,8 @@ export const RESOURCES = {
   "departments": "Phòng ban",
   "employees": "Nhân sự",
   "finance": "Tài chính (Vốn góp / Tài sản / Giao dịch)",
+  "expenses": "Chi phí (Yêu cầu chi)",
+  "expenses.approve": "Duyệt chi",
   "reports.overview": "Báo cáo Tổng quan",
   "reports.management": "Báo cáo Quản trị (P&L cũ)",
   "reports.profit-detail": "Lãi/lỗ quản trị (Management P&L)",
@@ -94,7 +99,7 @@ export const RESOURCE_GROUPS: { label: string; keys: Resource[] }[] = [
   },
   {
     label: "Tài chính",
-    keys: ["finance"],
+    keys: ["finance", "expenses", "expenses.approve"],
   },
   {
     label: "Báo cáo",

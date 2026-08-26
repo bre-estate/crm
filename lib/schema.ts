@@ -499,7 +499,7 @@ export const activityLogs = pgTable("activity_logs", {
   id: serial("id").primaryKey(),
   entityType: text("entity_type").notNull(), // "product" | "product_adjustment" | "revenue_reconciliation" | "cost_reconciliation" | "project" | "partner"
   entityId: integer("entity_id").notNull(),
-  action: text("action", { enum: ["create", "update", "delete"] }).notNull(),
+  action: text("action", { enum: ["create", "update", "delete", "submit", "approve", "reject", "pay"] }).notNull(),
   productId: integer("product_id"), // nullable — filter timeline theo căn
   actorEmail: text("actor_email"),
   actorIp: text("actor_ip"),
@@ -607,6 +607,50 @@ export type NewFinancialTransaction = typeof financialTransactions.$inferInsert;
 export type CompanySettings = typeof companySettings.$inferSelect;
 export type Employee = typeof employees.$inferSelect;
 export type NewEmployee = typeof employees.$inferInsert;
+export type ExpenseRequest = typeof expenseRequests.$inferSelect;
+export type NewExpenseRequest = typeof expenseRequests.$inferInsert;
+
+// ===================== EXPENSE REQUESTS (P1 — 2026-08-27) =====================
+// Workflow yêu cầu chi tiền cho công ty.
+//   draft → pending (submit) → approved (approve) → paid (mark paid)
+//                            ↘ rejected (reject)
+// Không đụng company_expenses legacy — bảng mới hoàn toàn cho workflow duyệt chi.
+// Sau khi approved + paid, kế toán có thể fill account_code (TT200) để lên BCTC.
+export const expenseRequests = pgTable("expense_requests", {
+  id: serial("id").primaryKey(),
+  expenseCode: text("expense_code").notNull().unique(), // "EXP-2026-0001"
+  title: text("title").notNull(),
+  category: text("category").notNull(), // office/marketing/entertainment/travel/salary/commission/tax/other
+  amount: doublePrecision("amount").notNull(),
+  currency: text("currency").notNull().default("VND"),
+  expenseDate: text("expense_date").notNull(), // YYYY-MM-DD ngày phát sinh
+  paymentMethod: text("payment_method"), // cash / bank / card
+
+  requesterEmail: text("requester_email").notNull(),
+  approverEmail: text("approver_email"), // nullable — set khi submit hoặc do requester chọn
+
+  status: text("status").notNull().default("draft"), // draft/pending/approved/rejected/paid
+
+  accountCode: text("account_code"), // nullable — kế toán fill sau (VD "6428")
+  note: text("note"),
+  rejectionReason: text("rejection_reason"),
+
+  submittedAt: timestamp("submitted_at", { withTimezone: true }),
+  approvedAt: timestamp("approved_at", { withTimezone: true }),
+  paidAt: timestamp("paid_at", { withTimezone: true }),
+  paidBy: text("paid_by"),
+
+  // Polymorphic reference: nếu expense link với 1 record khác (VD payment_out
+  // của cost_reconciliation trong future P7).
+  linkType: text("link_type"),
+  linkId: integer("link_id"),
+
+  // Attachments — jsonb array of { url, name, size }. P1 empty (defer P5).
+  attachments: jsonb("attachments").default(sql`'[]'::jsonb`),
+
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 // ===================== NOTIFICATIONS =====================
 // Read state per user per notification key. Key format: `${alertId}::${period}`.
