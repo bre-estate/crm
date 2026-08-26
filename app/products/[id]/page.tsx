@@ -540,9 +540,9 @@ export default async function ProductDetailPage({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
               <Field label="Mô tả căn" value={p.unitDescription ?? "—"} />
               <Field label="Tên khách" value={toTitleCase(p.customerName) || "—"} />
-              <Field label="Ngày cọc" value={fmtDate(p.depositDate) || "—"} />
               <Field label="NVKD" value={nvkdCombo} />
               <Field label="Phòng KD" value={deptCombo} />
+              <Field label="Ngày cọc" value={fmtDate(p.depositDate) || "—"} />
             </div>
           );
         })()}
