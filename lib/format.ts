@@ -80,14 +80,14 @@ export const contractStatusLabel = (s: string): string => {
 
 export const costTypeLabel = (t: string): string => {
   switch (t) {
-    case "sale_commission": return "Hoa hồng sale";
+    case "sale_commission": return "HH Sale";
     case "customer_support": return "Hỗ trợ khách";
-    case "bonus_sale": return "Thưởng NVKD (CTY)";
-    case "bonus_manager": return "Thưởng TPKD (CTY)";
-    case "cdt_bonus_sale": return "Thưởng nóng CĐT (NVKD)";
-    case "cdt_bonus_manager": return "Thưởng nóng CĐT (TPKD)";
+    case "bonus_sale": return "CTY thưởng NVKD";
+    case "bonus_manager": return "CTY thưởng TPKD";
+    case "cdt_bonus_sale": return "CĐT thưởng NVKD";
+    case "cdt_bonus_manager": return "CĐT thưởng TPKD";
     case "kpi_ceo": return "KPI CEO";
-    case "kpi_tpkd": return "KPI TPKD (Trưởng phòng)";
+    case "kpi_tpkd": return "KPI TPKD";
     case "kpi_admin": return "KPI Admin";
     default: return t;
   }

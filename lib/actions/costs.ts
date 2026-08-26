@@ -9,6 +9,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { logActivity } from "@/lib/audit";
 import { toNum, toStr, toStrOrNull, toPct } from "@/lib/parse";
+import { costTypeLabel } from "@/lib/format";
 import {
   assertCostCapNotExceeded,
   assertPaymentProgressPctInRange,
@@ -133,7 +134,7 @@ export async function createCost(fd: FormData) {
     productId: data.productId,
     action: "create",
     after: data as Record<string, unknown>,
-    summary: `Tạo ĐC giá vốn (${data.costType}) cho ${data.employeeName} — ${Number(data.amountPayableThisTime ?? 0).toLocaleString("vi-VN")}`,
+    summary: `Tạo ĐC ${costTypeLabel(data.costType)} cho ${data.employeeName} — ${Number(data.amountPayableThisTime ?? 0).toLocaleString("vi-VN")}`,
   });
 
   revalidatePath("/costs");
