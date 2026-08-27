@@ -114,6 +114,7 @@ const NAV: NavEntry[] = [
     resource: "finance",
     children: [
       { href: "/expenses", label: "Chi phí (Yêu cầu chi)", ownerOnly: true },
+      { href: "/payroll/commissions", label: "Xuất bảng HH", ownerOnly: true },
       { href: "/finance/capital", label: "Vốn góp founder", resource: "finance" },
       { href: "/finance/assets", label: "Tài sản cố định", resource: "finance" },
       { href: "/finance/transactions", label: "Giao dịch tài chính", resource: "finance" },

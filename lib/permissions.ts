@@ -34,6 +34,8 @@ export const RESOURCE_ACTIONS: Record<string, Action[]> = {
   "costs-report": ["view", "edit"],
   // Duyệt chi — view = thấy queue duyệt, edit = approve/reject
   "expenses.approve": ["view", "edit"],
+  // Payroll HH generator — view chỉ preview, edit = xuất Excel
+  "payroll.commissions": ["view", "edit"],
   // View only (report / log / help)
   alerts: ["view"],
   "admin.activity": ["view"],
@@ -54,6 +56,7 @@ export const RESOURCES = {
   "finance": "Tài chính (Vốn góp / Tài sản / Giao dịch)",
   "expenses": "Chi phí (Yêu cầu chi)",
   "expenses.approve": "Duyệt chi",
+  "payroll.commissions": "Xuất bảng HH (Payroll)",
   "reports.overview": "Báo cáo Tổng quan",
   "reports.management": "Báo cáo Quản trị (P&L cũ)",
   "reports.profit-detail": "Lãi/lỗ quản trị (Management P&L)",
@@ -99,7 +102,7 @@ export const RESOURCE_GROUPS: { label: string; keys: Resource[] }[] = [
   },
   {
     label: "Tài chính",
-    keys: ["finance", "expenses", "expenses.approve"],
+    keys: ["finance", "expenses", "expenses.approve", "payroll.commissions"],
   },
   {
     label: "Báo cáo",
