@@ -21,10 +21,12 @@ export function positionToLayout(position: string | null): PayrollLayout | null 
   switch (position) {
     case "nvkd":
     case "ctv":
+    case "ceo": // Giám đốc cũng bán căn (Bách) → layout TTHH NVKD
       return "nvkd";
     case "tpkd":
       return "tpkd";
     case "admin":
+    case "hr": // HR có thể có bảng HH nếu kiêm admin (Lương Thị Nga)
       return "admin";
     default:
       return null;

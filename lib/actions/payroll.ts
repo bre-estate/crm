@@ -28,7 +28,7 @@ export async function loadPayrollEmployees() {
     .where(and(eq(employees.active, true)))
     .orderBy(asc(employees.name));
   return rows
-    .filter((e) => ["nvkd", "ctv", "tpkd", "admin"].includes(e.position))
+    .filter((e) => positionToLayout(e.position) !== null)
     .map((e) => ({
       name: e.name,
       position: e.position,
