@@ -33,6 +33,7 @@ export default function PayrollCommissionsClient({ employees }: { employees: Emp
   const defaultTo = new Date(y, m, 0).toISOString().slice(0, 10);
 
   const [employeeName, setEmployeeName] = useState("");
+  const [layout, setLayout] = useState<PayrollLayout>("nvkd");
   const [fromDate, setFromDate] = useState(defaultFrom);
   const [toDate, setToDate] = useState(defaultTo);
   const [periodLabel, setPeriodLabel] = useState(`Tháng ${m} năm ${y}`);
@@ -43,6 +44,14 @@ export default function PayrollCommissionsClient({ employees }: { employees: Emp
     () => employees.find((e) => e.name === employeeName),
     [employees, employeeName],
   );
+
+  // Khi đổi NV, gợi ý layout mặc định theo position (nhưng user có thể override)
+  const handleEmployeeChange = (name: string) => {
+    setEmployeeName(name);
+    const emp = employees.find((e) => e.name === name);
+    if (emp) setLayout(emp.layout);
+    setPreviewRows(null);
+  };
 
   const options = employees.map((e) => ({
     value: e.name,
@@ -56,7 +65,7 @@ export default function PayrollCommissionsClient({ employees }: { employees: Emp
       try {
         const rows = await fetchPreview({
           employeeName: selectedEmp.name,
-          layout: selectedEmp.layout,
+          layout,
           fromDate,
           toDate,
         });
@@ -74,7 +83,7 @@ export default function PayrollCommissionsClient({ employees }: { employees: Emp
       try {
         const { filename, base64 } = await exportCommissionsExcel({
           employeeName: selectedEmp.name,
-          layout: selectedEmp.layout,
+          layout,
           fromDate,
           toDate,
           periodLabel,
@@ -104,16 +113,31 @@ export default function PayrollCommissionsClient({ employees }: { employees: Emp
   return (
     <div className="space-y-4">
       <Card className="p-4 gap-3">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
           <div>
             <label className="block text-xs text-slate-600 mb-1">Nhân viên</label>
             <SearchableSelect
               value={employeeName}
-              onChange={setEmployeeName}
+              onChange={handleEmployeeChange}
               options={options}
               placeholder="Chọn NV..."
               className="w-full"
             />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-600 mb-1">Loại bảng</label>
+            <select
+              value={layout}
+              onChange={(e) => {
+                setLayout(e.target.value as PayrollLayout);
+                setPreviewRows(null);
+              }}
+              className="input w-full"
+            >
+              <option value="nvkd">Bảng TTHH NVKD (HH sale 55%)</option>
+              <option value="tpkd">Bảng KPI TPKD (4% team)</option>
+              <option value="admin">Bảng HH Admin (0.25-0.5%)</option>
+            </select>
           </div>
           <div>
             <label className="block text-xs text-slate-600 mb-1">Từ ngày</label>
@@ -155,7 +179,8 @@ export default function PayrollCommissionsClient({ employees }: { employees: Emp
           </Button>
           {selectedEmp && (
             <span className="text-xs text-slate-500 self-center ml-2">
-              Layout: <b>{LAYOUT_LABEL[selectedEmp.layout]}</b>
+              Position DB: <b>{POSITION_LABEL[selectedEmp.position] ?? selectedEmp.position}</b>{" "}
+              · Layout xuất: <b>{LAYOUT_LABEL[layout]}</b>
             </span>
           )}
         </div>
