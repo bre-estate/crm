@@ -1,8 +1,8 @@
 # Hướng dẫn nhập liệu — BRE CRM
 
-Cập nhật: 2026-07-16
+Cập nhật: 2026-08-27
 
-Trang web: https://crm-azure-kappa-85.vercel.app
+Trang web: https://crm.bre.vn
 
 Tài liệu này hướng dẫn thứ tự nhập liệu, ý nghĩa từng trường, và cách hệ thống hiểu số liệu. Đọc lần đầu 15 phút, sau đó chỉ cần tra khi gặp trường không quen.
 
@@ -19,8 +19,9 @@ Tài liệu này hướng dẫn thứ tự nhập liệu, ý nghĩa từng trư�
 7. [Đối chiếu doanh thu (`/revenues`)](#7-đối-chiếu-doanh-thu-revenues)
 8. [Đối chiếu giá vốn (`/costs`)](#8-đối-chiếu-giá-vốn-costs)
 9. [Hóa đơn (`/invoices`)](#9-hóa-đơn-invoices)
-10. [Báo cáo (`/reports`)](#10-báo-cáo-reports)
-11. [Từ điển thuật ngữ](#11-từ-điển-thuật-ngữ)
+10. [Chi phí — Yêu cầu chi (`/expenses`)](#10-chi-phí--yêu-cầu-chi-expenses)
+11. [Báo cáo (`/reports`)](#11-báo-cáo-reports)
+12. [Từ điển thuật ngữ](#12-từ-điển-thuật-ngữ)
 
 ---
 
@@ -346,14 +347,14 @@ Mỗi dòng = **1 người × 1 căn × 1 lần đối chiếu**.
 
 | Enum | Nhãn | Áp dụng |
 |---|---|---|
-| `sale_commission` | Hoa hồng sale | HH cho NVKD |
+| `sale_commission` | HH Sale | HH cho NVKD |
 | `customer_support` | Hỗ trợ khách | Chiết khấu cho khách qua NVKD |
-| `bonus_sale` | Thưởng NVKD (CTY) | BRE thưởng NVKD |
-| `bonus_manager` | Thưởng TPKD (CTY) | BRE thưởng TPKD |
-| `cdt_bonus_sale` | Thưởng nóng CĐT (NVKD) | CĐT trả thêm ngoài %PMG |
-| `cdt_bonus_manager` | Thưởng nóng CĐT (TPKD) | Như trên nhưng cho TPKD |
+| `bonus_sale` | CTY thưởng NVKD | BRE thưởng NVKD |
+| `bonus_manager` | CTY thưởng TPKD | BRE thưởng TPKD |
+| `cdt_bonus_sale` | CĐT thưởng NVKD | CĐT trả thêm ngoài %PMG |
+| `cdt_bonus_manager` | CĐT thưởng TPKD | Như trên nhưng cho TPKD |
 | `kpi_ceo` | KPI CEO | Trích từ HH CĐT trả BRE |
-| `kpi_tpkd` | KPI TPKD (Trưởng phòng) | Như trên |
+| `kpi_tpkd` | KPI TPKD | Như trên |
 | `kpi_admin` | KPI Admin | Như trên |
 
 ### 8.3. Trường
@@ -361,7 +362,7 @@ Mỗi dòng = **1 người × 1 căn × 1 lần đối chiếu**.
 Section "Cơ sở tính (chốt lúc tạo)":
 - Giá tính PMG sale, %PMG_LK_sale, %PMG đã thu — snapshot, không sửa khi Sửa
 
-Section "Hoa hồng sale" (khi cost_type = sale_commission):
+Section "HH Sale" (khi cost_type = sale_commission):
 - %HH sale, PMG đợt này, PMG phải trả đợt này...
 
 Section "KPI" (khi cost_type = kpi_*):
@@ -422,7 +423,108 @@ Vào form recon tương ứng (click "Sửa" ở detail hoặc từ `/revenues`)
 
 ---
 
-## 10. Báo cáo (`/reports`)
+## 10. Chi phí — Yêu cầu chi (`/expenses`)
+
+Module workflow duyệt các khoản chi tiền công ty. **Mọi chi phí** (văn phòng phẩm, marketing, tiếp khách, đi lại, lương, thuế…) đều đi qua đây → có audit trail rõ ràng ai xin, ai duyệt, ai chi.
+
+> **P1 MVP** — hiện đang ẩn với user thường, chỉ owner test. Phase sau mở permission cho HR / Admin / Manager qua `/admin/users`.
+
+### 10.1. Workflow 4 bước
+
+```
+Nháp (draft)  ── Gửi duyệt ─►  Chờ duyệt (pending)  ── Duyệt ─►  Đã duyệt (approved)  ── Đánh dấu đã chi ─►  Đã chi (paid)
+                                                     └── Từ chối (kèm lý do) ─►  Từ chối (rejected)
+```
+
+| Trạng thái | Ý nghĩa | Ai làm được |
+|---|---|---|
+| **Nháp** | Đang soạn, chưa gửi | Requester sửa/xoá tự do |
+| **Chờ duyệt** | Đã gửi, chờ approver quyết | Approver bấm Duyệt hoặc Từ chối |
+| **Đã duyệt** | Approver OK, chưa xuất tiền | Requester/kế toán bấm "Đánh dấu đã chi" khi thực tế chi |
+| **Đã chi** | Tiền đã ra khỏi công ty, hoàn tất | Read-only |
+| **Từ chối** | Approver không duyệt (kèm lý do) | Read-only. Requester tạo yêu cầu mới nếu vẫn cần |
+
+### 10.2. Tạo yêu cầu chi (`/expenses/new`)
+
+Trường bắt buộc:
+
+| Trường | Ý nghĩa |
+|---|---|
+| **Tiêu đề** | Ngắn gọn, mô tả khoản chi. VD "Mua văn phòng phẩm tháng 8", "Chi tiếp khách CĐT Fenica" |
+| **Loại chi phí** | 1 trong 8: Văn phòng / Marketing / Tiếp khách-ăn uống / Đi lại / Lương-BHXH / HH sale-KPI / Thuế / Khác |
+| **Số tiền (VND)** | Số dương |
+| **Ngày phát sinh** | Ngày thực tế phát sinh khoản chi (chọn từ calendar) |
+
+Trường optional:
+
+| Trường | Ý nghĩa |
+|---|---|
+| **Phương thức chi** | Tiền mặt / Chuyển khoản / Thẻ |
+| **Người duyệt** | Có thể chọn ngay hoặc để trống — sẽ set khi Approver bấm Duyệt |
+| **Ghi chú** | Chi tiết, số hóa đơn tham chiếu, đầu mối liên hệ |
+| **Mã tài khoản KT** | VD `6428` — kế toán fill sau khi cần lên BCTC. **Không bắt buộc**, requester không cần biết |
+
+Tạo xong → status **Nháp**. Còn sửa/xoá được. Xong xuôi bấm **Gửi duyệt** để đưa lên approver.
+
+### 10.3. Sửa yêu cầu (`/expenses/[id]/edit`)
+
+**Chỉ sửa được khi status = Nháp**. Sau khi Gửi duyệt → khoá luôn, muốn đổi phải xoá + tạo mới.
+
+Owner có thể sửa yêu cầu của người khác. Requester bình thường chỉ sửa yêu cầu của mình.
+
+### 10.4. Duyệt / Từ chối
+
+Chỉ user có quyền `expenses.approve.edit` (default: owner + user được cấp riêng qua `/admin/users`).
+
+Ở trang chi tiết `/expenses/[id]` khi status = **Chờ duyệt**:
+
+- **Duyệt** — bấm 1 phát chuyển sang **Đã duyệt**. Ghi lại approver + thời điểm.
+- **Từ chối** — **bắt buộc gõ lý do** vào ô kế bên rồi bấm. Trả về **Từ chối** kèm lý do hiển thị đỏ trong detail.
+
+### 10.5. Đánh dấu đã chi
+
+Sau khi Đã duyệt, khi thực tế xuất tiền (chuyển khoản/rút mặt), người chi vào detail bấm **"Đánh dấu đã chi"**. Có thể fill mã tài khoản KT (VD `6428`) trong ô kế bên nếu chưa fill ở bước tạo. Chuyển sang **Đã chi** — kết thúc workflow.
+
+### 10.6. Xoá yêu cầu
+
+- Requester xoá được **chỉ khi Nháp**
+- Owner xoá được **bất kỳ trạng thái nào** (dùng cho case sai lệch cần dọn dẹp)
+
+Xác nhận qua dialog trước khi xoá.
+
+### 10.7. List `/expenses` — filter
+
+- **Pill trạng thái** trên cùng: Tất cả / Nháp / Chờ duyệt / Đã duyệt / Từ chối / Đã chi (đếm số)
+- **Form filter dưới**: Loại / Người tạo (email) / Từ ngày / Đến ngày
+- **Stats bar** dưới filter: Số yêu cầu đang lọc / Tổng tiền / Tiền đang chờ duyệt / Tiền đã duyệt chưa chi
+
+Row có status **Chờ duyệt** highlighted cam nhạt nếu bạn là approver → dễ nhận biết cần action.
+
+### 10.8. Lịch sử (Timeline)
+
+Trang chi tiết có block **Lịch sử** cuối trang — mọi hành động (tạo / sửa / gửi / duyệt / từ chối / đánh dấu chi / xoá) đều ghi log kèm thời điểm + email người thực hiện. Read-only, không sửa được.
+
+### 10.9. Mã tự sinh
+
+Mã yêu cầu format `EXP-YYYY-####` (VD `EXP-2026-0001`), tự tăng theo năm. Không sửa được.
+
+### 10.10. Ranh giới với các module khác
+
+- **KHÔNG thay `/costs`**: giá vốn (HH sale / KPI / thưởng nóng) vẫn nhập vào `/costs` để tính lũy kế theo tiến độ khách trả. Sau này (Phase 7) khi bấm "Đã trả" trên recon giá vốn sẽ tự sinh 1 yêu cầu chi tương ứng — giờ chưa link.
+- **KHÔNG thay `/finance/transactions`**: giao dịch tài chính thô vẫn nhập ở finance. Sau này có thể migrate.
+- **KHÔNG lên BCTC tự động**: kế toán vẫn nhập vào phần mềm chuyên (MISA/Fast) qua export CSV nếu cần.
+
+### 10.11. Chưa có (đang phát triển)
+
+- Upload file chứng từ (hóa đơn/biên nhận)
+- Notification email/Zalo khi chuyển step
+- Phân cấp duyệt tự động theo mức tiền
+- Ngân sách tháng + cảnh báo vượt
+- Report chi phí (breakdown theo loại/tháng/người)
+
+---
+
+## 11. Báo cáo (`/reports`)
 
 Chia **6 sub-page**, filter năm + khoảng thời gian dùng chung:
 
@@ -453,7 +555,7 @@ Chuyển giữa sub-page bằng sidebar. Filter năm/khoảng giữ nguyên khi 
 
 ---
 
-## 11. Từ điển thuật ngữ
+## 12. Từ điển thuật ngữ
 
 | Viết tắt | Nghĩa |
 |---|---|
