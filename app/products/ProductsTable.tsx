@@ -39,7 +39,11 @@ export type ProductRow = {
   overpaidEmployees?: string[];
 };
 
-const DEPT_COLORS: Record<string, string> = {};
+// Hardcode màu cho CTV (phòng ảo) để đồng bộ 2 màu ở mọi nơi. Các phòng
+// khác vẫn dùng hash để tự động phân biệt.
+const DEPT_COLORS: Record<string, string> = {
+  CTV: "bg-amber-100 text-amber-800 border border-amber-200",
+};
 function deptColor(name: string | null | undefined): string {
   if (!name) return "bg-slate-100 text-slate-600";
   if (DEPT_COLORS[name]) return DEPT_COLORS[name];
@@ -302,14 +306,6 @@ export default function ProductsTable({
                   </td>
                   <td className="p-2 text-xs">
                     {r.salesPerson ?? "—"}
-                    {r.isCtv && r.salesPerson && (
-                      <span
-                        className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200 font-semibold"
-                        title="Cộng tác viên / Freelance"
-                      >
-                        CTV
-                      </span>
-                    )}
                   </td>
                   <td className="p-2 text-xs">{fmtDate(r.depositDate)}</td>
                   <td className="p-2 text-right tabular-nums">{fmtMoney(r.pmgBasePrice)}</td>
