@@ -6,8 +6,9 @@ import {
   projects,
   partners,
   employees,
+  activityLogs,
 } from "@/lib/schema";
-import { and, asc, eq, ne } from "drizzle-orm";
+import { and, asc, desc, eq, ne } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import CostForm from "../../CostForm";
@@ -20,7 +21,7 @@ import {
   deletePaymentOut,
 } from "@/lib/actions/costs";
 import AutoDismissBanner from "@/components/AutoDismissBanner";
-import RecordAuditInfo from "@/components/RecordAuditInfo";
+import ActivityHistoryButton from "@/app/products/[id]/ActivityHistoryButton";
 
 export default async function EditCostPage({
   params,
@@ -127,6 +128,18 @@ export default async function EditCostPage({
     .from(costReconciliations)
     .orderBy(asc(costReconciliations.reconciliationDate));
 
+  const activities = await db
+    .select()
+    .from(activityLogs)
+    .where(
+      and(
+        eq(activityLogs.entityType, "cost_reconciliation"),
+        eq(activityLogs.entityId, id),
+      ),
+    )
+    .orderBy(desc(activityLogs.createdAt))
+    .limit(50);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 text-sm">
@@ -138,7 +151,7 @@ export default async function EditCostPage({
       </div>
       <div className="flex items-baseline justify-between gap-4 flex-wrap">
         <h1 className="text-2xl font-bold">Sửa đối chiếu giá vốn</h1>
-        <RecordAuditInfo entityType="cost_reconciliation" entityId={id} />
+        <ActivityHistoryButton activities={activities} />
       </div>
 
       {justCreated && (

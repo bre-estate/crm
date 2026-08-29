@@ -538,14 +538,14 @@ export default async function ProductDetailPage({
             : toTitleCase(p.deptLeaderName) || toTitleCase(row.department?.leaderName) || null;
           const deptName =
             row.department?.name ??
-            (nvkdCtvUnassigned ? "CTV (chưa phân phòng)" : p.deptName ?? null);
+            p.deptName ??
+            (isNvkdCtv ? "CTV" : null);
           const deptCombo = deptName
             ? tpkdName
               ? `${deptName} · TPKD ${tpkdName}`
               : deptName
             : "—";
-          const nvkdCombo =
-            (toTitleCase(p.salesPerson) || "—") + (isNvkdCtv ? " · CTV" : "");
+          const nvkdCombo = toTitleCase(p.salesPerson) || "—";
           return (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
               <Field label="Mô tả căn" value={p.unitDescription ?? "—"} />
@@ -975,7 +975,7 @@ export default async function ProductDetailPage({
               parts.push(`+ CĐT thưởng/1,1 = ${fmtMoney(cdtBonusNet)}`);
             if (bonusSaleCtyAmt > 0)
               parts.push(`+ CTY thưởng NVKD = ${fmtMoney(bonusSaleCtyAmt)}`);
-            costRows.push([`HH sale (NVKD)`, hhSaleAmt, parts.join(" ")]);
+            costRows.push([`HH sale`, hhSaleAmt, parts.join(" ")]);
           }
           if (kpiCeoAmt > 0)
             costRows.push([`KPI CEO — ${fmtPctTight(kpiCeoRate)} × base`, kpiCeoAmt]);
@@ -992,9 +992,6 @@ export default async function ProductDetailPage({
               <div className="rounded-lg border border-green-200 bg-green-50/50 p-3">
                 <div className="text-xs uppercase text-green-700 font-semibold mb-2">
                   A. Tổng doanh thu ghi nhận
-                </div>
-                <div className="text-xs text-slate-500 mb-2">
-                  Số CĐT trả BRE (bao gồm cả thưởng nóng transit).
                 </div>
                 <Row
                   label={`= Giá PMG × ${fmtPctTight(pmgRate)} − phí admin + CĐT thưởng`}

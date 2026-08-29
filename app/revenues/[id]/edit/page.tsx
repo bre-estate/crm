@@ -6,13 +6,14 @@ import {
   products,
   projects,
   partners,
+  activityLogs,
 } from "@/lib/schema";
-import { asc, eq, isNotNull } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import RevenueForm from "../../RevenueForm";
 import PaymentsEditor from "./PaymentsEditor";
-import RecordAuditInfo from "@/components/RecordAuditInfo";
+import ActivityHistoryButton from "@/app/products/[id]/ActivityHistoryButton";
 import {
   updateRevenue,
   deleteRevenue,
@@ -121,6 +122,18 @@ export default async function EditRevenuePage({
     totalReceivableThisTime: Number(r.totalReceivableThisTime ?? 0),
   }));
 
+  const activities = await db
+    .select()
+    .from(activityLogs)
+    .where(
+      and(
+        eq(activityLogs.entityType, "revenue_reconciliation"),
+        eq(activityLogs.entityId, id),
+      ),
+    )
+    .orderBy(desc(activityLogs.createdAt))
+    .limit(50);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 text-sm">
@@ -132,7 +145,7 @@ export default async function EditRevenuePage({
       </div>
       <div className="flex items-baseline justify-between gap-4 flex-wrap">
         <h1 className="text-2xl font-bold">Sửa đợt đối chiếu doanh thu</h1>
-        <RecordAuditInfo entityType="revenue_reconciliation" entityId={id} />
+        <ActivityHistoryButton activities={activities} />
       </div>
 
       <RevenueForm
