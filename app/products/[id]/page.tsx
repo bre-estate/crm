@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 import { eq, desc } from "drizzle-orm";
 import { asc } from "drizzle-orm";
 import ActivityHistoryButton from "./ActivityHistoryButton";
+import ProductDetailTabs from "./ProductDetailTabs";
 import DeleteProductButton from "./DeleteProductButton";
 import { deleteProduct } from "@/lib/actions/products";
 import { hasPermission } from "@/lib/auth";
@@ -40,7 +41,7 @@ export default async function ProductDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ returnTo?: string }>;
+  searchParams: Promise<{ returnTo?: string; section?: string }>;
 }) {
   const { id: idStr } = await params;
   const sp = await searchParams;
@@ -48,6 +49,9 @@ export default async function ProductDetailPage({
     sp.returnTo && sp.returnTo.startsWith("/") && !sp.returnTo.startsWith("//")
       ? sp.returnTo
       : null;
+  // Tab section — "overview" (default) | "revenue" | "cost"
+  const activeSection: "overview" | "revenue" | "cost" =
+    sp.section === "revenue" ? "revenue" : sp.section === "cost" ? "cost" : "overview";
   const editHref = returnTo
     ? `/products/${idStr}/edit?returnTo=${encodeURIComponent(returnTo)}`
     : `/products/${idStr}/edit`;
@@ -403,7 +407,13 @@ export default async function ProductDetailPage({
         </div>
       </div>
 
-      {/* Quick summary strip */}
+      <ProductDetailTabs
+        active={activeSection}
+        basePath={`/products/${idStr}`}
+        preserveParams={{ returnTo: returnTo ?? undefined }}
+      />
+
+      {/* Quick summary strip — luôn hiển thị, không phân theo tab */}
       {isSecondary ? (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <Card
@@ -521,7 +531,7 @@ export default async function ProductDetailPage({
 
       {/* === 1. THÔNG TIN CĂN === (bỏ mã căn/mã SP/loại giao dịch/dự án/đối tác
            vì đã hiện ở header title/breadcrumb/badge) */}
-      <SectionCard title="1. Thông tin căn" icon="🏠">
+      <SectionCard title="1. Thông tin căn" icon="🏠" hidden={activeSection !== "overview"}>
         {(() => {
           const tpkdName = nvkdCtvUnassigned
             ? null
@@ -556,7 +566,7 @@ export default async function ProductDetailPage({
 
       {/* === 2. DOANH THU === (chỉ áp dụng sơ cấp) */}
       {!isSecondary && (
-        <SectionCard title="2. Doanh thu (CĐT/F1 trả BRE)" icon="💰">
+        <SectionCard title="2. Doanh thu (CĐT/F1 trả BRE)" icon="💰" hidden={activeSection !== "revenue"}>
           {/* Info blocks: chuẩn grid 1/2/4 responsive — nhất quán với section giá vốn */}
           {(() => {
             const feeReal = Number(p.adminFee ?? 0);
@@ -689,7 +699,7 @@ export default async function ProductDetailPage({
       )}
 
       {/* === 3. GIÁ VỐN === */}
-      <SectionCard title={isSecondary ? "2. Giá vốn (BRE trả NVKD)" : "3. Giá vốn (BRE trả nội bộ)"} icon="🏦">
+      <SectionCard title={isSecondary ? "2. Giá vốn (BRE trả NVKD)" : "3. Giá vốn (BRE trả nội bộ)"} icon="🏦" hidden={activeSection !== "cost"}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
           {!isSecondary && (
             <Info
@@ -786,6 +796,7 @@ export default async function ProductDetailPage({
             : "4. Cơ cấu phân bổ tiền (dự kiến khi thu đủ 100%)"
         }
         icon="📊"
+        hidden={activeSection !== "overview"}
       >
         {isSecondary ? (
           (() => {
@@ -1062,7 +1073,7 @@ export default async function ProductDetailPage({
 
       {/* === 4. THU PHÍ TỪ CĐT === (chỉ áp dụng cho sơ cấp) */}
       {!isSecondary && (
-      <SectionCard title="5. Thu phí HH từ CĐT" icon="💵">
+      <SectionCard title="5. Thu phí HH từ CĐT" icon="💵" hidden={activeSection !== "revenue"}>
         {(() => {
           const hasBonus = expectedBonus > 0 || receivedBonus > 0;
           const expectedTotal = expectedHHSale + expectedBonus;
@@ -1500,7 +1511,7 @@ export default async function ProductDetailPage({
       )}
 
       {/* === 5. TRẢ PHÍ NỘI BỘ === */}
-      <SectionCard title={isSecondary ? "4. Trả phí NVKD" : "6. Trả phí nội bộ (HH sale, KPI, thưởng)"} icon="🏦">
+      <SectionCard title={isSecondary ? "4. Trả phí NVKD" : "6. Trả phí nội bộ (HH sale, KPI, thưởng)"} icon="🏦" hidden={activeSection !== "cost"}>
         {(() => {
           // Nếu chưa có payments_out riêng, coi dòng đối chiếu = đã trả
           const hasExplicitPayments = totalPaidOut > 0;
@@ -1795,13 +1806,15 @@ function SectionCard({
   title,
   icon,
   children,
+  hidden,
 }: {
   title: string;
   icon?: string;
   children: React.ReactNode;
+  hidden?: boolean;
 }) {
   return (
-    <ShadCard className="[--card-spacing:1rem] px-4 gap-2">
+    <ShadCard className={cn("[--card-spacing:1rem] px-4 gap-2", hidden && "hidden")}>
       <div className="text-sm font-semibold text-slate-800 pb-1.5 border-b border-slate-100">
         {icon && <span className="mr-1.5">{icon}</span>}
         {title}
