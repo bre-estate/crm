@@ -13,6 +13,7 @@ import { eq, desc, sum, and, ilike, type SQL } from "drizzle-orm";
 import Link from "next/link";
 import SearchableSelect from "@/components/SearchableSelect";
 import RevenuesFilterForm from "./RevenuesFilterForm";
+import Pagination from "@/components/Pagination";
 import HighlightManager from "../HighlightManager";
 import BulkDeleteBar from "../BulkDeleteBar";
 import { deleteRevenueBulk } from "@/lib/actions/revenues";
@@ -34,6 +35,7 @@ type SearchParams = Promise<{
   age?: string;
   type?: string; // "commission" | "bonus" | "all"
   justCreated?: string;
+  page?: string;
 }>;
 
 const STATUS_OPTIONS = [
@@ -61,7 +63,7 @@ const AGE_OPTIONS = [
 
 export default async function RevenuesPage({ searchParams }: { searchParams: SearchParams }) {
   const canDelete = await hasPermission("revenues", "delete");
-  const { projectId, unitCode, salesPerson, tab, status, age, type, justCreated } = await searchParams;
+  const { projectId, unitCode, salesPerson, tab, status, age, type, justCreated, page: pageParam } = await searchParams;
   const filterProjectId = projectId ? Number(projectId) : null;
   const filterUnitCode = unitCode?.trim() || null;
   const filterSalesPerson = salesPerson?.trim() || null;
@@ -234,12 +236,22 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
         return true;
       });
 
-  const rows2 = filteredRows.map((x) => x.r);
+  const rowsAll = filteredRows.map((x) => x.r);
   const statusOf = new Map(filteredRows.map((x) => [x.r.id, x.status]));
   const ageOf = new Map(filteredRows.map((x) => [x.r.id, x.daysUnpaid]));
 
-  const totalReceivable = rows2.reduce((s, r) => s + Number(r.totalReceivable ?? 0), 0);
-  const totalPaid = rows2.reduce((s, r) => s + (paidMap.get(r.id) ?? 0), 0);
+  // Stats tính trên TOÀN BỘ filtered (không phụ thuộc page hiện tại)
+  const totalReceivable = rowsAll.reduce((s, r) => s + Number(r.totalReceivable ?? 0), 0);
+  const totalPaid = rowsAll.reduce((s, r) => s + (paidMap.get(r.id) ?? 0), 0);
+
+  // Pagination client-side (data đã load full, chỉ slice)
+  const PAGE_SIZE = 70;
+  const totalRowsCount = rowsAll.length;
+  const currentPage = Math.max(1, Math.min(
+    Math.ceil(totalRowsCount / PAGE_SIZE) || 1,
+    Number(pageParam) || 1,
+  ));
+  const rows2 = rowsAll.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   // Count per status (từ toàn bộ rows chưa filter theo status)
   const statusCounts = new Map<string, number>();
@@ -562,6 +574,25 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
           </tbody>
         </table>
       </Card>
+
+      <Pagination
+        currentPage={currentPage}
+        totalRows={totalRowsCount}
+        pageSize={PAGE_SIZE}
+        itemLabel="đợt ĐC"
+        buildUrl={(p) => {
+          const qs = new URLSearchParams();
+          qs.set("tab", activeTab);
+          if (filterProjectId) qs.set("projectId", String(filterProjectId));
+          if (filterUnitCode) qs.set("unitCode", filterUnitCode);
+          if (filterSalesPerson) qs.set("salesPerson", filterSalesPerson);
+          if (activeStatus !== "all") qs.set("status", activeStatus);
+          if (activeAge !== "all") qs.set("age", activeAge);
+          if (activeType !== "all") qs.set("type", activeType);
+          if (p > 1) qs.set("page", String(p));
+          return `/revenues?${qs.toString()}`;
+        }}
+      />
     </div>
   );
 }

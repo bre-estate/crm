@@ -18,6 +18,7 @@ import { deleteCostBulk } from "@/lib/actions/costs";
 import { hasPermission } from "@/lib/auth";
 import CostReconRow, { type CostReconPayment } from "./CostReconRow";
 import CostsFilterForm from "./CostsFilterForm";
+import Pagination from "@/components/Pagination";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -47,6 +48,7 @@ type SearchParams = Promise<{
   view?: string; // "recon" (default) | "byUnit"
   deleted?: string;
   updated?: string;
+  page?: string;
 }>;
 
 // Pill shortcut chung — dùng cho cost_type filter + status filter.
@@ -93,8 +95,9 @@ async function loadNvkdOptions(): Promise<{ value: string; label: string; sublab
 
 export default async function CostsPage({ searchParams }: { searchParams: SearchParams }) {
   const canDelete = await hasPermission("costs", "delete");
-  const { projectId, costType, unitCode, salesPerson, status, view, deleted, updated } =
+  const { projectId, costType, unitCode, salesPerson, status, view, deleted, updated, page: pageParam } =
     await searchParams;
+  const PAGE_SIZE = 70;
   // Default view = byUnit ("Theo căn × loại") — theo user, view thường dùng nhất
   const viewMode: "recon" | "byUnit" | "byTime" =
     view === "recon" ? "recon" : view === "byTime" ? "byTime" : "byUnit";
@@ -107,6 +110,7 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
         unitCodeParam={unitCode}
         salesPersonParam={salesPerson}
         statusParam={status}
+        pageParam={pageParam}
       />
     );
   }
@@ -215,6 +219,15 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
       return (b.date ?? "").localeCompare(a.date ?? "");
     });
   }
+
+  // Pagination — subtotal + stats vẫn tính trên toàn bộ rows đã filter,
+  // chỉ slice riêng `rowsPage` để render bảng cho khỏi choán màn hình.
+  const totalRowsCount = rows.length;
+  const currentPage = Math.max(1, Math.min(
+    Math.ceil(totalRowsCount / PAGE_SIZE) || 1,
+    Number(pageParam) || 1,
+  ));
+  const rowsPage = rows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   // Load raw payments để vừa tính paidMap (total per recon) vừa dựng list
   // chi tiết payments trong expand row.
@@ -432,10 +445,12 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
             </tr>
           </thead>
           <tbody>
-            {rows.map((r, idx) => {
+            {rowsPage.map((r, idx) => {
               const paid = paidMap.get(r.id) ?? 0;
-              const prevType = idx > 0 ? rows[idx - 1].costType : null;
-              // "Theo thời gian" hiện flat theo created_at DESC, không group
+              const prevType = idx > 0 ? rowsPage[idx - 1].costType : null;
+              // "Theo thời gian" hiện flat theo created_at DESC, không group.
+              // Với slice pagination: row đầu page luôn là first of group (dù thực tế
+              // cùng group với page trước) — hiển thị lại header là hợp lý.
               const isFirstOfGroup = viewMode !== "byTime" && r.costType !== prevType;
               const subtotal = subtotalByType.get(r.costType);
               const editHref = `/costs/${r.id}/edit${
@@ -544,6 +559,24 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
           </tbody>
         </table>
       </Card>
+
+      <Pagination
+        currentPage={currentPage}
+        totalRows={totalRowsCount}
+        pageSize={PAGE_SIZE}
+        itemLabel="dòng ĐC"
+        buildUrl={(p) => {
+          const qs = new URLSearchParams();
+          // Scope này viewMode là "recon" | "byTime" (byUnit đã return sớm)
+          qs.set("view", viewMode);
+          if (projectId) qs.set("projectId", projectId);
+          if (costType) qs.set("costType", costType);
+          if (unitCode) qs.set("unitCode", unitCode);
+          if (salesPerson) qs.set("salesPerson", salesPerson);
+          if (p > 1) qs.set("page", String(p));
+          return `/costs?${qs.toString()}`;
+        }}
+      />
     </div>
   );
 }
@@ -558,6 +591,7 @@ type AggregatedProps = {
   unitCodeParam?: string;
   salesPersonParam?: string;
   statusParam?: string;
+  pageParam?: string;
 };
 
 async function AggregatedCostsView(props: AggregatedProps) {
@@ -752,6 +786,15 @@ async function AggregatedCostsView(props: AggregatedProps) {
   const sumPayable = filtered.reduce((s, r) => s + r.payable, 0);
   const sumRemaining = filtered.reduce((s, r) => s + r.remaining, 0);
 
+  // Pagination — slice filtered để render
+  const PAGE_SIZE = 70;
+  const totalRowsCount = filtered.length;
+  const currentPage = Math.max(1, Math.min(
+    Math.ceil(totalRowsCount / PAGE_SIZE) || 1,
+    Number(props.pageParam) || 1,
+  ));
+  const filteredPage = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
   // Build query preserving current filters when switching status
   const buildStatusHref = (s: string | null) => {
     const qs = new URLSearchParams();
@@ -836,7 +879,7 @@ async function AggregatedCostsView(props: AggregatedProps) {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((r, idx) => {
+            {filteredPage.map((r, idx) => {
               const info = statusLabels[r.status] ?? {
                 label: r.status,
                 cls: "bg-slate-100 text-slate-600 border-slate-300",
@@ -931,6 +974,24 @@ async function AggregatedCostsView(props: AggregatedProps) {
           </tbody>
         </table>
       </div>
+
+      <Pagination
+        currentPage={currentPage}
+        totalRows={totalRowsCount}
+        pageSize={PAGE_SIZE}
+        itemLabel="căn × loại"
+        buildUrl={(p) => {
+          const qs = new URLSearchParams();
+          qs.set("view", "byUnit");
+          if (props.projectIdParam) qs.set("projectId", props.projectIdParam);
+          if (filterCostType) qs.set("costType", filterCostType);
+          if (props.unitCodeParam) qs.set("unitCode", props.unitCodeParam);
+          if (props.salesPersonParam) qs.set("salesPerson", props.salesPersonParam);
+          if (filterStatus) qs.set("status", filterStatus);
+          if (p > 1) qs.set("page", String(p));
+          return `/costs?${qs.toString()}`;
+        }}
+      />
     </div>
   );
 }
