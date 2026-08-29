@@ -1,5 +1,5 @@
 {
-  "snapshotAt": "2026-08-22T10:36:48.207Z",
+  "snapshotAt": "2026-08-27T05:50:07.776Z",
   "sourceFile": "BAO CAO DOANH THU.xlsx",
   "sheet": "2.3_Gia von",
   "totalRows": 10976,
@@ -85,8 +85,8 @@
         "total": 118373
       },
       {
-        "excelRow": 445,
-        "employee": null,
+        "excelRow": 382,
+        "employee": "Đoàn Lê Bách",
         "items": [
           {
             "loai": "HH sale",
@@ -1408,10 +1408,10 @@
         "items": [
           {
             "loai": "KPI TPKD",
-            "amt": 2277429
+            "amt": 1977429
           }
         ],
-        "total": 2277429
+        "total": 1977429
       },
       {
         "excelRow": 53,
@@ -1451,26 +1451,15 @@
         "total": 56752868
       },
       {
-        "excelRow": 87,
-        "employee": "Hồ Nguyễn Công Thành",
-        "items": [
-          {
-            "loai": "KPI TPKD",
-            "amt": 1977429
-          }
-        ],
-        "total": 1977429
-      },
-      {
         "excelRow": 111,
         "employee": "Hồ Nguyễn Công Thành",
         "items": [
           {
             "loai": "KPI TPKD",
-            "amt": 431815.3567636362
+            "amt": -431815
           }
         ],
-        "total": 431815.3568
+        "total": -431815
       },
       {
         "excelRow": 130,
@@ -1737,7 +1726,7 @@
         "total": 11960
       }
     ],
-    "ATSR_DXMD_A-05-07 ": [
+    "ATSR_DXMD_A-05-07": [
       {
         "excelRow": 54,
         "employee": "Danh Hoàng Thị Tường Vi",
@@ -2219,7 +2208,7 @@
       },
       {
         "excelRow": 387,
-        "employee": "từ căn này là tt 30% PMG nợ của tháng trước",
+        "employee": "Hồ Nguyễn Công Thành",
         "items": [
           {
             "loai": "HH sale",
@@ -2227,6 +2216,17 @@
           }
         ],
         "total": 6975688
+      },
+      {
+        "excelRow": 439,
+        "employee": "Hồ Nguyễn Công Thành",
+        "items": [
+          {
+            "loai": "KPI TPKD",
+            "amt": 1014645
+          }
+        ],
+        "total": 1014645
       }
     ],
     "AVIO_BAML_B.16.11": [
@@ -2310,6 +2310,17 @@
           }
         ],
         "total": 209962
+      },
+      {
+        "excelRow": 444,
+        "employee": "Hồ Nguyễn Công Thành",
+        "items": [
+          {
+            "loai": "HH sale",
+            "amt": -5500000
+          }
+        ],
+        "total": -5500000
       }
     ],
     "AVIO_BAML_B.30.20": [
@@ -2446,7 +2457,7 @@
       },
       {
         "excelRow": 389,
-        "employee": "từ căn này là tt 30% PMG nợ của tháng trước",
+        "employee": "Hồ Nguyễn Công Thành",
         "items": [
           {
             "loai": "HH sale",
@@ -2454,6 +2465,17 @@
           }
         ],
         "total": 6817943
+      },
+      {
+        "excelRow": 440,
+        "employee": "Hồ Nguyễn Công Thành",
+        "items": [
+          {
+            "loai": "KPI TPKD",
+            "amt": 991701
+          }
+        ],
+        "total": 991701
       }
     ],
     "EMGV_DT25_A2-23-12": [
@@ -2540,7 +2562,7 @@
       },
       {
         "excelRow": 392,
-        "employee": "từ căn này là tt 30% PMG nợ của tháng trước",
+        "employee": "Trần Minh Nhật",
         "items": [
           {
             "loai": "HH sale",
@@ -2645,7 +2667,7 @@
       },
       {
         "excelRow": 395,
-        "employee": "từ căn này là tt 30% PMG nợ của tháng trước",
+        "employee": "Lê Thị Cẩm Giang",
         "items": [
           {
             "loai": "HH sale",
@@ -2750,7 +2772,7 @@
       },
       {
         "excelRow": 388,
-        "employee": "từ căn này là tt 30% PMG nợ của tháng trước",
+        "employee": "Lê Thị Cẩm Giang",
         "items": [
           {
             "loai": "HH sale",
@@ -2854,8 +2876,19 @@
         "total": 12986962
       },
       {
+        "excelRow": 381,
+        "employee": "Hồ Nguyễn Công Thành",
+        "items": [
+          {
+            "loai": "CĐT thưởng NVKD",
+            "amt": -10000000
+          }
+        ],
+        "total": -10000000
+      },
+      {
         "excelRow": 391,
-        "employee": "từ căn này là tt 30% PMG nợ của tháng trước",
+        "employee": "Hồ Nguyễn Công Thành",
         "items": [
           {
             "loai": "HH sale",
@@ -2865,15 +2898,15 @@
         "total": 2291817
       },
       {
-        "excelRow": 446,
+        "excelRow": 434,
         "employee": "Hồ Nguyễn Công Thành",
         "items": [
           {
-            "loai": "CĐT thưởng NVKD",
-            "amt": -10000000
+            "loai": "KPI TPKD",
+            "amt": 555592
           }
         ],
-        "total": -10000000
+        "total": 555592
       }
     ],
     "EMGV_DT25_A2-14-01": [
@@ -2971,7 +3004,7 @@
       },
       {
         "excelRow": 396,
-        "employee": "từ căn này là tt 30% PMG nợ của tháng trước",
+        "employee": "Trần Thị Khánh Linh",
         "items": [
           {
             "loai": "HH sale",
@@ -3065,7 +3098,7 @@
       },
       {
         "excelRow": 394,
-        "employee": "từ căn này là tt 30% PMG nợ của tháng trước",
+        "employee": "Trần Minh Nhật",
         "items": [
           {
             "loai": "HH sale",
@@ -3159,7 +3192,7 @@
       },
       {
         "excelRow": 390,
-        "employee": "từ căn này là tt 30% PMG nợ của tháng trước",
+        "employee": "Lê Thị Cẩm Giang",
         "items": [
           {
             "loai": "HH sale",
@@ -3329,17 +3362,6 @@
           }
         ],
         "total": 5111761
-      },
-      {
-        "excelRow": 393,
-        "employee": "từ căn này là tt 30% PMG nợ của tháng trước",
-        "items": [
-          {
-            "loai": "HH sale",
-            "amt": 2190755
-          }
-        ],
-        "total": 2190755
       }
     ],
     "AVIO_BAML_B.31.20": [
@@ -3475,7 +3497,7 @@
       },
       {
         "excelRow": 398,
-        "employee": "từ căn này là tt 30% PMG nợ của tháng trước",
+        "employee": "Đoàn Lê Bách",
         "items": [
           {
             "loai": "HH sale",
@@ -3558,7 +3580,7 @@
       },
       {
         "excelRow": 399,
-        "employee": "từ căn này là tt 30% PMG nợ của tháng trước",
+        "employee": "Trần Thị Khánh Linh",
         "items": [
           {
             "loai": "HH sale",
@@ -3630,7 +3652,7 @@
       },
       {
         "excelRow": 397,
-        "employee": "từ căn này là tt 30% PMG nợ của tháng trước",
+        "employee": "Lê Thị Cẩm Giang",
         "items": [
           {
             "loai": "HH sale",
@@ -3712,8 +3734,8 @@
         "total": 1746067
       },
       {
-        "excelRow": 413,
-        "employee": "từ căn này là tt 30% PMG nợ của tháng trước",
+        "excelRow": 411,
+        "employee": "Đoàn Lê Bách",
         "items": [
           {
             "loai": "HH sale",
@@ -3774,25 +3796,14 @@
       },
       {
         "excelRow": 407,
-        "employee": "từ căn này là tt 30% PMG nợ của tháng trước",
+        "employee": "Đoàn Lê Bách",
         "items": [
           {
             "loai": "HH sale",
-            "amt": 411233
+            "amt": 5894328
           }
         ],
-        "total": 411233
-      },
-      {
-        "excelRow": 439,
-        "employee": null,
-        "items": [
-          {
-            "loai": "HH sale",
-            "amt": 5483095
-          }
-        ],
-        "total": 5483095
+        "total": 5894328
       }
     ],
     "EMGV_DT26_A2-15-03A": [
@@ -3846,25 +3857,14 @@
       },
       {
         "excelRow": 404,
-        "employee": "từ căn này là tt 30% PMG nợ của tháng trước",
+        "employee": "Đoàn Lê Bách",
         "items": [
           {
             "loai": "HH sale",
-            "amt": 605355
+            "amt": 8676761
           }
         ],
-        "total": 605355
-      },
-      {
-        "excelRow": 441,
-        "employee": null,
-        "items": [
-          {
-            "loai": "HH sale",
-            "amt": 8071406
-          }
-        ],
-        "total": 8071406
+        "total": 8676761
       }
     ],
     "EMGV_DT26_B2-11-16": [
@@ -3917,26 +3917,15 @@
         "total": 1389959
       },
       {
-        "excelRow": 412,
-        "employee": "từ căn này là tt 30% PMG nợ của tháng trước",
+        "excelRow": 410,
+        "employee": "Đoàn Lê Bách",
         "items": [
           {
             "loai": "HH sale",
-            "amt": 595697
+            "amt": 8538325
           }
         ],
-        "total": 595697
-      },
-      {
-        "excelRow": 435,
-        "employee": null,
-        "items": [
-          {
-            "loai": "HH sale",
-            "amt": 7942628
-          }
-        ],
-        "total": 7942628
+        "total": 8538325
       }
     ],
     "EMGV_DT26_A1-22-07": [
@@ -4001,25 +3990,25 @@
       },
       {
         "excelRow": 406,
-        "employee": "từ căn này là tt 30% PMG nợ của tháng trước",
+        "employee": "Bùi Thị Hạ Uyên",
         "items": [
           {
             "loai": "HH sale",
-            "amt": 611821
+            "amt": 8769429
           }
         ],
-        "total": 611821
+        "total": 8769429
       },
       {
-        "excelRow": 440,
-        "employee": null,
+        "excelRow": 442,
+        "employee": "Bùi Thị Hạ Uyên",
         "items": [
           {
-            "loai": "HH sale",
-            "amt": 8157608
+            "loai": "KPI TPKD",
+            "amt": 370801
           }
         ],
-        "total": 8157608
+        "total": 370801
       }
     ],
     "EMGV_DT26_A1-15-17": [
@@ -4084,25 +4073,25 @@
       },
       {
         "excelRow": 402,
-        "employee": "từ căn này là tt 30% PMG nợ của tháng trước",
+        "employee": "Bùi Thị Hạ Uyên",
         "items": [
           {
             "loai": "HH sale",
-            "amt": 597219
+            "amt": 8560149
           }
         ],
-        "total": 597219
+        "total": 8560149
       },
       {
-        "excelRow": 443,
-        "employee": null,
+        "excelRow": 441,
+        "employee": "Bùi Thị Hạ Uyên",
         "items": [
           {
-            "loai": "HH sale",
-            "amt": 7962930
+            "loai": "KPI TPKD",
+            "amt": 361951
           }
         ],
-        "total": 7962930
+        "total": 361951
       }
     ],
     "EMGV_DT26_A2-06-17": [
@@ -4180,25 +4169,25 @@
       },
       {
         "excelRow": 403,
-        "employee": "từ căn này là tt 30% PMG nợ của tháng trước",
+        "employee": "Trần Thị Khánh Linh",
         "items": [
           {
             "loai": "HH sale",
-            "amt": 581284
+            "amt": 8331739
           }
         ],
-        "total": 581284
+        "total": 8331739
       },
       {
-        "excelRow": 442,
-        "employee": null,
+        "excelRow": 431,
+        "employee": "Hồ Nguyễn Công Thành",
         "items": [
           {
-            "loai": "HH sale",
-            "amt": 7750455
+            "loai": "KPI TPKD",
+            "amt": 620036
           }
         ],
-        "total": 7750455
+        "total": 620036
       }
     ],
     "EMGV_DT26_A1-22-09": [
@@ -4262,26 +4251,26 @@
         "total": 928896
       },
       {
-        "excelRow": 409,
-        "employee": "từ căn này là tt 30% PMG nợ của tháng trước",
+        "excelRow": 408,
+        "employee": "Trần Minh Nhật",
         "items": [
           {
             "loai": "HH sale",
-            "amt": 398099
+            "amt": 5706078
           }
         ],
-        "total": 398099
+        "total": 5706078
       },
       {
-        "excelRow": 437,
-        "employee": null,
+        "excelRow": 435,
+        "employee": "Hồ Nguyễn Công Thành",
         "items": [
           {
-            "loai": "HH sale",
-            "amt": 5307979
+            "loai": "KPI TPKD",
+            "amt": 386035
           }
         ],
-        "total": 5307979
+        "total": 386035
       }
     ],
     "EMGV_DT26_A2-08-10": [
@@ -4346,7 +4335,7 @@
       },
       {
         "excelRow": 405,
-        "employee": "từ căn này là tt 30% PMG nợ của tháng trước",
+        "employee": "Hồ Nguyễn Công Thành",
         "items": [
           {
             "loai": "HH sale",
@@ -4417,37 +4406,30 @@
         "total": 3009105
       },
       {
-        "excelRow": 408,
-        "employee": "từ căn này là tt 30% PMG nợ của tháng trước",
+        "excelRow": 393,
+        "employee": "Hồ Nguyễn Công Thành",
         "items": [
           {
             "loai": "HH sale",
-            "amt": 1742865
-          }
-        ],
-        "total": 1742865
-      },
-      {
-        "excelRow": 414,
-        "employee": "Hồ Nguyễn Công Thành",
-        "items": [
+            "amt": 8714321
+          },
           {
             "loai": "CĐT thưởng NVKD",
             "amt": 5000000
           }
         ],
-        "total": 5000000
+        "total": 13714321
       },
       {
-        "excelRow": 438,
-        "employee": null,
+        "excelRow": 433,
+        "employee": "Hồ Nguyễn Công Thành",
         "items": [
           {
-            "loai": "HH sale",
-            "amt": 6971456
+            "loai": "KPI TPKD",
+            "amt": 507015
           }
         ],
-        "total": 6971456
+        "total": 507015
       }
     ],
     "EMGV_DT26_A1-15-19": [
@@ -4507,37 +4489,30 @@
         "total": 47433295
       },
       {
-        "excelRow": 410,
-        "employee": "từ căn này là tt 30% PMG nợ của tháng trước",
+        "excelRow": 413,
+        "employee": "Hồ Nguyễn Công Thành",
         "items": [
           {
             "loai": "HH sale",
-            "amt": 1828085
-          }
-        ],
-        "total": 1828085
-      },
-      {
-        "excelRow": 415,
-        "employee": "Hồ Nguyễn Công Thành",
-        "items": [
+            "amt": 23370413
+          },
           {
             "loai": "CĐT thưởng NVKD",
             "amt": 5000000
           }
         ],
-        "total": 5000000
+        "total": 28370413
       },
       {
         "excelRow": 436,
-        "employee": null,
+        "employee": "Hồ Nguyễn Công Thành",
         "items": [
           {
-            "loai": "HH sale",
-            "amt": 7312340
+            "loai": "KPI TPKD",
+            "amt": 531806
           }
         ],
-        "total": 7312340
+        "total": 531806
       }
     ],
     "EMGV_DT26_A1-06-17": [
@@ -4601,8 +4576,8 @@
         "total": 1275220
       },
       {
-        "excelRow": 411,
-        "employee": "từ căn này là tt 30% PMG nợ của tháng trước",
+        "excelRow": 409,
+        "employee": "Lê Thị Cẩm Giang",
         "items": [
           {
             "loai": "HH sale",
@@ -4610,6 +4585,17 @@
           }
         ],
         "total": 546523
+      },
+      {
+        "excelRow": 443,
+        "employee": "Lê Thị Cẩm Giang",
+        "items": [
+          {
+            "loai": "KPI TPKD",
+            "amt": 72870
+          }
+        ],
+        "total": 72870
       }
     ],
     "EMGV_VX26_B1-22-20": [
@@ -4656,14 +4642,14 @@
         "items": [
           {
             "loai": "KPI TPKD",
-            "amt": 2124723
+            "amt": 1844133
           }
         ],
-        "total": 2124723
+        "total": 1844133
       },
       {
-        "excelRow": 447,
-        "employee": null,
+        "excelRow": 380,
+        "employee": "Bùi Thị Hạ Uyên",
         "items": [
           {
             "loai": "HH sale",
@@ -4671,6 +4657,17 @@
           }
         ],
         "total": 7716237
+      },
+      {
+        "excelRow": 437,
+        "employee": "Lê Thị Cẩm Giang",
+        "items": [
+          {
+            "loai": "KPI TPKD",
+            "amt": 231739
+          }
+        ],
+        "total": 231739
       }
     ],
     "EMGV_DT26_B2-23-09": [
@@ -4724,25 +4721,25 @@
       },
       {
         "excelRow": 400,
-        "employee": "từ căn này là tt 30% PMG nợ của tháng trước",
+        "employee": "Trần Minh Nhật",
         "items": [
           {
             "loai": "HH sale",
-            "amt": 507043
+            "amt": 7267612
           }
         ],
-        "total": 507043
+        "total": 7267612
       },
       {
-        "excelRow": 444,
-        "employee": null,
+        "excelRow": 430,
+        "employee": "Hồ Nguyễn Công Thành",
         "items": [
           {
-            "loai": "HH sale",
-            "amt": 6760569
+            "loai": "KPI TPKD",
+            "amt": 491678
           }
         ],
-        "total": 6760569
+        "total": 491678
       }
     ],
     "EMGV_DT26_A1-12A-07": [
@@ -4778,6 +4775,17 @@
           }
         ],
         "total": 65212352
+      },
+      {
+        "excelRow": 401,
+        "employee": "Hồ Nguyễn Công Thành",
+        "items": [
+          {
+            "loai": "HH sale",
+            "amt": 21242140
+          }
+        ],
+        "total": 21242140
       }
     ],
     "FENI_DXFE_Thưởng booking": [
@@ -4818,7 +4826,7 @@
       },
       {
         "excelRow": 384,
-        "employee": "từ căn này là tt 30% PMG nợ của tháng trước",
+        "employee": "Hồ Nguyễn Công Thành",
         "items": [
           {
             "loai": "HH sale",
@@ -4826,6 +4834,17 @@
           }
         ],
         "total": 43498759
+      },
+      {
+        "excelRow": 438,
+        "employee": "Hồ Nguyễn Công Thành",
+        "items": [
+          {
+            "loai": "KPI TPKD",
+            "amt": 3163546
+          }
+        ],
+        "total": 3163546
       }
     ],
     "EMGV_DT26_A2-12A-11": [
@@ -4852,26 +4871,19 @@
         "total": 25895840
       },
       {
-        "excelRow": 380,
-        "employee": null,
+        "excelRow": 383,
+        "employee": "Nguyễn Hồng Diễm",
         "items": [
+          {
+            "loai": "HH sale",
+            "amt": 6911460
+          },
           {
             "loai": "CĐT thưởng NVKD",
             "amt": 8500000
           }
         ],
-        "total": 8500000
-      },
-      {
-        "excelRow": 383,
-        "employee": "từ căn này là tt 30% PMG nợ của tháng trước",
-        "items": [
-          {
-            "loai": "HH sale",
-            "amt": 6911460
-          }
-        ],
-        "total": 6911460
+        "total": 15411460
       }
     ],
     "EMGV_DT26_A2-15-15": [
@@ -4898,26 +4910,19 @@
         "total": 43891311
       },
       {
-        "excelRow": 381,
-        "employee": null,
+        "excelRow": 385,
+        "employee": "Trần Minh Nhật",
         "items": [
+          {
+            "loai": "HH sale",
+            "amt": 19560563
+          },
           {
             "loai": "CĐT thưởng NVKD",
             "amt": 20000000
           }
         ],
-        "total": 20000000
-      },
-      {
-        "excelRow": 385,
-        "employee": "từ căn này là tt 30% PMG nợ của tháng trước",
-        "items": [
-          {
-            "loai": "HH sale",
-            "amt": 19560563
-          }
-        ],
-        "total": 19560563
+        "total": 39560563
       }
     ],
     "EMGV_DT26_A1-21-17": [
@@ -4933,8 +4938,8 @@
         "total": 339061
       },
       {
-        "excelRow": 382,
-        "employee": null,
+        "excelRow": 386,
+        "employee": "Hồ Nguyễn Công Thành",
         "items": [
           {
             "loai": "CĐT thưởng NVKD",
@@ -4944,15 +4949,15 @@
         "total": 18000000
       },
       {
-        "excelRow": 386,
-        "employee": "từ căn này là tt 30% PMG nợ của tháng trước",
+        "excelRow": 432,
+        "employee": "Hồ Nguyễn Công Thành",
         "items": [
           {
-            "loai": "HH sale",
-            "amt": 66941524
+            "loai": "KPI TPKD",
+            "amt": 4868474
           }
         ],
-        "total": 66941524
+        "total": 4868474
       }
     ],
     "FENI_DXFE_B.07-13": [
@@ -5125,18 +5130,22 @@
     ],
     "EMGV_ZL26_B1-15-05": [
       {
-        "excelRow": 416,
-        "employee": null,
+        "excelRow": 412,
+        "employee": "Đoàn Lê Bách",
         "items": [
           {
             "loai": "HH sale",
-            "amt": 50962820
+            "amt": 58439652
+          },
+          {
+            "loai": "CĐT thưởng NVKD",
+            "amt": 20000000
           }
         ],
-        "total": 50962820
+        "total": 78439652
       },
       {
-        "excelRow": 430,
+        "excelRow": 415,
         "employee": "Hồ Thị Lan Viên",
         "items": [
           {
@@ -5147,10 +5156,34 @@
         "total": 333606
       }
     ],
+    "EMGB_PITA_B-30-10": [
+      {
+        "excelRow": 414,
+        "employee": "Hồ Thị Lan Viên",
+        "items": [
+          {
+            "loai": "KPI Admin",
+            "amt": 582056
+          }
+        ],
+        "total": 582056
+      },
+      {
+        "excelRow": 416,
+        "employee": "Trần Bình Trọng",
+        "items": [
+          {
+            "loai": "HH sale",
+            "amt": 67028052
+          }
+        ],
+        "total": 67028052
+      }
+    ],
     "EMGB_DT26_B-31-02": [
       {
         "excelRow": 417,
-        "employee": null,
+        "employee": "Trần Bình Trọng",
         "items": [
           {
             "loai": "HH sale",
@@ -5165,23 +5198,27 @@
         "items": [
           {
             "loai": "KPI Admin",
-            "amt": 1140562
+            "amt": 570281
           }
         ],
-        "total": 1140562
+        "total": 570281
       }
     ],
     "EMGB_DT26_B-15-10": [
       {
         "excelRow": 418,
-        "employee": null,
+        "employee": "Trần Bình Trọng",
         "items": [
           {
             "loai": "HH sale",
             "amt": 60915838
+          },
+          {
+            "loai": "CĐT thưởng NVKD",
+            "amt": 30000000
           }
         ],
-        "total": 60915838
+        "total": 90915838
       },
       {
         "excelRow": 421,
@@ -5189,34 +5226,27 @@
         "items": [
           {
             "loai": "KPI Admin",
-            "amt": 1062685
+            "amt": 531343
           }
         ],
-        "total": 1062685
-      },
-      {
-        "excelRow": 434,
-        "employee": "Đinh Viết Hân",
-        "items": [
-          {
-            "loai": "CĐT thưởng NVKD",
-            "amt": 30000000
-          }
-        ],
-        "total": 30000000
+        "total": 531343
       }
     ],
     "EMGB_DT26_A-07-09": [
       {
         "excelRow": 419,
-        "employee": null,
+        "employee": "Trần Bình Trọng",
         "items": [
           {
             "loai": "HH sale",
             "amt": 61786550
+          },
+          {
+            "loai": "CĐT thưởng NVKD",
+            "amt": 60000000
           }
         ],
-        "total": 61786550
+        "total": 121786550
       },
       {
         "excelRow": 422,
@@ -5224,45 +5254,10 @@
         "items": [
           {
             "loai": "KPI Admin",
-            "amt": 1077569
+            "amt": 538785
           }
         ],
-        "total": 1077569
-      },
-      {
-        "excelRow": 433,
-        "employee": "Đinh Viết Hân",
-        "items": [
-          {
-            "loai": "CĐT thưởng NVKD",
-            "amt": 60000000
-          }
-        ],
-        "total": 60000000
-      }
-    ],
-    "EMGB_PITA_B-30-10": [
-      {
-        "excelRow": 431,
-        "employee": "Bùi Thị Kiều Chi",
-        "items": [
-          {
-            "loai": "HH sale",
-            "amt": 67028052
-          }
-        ],
-        "total": 67028052
-      },
-      {
-        "excelRow": 432,
-        "employee": "Hồ Thị Lan Viên",
-        "items": [
-          {
-            "loai": "KPI Admin",
-            "amt": 582056
-          }
-        ],
-        "total": 582056
+        "total": 538785
       }
     ]
   }

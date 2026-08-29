@@ -35,7 +35,8 @@ for (let i = 4; i < rows.length; i++) {
   const productCode = r[3];
   const total = Number(r[38] ?? 0);
   if (!productCode || !total) continue;
-  const key = String(productCode);
+  // Trim để tránh mismatch với DB (Excel đôi khi có trailing space).
+  const key = String(productCode).trim();
   if (!perProduct[key]) perProduct[key] = [];
   perProduct[key].push({
     excelRow: i + 1,

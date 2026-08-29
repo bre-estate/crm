@@ -340,7 +340,7 @@ export default function AppSidebar({
     <Sidebar collapsible="offcanvas">
       <SidebarHeader>
         <div className="px-2 py-2 flex items-center justify-center">
-          <Link href="/" aria-label="Về trang chủ" className="inline-flex rounded-md hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-orange-400">
+          <Link href="/" aria-label="Về trang chủ" className="inline-flex hover:opacity-80 transition-opacity outline-none">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo.png" alt="BRE" className="h-10 w-auto" />
           </Link>

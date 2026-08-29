@@ -56,21 +56,33 @@ export type CommissionRow = {
   costType: string;
   reconciliationDate: string | null;
   // Snapshot lúc tạo recon:
-  pmgBasePrice: number; // Giá tính PMG (cột G/D/E)
-  pmgLkSaleRate: number; // %PMG (cột H/E/F) — 0.055/0.06/0.07/0.0575
-  paymentProgressPct: number; // %tiến độ khách trả (cột J/F) — 0.8/0.9/1.0
-  adminFeeSale: number; // Phí admin sale (cột K/G)
-  customerSupport: number; // Hỗ trợ khách (cột L/H)
-  commissionRate: number; // %HH role (cột I/I) — 0.55 NVKD / 0.04 TPKD / 0.0025-0.005 Admin
+  pmgBasePrice: number; // Giá tính PMG
+  pmgLkSaleRate: number; // %PMG — 0.055/0.06/0.07
+  paymentProgressPct: number; // %tiến độ khách trả — 0.8/0.9/1.0
+  adminFeeSale: number; // Phí admin sale
+  customerSupport: number; // Hỗ trợ khách
+  commissionRate: number; // %HH sale (0.5-0.55) — dùng cho layout NVKD
+  kpiRate: number; // %KPI (0.03-0.04) — dùng cho layout TPKD/Admin
   // Số tiền:
-  amountPayableThisTime: number; // HH lũy kế đợt này (cột N/L/K)
-  pmgReconciledCumulative: number; // HH đã đối chiếu lũy kế (cột M ref)
+  amountPayableThisTime: number; // HH lũy kế đợt này
+  pmgReconciledCumulative: number; // HH đã đối chiếu lũy kế
   note: string | null;
   // Bổ sung:
-  paidLK: number; // Từ payments_out — HH đã trả lũy kế cho recon này
-  depositDate: string | null; // Ngày cọc căn (cột M sheet TPKD)
-  salesPerson: string | null; // NV bán căn (cột N sheet TPKD)
+  paidLK: number; // SUM(payments_out) cho recon này
+  depositDate: string | null; // Ngày cọc căn
+  salesPerson: string | null; // NV bán căn (cho layout TPKD)
 };
+
+/**
+ * Chọn rate hiển thị ở cột %HH của bảng theo layout:
+ *   nvkd → commissionRate (HH sale 55%)
+ *   tpkd → kpiRate (4%)
+ *   admin → commissionRate (0.25-0.5% — admin lưu trong commissionRate)
+ */
+export function effectiveRate(r: CommissionRow, layout: PayrollLayout): number {
+  if (layout === "tpkd") return r.kpiRate;
+  return r.commissionRate;
+}
 
 /** Query commission rows cho 1 nhân viên trong khoảng ngày. */
 export async function loadCommissionRows(opts: {
@@ -96,6 +108,7 @@ export async function loadCommissionRows(opts: {
       adminFeeSale: costReconciliations.adminFeeSale,
       customerSupport: costReconciliations.customerSupport,
       commissionRate: costReconciliations.commissionRate,
+      kpiRate: costReconciliations.kpiRate,
       amountPayableThisTime: costReconciliations.amountPayableThisTime,
       pmgReconciledCumulative: costReconciliations.pmgReconciledCumulative,
       note: costReconciliations.note,
@@ -151,6 +164,7 @@ export async function loadCommissionRows(opts: {
     adminFeeSale: Number(r.adminFeeSale ?? 0),
     customerSupport: Number(r.customerSupport ?? 0),
     commissionRate: Number(r.commissionRate ?? 0),
+    kpiRate: Number(r.kpiRate ?? 0),
     amountPayableThisTime: Number(r.amountPayableThisTime ?? 0),
     pmgReconciledCumulative: Number(r.pmgReconciledCumulative ?? 0),
     note: r.note,

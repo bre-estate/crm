@@ -14,6 +14,7 @@ import {
   employees,
 } from "@/lib/schema";
 import { fmtMoney, fmtDate, fmtPct, fmtPctTight, fmtPctRaw, costTypeLabel, toTitleCase } from "@/lib/format";
+import { shortDeptName } from "@/lib/dept";
 import { Card as ShadCard } from "@/components/ui/card";
 import { Badge as ShadBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -536,10 +537,11 @@ export default async function ProductDetailPage({
           const tpkdName = nvkdCtvUnassigned
             ? null
             : toTitleCase(p.deptLeaderName) || toTitleCase(row.department?.leaderName) || null;
-          const deptName =
+          const deptName = shortDeptName(
             row.department?.name ??
-            p.deptName ??
-            (isNvkdCtv ? "CTV" : null);
+              p.deptName ??
+              (isNvkdCtv ? "CTV" : null),
+          );
           const deptCombo = deptName
             ? tpkdName
               ? `${deptName} · TPKD ${tpkdName}`

@@ -10,6 +10,7 @@ import {
   fmtPctRaw,
   displayPartnerName,
 } from "@/lib/format";
+import { shortDeptName } from "@/lib/dept";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -179,7 +180,7 @@ export default function ProductsTable({
                 <div className="flex items-center gap-1.5 min-w-0 text-slate-600">
                   <span className="truncate">{r.salesPerson || "—"}</span>
                   {r.deptName && (
-                    <span className="text-slate-400">· {r.deptName}</span>
+                    <span className="text-slate-400">· {shortDeptName(r.deptName)}</span>
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -288,10 +289,10 @@ export default function ProductsTable({
                     {r.departmentName ? (
                       <span
                         className={`text-xs px-2 py-0.5 rounded whitespace-nowrap ${deptColor(
-                          r.deptName ?? r.departmentName,
+                          shortDeptName(r.deptName ?? r.departmentName),
                         )}`}
                       >
-                        {r.departmentName}
+                        {shortDeptName(r.departmentName)}
                       </span>
                     ) : r.isCtv ? (
                       <span

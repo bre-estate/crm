@@ -8,6 +8,7 @@ import { requirePermission } from "@/lib/auth";
 import {
   computeHhCoBan,
   computeHhLkDot,
+  effectiveRate,
   loadCommissionRows,
   positionToLayout,
   type CommissionRow,
@@ -15,7 +16,7 @@ import {
 } from "@/lib/payroll";
 
 /**
- * Load danh sách nhân viên có thể xuất bảng HH (nvkd/ctv/tpkd/admin, active).
+ * Load danh sách nhân viên có thể xuất bảng HH (nvkd/ctv/tpkd/admin/ceo/hr, active).
  */
 export async function loadPayrollEmployees() {
   await requirePermission("payroll.commissions", "view");
@@ -45,7 +46,7 @@ export async function exportCommissionsExcel(input: {
   layout: PayrollLayout;
   fromDate: string;
   toDate: string;
-  periodLabel?: string; // VD "Tháng 08 năm 2026" hoặc "Tháng 7+8 năm 2026"
+  periodLabel?: string;
 }): Promise<{ filename: string; base64: string }> {
   await requirePermission("payroll.commissions", "edit");
   const rows = await loadCommissionRows(input);
@@ -71,6 +72,37 @@ function labelForLayout(l: PayrollLayout): string {
   return l === "nvkd" ? "TTHH" : l === "tpkd" ? "KPI_TPKD" : "HH_Admin";
 }
 
+// ============ CELL HELPERS ============
+// Excel cell format: `#,##0` cho tiền, `0.00%` cho %, `@` cho text, `d/m/yyyy` cho ngày.
+
+/** Cell tiền VND — hiển thị 65.212.352 (không thập phân). */
+function cellMoney(v: number): XLSX.CellObject {
+  return { v: Math.round(v), t: "n", z: "#,##0" };
+}
+
+/** Cell % — value giữ decimal (0.07), Excel hiển thị 7,00% hoặc 55,00%. */
+function cellPct(v: number): XLSX.CellObject {
+  return { v, t: "n", z: "0.00%" };
+}
+
+/** Cell text. */
+function cellText(v: string): XLSX.CellObject {
+  return { v, t: "s" };
+}
+
+/** Cell integer (STT). */
+function cellInt(v: number): XLSX.CellObject {
+  return { v, t: "n" };
+}
+
+/** Cell date (from YYYY-MM-DD string) — hiển thị dd/mm/yyyy. */
+function cellDate(v: string | null): XLSX.CellObject {
+  if (!v) return { v: "", t: "s" };
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return { v, t: "s" };
+  return { v: d, t: "d", z: "dd/mm/yyyy" };
+}
+
 // ============ 3 LAYOUT BUILDERS ============
 
 function buildSheetNvkd(
@@ -78,100 +110,112 @@ function buildSheetNvkd(
   employeeName: string,
   period: string,
 ): XLSX.WorkSheet {
-  const HEADER_ROWS = [
-    ["CÔNG TY TNHH SÀN GIAO DỊCH BẤT ĐỘNG SẢN BRE"],
-    ["MST: 0318827539"],
+  const HEADER_ROWS: (string | XLSX.CellObject | null)[][] = [
+    [cellText("CÔNG TY TNHH SÀN GIAO DỊCH BẤT ĐỘNG SẢN BRE")],
+    [cellText("MST: 0318827539")],
     [],
     [],
-    ["BẢNG ĐỐI CHIẾU PHÍ MÔI GIỚI"],
-    [`Kỳ đối chiếu: ${period}`],
-    ["Tên NVKD:", employeeName],
-    [`Hồ Chí Minh, ngày ${new Date().getDate()} tháng ${new Date().getMonth() + 1} năm ${new Date().getFullYear()}`],
+    [cellText("BẢNG ĐỐI CHIẾU PHÍ MÔI GIỚI")],
+    [cellText(`Kỳ đối chiếu: ${period}`)],
+    [cellText("Tên NVKD:"), cellText(employeeName)],
     [
-      "STT",
-      "Tên khách hàng",
-      "Tên Nhân Viên",
-      "Tên Quản lý",
-      "Dự Án",
-      "Mã căn",
-      "Giá tính phí",
-      "% PMG cơ bản",
-      "% HH của NVKD",
-      "% thu phí đợt này",
-      "Phí hành chính",
-      "Hỗ trợ khách",
-      "Tổng HH cơ bản",
-      "HH lũy kế đợt này",
-      "HH đã trả",
-      "HH còn phải trả đợt này",
-      "Thưởng nóng NVKD",
-      "Cty thưởng QL sàn",
-      "Tổng thu nhập",
-      "HH còn lại đợt sau",
-      "Ghi chú",
+      cellText(
+        `Hồ Chí Minh, ngày ${new Date().getDate()} tháng ${new Date().getMonth() + 1} năm ${new Date().getFullYear()}`,
+      ),
+    ],
+    [
+      cellText("STT"),
+      cellText("Tên khách hàng"),
+      cellText("Tên Nhân Viên"),
+      cellText("Tên Quản lý"),
+      cellText("Dự Án"),
+      cellText("Mã căn"),
+      cellText("Giá tính phí"),
+      cellText("% PMG cơ bản"),
+      cellText("% HH của NVKD"),
+      cellText("% thu phí đợt này"),
+      cellText("Phí hành chính"),
+      cellText("Hỗ trợ khách"),
+      cellText("Tổng HH cơ bản"),
+      cellText("HH lũy kế đợt này"),
+      cellText("HH đã trả"),
+      cellText("HH còn phải trả đợt này"),
+      cellText("Thưởng nóng NVKD"),
+      cellText("Cty thưởng QL sàn"),
+      cellText("Tổng thu nhập"),
+      cellText("HH còn lại đợt sau"),
+      cellText("Ghi chú"),
     ],
   ];
 
-  const dataRows = rows.map((r, i) => {
+  const totalM = { M: 0, N: 0, O: 0, P: 0, Q: 0, R: 0, S: 0, T: 0 };
+  const dataRows: XLSX.CellObject[][] = rows.map((r, i) => {
     const M = computeHhCoBan(r);
     const N = computeHhLkDot(r);
     const O = r.paidLK;
     const P = Math.max(0, N - O);
-    const Q = 0; // Thưởng nóng — chưa có subtype, để 0 (admin tự fill)
-    const R = 0; // CTY thưởng QL — chưa có
+    const Q = 0;
+    const R = 0;
     const S = P + Q + R;
     const T = Math.max(0, M - N);
+    totalM.M += M;
+    totalM.N += N;
+    totalM.O += O;
+    totalM.P += P;
+    totalM.Q += Q;
+    totalM.R += R;
+    totalM.S += S;
+    totalM.T += T;
     return [
-      i + 1,
-      r.customerName ?? "",
-      employeeName,
-      "",
-      r.projectName ?? "",
-      r.unitCode ?? "",
-      r.pmgBasePrice,
-      r.pmgLkSaleRate,
-      r.commissionRate,
-      r.paymentProgressPct,
-      r.adminFeeSale,
-      r.customerSupport,
-      Math.round(M),
-      Math.round(N),
-      Math.round(O),
-      Math.round(P),
-      Q,
-      R,
-      Math.round(S),
-      Math.round(T),
-      r.note ?? "",
+      cellInt(i + 1),
+      cellText(r.customerName ?? ""),
+      cellText(employeeName),
+      cellText(""),
+      cellText(r.projectName ?? ""),
+      cellText(r.unitCode ?? ""),
+      cellMoney(r.pmgBasePrice),
+      cellPct(r.pmgLkSaleRate),
+      cellPct(r.commissionRate),
+      cellPct(r.paymentProgressPct),
+      cellMoney(r.adminFeeSale),
+      cellMoney(r.customerSupport),
+      cellMoney(M),
+      cellMoney(N),
+      cellMoney(O),
+      cellMoney(P),
+      cellMoney(Q),
+      cellMoney(R),
+      cellMoney(S),
+      cellMoney(T),
+      cellText(r.note ?? ""),
     ];
   });
 
-  // Tổng cộng row
-  const totalRow = [
-    "",
-    "TỔNG CỘNG",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    sumCol(dataRows, 12),
-    sumCol(dataRows, 13),
-    sumCol(dataRows, 14),
-    sumCol(dataRows, 15),
-    sumCol(dataRows, 16),
-    sumCol(dataRows, 17),
-    sumCol(dataRows, 18),
-    sumCol(dataRows, 19),
-    "",
+  const totalRow: XLSX.CellObject[] = [
+    cellText(""),
+    cellText("TỔNG CỘNG"),
+    cellText(""),
+    cellText(""),
+    cellText(""),
+    cellText(""),
+    cellText(""),
+    cellText(""),
+    cellText(""),
+    cellText(""),
+    cellText(""),
+    cellText(""),
+    cellMoney(totalM.M),
+    cellMoney(totalM.N),
+    cellMoney(totalM.O),
+    cellMoney(totalM.P),
+    cellMoney(totalM.Q),
+    cellMoney(totalM.R),
+    cellMoney(totalM.S),
+    cellMoney(totalM.T),
+    cellText(""),
   ];
 
-  return XLSX.utils.aoa_to_sheet([...HEADER_ROWS, ...dataRows, totalRow]);
+  return sheetFromAoa([...HEADER_ROWS, ...dataRows, totalRow]);
 }
 
 function buildSheetTpkd(
@@ -179,75 +223,79 @@ function buildSheetTpkd(
   employeeName: string,
   period: string,
 ): XLSX.WorkSheet {
-  const HEADER_ROWS = [
-    ["CÔNG TY TNHH SÀN GIAO DỊCH BẤT ĐỘNG SẢN BRE"],
-    ["MST: 0318827539"],
+  const HEADER_ROWS: (string | XLSX.CellObject | null)[][] = [
+    [cellText("CÔNG TY TNHH SÀN GIAO DỊCH BẤT ĐỘNG SẢN BRE")],
+    [cellText("MST: 0318827539")],
     [],
     [],
-    ["BẢNG ĐỐI CHIẾU PHÍ MÔI GIỚI (KPI TPKD)"],
-    [`Kỳ đối chiếu: ${period}`],
-    ["Tên TPKD:", employeeName],
+    [cellText("BẢNG ĐỐI CHIẾU PHÍ MÔI GIỚI (KPI TPKD)")],
+    [cellText(`Kỳ đối chiếu: ${period}`)],
+    [cellText("Tên TPKD:"), cellText(employeeName)],
     [],
     [],
     [
-      "STT",
-      "Mã căn",
-      "Dự án",
-      "Giá tính PMG",
-      "% PMG",
-      "% thu PMG LK",
-      "Phí hành chính",
-      "Hỗ trợ khách",
-      "% thưởng KPI TPKD",
-      "KPI lũy kế",
-      "KPI đã thanh toán LK",
-      "KPI còn thanh toán đợt này",
-      "Ngày cọc",
-      "Nhân viên bán căn",
+      cellText("STT"),
+      cellText("Mã căn"),
+      cellText("Dự án"),
+      cellText("Giá tính PMG"),
+      cellText("% PMG"),
+      cellText("% thu PMG LK"),
+      cellText("Phí hành chính"),
+      cellText("Hỗ trợ khách"),
+      cellText("% thưởng KPI TPKD"),
+      cellText("KPI lũy kế"),
+      cellText("KPI đã thanh toán LK"),
+      cellText("KPI còn thanh toán đợt này"),
+      cellText("Ngày cọc"),
+      cellText("Nhân viên bán căn"),
     ],
   ];
 
-  const dataRows = rows.map((r, i) => {
-    const M = computeHhCoBan(r);
-    const N = computeHhLkDot(r);
-    const O = r.paidLK;
-    const L = Math.max(0, N - O);
+  const totals = { J: 0, K: 0, L: 0 };
+  const dataRows: XLSX.CellObject[][] = rows.map((r, i) => {
+    // Layout TPKD: rate là kpiRate (4%), formula tương tự nhưng thay commissionRate = kpiRate
+    const J = effectiveKpiAmount(r, "tpkd");
+    const K = r.paidLK;
+    const L = Math.max(0, J - K);
+    totals.J += J;
+    totals.K += K;
+    totals.L += L;
     return [
-      i + 1,
-      r.unitCode ?? "",
-      r.projectName ?? "",
-      r.pmgBasePrice,
-      r.pmgLkSaleRate,
-      r.paymentProgressPct,
-      r.adminFeeSale,
-      r.customerSupport,
-      r.commissionRate,
-      Math.round(M),
-      Math.round(O),
-      Math.round(L),
-      r.depositDate ?? "",
-      r.salesPerson ?? "",
+      cellInt(i + 1),
+      cellText(r.unitCode ?? ""),
+      cellText(r.projectName ?? ""),
+      cellMoney(r.pmgBasePrice),
+      cellPct(r.pmgLkSaleRate),
+      cellPct(r.paymentProgressPct),
+      cellMoney(r.adminFeeSale),
+      cellMoney(r.customerSupport),
+      cellPct(r.kpiRate),
+      cellMoney(J),
+      cellMoney(K),
+      cellMoney(L),
+      cellDate(r.depositDate),
+      cellText(r.salesPerson ?? ""),
     ];
   });
 
-  const totalRow = [
-    "",
-    "TỔNG CỘNG",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    sumCol(dataRows, 9),
-    sumCol(dataRows, 10),
-    sumCol(dataRows, 11),
-    "",
-    "",
+  const totalRow: XLSX.CellObject[] = [
+    cellText(""),
+    cellText("TỔNG CỘNG"),
+    cellText(""),
+    cellText(""),
+    cellText(""),
+    cellText(""),
+    cellText(""),
+    cellText(""),
+    cellText(""),
+    cellMoney(totals.J),
+    cellMoney(totals.K),
+    cellMoney(totals.L),
+    cellText(""),
+    cellText(""),
   ];
 
-  return XLSX.utils.aoa_to_sheet([...HEADER_ROWS, ...dataRows, totalRow]);
+  return sheetFromAoa([...HEADER_ROWS, ...dataRows, totalRow]);
 }
 
 function buildSheetAdmin(
@@ -255,75 +303,107 @@ function buildSheetAdmin(
   employeeName: string,
   period: string,
 ): XLSX.WorkSheet {
-  const HEADER_ROWS = [
-    ["CÔNG TY TNHH SÀN GIAO DỊCH BẤT ĐỘNG SẢN BRE"],
-    ["MST: 0318827539"],
+  const HEADER_ROWS: (string | XLSX.CellObject | null)[][] = [
+    [cellText("CÔNG TY TNHH SÀN GIAO DỊCH BẤT ĐỘNG SẢN BRE")],
+    [cellText("MST: 0318827539")],
     [],
     [],
-    ["BẢNG ĐỐI CHIẾU THƯỞNG ADMIN"],
-    [`Kỳ đối chiếu: ${period}`],
-    ["Tên Admin:", employeeName],
+    [cellText("BẢNG ĐỐI CHIẾU THƯỞNG ADMIN")],
+    [cellText(`Kỳ đối chiếu: ${period}`)],
+    [cellText("Tên Admin:"), cellText(employeeName)],
     [],
     [
-      "STT",
-      "Admin",
-      "Mã căn",
-      "Dự án",
-      "Giá tính phí",
-      "% PMG",
-      "Phí hành chính",
-      "Hỗ trợ khách",
-      "% HH Admin",
-      "Đã thanh toán LK",
-      "Tổng thu nhập đợt này",
-      "Ghi chú",
+      cellText("STT"),
+      cellText("Admin"),
+      cellText("Mã căn"),
+      cellText("Dự án"),
+      cellText("Giá tính phí"),
+      cellText("% PMG"),
+      cellText("Phí hành chính"),
+      cellText("Hỗ trợ khách"),
+      cellText("% HH Admin"),
+      cellText("Đã thanh toán LK"),
+      cellText("Tổng thu nhập đợt này"),
+      cellText("Ghi chú"),
     ],
   ];
 
-  const dataRows = rows.map((r, i) => {
-    // Admin: KHÔNG có %thu — tính trên full PMG
+  const totals = { paid: 0, K: 0 };
+  const dataRows: XLSX.CellObject[][] = rows.map((r, i) => {
+    // Admin: không phụ thuộc %thu → tính trên full PMG
     const gross = r.pmgBasePrice * r.pmgLkSaleRate;
     const base = Math.max(0, (gross - r.adminFeeSale) / 1.1 - r.customerSupport);
-    const K = Math.round(base * r.commissionRate - r.paidLK);
+    // Admin rate lưu trong commissionRate hoặc kpiRate — thử kpiRate trước (nếu > 0)
+    const adminRate = r.kpiRate > 0 ? r.kpiRate : r.commissionRate;
+    const K = Math.max(0, Math.round(base * adminRate - r.paidLK));
+    totals.paid += r.paidLK;
+    totals.K += K;
     return [
-      i + 1,
-      employeeName,
-      r.unitCode ?? "",
-      r.projectName ?? "",
-      r.pmgBasePrice,
-      r.pmgLkSaleRate,
-      r.adminFeeSale,
-      r.customerSupport,
-      r.commissionRate,
-      Math.round(r.paidLK),
-      Math.max(0, K),
-      r.note ?? "",
+      cellInt(i + 1),
+      cellText(employeeName),
+      cellText(r.unitCode ?? ""),
+      cellText(r.projectName ?? ""),
+      cellMoney(r.pmgBasePrice),
+      cellPct(r.pmgLkSaleRate),
+      cellMoney(r.adminFeeSale),
+      cellMoney(r.customerSupport),
+      cellPct(adminRate),
+      cellMoney(r.paidLK),
+      cellMoney(K),
+      cellText(r.note ?? ""),
     ];
   });
 
-  const totalRow = [
-    "",
-    "TỔNG CỘNG",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    sumCol(dataRows, 9),
-    sumCol(dataRows, 10),
-    "",
+  const totalRow: XLSX.CellObject[] = [
+    cellText(""),
+    cellText("TỔNG CỘNG"),
+    cellText(""),
+    cellText(""),
+    cellText(""),
+    cellText(""),
+    cellText(""),
+    cellText(""),
+    cellText(""),
+    cellMoney(totals.paid),
+    cellMoney(totals.K),
+    cellText(""),
   ];
 
-  return XLSX.utils.aoa_to_sheet([...HEADER_ROWS, ...dataRows, totalRow]);
+  return sheetFromAoa([...HEADER_ROWS, ...dataRows, totalRow]);
 }
 
-function sumCol(rows: (string | number)[][], col: number): number {
-  let total = 0;
-  for (const r of rows) {
-    const v = r[col];
-    if (typeof v === "number") total += v;
+/** Effective KPI amount cho layout TPKD/Admin — override amountPayableThisTime nếu 0. */
+function effectiveKpiAmount(r: CommissionRow, layout: PayrollLayout): number {
+  if (r.amountPayableThisTime > 0) return r.amountPayableThisTime;
+  const rate = effectiveRate(r, layout);
+  const gross = r.pmgBasePrice * r.pmgLkSaleRate * (r.paymentProgressPct || 1);
+  const base = Math.max(0, (gross - r.adminFeeSale) / 1.1 - r.customerSupport);
+  return base * rate;
+}
+
+/** Build worksheet từ array-of-arrays với cell objects (giữ format). */
+function sheetFromAoa(
+  aoa: (string | XLSX.CellObject | null | undefined)[][],
+): XLSX.WorkSheet {
+  const ws: XLSX.WorkSheet = {};
+  let maxR = 0;
+  let maxC = 0;
+  for (let R = 0; R < aoa.length; R++) {
+    const row = aoa[R];
+    if (!row) continue;
+    for (let C = 0; C < row.length; C++) {
+      const cell = row[C];
+      if (cell == null) continue;
+      const addr = XLSX.utils.encode_cell({ r: R, c: C });
+      if (typeof cell === "string") {
+        ws[addr] = { v: cell, t: "s" };
+      } else {
+        ws[addr] = cell;
+      }
+      if (R > maxR) maxR = R;
+      if (C > maxC) maxC = C;
+    }
   }
-  return Math.round(total);
+  ws["!ref"] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: maxR, c: maxC } });
+  return ws;
 }
