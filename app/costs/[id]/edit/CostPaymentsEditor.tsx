@@ -41,7 +41,7 @@ export default function CostPaymentsEditor({ payments, onUpdate, onDelete, onAdd
     });
 
   return (
-    <Card className="[--card-spacing:1.25rem] px-5 space-y-3">
+    <Card className="[--card-spacing:0.75rem] px-5">
       <div className="flex justify-between items-center pb-2 border-b border-slate-100">
         <div className="text-base font-semibold text-slate-800">
           💸 Đã chi tiền chưa?{payments.length > 0 ? ` · ✅ ${payments.length} lần` : ""}
@@ -63,7 +63,7 @@ export default function CostPaymentsEditor({ payments, onUpdate, onDelete, onAdd
       </div>
 
       {payments.length === 0 && !showAdd && (
-        <div className="text-sm text-slate-500 italic py-2">
+        <div className="text-sm text-slate-500 italic">
           Chưa có khoản chi nào. Bấm "+ Thêm chi" khi đã chi cho người này.
         </div>
       )}
