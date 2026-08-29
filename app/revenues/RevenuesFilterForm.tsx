@@ -22,7 +22,6 @@ const TYPE_OPTIONS = [
 ];
 
 type Props = {
-  activeTab: string;
   activeStatus: string;
   activeAge: string;
   activeType: string;
@@ -40,7 +39,6 @@ type Props = {
  * onSubmit build URL sạch, preserve tab + age. Chỉ add param có value.
  */
 export default function RevenuesFilterForm({
-  activeTab,
   activeStatus,
   activeAge,
   activeType,
@@ -57,16 +55,15 @@ export default function RevenuesFilterForm({
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const qs = new URLSearchParams();
-    qs.set("tab", activeTab);
     if (activeAge !== "all") qs.set("age", activeAge);
     for (const [key, value] of fd.entries()) {
       const v = typeof value === "string" ? value.trim() : "";
       if (v && v !== "all") qs.set(key, v);
     }
-    router.push(`/revenues?${qs.toString()}`);
+    router.push(`/revenues${qs.toString() ? "?" + qs.toString() : ""}`);
   };
 
-  const resetUrl = `/revenues?tab=${activeTab}${activeAge !== "all" ? `&age=${activeAge}` : ""}`;
+  const resetUrl = activeAge !== "all" ? `/revenues?age=${activeAge}` : "/revenues";
 
   return (
     <form className="flex gap-2 items-end flex-wrap" onSubmit={handleSubmit}>

@@ -82,7 +82,8 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
   const returnToParams = new URLSearchParams();
   if (projectId) returnToParams.set("projectId", String(projectId));
   if (unitCode) returnToParams.set("unitCode", String(unitCode));
-  if (tab) returnToParams.set("tab", String(tab));
+  // tab param legacy — không dùng nữa (chỉ có "primary")
+  void tab;
   if (status) returnToParams.set("status", String(status));
   if (age) returnToParams.set("age", String(age));
   if (type) returnToParams.set("type", String(type));
@@ -330,7 +331,6 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
             const isActive = activeAge === a.key;
             const count = ageCounts.get(a.key) ?? 0;
             const params = new URLSearchParams();
-            params.set("tab", activeTab);
             if (filterProjectId) params.set("projectId", String(filterProjectId));
             if (filterUnitCode) params.set("unitCode", filterUnitCode);
             if (activeStatus !== "all") params.set("status", activeStatus);
@@ -366,7 +366,6 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
 
       <Card className="[--card-spacing:1rem] px-4 py-3 gap-4">
         <RevenuesFilterForm
-          activeTab={activeTab}
           activeStatus={activeStatus}
           activeAge={activeAge}
           activeType={activeType}
@@ -582,7 +581,6 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
         itemLabel="đợt ĐC"
         buildUrl={(p) => {
           const qs = new URLSearchParams();
-          qs.set("tab", activeTab);
           if (filterProjectId) qs.set("projectId", String(filterProjectId));
           if (filterUnitCode) qs.set("unitCode", filterUnitCode);
           if (filterSalesPerson) qs.set("salesPerson", filterSalesPerson);
@@ -590,7 +588,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
           if (activeAge !== "all") qs.set("age", activeAge);
           if (activeType !== "all") qs.set("type", activeType);
           if (p > 1) qs.set("page", String(p));
-          return `/revenues?${qs.toString()}`;
+          return `/revenues${qs.toString() ? "?" + qs.toString() : ""}`;
         }}
       />
     </div>
