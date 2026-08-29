@@ -422,7 +422,76 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
         />
       )}
 
-      <Card className="p-0 gap-0 overflow-hidden">
+      {/* Mobile card view (< md) — show gọn từng recon 1 card */}
+      <div className="md:hidden space-y-2">
+        {rowsPage.map((r) => {
+          const paid = paidMap.get(r.id) ?? 0;
+          const amount = Number(r.amountPayable ?? 0);
+          const editHref = `/costs/${r.id}/edit${
+            returnToQS ? `?returnTo=${encodeURIComponent(returnTo)}` : ""
+          }`;
+          const remaining = amount - paid;
+          const paidFull = Math.abs(remaining) < 1000;
+          return (
+            <div
+              key={r.id}
+              className="bg-card rounded-lg ring-1 ring-foreground/10 p-3 space-y-2"
+            >
+              <div className="flex justify-between items-start gap-2">
+                <div className="min-w-0">
+                  <Link
+                    href={`/products/${r.productId}`}
+                    className="font-mono text-sm font-semibold text-blue-600 hover:underline"
+                  >
+                    {r.unitCode ?? "—"}
+                  </Link>
+                  <div className="text-xs text-slate-500 truncate">
+                    {r.projectName ?? "—"}
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="text-sm font-bold tabular-nums text-slate-900">
+                    {fmtMoney(amount)}
+                  </div>
+                  <div className="text-xs text-slate-500">{fmtDate(r.date)}</div>
+                </div>
+              </div>
+              <div className="flex justify-between items-center text-xs gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 whitespace-nowrap">
+                    {costTypeLabel(r.costType)}
+                  </span>
+                  <span className="text-slate-500 truncate">
+                    {toTitleCase(r.employee ?? "")}
+                  </span>
+                </div>
+                <Link
+                  href={editHref}
+                  className="text-blue-600 hover:underline text-xs shrink-0"
+                >
+                  Sửa →
+                </Link>
+              </div>
+              {paid > 0 && (
+                <div className="text-xs pt-1 border-t border-slate-100 flex justify-between">
+                  <span className="text-green-700">Đã trả: {fmtMoney(paid)}</span>
+                  <span className={paidFull ? "text-slate-400" : "text-red-600"}>
+                    {paidFull ? "✓ đủ" : `Còn: ${fmtMoney(Math.max(0, remaining))}`}
+                  </span>
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {rowsPage.length === 0 && (
+          <div className="text-center text-slate-500 text-sm p-8 bg-card rounded-lg ring-1 ring-foreground/10">
+            Không có dòng đối chiếu nào.
+          </div>
+        )}
+      </div>
+
+      {/* Desktop table (≥ md) */}
+      <Card className="hidden md:block p-0 gap-0 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-xs text-slate-600">
             <tr>

@@ -11,6 +11,7 @@ import {
   displayPartnerName,
 } from "@/lib/format";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 // Row shape đã pre-compute stats từ server
 export type ProductRow = {
@@ -140,7 +141,79 @@ export default function ProductsTable({
           </button>
         </div>
       )}
-      <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
+      {/* Mobile card view (< md) */}
+      <div className="md:hidden space-y-2">
+        {rows.map((r) => {
+          const pctPaid = r.expectedHH > 0 ? (r.receivedHH / r.expectedHH) * 100 : 0;
+          const noData = r.expectedHH === 0 && r.phaseCount === 0;
+          return (
+            <div
+              key={r.id}
+              className="bg-card rounded-lg ring-1 ring-foreground/10 p-3 space-y-2"
+            >
+              <div className="flex justify-between items-start gap-2">
+                <div className="min-w-0">
+                  <Link
+                    href={`/products/${r.id}${detailQs}`}
+                    className="font-mono text-sm font-semibold text-blue-600 hover:underline"
+                  >
+                    {r.unitCode}
+                  </Link>
+                  <div className="text-xs text-slate-500 truncate">
+                    {r.projectName}
+                    {r.partnerName ? ` · ${r.partnerName}` : ""}
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="text-sm font-bold tabular-nums text-slate-900">
+                    {fmtMoney(r.totalRevenue)}
+                  </div>
+                  <div className="text-xs text-slate-500">{fmtDate(r.depositDate)}</div>
+                </div>
+              </div>
+              <div className="flex justify-between items-center text-xs gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5 min-w-0 text-slate-600">
+                  <span className="truncate">{r.salesPerson || "—"}</span>
+                  {r.deptName && (
+                    <span className="text-slate-400">· {r.deptName}</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {!noData && (
+                    <span
+                      className={cn(
+                        "text-xs tabular-nums",
+                        pctPaid >= 99.5 && pctPaid <= 100.5
+                          ? "text-green-700 font-medium"
+                          : pctPaid > 100.5
+                            ? "text-purple-700 font-medium"
+                            : pctPaid > 0
+                              ? "text-orange-700"
+                              : "text-slate-400",
+                      )}
+                    >
+                      {pctPaid.toFixed(0)}%
+                    </span>
+                  )}
+                  {r.invoiceCount > 0 && (
+                    <span className="px-1.5 py-0.5 rounded bg-green-100 text-green-700 text-[10px] font-medium whitespace-nowrap">
+                      ✓ HĐ {r.invoiceCount}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        {rows.length === 0 && (
+          <div className="text-center text-slate-500 text-sm p-8 bg-card rounded-lg ring-1 ring-foreground/10">
+            Không có căn nào.
+          </div>
+        )}
+      </div>
+
+      {/* Desktop table (≥ md) */}
+      <div className="hidden md:block bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-xs text-slate-600">
             <tr>

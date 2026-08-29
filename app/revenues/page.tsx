@@ -415,7 +415,83 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
         />
       )}
 
-      <Card className="p-0 gap-0 overflow-hidden">
+      {/* Mobile card view (< md) */}
+      <div className="md:hidden space-y-2">
+        {rows2.map((r) => {
+          const receivable = Number(r.totalReceivable ?? 0);
+          const paid = paidMap.get(r.id) ?? 0;
+          const remaining = receivable - paid;
+          const cdtBonusSale = Number(r.cdtBonusSale ?? 0);
+          const cdtBonusMgr = Number(r.cdtBonusManager ?? 0);
+          const isBonus = Number(r.revThis ?? 0) === 0 && (cdtBonusSale > 0 || cdtBonusMgr > 0);
+          const st = statusOf.get(r.id) ?? "all";
+          const stOpt = STATUS_OPTIONS.find((s) => s.key === st);
+          return (
+            <div
+              key={r.id}
+              className="bg-card rounded-lg ring-1 ring-foreground/10 p-3 space-y-2"
+            >
+              <div className="flex justify-between items-start gap-2">
+                <div className="min-w-0">
+                  <Link
+                    href={`/products/${r.productId}`}
+                    className="font-mono text-sm font-semibold text-blue-600 hover:underline"
+                  >
+                    {r.unitCode}
+                  </Link>
+                  <div className="text-xs text-slate-500 truncate">
+                    {r.projectName} · {displayPartnerName(r.partnerName)}
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="text-sm font-bold tabular-nums text-slate-900">
+                    {fmtMoney(receivable)}
+                  </div>
+                  <div className="text-xs text-slate-500">{fmtDate(r.date)}</div>
+                </div>
+              </div>
+              <div className="flex justify-between items-center text-xs gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  {isBonus ? (
+                    <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 whitespace-nowrap">
+                      Thưởng nóng
+                    </span>
+                  ) : (
+                    <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 whitespace-nowrap">
+                      HH Sale
+                    </span>
+                  )}
+                  {stOpt && (
+                    <span className="text-slate-500 truncate">{stOpt.label}</span>
+                  )}
+                </div>
+                <Link
+                  href={`/revenues/${r.id}/edit${editQs}`}
+                  className="text-blue-600 hover:underline text-xs shrink-0"
+                >
+                  Sửa →
+                </Link>
+              </div>
+              <div className="text-xs pt-1 border-t border-slate-100 flex justify-between">
+                <span className={paid > 0 ? "text-green-700" : "text-slate-400"}>
+                  {paid > 0 ? `Đã thu: ${fmtMoney(paid)}` : "Chưa thu"}
+                </span>
+                <span className={remaining < 1000 ? "text-slate-400" : "text-red-600 font-medium"}>
+                  {remaining >= 1000 ? `Còn: ${fmtMoney(remaining)}` : "✓ đủ"}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+        {rows2.length === 0 && (
+          <div className="text-center text-slate-500 text-sm p-8 bg-card rounded-lg ring-1 ring-foreground/10">
+            Không có đợt đối chiếu nào.
+          </div>
+        )}
+      </div>
+
+      {/* Desktop table (≥ md) */}
+      <Card className="hidden md:block p-0 gap-0 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-xs text-slate-600">
             <tr>
