@@ -105,7 +105,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               </header>
               <div className="max-w-7xl mx-auto p-4 md:p-6 lg:px-8 w-full">{children}</div>
               <AppFooter />
-              <div aria-hidden className="h-24 md:h-28" />
             </SidebarInset>
           </SidebarProvider>
         </TooltipProvider>
