@@ -574,6 +574,26 @@ export default async function ProductDetailPage({
             const sameFee = Math.abs(feeReal - feeSale) < 1000;
             return (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                <div className={`bg-slate-50 rounded-lg px-3 py-2 ${pmgHistory.length > 1 ? "col-span-2" : ""}`}>
+                  <div className="text-xs text-slate-500 mb-1">Lịch sử %PMG_LK</div>
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {pmgHistory.length === 0 ? (
+                      <span className="text-sm font-medium tabular-nums">
+                        {fmtPctTight(p.pmgRate)}
+                      </span>
+                    ) : (
+                      pmgHistory.map((h, i) => (
+                        <span
+                          key={h.rate}
+                          className={`text-xs px-2 py-0.5 rounded ${i === pmgHistory.length - 1 ? "bg-amber-200 text-amber-900 font-semibold" : "bg-slate-200 text-slate-600"}`}
+                        >
+                          {fmtPct(h.rate, 2)}
+                          {h.date && <span className="ml-1 text-[10px] opacity-70">({fmtDate(h.date)})</span>}
+                        </span>
+                      ))
+                    )}
+                  </div>
+                </div>
                 {sameFee ? (
                   <Info
                     label="Phí admin"
@@ -599,28 +619,6 @@ export default async function ProductDetailPage({
               </div>
             );
           })()}
-
-          {/* Lịch sử %PMG_LK — full width block riêng vì chứa nhiều chip */}
-          <div className="bg-slate-50 rounded-lg px-3 py-2 mb-3">
-            <div className="text-xs text-slate-500 mb-1">Lịch sử %PMG_LK</div>
-            <div className="flex flex-wrap gap-1.5">
-              {pmgHistory.length === 0 ? (
-                <span className="text-sm font-medium tabular-nums">
-                  {fmtPctTight(p.pmgRate)}
-                </span>
-              ) : (
-                pmgHistory.map((h, i) => (
-                  <span
-                    key={h.rate}
-                    className={`text-xs px-2 py-0.5 rounded ${i === pmgHistory.length - 1 ? "bg-amber-200 text-amber-900 font-semibold" : "bg-slate-200 text-slate-600"}`}
-                  >
-                    {fmtPct(h.rate, 2)}
-                    {h.date && <span className="ml-1 text-[10px] opacity-70">({fmtDate(h.date)})</span>}
-                  </span>
-                ))
-              )}
-            </div>
-          </div>
 
           {/* Lịch sử Phí admin sale — chỉ hiện khi có adjustment (avoid noise) */}
           {adminFeeSaleHistory.length > 0 && (
