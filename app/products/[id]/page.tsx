@@ -531,7 +531,7 @@ export default async function ProductDetailPage({
 
       {/* === 1. THÔNG TIN CĂN === (bỏ mã căn/mã SP/loại giao dịch/dự án/đối tác
            vì đã hiện ở header title/breadcrumb/badge) */}
-      <SectionCard title="1. Thông tin căn" icon="🏠" hidden={activeSection !== "overview"}>
+      <SectionCard title="Thông tin căn" icon="🏠" hidden={activeSection !== "overview"}>
         {(() => {
           const tpkdName = nvkdCtvUnassigned
             ? null
@@ -566,7 +566,7 @@ export default async function ProductDetailPage({
 
       {/* === 2. DOANH THU === (chỉ áp dụng sơ cấp) */}
       {!isSecondary && (
-        <SectionCard title="2. Doanh thu (CĐT/F1 trả BRE)" icon="💰" hidden={activeSection !== "revenue"}>
+        <SectionCard title="Doanh thu" icon="💰" hidden={activeSection !== "revenue"}>
           {/* Info blocks: chuẩn grid 1/2/4 responsive — nhất quán với section giá vốn */}
           {(() => {
             const feeReal = Number(p.adminFee ?? 0);
@@ -699,7 +699,7 @@ export default async function ProductDetailPage({
       )}
 
       {/* === 3. GIÁ VỐN === */}
-      <SectionCard title={isSecondary ? "2. Giá vốn (BRE trả NVKD)" : "3. Giá vốn (BRE trả nội bộ)"} icon="🏦" hidden={activeSection !== "cost"}>
+      <SectionCard title="Giá vốn" icon="🏦" hidden={activeSection !== "cost"}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
           {!isSecondary && (
             <Info
@@ -788,13 +788,9 @@ export default async function ProductDetailPage({
         })()}
       </SectionCard>
 
-      {/* === 3. CƠ CẤU PHÂN BỔ TIỀN === */}
+      {/* === CƠ CẤU PHÂN BỔ TIỀN === */}
       <SectionCard
-        title={
-          isSecondary
-            ? "3. Cơ cấu doanh thu / giá vốn"
-            : "4. Cơ cấu phân bổ tiền (dự kiến khi thu đủ 100%)"
-        }
+        title={isSecondary ? "Cơ cấu doanh thu / giá vốn" : "Cơ cấu phân bổ tiền"}
         icon="📊"
         hidden={activeSection !== "overview"}
       >
@@ -1073,7 +1069,7 @@ export default async function ProductDetailPage({
 
       {/* === 4. THU PHÍ TỪ CĐT === (chỉ áp dụng cho sơ cấp) */}
       {!isSecondary && (
-      <SectionCard title="5. Thu phí HH từ CĐT" icon="💵" hidden={activeSection !== "revenue"}>
+      <SectionCard title="Thu phí HH từ CĐT" icon="💵" hidden={activeSection !== "revenue"}>
         {(() => {
           const hasBonus = expectedBonus > 0 || receivedBonus > 0;
           const expectedTotal = expectedHHSale + expectedBonus;
@@ -1511,7 +1507,7 @@ export default async function ProductDetailPage({
       )}
 
       {/* === 5. TRẢ PHÍ NỘI BỘ === */}
-      <SectionCard title={isSecondary ? "4. Trả phí NVKD" : "6. Trả phí nội bộ (HH sale, KPI, thưởng)"} icon="🏦" hidden={activeSection !== "cost"}>
+      <SectionCard title={isSecondary ? "Trả phí NVKD" : "Trả phí nội bộ"} icon="🏦" hidden={activeSection !== "cost"}>
         {(() => {
           // Nếu chưa có payments_out riêng, coi dòng đối chiếu = đã trả
           const hasExplicitPayments = totalPaidOut > 0;
