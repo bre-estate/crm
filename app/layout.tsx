@@ -11,6 +11,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Toaster } from "sonner";
+import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { resolvePermissions, hasPermission as checkPerm } from "@/lib/permissions";
 import { Geist } from "next/font/google";
@@ -100,8 +101,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               {/* Mobile top bar với hamburger — desktop ẩn */}
               <header className="md:hidden sticky top-0 z-20 bg-card border-b border-foreground/10 flex items-center gap-2 px-3 py-2">
                 <SidebarTrigger />
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/logo.png" alt="BRE" className="h-7 w-auto" />
+                <Link href="/" aria-label="Về trang chủ" className="inline-flex">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/logo.png" alt="BRE" className="h-7 w-auto" />
+                </Link>
               </header>
               <div className="max-w-7xl mx-auto p-4 md:p-6 lg:px-8 w-full">{children}</div>
               <AppFooter />
