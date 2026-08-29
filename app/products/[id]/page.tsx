@@ -1059,9 +1059,6 @@ export default async function ProductDetailPage({
                 </div>
               </div>
 
-              <div className="text-xs text-slate-500 italic">
-                Số dự kiến khi thu đủ 100% phí. Số thực đã trả có thể khác — xem ở mục 6.
-              </div>
             </div>
           );
         })()}
