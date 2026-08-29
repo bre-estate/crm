@@ -574,10 +574,6 @@ export default async function ProductDetailPage({
             const sameFee = Math.abs(feeReal - feeSale) < 1000;
             return (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-                <Info
-                  label="Giá tính PMG (= giá bán)"
-                  value={fmtMoney(p.pmgBasePrice)}
-                />
                 {sameFee ? (
                   <Info
                     label="Phí admin"
