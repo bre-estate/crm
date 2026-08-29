@@ -340,11 +340,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {topSale.length > 0 && (
             <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
-              <div className="p-3 font-bold text-sm text-slate-700 border-b">🏆 Top 3 nhân viên (DT năm)</div>
+              <div className="p-3 font-bold text-sm text-slate-700 border-b border-slate-100">🏆 Top 3 nhân viên (DT năm)</div>
               <table className="w-full text-sm">
                 <tbody>
                   {topSale.map((s: any, i: number) => (
-                    <tr key={i} className="border-t">
+                    <tr key={i} className="border-t border-slate-100">
                       <td className="p-2">
                         <span className="text-xs text-slate-500 mr-2">#{i + 1}</span>
                         <span className="font-medium">{s.name}</span>
@@ -359,11 +359,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
           )}
           {topProject.length > 0 && (
             <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden">
-              <div className="p-3 font-bold text-sm text-slate-700 border-b">🏗️ Top 3 dự án (DT năm)</div>
+              <div className="p-3 font-bold text-sm text-slate-700 border-b border-slate-100">🏗️ Top 3 dự án (DT năm)</div>
               <table className="w-full text-sm">
                 <tbody>
                   {topProject.map((p: any, i: number) => (
-                    <tr key={i} className="border-t">
+                    <tr key={i} className="border-t border-slate-100">
                       <td className="p-2">
                         <span className="text-xs text-slate-500 mr-2">#{i + 1}</span>
                         <span className="font-medium">{p.name}</span>
