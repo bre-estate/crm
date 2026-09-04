@@ -71,6 +71,7 @@ type Props = {
   defaultProductId?: number;
   previousRecons?: PreviousRecon[];
   allRecons?: AllReconRow[]; // Nếu có, dùng để tự filter previous theo productId+costType (client-side)
+  cashByReconId?: Record<number, number>; // reconId → tổng cash đã chi, để hiện "còn nợ" trong form new
   employees?: EmployeeOption[];
   onSave: (fd: FormData) => Promise<void>;
   onDelete?: () => Promise<void>;
@@ -98,6 +99,7 @@ export default function CostForm({
   defaultProductId,
   previousRecons: previousReconsProp = [],
   allRecons,
+  cashByReconId = {},
   employees = [],
   onSave,
   onDelete,
@@ -362,6 +364,22 @@ export default function CostForm({
     () => previousRecons.reduce((s, r) => s + Number(r.amount ?? 0), 0),
     [previousRecons],
   );
+
+  // Tổng cash đã chi cho các đợt trước (để show "còn nợ NVKD")
+  const cashPaidPrev = useMemo(
+    () => previousRecons.reduce((s, r) => s + (cashByReconId[r.id] ?? 0), 0),
+    [previousRecons, cashByReconId],
+  );
+  const stillOwedPrev = Math.max(0, paidBefore - cashPaidPrev);
+  // Recon đầu tiên còn nợ cash → link "Chi thêm" nếu user vào nhầm
+  const firstOwingRecon = useMemo(() => {
+    for (const r of previousRecons) {
+      const cash = cashByReconId[r.id] ?? 0;
+      const owed = Number(r.amount ?? 0) - cash;
+      if (owed >= 1000) return { id: r.id, owed };
+    }
+    return null;
+  }, [previousRecons, cashByReconId]);
 
   // N = Tiến độ PMG đã thu tiền đến ngày ĐC (%). Excel col 13.
   // Khách đã trả CĐT bao nhiêu % — dùng công thức Excel:
@@ -722,6 +740,24 @@ export default function CostForm({
           )}
         </div>
 
+        {/* Warning banner: recon cũ còn nợ cash → gợi ý chi thêm thay vì tạo đợt mới */}
+        {!isEdit && firstOwingRecon && (
+          <div className="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            <div className="font-semibold">⚠️ Đợt trước còn nợ cash {fmtMoney(stillOwedPrev)}</div>
+            <div className="mt-0.5">
+              Đã ĐC {fmtMoney(paidBefore)}, mới chi {fmtMoney(cashPaidPrev)}. Nếu chỉ cần trả tiếp
+              cho đợt cũ (không phải tạo đợt mới vì M/N tăng),{" "}
+              <a
+                href={`/costs/${firstOwingRecon.id}/edit?returnTo=${product ? `/products/${product.id}` : "/costs"}`}
+                className="underline font-medium text-orange-700 hover:text-orange-900"
+              >
+                vào edit đợt cũ → tab thanh toán → thêm chi
+              </a>
+              .
+            </div>
+          </div>
+        )}
+
         {/* Progress bar trực quan cho loại chi phí đang chọn */}
         {product && targetForType > 0 && (() => {
           // Với flat cost (KPI + thưởng + hỗ trợ khách) → "đợt này" = totalAmt user nhập
@@ -854,6 +890,18 @@ export default function CostForm({
             <div className="text-[10px] text-slate-400 mt-0.5">
               {fmtPctRaw(paidBeforePct, 1)} mức tối đa
             </div>
+            {!isEdit && paidBefore > 0 && (
+              <div className="text-[10px] mt-1 pt-1 border-t border-slate-200">
+                <div className="text-slate-500">
+                  Cash đã chi: <span className="tabular-nums text-slate-700">{fmtMoney(cashPaidPrev)}</span>
+                </div>
+                {stillOwedPrev >= 1000 && (
+                  <div className="text-red-600 font-medium">
+                    Còn nợ NVKD: <span className="tabular-nums">{fmtMoney(stillOwedPrev)}</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           {(() => {
             const thisAmountDisplay = isFlatCost ? Math.max(0, totalAmt) : thisAmountFromN;

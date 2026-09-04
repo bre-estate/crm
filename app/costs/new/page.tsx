@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { products, projects, partners, costReconciliations, employees } from "@/lib/schema";
+import { products, projects, partners, costReconciliations, employees, paymentsOut } from "@/lib/schema";
 import { asc, eq } from "drizzle-orm";
 import Link from "next/link";
 import CostForm from "../CostForm";
@@ -55,6 +55,20 @@ export default async function NewCostPage({ searchParams }: { searchParams: Sear
     .from(costReconciliations)
     .orderBy(asc(costReconciliations.reconciliationDate));
 
+  // Cash đã chi cho từng recon → CostForm hiển thị "còn nợ NVKD" khi tạo đợt mới
+  const cashRows = await db
+    .select({
+      reconId: paymentsOut.costReconciliationId,
+      cash: paymentsOut.amount,
+    })
+    .from(paymentsOut);
+  const cashByReconId: Record<number, number> = {};
+  for (const r of cashRows) {
+    if (r.reconId != null) {
+      cashByReconId[r.reconId] = (cashByReconId[r.reconId] ?? 0) + Number(r.cash ?? 0);
+    }
+  }
+
   const allEmployees = await db
     .select({
       id: employees.id,
@@ -82,6 +96,7 @@ export default async function NewCostPage({ searchParams }: { searchParams: Sear
         products={productOptions}
         defaultProductId={defaultProductId}
         allRecons={allRecons}
+        cashByReconId={cashByReconId}
         employees={allEmployees}
         onSave={createCost}
       />
