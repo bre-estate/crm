@@ -686,7 +686,7 @@ async function AggregatedCostsView(props: AggregatedProps) {
     "kpi_admin",
   ] as const;
 
-  const [allProjects, prodRows, costAgg] = await Promise.all([
+  const [allProjects, prodRows, costAgg, cashAgg, reconList] = await Promise.all([
     db
       .select({ id: projects.id, name: projects.name, fullCode: projects.fullCode })
       .from(projects)
@@ -726,12 +726,61 @@ async function AggregatedCostsView(props: AggregatedProps) {
       })
       .from(costReconciliations)
       .groupBy(costReconciliations.productId, costReconciliations.costType),
+    db
+      .select({
+        productId: costReconciliations.productId,
+        costType: costReconciliations.costType,
+        cash: sum(paymentsOut.amount).as("cash"),
+      })
+      .from(paymentsOut)
+      .innerJoin(
+        costReconciliations,
+        eq(paymentsOut.costReconciliationId, costReconciliations.id),
+      )
+      .groupBy(costReconciliations.productId, costReconciliations.costType),
+    db
+      .select({
+        id: costReconciliations.id,
+        productId: costReconciliations.productId,
+        costType: costReconciliations.costType,
+        payable: costReconciliations.amountPayableThisTime,
+      })
+      .from(costReconciliations),
   ]);
 
   // Map (productId, costType) → sum payable
   const payableMap = new Map<string, number>();
   for (const r of costAgg) {
     payableMap.set(`${r.productId}|${r.costType}`, Number(r.payable ?? 0));
+  }
+  // Map (productId, costType) → sum cash đã chi
+  const cashPaidMap = new Map<string, number>();
+  for (const r of cashAgg) {
+    cashPaidMap.set(`${r.productId}|${r.costType}`, Number(r.cash ?? 0));
+  }
+  // Cash per recon → tính "còn nợ" per recon, chọn recon còn nợ cho link "$ Chi thêm"
+  const cashByRecon = new Map<number, number>();
+  const paidRawByRecon = await db
+    .select({
+      reconId: paymentsOut.costReconciliationId,
+      cash: sum(paymentsOut.amount).as("cash"),
+    })
+    .from(paymentsOut)
+    .groupBy(paymentsOut.costReconciliationId);
+  for (const r of paidRawByRecon) {
+    if (r.reconId != null) cashByRecon.set(r.reconId, Number(r.cash ?? 0));
+  }
+  // Map (productId, costType) → recon còn nợ nhiều nhất (link "$ Chi thêm")
+  const owingReconMap = new Map<string, number>();
+  const owingReconCountMap = new Map<string, number>();
+  for (const rec of reconList) {
+    const paid = cashByRecon.get(rec.id) ?? 0;
+    const owed = Number(rec.payable ?? 0) - paid;
+    if (owed < 1000) continue;
+    const key = `${rec.productId}|${rec.costType}`;
+    owingReconCountMap.set(key, (owingReconCountMap.get(key) ?? 0) + 1);
+    const cur = owingReconMap.get(key);
+    if (cur == null) owingReconMap.set(key, rec.id);
   }
 
   type Row = {
@@ -744,6 +793,10 @@ async function AggregatedCostsView(props: AggregatedProps) {
     costType: string;
     target: number;
     payable: number;
+    cashPaid: number;
+    stillOwed: number;
+    owingReconId: number | null;
+    owingReconCount: number;
     pct: number;
     remaining: number;
     status: "not_started" | "partial" | "done" | "over" | "na";
@@ -766,7 +819,10 @@ async function AggregatedCostsView(props: AggregatedProps) {
     };
     for (const t of COST_TYPE_LIST) {
       const target = computeLuyKe(cfg, t, 1);
-      const payable = payableMap.get(`${p.id}|${t}`) ?? 0;
+      const key = `${p.id}|${t}`;
+      const payable = payableMap.get(key) ?? 0;
+      const cashPaid = cashPaidMap.get(key) ?? 0;
+      const stillOwed = Math.max(0, payable - cashPaid);
       if (target < 1000 && Math.abs(payable) < 1000) continue; // căn không có loại này
       const pct = target > 0 ? (payable / target) * 100 : 0;
       const remaining = Math.max(0, target - payable);
@@ -786,6 +842,10 @@ async function AggregatedCostsView(props: AggregatedProps) {
         costType: t,
         target,
         payable,
+        cashPaid,
+        stillOwed,
+        owingReconId: owingReconMap.get(key) ?? null,
+        owingReconCount: owingReconCountMap.get(key) ?? 0,
         pct,
         remaining,
         status: s,
@@ -940,7 +1000,9 @@ async function AggregatedCostsView(props: AggregatedProps) {
               <th className="text-left p-2">Dự án</th>
               <th className="text-left p-2">NVKD</th>
               <th className="text-right p-2">Target</th>
-              <th className="text-right p-2">Đã chi</th>
+              <th className="text-right p-2" title="Đã đối chiếu (biên bản chốt số phải trả)">Đã ĐC</th>
+              <th className="text-right p-2" title="Cash BRE đã chi thực tế qua payments_out">Đã chi</th>
+              <th className="text-right p-2" title="Payable − Đã chi = tiền còn nợ NVKD">Còn nợ</th>
               <th className="text-right p-2">%</th>
               <th className="text-right p-2">Còn thiếu</th>
               <th className="text-left p-2">Trạng thái</th>
@@ -958,7 +1020,7 @@ async function AggregatedCostsView(props: AggregatedProps) {
                 <>
                   {showLoaiHdr && !filterCostType && (
                     <tr key={`hdr-${r.costType}`} className="bg-slate-100 border-t-2 border-slate-300">
-                      <td colSpan={10} className="p-2 text-xs font-semibold text-slate-700">
+                      <td colSpan={12} className="p-2 text-xs font-semibold text-slate-700">
                         {costTypeLabel(r.costType)}
                       </td>
                     </tr>
@@ -988,6 +1050,20 @@ async function AggregatedCostsView(props: AggregatedProps) {
                         <span className="text-slate-400">—</span>
                       )}
                     </td>
+                    <td className="p-2 text-right tabular-nums text-slate-700">
+                      {r.cashPaid > 0 ? (
+                        fmtMoney(r.cashPaid)
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </td>
+                    <td
+                      className={`p-2 text-right tabular-nums ${
+                        r.stillOwed >= 1000 ? "text-red-600 font-medium" : "text-slate-400"
+                      }`}
+                    >
+                      {r.stillOwed >= 1000 ? fmtMoney(r.stillOwed) : "—"}
+                    </td>
                     <td
                       className={`p-2 text-right tabular-nums font-semibold ${
                         r.status === "done"
@@ -1016,18 +1092,37 @@ async function AggregatedCostsView(props: AggregatedProps) {
                       </span>
                     </td>
                     <td className="p-2 text-right">
-                      {r.status === "done" ? (
-                        <span className="text-xs text-slate-400" title="Đã chi đủ 100% target">
-                          —
-                        </span>
-                      ) : (
-                        <Link
-                          href={`/costs/new?productId=${r.productId}&costType=${r.costType}`}
-                          className="text-blue-600 hover:underline text-xs whitespace-nowrap"
-                        >
-                          + Tạo ĐC
-                        </Link>
-                      )}
+                      <div className="flex flex-col items-end gap-1">
+                        {r.status !== "done" && (
+                          <Link
+                            href={`/costs/new?productId=${r.productId}&costType=${r.costType}`}
+                            className="text-blue-600 hover:underline text-xs whitespace-nowrap"
+                            title="CĐT chi tiếp đợt mới → tạo biên bản đối chiếu mới"
+                          >
+                            + Đối chiếu tiếp
+                          </Link>
+                        )}
+                        {r.stillOwed >= 1000 && r.owingReconId != null && (
+                          <Link
+                            href={
+                              r.owingReconCount === 1
+                                ? `/costs/${r.owingReconId}/edit?returnTo=/costs`
+                                : `/costs?view=recon&unitCode=${encodeURIComponent(r.unitCode)}&costType=${r.costType}`
+                            }
+                            className="text-orange-600 hover:underline text-xs whitespace-nowrap"
+                            title={
+                              r.owingReconCount === 1
+                                ? "Chi thêm cho ĐC còn nợ"
+                                : `${r.owingReconCount} ĐC còn nợ — xem danh sách`
+                            }
+                          >
+                            $ Chi thêm
+                          </Link>
+                        )}
+                        {r.status === "done" && r.stillOwed < 1000 && (
+                          <span className="text-xs text-slate-400" title="Đã chi đủ 100% target + hết nợ">—</span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 </>
@@ -1035,7 +1130,7 @@ async function AggregatedCostsView(props: AggregatedProps) {
             })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={10} className="p-6 text-center text-slate-500">
+                <td colSpan={12} className="p-6 text-center text-slate-500">
                   Không có căn nào khớp bộ lọc.
                 </td>
               </tr>
