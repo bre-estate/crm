@@ -119,12 +119,15 @@ export default function CostForm({
   const [employeeName, setEmployeeName] = useState<string>(
     recon?.employeeName ?? product?.salesPerson ?? "",
   );
-  // Auto-suggest employeeName khi đổi product/costType (chỉ khi CHƯA có employeeName)
+  const employeeTouchedRef = useRef(false);
+  // Auto-refill employeeName khi đổi product/costType (new mode, user chưa touch)
   useEffect(() => {
     if (isEdit) return;
-    if (employeeName) return;
+    if (employeeTouchedRef.current) return;
     if (product?.salesPerson && costType === "sale_commission") {
       setEmployeeName(product.salesPerson);
+    } else if (!product?.salesPerson) {
+      setEmployeeName("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productId, costType]);
@@ -451,6 +454,23 @@ export default function CostForm({
     );
   }, [maxPrevN, isEdit, progressN]);
 
+  // New mode: khi user đổi căn/loại chi phí → reset N + M về default của căn mới
+  // (không giữ giá trị đã gõ cho căn cũ, sẽ gây nhầm lẫn).
+  const lastKeyRef = useRef(`${productId}|${costType}`);
+  useEffect(() => {
+    if (isEdit) return;
+    const currentKey = `${productId}|${costType}`;
+    if (currentKey === lastKeyRef.current) return;
+    lastKeyRef.current = currentKey;
+    progressNTouchedRef.current = false;
+    setProgressN("");
+    setMInput(
+      currentM > 0
+        ? Number((currentM * 100).toFixed(6)).toString().replace(".", ",")
+        : "",
+    );
+  }, [productId, costType, isEdit, currentM]);
+
   // Auto default rate for KPI based on cost_type + product config
   const kpiRateDefault = useMemo(() => {
     if (costType === "kpi_ceo") return Number(product?.kpiCeoRate ?? 0);
@@ -570,7 +590,10 @@ export default function CostForm({
           <Field label="Tên người được đối chiếu" required>
             <SearchableSelect
               value={employeeName}
-              onChange={setEmployeeName}
+              onChange={(v) => {
+                employeeTouchedRef.current = true;
+                setEmployeeName(v);
+              }}
               placeholder="Gõ tên..."
               options={employees.map((e) => ({
                 value: e.name,
@@ -732,7 +755,7 @@ export default function CostForm({
       })()}
 
       {/* Progress + Payment cho đợt này */}
-      <Section title="📊 Số tiền cần trả (đối chiếu theo đợt)">
+      <Section title="📊 Số tiền đã đối chiếu">
         <div className="text-xs text-slate-500 -mt-2 mb-3">
           Loại chi phí: <b>{costTypeLabel(costType)}</b>
           {product?.salesPerson && costType === "sale_commission" && (
@@ -740,18 +763,21 @@ export default function CostForm({
           )}
         </div>
 
-        {/* Warning banner: recon cũ còn nợ cash → gợi ý chi thêm thay vì tạo đợt mới */}
+        {/* Warning banner: recon cũ chưa chi hết → gợi ý chi thêm thay vì tạo đợt mới */}
         {!isEdit && firstOwingRecon && (
           <div className="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-            <div className="font-semibold">⚠️ Đợt trước còn nợ cash {fmtMoney(stillOwedPrev)}</div>
+            <div className="font-semibold">
+              ⚠️ Đợt trước chưa chi hết — còn {fmtMoney(stillOwedPrev)}
+            </div>
             <div className="mt-0.5">
-              Đã ĐC {fmtMoney(paidBefore)}, mới chi {fmtMoney(cashPaidPrev)}. Nếu chỉ cần trả tiếp
-              cho đợt cũ (không phải tạo đợt mới vì M/N tăng),{" "}
+              Đã đối chiếu {fmtMoney(paidBefore)}, mới chi {fmtMoney(cashPaidPrev)}.
+              Chỉ tạo đợt mới khi CĐT chi thêm tiến độ tiếp theo. Nếu chỉ cần trả tiếp phần
+              còn thiếu cho đợt cũ,{" "}
               <a
                 href={`/costs/${firstOwingRecon.id}/edit?returnTo=${product ? `/products/${product.id}` : "/costs"}`}
                 className="underline font-medium text-orange-700 hover:text-orange-900"
               >
-                vào edit đợt cũ → tab thanh toán → thêm chi
+                mở đợt cũ và thêm khoản chi
               </a>
               .
             </div>
@@ -786,10 +812,7 @@ export default function CostForm({
               : "bg-blue-100 text-blue-700 border-blue-300";
           return (
             <div className="mb-4">
-              <div className="flex items-center justify-between mb-1.5">
-                <div className="text-xs font-semibold text-slate-700">
-                  Số <span className="text-orange-700">{costTypeLabel(costType)}</span> đã đối chiếu (các đợt cộng dồn, chưa phải đã trả)
-                </div>
+              <div className="flex items-center justify-end mb-1.5">
                 <span
                   className={`text-[11px] px-2 py-0.5 rounded border font-medium ${badgeCls}`}
                 >
@@ -893,11 +916,11 @@ export default function CostForm({
             {!isEdit && paidBefore > 0 && (
               <div className="text-[10px] mt-1 pt-1 border-t border-slate-200">
                 <div className="text-slate-500">
-                  Cash đã chi: <span className="tabular-nums text-slate-700">{fmtMoney(cashPaidPrev)}</span>
+                  Đã chi: <span className="tabular-nums text-slate-700">{fmtMoney(cashPaidPrev)}</span>
                 </div>
                 {stillOwedPrev >= 1000 && (
                   <div className="text-red-600 font-medium">
-                    Còn nợ NVKD: <span className="tabular-nums">{fmtMoney(stillOwedPrev)}</span>
+                    Chưa chi hết: <span className="tabular-nums">{fmtMoney(stillOwedPrev)}</span>
                   </div>
                 )}
               </div>
@@ -1152,7 +1175,7 @@ export default function CostForm({
                   >
                     {isAdjustment
                       ? "Điều chỉnh giảm / hoàn (số âm). VD chi dư đợt trước, đợt này thu lại."
-                      : "Auto = Lũy kế mới − đã ĐC trước. Có thể ghi đè. Nhập số âm (VD -1000000) khi cần hoàn."}
+                      : "Auto = Lũy kế mới − đã ĐC trước. Có thể ghi đè. Nhập số âm khi cần hoàn."}
                   </div>
                   <input
                     name="amountPayableThisTime"

@@ -79,7 +79,7 @@ export default function CostPaymentsEditor({ payments, payableAmount, onUpdate, 
         </div>
         <div>
           <span className="text-slate-500">
-            {isOverpaid ? "Chi dư:" : "Còn nợ:"}
+            {isOverpaid ? "Chi dư:" : "Chưa chi hết:"}
           </span>{" "}
           <span
             className={`font-semibold tabular-nums ${

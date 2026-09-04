@@ -1002,7 +1002,7 @@ async function AggregatedCostsView(props: AggregatedProps) {
               <th className="text-right p-2">Target</th>
               <th className="text-right p-2" title="Đã đối chiếu (biên bản chốt số phải trả)">Đã ĐC</th>
               <th className="text-right p-2" title="Cash BRE đã chi thực tế qua payments_out">Đã chi</th>
-              <th className="text-right p-2" title="Payable − Đã chi = tiền còn nợ NVKD">Còn nợ</th>
+              <th className="text-right p-2" title="Đã ĐC − Đã chi = tiền còn phải chi tiếp cho người này">Chưa chi</th>
               <th className="text-right p-2">%</th>
               <th className="text-right p-2">Còn thiếu</th>
               <th className="text-left p-2">Trạng thái</th>
@@ -1111,8 +1111,8 @@ async function AggregatedCostsView(props: AggregatedProps) {
                                 className="text-xs px-2 py-0.5 rounded bg-orange-50 text-orange-700 border border-orange-200 hover:bg-orange-100 whitespace-nowrap"
                                 title={
                                   r.owingReconCount === 1
-                                    ? `Trả tiếp ${fmtMoney(r.stillOwed)} còn nợ NVKD (recon cũ)`
-                                    : `${r.owingReconCount} ĐC còn nợ (${fmtMoney(r.stillOwed)}) — xem danh sách`
+                                    ? `Trả tiếp ${fmtMoney(r.stillOwed)} chưa chi hết cho đợt cũ`
+                                    : `${r.owingReconCount} đợt chưa chi hết (${fmtMoney(r.stillOwed)}) — xem danh sách`
                                 }
                               >
                                 Chi thêm
