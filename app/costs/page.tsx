@@ -1100,7 +1100,7 @@ async function AggregatedCostsView(props: AggregatedProps) {
                           return <span className="text-xs text-slate-400">—</span>;
                         }
                         return (
-                          <div className="inline-flex items-center gap-1">
+                          <div className="inline-flex flex-col items-end gap-0.5">
                             {canPayMore && (
                               <Link
                                 href={
@@ -1108,23 +1108,23 @@ async function AggregatedCostsView(props: AggregatedProps) {
                                     ? `/costs/${r.owingReconId}/edit?returnTo=/costs`
                                     : `/costs?view=recon&unitCode=${encodeURIComponent(r.unitCode)}&costType=${r.costType}`
                                 }
-                                className="inline-flex items-center justify-center w-7 h-7 rounded hover:bg-orange-100 text-orange-600"
+                                className="text-xs px-2 py-0.5 rounded bg-orange-50 text-orange-700 border border-orange-200 hover:bg-orange-100 whitespace-nowrap"
                                 title={
                                   r.owingReconCount === 1
-                                    ? `Chi thêm ${fmtMoney(r.stillOwed)} còn nợ`
+                                    ? `Trả tiếp ${fmtMoney(r.stillOwed)} còn nợ NVKD (recon cũ)`
                                     : `${r.owingReconCount} ĐC còn nợ (${fmtMoney(r.stillOwed)}) — xem danh sách`
                                 }
                               >
-                                💵
+                                Chi thêm
                               </Link>
                             )}
                             {canReconMore && (
                               <Link
                                 href={`/costs/new?productId=${r.productId}&costType=${r.costType}`}
-                                className="inline-flex items-center justify-center w-7 h-7 rounded hover:bg-blue-100 text-blue-600 font-bold"
-                                title={`+ Đối chiếu tiếp — CĐT chi thêm đợt mới (chưa ĐC ${fmtMoney(r.remaining)})`}
+                                className="text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 whitespace-nowrap"
+                                title={`Tạo ĐC mới khi CĐT chi thêm đợt (chưa ĐC ${fmtMoney(r.remaining)})`}
                               >
-                                ＋
+                                + ĐC mới
                               </Link>
                             )}
                           </div>
