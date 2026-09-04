@@ -42,6 +42,7 @@ type PreviousRecon = {
   amount: number | string | null;
   note: string | null;
   progressN?: number | string | null;
+  pmgLkSaleRate?: number | string | null;
 };
 
 // Recon light-weight cho client-side filter (từ /costs/new pre-load all).
@@ -52,6 +53,7 @@ export type AllReconRow = {
   date: string | null;
   amount: number | string | null;
   progressN: number | string | null;
+  pmgLkSaleRate?: number | string | null;
   employeeName: string;
   note: string | null;
 };
@@ -137,7 +139,7 @@ export default function CostForm({
             r.costType === costType &&
             (!isEdit || r.id !== recon?.id),
         )
-        .map((r) => ({ id: r.id, date: r.date, amount: r.amount, note: r.note, progressN: r.progressN }));
+        .map((r) => ({ id: r.id, date: r.date, amount: r.amount, note: r.note, progressN: r.progressN, pmgLkSaleRate: r.pmgLkSaleRate }));
     }
     return previousReconsProp;
   }, [previousReconsProp, allRecons, productId, costType, isEdit, recon?.id]);
@@ -145,6 +147,10 @@ export default function CostForm({
   // Max N (Tiến độ) của các đợt trước → N đợt này phải ≥ giá trị này (không lùi tiến độ)
   const maxPrevN = useMemo(() => {
     return previousRecons.reduce((mx, r) => Math.max(mx, Number(r.progressN ?? 0)), 0);
+  }, [previousRecons]);
+  // Max M (%PMG_LK_sale) đợt trước → gợi ý user M đợt này thường ≥ giá trị này
+  const maxPrevM = useMemo(() => {
+    return previousRecons.reduce((mx, r) => Math.max(mx, Number(r.pmgLkSaleRate ?? 0)), 0);
   }, [previousRecons]);
 
   // Tổng đã chi (payable) per (productId, costType) — compute từ allRecons.
@@ -363,9 +369,12 @@ export default function CostForm({
   // Amount đợt này = Lũy kế mới − Đã ĐC trước.
   const [progressN, setProgressN] = useState<string>(
     recon?.paymentProgressPct
-      ? (Number(recon.paymentProgressPct) * 100).toString().replace(".", ",")
+      ? Number((Number(recon.paymentProgressPct) * 100).toFixed(6))
+          .toString()
+          .replace(".", ",")
       : "",
   );
+  const progressNTouchedRef = useRef(false);
   const progressNNum = progressN ? Number(progressN.replace(/,/g, ".")) / 100 : 0;
 
   // Lũy kế mới theo N nhập (dùng công thức Excel)
@@ -411,6 +420,18 @@ export default function CostForm({
 
   // Validate N không được lùi so với đợt trước
   const isNRegression = progressN !== "" && progressNNum < maxPrevN;
+
+  // New mode: default N = max N đợt trước khi user chưa gõ (để "Đợt này" preview
+  // ngay số chênh vì M tăng, không phải để trống hoài).
+  useEffect(() => {
+    if (isEdit) return;
+    if (progressNTouchedRef.current) return;
+    if (progressN !== "") return;
+    if (maxPrevN <= 0) return;
+    setProgressN(
+      Number((maxPrevN * 100).toFixed(6)).toString().replace(".", ","),
+    );
+  }, [maxPrevN, isEdit, progressN]);
 
   // Auto default rate for KPI based on cost_type + product config
   const kpiRateDefault = useMemo(() => {
@@ -923,6 +944,7 @@ export default function CostForm({
                   value={progressN}
                   onChange={(e) => {
                     manuallyOverriddenRef.current = false;
+                    progressNTouchedRef.current = true;
                     setProgressN(sanitizeDecimalInput(e.target.value));
                   }}
                   placeholder={maxPrevN > 0 ? `≥ ${(maxPrevN * 100).toFixed(0)}` : "vd: 90 (khách trả 90%)"}
@@ -940,7 +962,9 @@ export default function CostForm({
                 <div className="text-[10px] text-slate-500 mt-1">
                   % khách đã trả CĐT
                   {maxPrevN > 0 && (
-                    <span className="block mt-0.5">Tối thiểu {(maxPrevN * 100).toFixed(0)}% (theo đợt trước)</span>
+                    <span className="block mt-0.5">
+                      Đợt trước N = {(maxPrevN * 100).toFixed(0)}% (tối thiểu cho đợt này)
+                    </span>
                   )}
                 </div>
               )}
@@ -970,6 +994,11 @@ export default function CostForm({
               ) : (
                 <div className="text-[10px] text-slate-500 mt-1">
                   Tỷ lệ lũy kế CĐT đã chi đến đợt này. Mức tối đa HĐ: {(currentM * 100).toFixed(2)}%
+                  {maxPrevM > 0 && !isEdit && (
+                    <span className="block mt-0.5">
+                      Đợt trước M = {(maxPrevM * 100).toFixed(2).replace(".", ",")}%
+                    </span>
+                  )}
                 </div>
               )}
             </Field>

@@ -1092,37 +1092,44 @@ async function AggregatedCostsView(props: AggregatedProps) {
                       </span>
                     </td>
                     <td className="p-2 text-right">
-                      <div className="flex flex-col items-end gap-1">
-                        {r.status !== "done" && (
-                          <Link
-                            href={`/costs/new?productId=${r.productId}&costType=${r.costType}`}
-                            className="text-blue-600 hover:underline text-xs whitespace-nowrap"
-                            title="CĐT chi tiếp đợt mới → tạo biên bản đối chiếu mới"
-                          >
-                            + Đối chiếu tiếp
-                          </Link>
-                        )}
-                        {r.stillOwed >= 1000 && r.owingReconId != null && (
-                          <Link
-                            href={
-                              r.owingReconCount === 1
-                                ? `/costs/${r.owingReconId}/edit?returnTo=/costs`
-                                : `/costs?view=recon&unitCode=${encodeURIComponent(r.unitCode)}&costType=${r.costType}`
-                            }
-                            className="text-orange-600 hover:underline text-xs whitespace-nowrap"
-                            title={
-                              r.owingReconCount === 1
-                                ? "Chi thêm cho ĐC còn nợ"
-                                : `${r.owingReconCount} ĐC còn nợ — xem danh sách`
-                            }
-                          >
-                            $ Chi thêm
-                          </Link>
-                        )}
-                        {r.status === "done" && r.stillOwed < 1000 && (
-                          <span className="text-xs text-slate-400" title="Đã chi đủ 100% target + hết nợ">—</span>
-                        )}
-                      </div>
+                      {(() => {
+                        const canReconMore =
+                          r.status !== "done" && r.status !== "na" && r.status !== "over";
+                        const canPayMore = r.stillOwed >= 1000 && r.owingReconId != null;
+                        if (!canReconMore && !canPayMore) {
+                          return <span className="text-xs text-slate-400">—</span>;
+                        }
+                        return (
+                          <div className="inline-flex items-center gap-1">
+                            {canPayMore && (
+                              <Link
+                                href={
+                                  r.owingReconCount === 1
+                                    ? `/costs/${r.owingReconId}/edit?returnTo=/costs`
+                                    : `/costs?view=recon&unitCode=${encodeURIComponent(r.unitCode)}&costType=${r.costType}`
+                                }
+                                className="inline-flex items-center justify-center w-7 h-7 rounded hover:bg-orange-100 text-orange-600"
+                                title={
+                                  r.owingReconCount === 1
+                                    ? `Chi thêm ${fmtMoney(r.stillOwed)} còn nợ`
+                                    : `${r.owingReconCount} ĐC còn nợ (${fmtMoney(r.stillOwed)}) — xem danh sách`
+                                }
+                              >
+                                💵
+                              </Link>
+                            )}
+                            {canReconMore && (
+                              <Link
+                                href={`/costs/new?productId=${r.productId}&costType=${r.costType}`}
+                                className="inline-flex items-center justify-center w-7 h-7 rounded hover:bg-blue-100 text-blue-600 font-bold"
+                                title={`+ Đối chiếu tiếp — CĐT chi thêm đợt mới (chưa ĐC ${fmtMoney(r.remaining)})`}
+                              >
+                                ＋
+                              </Link>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </td>
                   </tr>
                 </>

@@ -48,6 +48,7 @@ export default async function NewCostPage({ searchParams }: { searchParams: Sear
       date: costReconciliations.reconciliationDate,
       amount: costReconciliations.amountPayableThisTime,
       progressN: costReconciliations.paymentProgressPct,
+      pmgLkSaleRate: costReconciliations.pmgLkSaleRate,
       employeeName: costReconciliations.employeeName,
       note: costReconciliations.note,
     })
