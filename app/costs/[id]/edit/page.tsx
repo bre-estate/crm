@@ -194,6 +194,7 @@ export default async function EditCostPage({
           amount: Number(p.amount ?? 0),
           note: p.note,
         }))}
+        payableAmount={Number(recon.amountPayableThisTime ?? 0)}
         onUpdate={async (paymentId, fd) => {
           "use server";
           await updatePaymentOut(paymentId, fd);

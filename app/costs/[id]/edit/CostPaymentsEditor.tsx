@@ -5,6 +5,7 @@ import MoneyInput from "@/components/MoneyInput";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { fmtMoney } from "@/lib/format";
 
 type Payment = {
   id: number;
@@ -15,6 +16,7 @@ type Payment = {
 
 type Props = {
   payments: Payment[];
+  payableAmount: number;
   onUpdate: (id: number, fd: FormData) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
   onAdd: (fd: FormData) => Promise<void>;
@@ -26,9 +28,14 @@ const isRedirect = (e: unknown): boolean =>
   "digest" in e &&
   String((e as { digest?: unknown }).digest ?? "").startsWith("NEXT_REDIRECT");
 
-export default function CostPaymentsEditor({ payments, onUpdate, onDelete, onAdd }: Props) {
+export default function CostPaymentsEditor({ payments, payableAmount, onUpdate, onDelete, onAdd }: Props) {
   const [pending, start] = useTransition();
   const [showAdd, setShowAdd] = useState(false);
+
+  const totalPaid = payments.reduce((s, p) => s + Number(p.amount ?? 0), 0);
+  const owed = payableAmount - totalPaid;
+  const isFullyPaid = Math.abs(owed) < 1000;
+  const isOverpaid = owed <= -1000;
 
   const safeRun = (fn: () => Promise<void>) =>
     start(async () => {
@@ -58,7 +65,37 @@ export default function CostPaymentsEditor({ payments, onUpdate, onDelete, onAdd
         )}
       </div>
 
-      <div className="text-xs text-slate-500 -mt-1">
+      {/* Summary: ĐC / Đã chi / Còn nợ */}
+      <div className="rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+        <div>
+          <span className="text-slate-500">Đợt này ĐC:</span>{" "}
+          <span className="font-semibold tabular-nums text-slate-900">
+            {fmtMoney(payableAmount)}
+          </span>
+        </div>
+        <div>
+          <span className="text-slate-500">Đã chi:</span>{" "}
+          <span className="font-semibold tabular-nums text-slate-900">{fmtMoney(totalPaid)}</span>
+        </div>
+        <div>
+          <span className="text-slate-500">
+            {isOverpaid ? "Chi dư:" : "Còn nợ:"}
+          </span>{" "}
+          <span
+            className={`font-semibold tabular-nums ${
+              isFullyPaid
+                ? "text-green-700"
+                : isOverpaid
+                  ? "text-purple-700"
+                  : "text-red-600"
+            }`}
+          >
+            {isFullyPaid ? "✓ đủ" : fmtMoney(Math.abs(owed))}
+          </span>
+        </div>
+      </div>
+
+      <div className="text-xs text-slate-500">
         Số tiền có thể âm (VD chi dư đợt trước, đợt sau thu lại → nhập -1.000.000).
       </div>
 
