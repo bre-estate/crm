@@ -296,7 +296,9 @@ export default function CostForm({
   // Chốt 2026-08-07: Excel BCDT cột M cho user nhập tay, không auto tính.
   // Pattern mới CĐT chi rải rác cần override rate.
   const [mInput, setMInput] = useState<string>(
-    defaultM > 0 ? (defaultM * 100).toString().replace(".", ",") : "",
+    defaultM > 0
+      ? Number((defaultM * 100).toFixed(6)).toString().replace(".", ",")
+      : "",
   );
   const mNum = mInput ? Number(mInput.replace(/,/g, ".")) / 100 : defaultM;
 
