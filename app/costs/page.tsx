@@ -531,9 +531,8 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
                   {isFirstOfGroup && subtotal && (() => {
                     const target = subtotal.target;
                     const pct = target > 0 ? (subtotal.payable / target) * 100 : 0;
-                    const tolerance = Math.max(5000, target * 0.01);
-                    const done = target > 0 && Math.abs(subtotal.payable - target) < tolerance;
-                    const over = target > 0 && subtotal.payable - target > tolerance;
+                    const done = target > 0 && Math.abs(subtotal.payable - target) < 1000;
+                    const over = target > 0 && subtotal.payable - target > 1000;
                     return (
                       <tr
                         key={`hdr-${r.costType}`}
@@ -827,14 +826,11 @@ async function AggregatedCostsView(props: AggregatedProps) {
       if (target < 1000 && Math.abs(payable) < 1000) continue; // căn không có loại này
       const pct = target > 0 ? (payable / target) * 100 : 0;
       const remaining = Math.max(0, target - payable);
-      // Threshold tolerance = max(5.000 VND, 1% target) — bù rounding float. Với KPI
-      // Admin target ~380k, 1% ≈ 3.8k → chênh <3.8k coi như done, không "chi quá".
-      const tolerance = Math.max(5000, target * 0.01);
       let s: Row["status"];
       if (target < 1000) s = "na";
       else if (Math.abs(payable) < 1000) s = "not_started";
-      else if (payable > target + tolerance) s = "over";
-      else if (Math.abs(payable - target) < tolerance) s = "done";
+      else if (payable > target + 1000) s = "over";
+      else if (Math.abs(payable - target) < 1000) s = "done";
       else s = "partial";
       rows.push({
         productId: p.id,
