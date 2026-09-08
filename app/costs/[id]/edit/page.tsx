@@ -7,6 +7,7 @@ import {
   partners,
   employees,
   activityLogs,
+  commissionPolicies,
 } from "@/lib/schema";
 import { and, asc, desc, eq, ne } from "drizzle-orm";
 import { notFound } from "next/navigation";
@@ -106,10 +107,23 @@ export default async function EditCostPage({
       id: employees.id,
       name: employees.name,
       position: employees.position,
+      departmentId: employees.departmentId,
+      aliasOfId: employees.aliasOfId,
     })
     .from(employees)
     .where(eq(employees.active, true))
     .orderBy(asc(employees.name));
+
+  const policies = await db.select().from(commissionPolicies);
+  const allProductsMinimal = await db
+    .select({
+      id: products.id,
+      sellPrice: products.sellPrice,
+      depositDate: products.depositDate,
+      salesPerson: products.salesPerson,
+      departmentId: products.departmentId,
+    })
+    .from(products);
 
   // allRecons: cho phép CostForm re-filter previous theo cost_type khi user
   // đổi dropdown ("HH sale" → "thưởng nóng" chẳng hạn). Nếu không có, form
@@ -177,6 +191,8 @@ export default async function EditCostPage({
         previousRecons={previousRecons}
         allRecons={allRecons}
         employees={allEmployees}
+        policies={policies as any}
+        productsMinimal={allProductsMinimal as any}
         onSave={async (fd) => {
           "use server";
           await updateCost(id, fd, returnTo);

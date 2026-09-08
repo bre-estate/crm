@@ -8,6 +8,13 @@ import PercentInput from "@/components/PercentInput";
 import SearchableSelect from "@/components/SearchableSelect";
 import { costTypeLabel, fmtMoney, fmtPct, fmtPctTight, fmtPctRaw } from "@/lib/format";
 import { computeLuyKe, type ProductConfig, type CostType } from "@/lib/costCalc";
+import {
+  resolvePolicy,
+  periodOf,
+  nvkdRate,
+  tpkdManagerRate,
+  type Role,
+} from "@/lib/commission-policy";
 import { sanitizeDecimalInput } from "@/lib/decimal-input";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
@@ -62,6 +69,18 @@ export type EmployeeOption = {
   id: number;
   name: string;
   position: string;
+  departmentId?: number | null;
+  aliasOfId?: number | null;
+};
+
+export type PolicyRow = import("@/lib/commission-policy").CommissionPolicy;
+
+export type ProductMinimal = {
+  id: number;
+  sellPrice: number | string | null;
+  depositDate: string | null;
+  salesPerson: string | null;
+  departmentId: number | null;
 };
 
 type Props = {
@@ -73,6 +92,11 @@ type Props = {
   allRecons?: AllReconRow[]; // Nếu có, dùng để tự filter previous theo productId+costType (client-side)
   cashByReconId?: Record<number, number>; // reconId → tổng cash đã chi, để hiện "còn nợ" trong form new
   employees?: EmployeeOption[];
+  /** 7 commission policies từ DB — dùng để suggest rate + validate */
+  policies?: PolicyRow[];
+  /** Snapshot products (id + sellPrice + depositDate + salesPerson + dept) —
+   *  compute doanh số cá nhân/phòng trong kỳ để suggest tier rate */
+  productsMinimal?: ProductMinimal[];
   onSave: (fd: FormData) => Promise<void>;
   onDelete?: () => Promise<void>;
 };
@@ -101,6 +125,8 @@ export default function CostForm({
   allRecons,
   cashByReconId = {},
   employees = [],
+  policies = [],
+  productsMinimal = [],
   onSave,
   onDelete,
 }: Props) {
@@ -284,6 +310,9 @@ export default function CostForm({
     return Number(clean) || 0;
   };
 
+  const [reconDate, setReconDate] = useState<string>(
+    recon?.reconciliationDate ?? new Date().toISOString().slice(0, 10),
+  );
   const [commissionPct, setCommissionPct] = useState<string>(
     pctDisplay(recon?.commissionRate ?? product?.saleCommissionRate),
   );
@@ -383,6 +412,91 @@ export default function CostForm({
     }
     return null;
   }, [previousRecons, cashByReconId]);
+
+  // ── Suggest rate theo chính sách (feature A+B) ──
+  // Map employeeName → position + departmentId (resolve alias về owner)
+  const empByName = useMemo(() => {
+    const byId = new Map(employees.map((e) => [e.id, e]));
+    const m = new Map<string, EmployeeOption>();
+    for (const e of employees) {
+      const resolved = e.aliasOfId ? byId.get(e.aliasOfId) ?? e : e;
+      m.set(e.name.toLowerCase().trim(), {
+        ...e,
+        position: resolved.position,
+        departmentId: resolved.departmentId ?? e.departmentId,
+      });
+    }
+    return m;
+  }, [employees]);
+
+  const empRole = useMemo<Role | null>(() => {
+    const emp = empByName.get(employeeName.toLowerCase().trim());
+    if (!emp) return null;
+    const p = emp.position;
+    if (p === "nvkd") return "nvkd";
+    if (p === "tpkd") return "tpkd";
+    if (p === "ctv") return "ctv";
+    if (p === "admin" || p === "hr") return "admin";
+    if (p === "ceo") return "tpkd"; // CEO/BLĐ dùng chung rate NVKD/TPKD tùy context
+    return null;
+  }, [empByName, employeeName]);
+
+  // Compute doanh số kỳ 2 tháng
+  const periodStats = useMemo(() => {
+    if (!reconDate || policies.length === 0) return null;
+    const { year, period, startMonth, endMonth } = periodOf(reconDate);
+    // Filter products có depositDate trong kỳ
+    const inPeriod = productsMinimal.filter((p) => {
+      if (!p.depositDate) return false;
+      const d = new Date(p.depositDate);
+      const y = d.getFullYear();
+      const m = d.getMonth() + 1;
+      return y === year && m >= startMonth && m <= endMonth;
+    });
+    // Doanh số cá nhân NVKD hiện tại
+    const personalRev = inPeriod
+      .filter((p) => (p.salesPerson ?? "").toLowerCase().trim() === employeeName.toLowerCase().trim())
+      .reduce((s, p) => s + Number(p.sellPrice ?? 0), 0);
+    // Doanh số phòng (nếu employee có departmentId)
+    const emp = empByName.get(employeeName.toLowerCase().trim());
+    const deptId = emp?.departmentId ?? null;
+    const deptRev = deptId
+      ? inPeriod
+          .filter((p) => p.departmentId === deptId)
+          .reduce((s, p) => s + Number(p.sellPrice ?? 0), 0)
+      : 0;
+    return { year, period, startMonth, endMonth, personalRev, deptRev, deptId };
+  }, [reconDate, productsMinimal, empByName, employeeName, policies.length]);
+
+  // Suggest %HH sale cho recon cost_type=sale_commission
+  const suggestedCommissionRate = useMemo(() => {
+    if (costType !== "sale_commission" || !empRole || !periodStats) return null;
+    // NVKD dùng NVKD policy; CTV dùng CTV policy; TPKD dùng NVKD policy (HH cá nhân)
+    const role = empRole === "tpkd" ? "nvkd" : empRole === "admin" ? null : empRole;
+    if (!role) return null;
+    const policy = resolvePolicy(policies, role, reconDate);
+    if (!policy) return null;
+    const rate = nvkdRate(policy, periodStats.personalRev);
+    return { rate, policy, personalRev: periodStats.personalRev };
+  }, [costType, empRole, periodStats, policies, reconDate]);
+
+  // Suggest %KPI cho recon cost_type=kpi_admin / kpi_tpkd
+  const suggestedKpiRate = useMemo(() => {
+    if (!periodStats) return null;
+    if (costType === "kpi_admin") {
+      const policy = resolvePolicy(policies, "admin", reconDate);
+      if (!policy) return null;
+      const rate = Number(policy.baseRate ?? 0);
+      return { rate, policy, source: "Admin policy" as const };
+    }
+    if (costType === "kpi_tpkd") {
+      const policy = resolvePolicy(policies, "tpkd", reconDate);
+      if (!policy) return null;
+      const rate = tpkdManagerRate(policy, periodStats.deptRev);
+      return { rate, policy, source: `Doanh số phòng kỳ ${periodStats.year}-P${periodStats.period}: ${periodStats.deptRev.toLocaleString("vi-VN")}` };
+    }
+    return null;
+  }, [costType, periodStats, policies, reconDate]);
 
   // N = Tiến độ PMG đã thu tiền đến ngày ĐC (%). Excel col 13.
   // Khách đã trả CĐT bao nhiêu % — dùng công thức Excel:
@@ -613,7 +727,8 @@ export default function CostForm({
             <input
               type="date"
               name="reconciliationDate"
-              defaultValue={recon?.reconciliationDate ?? ""}
+              value={reconDate}
+              onChange={(e) => setReconDate(e.target.value)}
               className="input"
             />
           </Field>
@@ -755,6 +870,57 @@ export default function CostForm({
       })()}
 
       {/* Progress + Payment cho đợt này */}
+      {/* Suggest rate theo commission policy */}
+      {(() => {
+        const suggest = suggestedCommissionRate ?? suggestedKpiRate;
+        if (!suggest) return null;
+        const currentRateStr = costType === "sale_commission" ? commissionPct : kpiPct;
+        const currentRate = currentRateStr ? Number(currentRateStr) / 100 : 0;
+        const match = Math.abs(currentRate - suggest.rate) < 0.0001;
+        const suggestedPct = (suggest.rate * 100).toFixed(2).replace(".", ",");
+        const currentPct = (currentRate * 100).toFixed(2).replace(".", ",");
+        const applyRate = () => {
+          const val = Number((suggest.rate * 100).toFixed(6)).toString();
+          if (costType === "sale_commission") setCommissionPct(val);
+          else setKpiPct(val);
+        };
+        return (
+          <div
+            className={`mb-2 rounded-lg border px-3 py-2 text-xs ${
+              match
+                ? "bg-green-50 border-green-200 text-green-900"
+                : "bg-amber-50 border-amber-300 text-amber-900"
+            }`}
+          >
+            <div className="font-semibold mb-0.5">
+              {match ? "✓ Rate khớp chính sách" : "⚠️ Rate lệch chính sách"}
+            </div>
+            <div>
+              Chính sách {periodStats ? `kỳ T${periodStats.startMonth}-T${periodStats.endMonth}/${periodStats.year}` : ""} suggest{" "}
+              <b>{suggestedPct}%</b>
+              {" · "}Rate đang gõ <b>{currentPct}%</b>
+              {suggestedCommissionRate && periodStats && (
+                <span className="block mt-0.5 text-slate-600">
+                  Doanh số cá nhân kỳ: {periodStats.personalRev.toLocaleString("vi-VN")} VND
+                </span>
+              )}
+              {suggestedKpiRate?.source && costType === "kpi_tpkd" && (
+                <span className="block mt-0.5 text-slate-600">{suggestedKpiRate.source}</span>
+              )}
+              {!match && (
+                <button
+                  type="button"
+                  onClick={applyRate}
+                  className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded bg-white border border-amber-400 hover:bg-amber-100"
+                >
+                  Áp rate {suggestedPct}%
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       <Section title="📊 Số tiền đã đối chiếu">
         <div className="text-xs text-slate-500 -mt-2 mb-3">
           Loại chi phí: <b>{costTypeLabel(costType)}</b>

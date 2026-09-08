@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { products, projects, partners, costReconciliations, employees, paymentsOut } from "@/lib/schema";
+import { products, projects, partners, costReconciliations, employees, paymentsOut, commissionPolicies } from "@/lib/schema";
 import { asc, eq } from "drizzle-orm";
 import Link from "next/link";
 import CostForm from "../CostForm";
@@ -74,10 +74,25 @@ export default async function NewCostPage({ searchParams }: { searchParams: Sear
       id: employees.id,
       name: employees.name,
       position: employees.position,
+      departmentId: employees.departmentId,
+      aliasOfId: employees.aliasOfId,
     })
     .from(employees)
     .where(eq(employees.active, true))
     .orderBy(asc(employees.name));
+
+  // Load commission policies (7 records) + rev per product/dept in period
+  // để CostForm suggest rate theo tier động (NVKD lũy kế cá nhân, TPKD theo phòng).
+  const policies = await db.select().from(commissionPolicies);
+  const allProductsMinimal = await db
+    .select({
+      id: products.id,
+      sellPrice: products.sellPrice,
+      depositDate: products.depositDate,
+      salesPerson: products.salesPerson,
+      departmentId: products.departmentId,
+    })
+    .from(products);
 
   const backHref = defaultProductId ? `/products/${defaultProductId}` : "/costs";
   const backLabel = defaultProductId ? "← Về căn" : "← Giá vốn";
@@ -98,6 +113,8 @@ export default async function NewCostPage({ searchParams }: { searchParams: Sear
         allRecons={allRecons}
         cashByReconId={cashByReconId}
         employees={allEmployees}
+        policies={policies as any}
+        productsMinimal={allProductsMinimal as any}
         onSave={createCost}
       />
     </div>
