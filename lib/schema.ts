@@ -661,6 +661,42 @@ export const notificationReads = pgTable("notification_reads", {
   readAt: timestamp("read_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// ===================== COMMISSION POLICIES =====================
+// Chính sách lương + hoa hồng theo vai trò + giai đoạn thời gian.
+// Nguồn: docs/Chính Sách Lương/ (6 file .docx từ TGĐ).
+// Query pattern: WHERE role=X AND effective_from<=D AND (effective_to IS NULL OR effective_to>=D)
+export const commissionPolicies = pgTable("commission_policies", {
+  id: serial("id").primaryKey(),
+  role: text("role").notNull(), // 'nvkd' | 'ctv' | 'tpkd' | 'admin'
+  effectiveFrom: text("effective_from").notNull(), // YYYY-MM-DD
+  effectiveTo: text("effective_to"),
+  cycleMonths: integer("cycle_months").notNull().default(2),
+  // HH sale NVKD: base_rate = level 1, tiers = [{threshold, rate}] level 2+
+  // CTV flat: chỉ base_rate. Admin KPI: chỉ base_rate.
+  baseRate: doublePrecision("base_rate"),
+  tiers: jsonb("tiers").$type<{ threshold: number; rate: number }[]>(),
+  // Lương cứng
+  baseSalary: doublePrecision("base_salary"),
+  probationSalary: doublePrecision("probation_salary"),
+  apprenticeSalary: doublePrecision("apprentice_salary"),
+  // Thưởng doanh số NVKD
+  bonusFloor: doublePrecision("bonus_floor"),
+  bonusStep: doublePrecision("bonus_step"),
+  bonusStepAmount: doublePrecision("bonus_step_amount"),
+  bonusCycleMultiplier: doublePrecision("bonus_cycle_multiplier").default(1),
+  bonusCapPerCycle: doublePrecision("bonus_cap_per_cycle"),
+  // TPKD HH quản lý theo doanh số phòng
+  managerBonusTiers: jsonb("manager_bonus_tiers").$type<{ threshold: number; rate: number }[]>(),
+  // TPKD lương theo số NVKD phòng
+  managerSalaryTiers: jsonb("manager_salary_tiers").$type<{ minSubs: number; salary: number }[]>(),
+  managerProbationSalary: doublePrecision("manager_probation_salary"),
+  note: text("note"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type CommissionPolicy = typeof commissionPolicies.$inferSelect;
+export type NewCommissionPolicy = typeof commissionPolicies.$inferInsert;
+
 // ===================== ACCOUNTING JOURNAL (Sổ Nhật Ký Kim TT200) =====================
 // Mirror sổ nhật ký chung của Kim. Mỗi row = 1 double-entry entry:
 // Debit TK X = Credit TK Y = amount. Import từ NKC sheet file SO SACH BRE.
