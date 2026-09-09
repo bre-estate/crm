@@ -15,6 +15,7 @@ import {
   tpkdManagerRate,
   type Role,
 } from "@/lib/commission-policy";
+import { periodEndDate } from "@/lib/period-commission-core";
 import { sanitizeDecimalInput } from "@/lib/decimal-input";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
@@ -71,15 +72,17 @@ export type EmployeeOption = {
   position: string;
   departmentId?: number | null;
   aliasOfId?: number | null;
+  ownerName?: string;
 };
 
 export type PolicyRow = import("@/lib/commission-policy").CommissionPolicy;
 
+/** Server tính sẵn kỳ + doanh thu xét tier cho từng căn (lib/period-commission). */
 export type ProductMinimal = {
   id: number;
-  sellPrice: number | string | null;
-  depositDate: string | null;
-  salesPerson: string | null;
+  periodKey: string | null;
+  revenue: number;
+  ownerName: string;
   departmentId: number | null;
 };
 
@@ -424,6 +427,7 @@ export default function CostForm({
         ...e,
         position: resolved.position,
         departmentId: resolved.departmentId ?? e.departmentId,
+        ownerName: resolved.name,
       });
     }
     return m;
@@ -441,31 +445,24 @@ export default function CostForm({
     return null;
   }, [empByName, employeeName]);
 
-  // Compute doanh số kỳ 2 tháng
+  // Doanh số kỳ 2 tháng. Server đã tính periodKey + revenue (PMG × %PMG_LK − admin)
+  // cho từng căn theo cùng luật với /periods (docs/SPEC_KY_HOA_HONG.md).
+  // Chính sách áp theo ngày cuối kỳ.
   const periodStats = useMemo(() => {
     if (!reconDate || policies.length === 0) return null;
-    const { year, period, startMonth, endMonth } = periodOf(reconDate);
-    // Filter products có depositDate trong kỳ
-    const inPeriod = productsMinimal.filter((p) => {
-      if (!p.depositDate) return false;
-      const d = new Date(p.depositDate);
-      const y = d.getFullYear();
-      const m = d.getMonth() + 1;
-      return y === year && m >= startMonth && m <= endMonth;
-    });
-    // Doanh số cá nhân NVKD hiện tại
-    const personalRev = inPeriod
-      .filter((p) => (p.salesPerson ?? "").toLowerCase().trim() === employeeName.toLowerCase().trim())
-      .reduce((s, p) => s + Number(p.sellPrice ?? 0), 0);
-    // Doanh số phòng (nếu employee có departmentId)
+    const { year, period, startMonth, endMonth, key } = periodOf(reconDate);
+    const endDate = periodEndDate({ year, period });
+    const inPeriod = productsMinimal.filter((p) => p.periodKey === key);
     const emp = empByName.get(employeeName.toLowerCase().trim());
+    const owner = (emp?.ownerName ?? employeeName).toLowerCase().trim();
+    const personalRev = inPeriod
+      .filter((p) => p.ownerName.toLowerCase().trim() === owner)
+      .reduce((s, p) => s + p.revenue, 0);
     const deptId = emp?.departmentId ?? null;
     const deptRev = deptId
-      ? inPeriod
-          .filter((p) => p.departmentId === deptId)
-          .reduce((s, p) => s + Number(p.sellPrice ?? 0), 0)
+      ? inPeriod.filter((p) => p.departmentId === deptId).reduce((s, p) => s + p.revenue, 0)
       : 0;
-    return { year, period, startMonth, endMonth, personalRev, deptRev, deptId };
+    return { year, period, startMonth, endMonth, key, endDate, personalRev, deptRev, deptId };
   }, [reconDate, productsMinimal, empByName, employeeName, policies.length]);
 
   // Suggest %HH sale cho recon cost_type=sale_commission
@@ -474,7 +471,7 @@ export default function CostForm({
     // NVKD dùng NVKD policy; CTV dùng CTV policy; TPKD dùng NVKD policy (HH cá nhân)
     const role = empRole === "tpkd" ? "nvkd" : empRole === "admin" ? null : empRole;
     if (!role) return null;
-    const policy = resolvePolicy(policies, role, reconDate);
+    const policy = resolvePolicy(policies, role, periodStats.endDate);
     if (!policy) return null;
     const rate = nvkdRate(policy, periodStats.personalRev);
     return { rate, policy, personalRev: periodStats.personalRev };
@@ -484,13 +481,13 @@ export default function CostForm({
   const suggestedKpiRate = useMemo(() => {
     if (!periodStats) return null;
     if (costType === "kpi_admin") {
-      const policy = resolvePolicy(policies, "admin", reconDate);
+      const policy = resolvePolicy(policies, "admin", periodStats.endDate);
       if (!policy) return null;
       const rate = Number(policy.baseRate ?? 0);
       return { rate, policy, source: "Admin policy" as const };
     }
     if (costType === "kpi_tpkd") {
-      const policy = resolvePolicy(policies, "tpkd", reconDate);
+      const policy = resolvePolicy(policies, "tpkd", periodStats.endDate);
       if (!policy) return null;
       const rate = tpkdManagerRate(policy, periodStats.deptRev);
       return { rate, policy, source: `Doanh số phòng kỳ ${periodStats.year}-P${periodStats.period}: ${periodStats.deptRev.toLocaleString("vi-VN")}` };

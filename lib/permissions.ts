@@ -36,6 +36,8 @@ export const RESOURCE_ACTIONS: Record<string, Action[]> = {
   "expenses.approve": ["view", "edit"],
   // Payroll HH generator — view chỉ preview, edit = xuất Excel
   "payroll.commissions": ["view", "edit"],
+  // Kỳ HH & thưởng — view = xem, edit = tạo hồi tố + xuất Excel
+  periods: ["view", "edit"],
   // View only (report / log / help)
   alerts: ["view"],
   "admin.activity": ["view"],
@@ -57,6 +59,7 @@ export const RESOURCES = {
   "expenses": "Chi phí (Yêu cầu chi)",
   "expenses.approve": "Duyệt chi",
   "payroll.commissions": "Xuất bảng HH (Payroll)",
+  "periods": "Kỳ HH & thưởng (2 tháng)",
   "reports.overview": "Báo cáo Tổng quan",
   "reports.management": "Báo cáo Quản trị (P&L cũ)",
   "reports.profit-detail": "Lãi/lỗ quản trị (Management P&L)",
@@ -102,7 +105,7 @@ export const RESOURCE_GROUPS: { label: string; keys: Resource[] }[] = [
   },
   {
     label: "Tài chính",
-    keys: ["finance", "expenses", "expenses.approve", "payroll.commissions"],
+    keys: ["finance", "expenses", "expenses.approve", "payroll.commissions", "periods"],
   },
   {
     label: "Báo cáo",
@@ -205,6 +208,7 @@ const PRESETS: Record<Exclude<Role, "owner" | "custom">, Partial<Record<Resource
     "costs-report": ["view"],
     invoices: ["view"],
     partners: ["view"],
+    periods: ["view", "edit"],
     help: ["view"],
   },
 };

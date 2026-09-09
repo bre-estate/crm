@@ -4,6 +4,7 @@ import { asc, eq } from "drizzle-orm";
 import Link from "next/link";
 import CostForm from "../CostForm";
 import { createCost } from "@/lib/actions/costs";
+import { loadAllContext } from "@/lib/period-commission";
 
 type SearchParams = Promise<{ productId?: string }>;
 
@@ -84,15 +85,14 @@ export default async function NewCostPage({ searchParams }: { searchParams: Sear
   // Load commission policies (7 records) + rev per product/dept in period
   // để CostForm suggest rate theo tier động (NVKD lũy kế cá nhân, TPKD theo phòng).
   const policies = await db.select().from(commissionPolicies);
-  const allProductsMinimal = await db
-    .select({
-      id: products.id,
-      sellPrice: products.sellPrice,
-      depositDate: products.depositDate,
-      salesPerson: products.salesPerson,
-      departmentId: products.departmentId,
-    })
-    .from(products);
+  const periodCtx = await loadAllContext();
+  const allProductsMinimal = periodCtx.products.map((p) => ({
+    id: p.id,
+    periodKey: p.periodKey,
+    revenue: p.revenue,
+    ownerName: p.ownerName,
+    departmentId: p.departmentId,
+  }));
 
   const backHref = defaultProductId ? `/products/${defaultProductId}` : "/costs";
   const backLabel = defaultProductId ? "← Về căn" : "← Giá vốn";

@@ -22,6 +22,7 @@ import {
   deletePaymentOut,
 } from "@/lib/actions/costs";
 import AutoDismissBanner from "@/components/AutoDismissBanner";
+import { loadAllContext } from "@/lib/period-commission";
 import ActivityHistoryButton from "@/app/products/[id]/ActivityHistoryButton";
 
 export default async function EditCostPage({
@@ -115,15 +116,14 @@ export default async function EditCostPage({
     .orderBy(asc(employees.name));
 
   const policies = await db.select().from(commissionPolicies);
-  const allProductsMinimal = await db
-    .select({
-      id: products.id,
-      sellPrice: products.sellPrice,
-      depositDate: products.depositDate,
-      salesPerson: products.salesPerson,
-      departmentId: products.departmentId,
-    })
-    .from(products);
+  const periodCtx = await loadAllContext();
+  const allProductsMinimal = periodCtx.products.map((p) => ({
+    id: p.id,
+    periodKey: p.periodKey,
+    revenue: p.revenue,
+    ownerName: p.ownerName,
+    departmentId: p.departmentId,
+  }));
 
   // allRecons: cho phép CostForm re-filter previous theo cost_type khi user
   // đổi dropdown ("HH sale" → "thưởng nóng" chẳng hạn). Nếu không có, form
