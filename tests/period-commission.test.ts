@@ -42,7 +42,7 @@ const policies: CommissionPolicy[] = [
   P({ role: "nvkd", effectiveFrom: "2025-04-10", effectiveTo: "2026-04-30", baseRate: 0.5, tiers: [{ threshold: 200_000_000, rate: 0.55 }], bonusFloor: 60_000_000, bonusStep: 80_000_000, bonusStepAmount: 1_000_000, bonusCycleMultiplier: 2, bonusCapPerCycle: 30_000_000 }),
   P({ role: "nvkd", effectiveFrom: "2026-05-01", effectiveTo: "2026-06-30", baseRate: 0.5, tiers: [{ threshold: 400_000_000, rate: 0.55 }], bonusFloor: 60_000_000, bonusStep: 80_000_000, bonusStepAmount: 1_000_000, bonusCycleMultiplier: 2, bonusCapPerCycle: 30_000_000 }),
   P({ role: "nvkd", effectiveFrom: "2026-07-01", baseRate: 0.5, tiers: [{ threshold: 400_000_000, rate: 0.55 }], bonusFloor: 60_000_000, bonusStep: 100_000_000, bonusStepAmount: 1_000_000, bonusCycleMultiplier: 2, bonusCapPerCycle: 30_000_000 }),
-  P({ role: "ctv", effectiveFrom: "2026-07-01", baseRate: 0.65 }),
+  P({ role: "ctv", effectiveFrom: "2025-04-01", baseRate: 0.65 }),
   P({ role: "tpkd", effectiveFrom: "2025-04-01", managerBonusTiers: [{ threshold: 400_000_000, rate: 0.02 }, { threshold: 800_000_000, rate: 0.03 }, { threshold: 1_000_000_000, rate: 0.04 }, { threshold: 1_500_000_000, rate: 0.05 }], managerSalaryTiers: [{ minSubs: 4, salary: 10_000_000 }, { minSubs: 6, salary: 12_000_000 }], managerProbationSalary: 8_000_000 }),
   P({ role: "admin", effectiveFrom: "2025-04-01", effectiveTo: "2026-06-30", baseRate: 0.0025 }),
   P({ role: "admin", effectiveFrom: "2026-07-01", baseRate: 0.005 }),

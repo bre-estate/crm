@@ -37,7 +37,7 @@ Phòng chỉ xét KPI TPKD khi có nhân viên position `tpkd` thuộc phòng (b
 | Loại chi phí | Vai trò | Rate |
 |-|-|-|
 | `sale_commission` | nvkd, tpkd (HH cá nhân), ceo | `nvkdRate(policy nvkd, doanh thu cá nhân)`: 50% dưới mốc, 55% từ mốc (200tr trước 01/05/2026, 400tr sau) |
-| `sale_commission` | ctv | 65% flat (từ 01/07/2026) |
+| `sale_commission` | ctv | 65% flat (văn bản 01/07/2026, thực tế áp từ đầu nên seed hiệu lực 01/04/2025) |
 | `kpi_tpkd` | tpkd | `tpkdManagerRate(policy tpkd, doanh thu phòng)`: 0 / 2 / 3 / 4 / 5% theo mốc 400tr / 800tr / 1 tỷ / 1,5 tỷ |
 | `kpi_admin` | admin | 0,25% đến 30/06/2026, 0,5% từ 01/07/2026 |
 | `kpi_ceo` | ceo | Chưa có chính sách, giữ config trên căn |

@@ -76,7 +76,7 @@ async function main() {
     // CTV
     {
       role: "ctv",
-      effective_from: "2026-07-01",
+      effective_from: "2025-04-01",
       effective_to: null,
       cycle_months: 2,
       base_rate: 0.65,
@@ -89,7 +89,7 @@ async function main() {
       bonus_step_amount: null,
       bonus_cycle_multiplier: null,
       bonus_cap_per_cycle: null,
-      note: "CTV đối tác — flat 65%, không lương",
+      note: "CTV đối tác — flat 65%, không lương (văn bản 260701 ghi rõ; thực tế áp từ đầu, Excel trả 65% trước 07/2026)",
     },
     // TPKD (single policy)
     {
