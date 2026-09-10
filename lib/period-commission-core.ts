@@ -325,10 +325,14 @@ export function summarizePeriod(ctx: AllContext, key: string): PeriodSummary | n
     );
     const hhReconciled = saleRecons.reduce((s, r) => s + r.amount, 0);
     const paid = saleRecons.reduce((s, r) => s + r.paid, 0);
+    // Chênh chỉ tính trên ĐC chưa có hồi tố (ĐC gốc đã tạo hồi tố thì coi như xong)
     const diff =
       expectedRate == null
         ? 0
-        : saleRecons.reduce((s, r) => s + computeRetroDiff(r.amount, r.commissionRate, expectedRate), 0);
+        : saleRecons.reduce(
+            (s, r) => (retroBySource.has(r.id) ? s : s + computeRetroDiff(r.amount, r.commissionRate, expectedRate)),
+            0,
+          );
     const bonus = position === "nvkd" && pol.nvkd ? nvkdBonus(pol.nvkd, revenue) : 0;
     const deptId = emp?.ownerDepartmentId ?? list[0]?.departmentId ?? null;
     nvkdRows.push({
@@ -378,7 +382,10 @@ export function summarizePeriod(ctx: AllContext, key: string): PeriodSummary | n
     const kpiRecons = reconsInPeriod.filter((r) => r.costType === "kpi_tpkd" && ids.has(r.productId));
     const kpiReconciled = kpiRecons.reduce((s, r) => s + r.amount, 0);
     const paid = kpiRecons.reduce((s, r) => s + r.paid, 0);
-    const diff = kpiRecons.reduce((s, r) => s + computeRetroDiff(r.amount, r.kpiRate, expectedRate), 0);
+    const diff = kpiRecons.reduce(
+      (s, r) => (retroBySource.has(r.id) ? s : s + computeRetroDiff(r.amount, r.kpiRate, expectedRate)),
+      0,
+    );
     let nvkdCount = 0;
     for (const e of ctx.empByName.values()) {
       if (e.ownerName === e.name && e.position === "nvkd" && e.departmentId === deptId) nvkdCount++;
@@ -422,7 +429,12 @@ export function summarizePeriod(ctx: AllContext, key: string): PeriodSummary | n
       const last = rs[rs.length - 1];
       const amount = rs.reduce((s, r) => s + r.amount, 0);
       const diff =
-        expected == null ? 0 : rs.reduce((s, r) => s + computeRetroDiff(r.amount, r.kpiRate, expected), 0);
+        expected == null
+          ? 0
+          : rs.reduce(
+              (s, r) => (retroBySource.has(r.id) ? s : s + computeRetroDiff(r.amount, r.kpiRate, expected)),
+              0,
+            );
       return {
         unitCode: p.unitCode,
         productCode: p.productCode,
@@ -505,4 +517,70 @@ export function listPeriodKeys(ctx: AllContext): string[] {
   const keys = new Set<string>();
   for (const p of ctx.products) if (p.periodKey) keys.add(p.periodKey);
   return [...keys].sort((a, b) => b.localeCompare(a));
+}
+
+// ───────────────────────── Hồi tố: dựng dòng insert (pure) ─────────────────────────
+
+export const fmtPctVi = (v: number) => `${(v * 100).toFixed(2).replace(/\.?0+$/, "")}%`;
+
+export type RetroInsert = {
+  sourceReconId: number;
+  kind: "Hồi tố" | "Hoàn chi dư";
+  productId: number;
+  reconciliationDate: string;
+  employeeName: string;
+  costType: string;
+  pmgBasePriceSale: number;
+  pmgLkSaleRate: number;
+  commissionRate: number;
+  kpiRate: number;
+  adminFeeSale: number;
+  customerSupport: number;
+  paymentProgressPct: number;
+  amountPayableThisTime: number;
+  kpiAmount: number;
+  fiscalYear: number;
+  note: string;
+};
+
+/**
+ * Dòng ĐC mới cho từng retro item chưa tạo. Không đụng ĐC cũ.
+ * Sale: commissionRate = mong đợi; KPI: kpiRate = mong đợi. Còn lại copy từ ĐC gốc.
+ */
+export function buildRetroInserts(
+  ctx: AllContext,
+  summary: PeriodSummary,
+  reconIds: number[] | "all",
+  today: string,
+): RetroInsert[] {
+  const srcById = new Map(ctx.recons.map((r) => [r.id, r]));
+  const out: RetroInsert[] = [];
+  for (const item of summary.retro) {
+    if (item.alreadyRetro) continue;
+    if (reconIds !== "all" && !reconIds.includes(item.reconId)) continue;
+    const src = srcById.get(item.reconId);
+    if (!src) continue;
+    const isSale = item.costType === "sale_commission";
+    const kind = item.diff > 0 ? "Hồi tố" : "Hoàn chi dư";
+    out.push({
+      sourceReconId: item.reconId,
+      kind,
+      productId: item.productId,
+      reconciliationDate: today,
+      employeeName: item.employeeName,
+      costType: item.costType,
+      pmgBasePriceSale: src.pmgBasePriceSale,
+      pmgLkSaleRate: src.pmgLkSaleRate,
+      commissionRate: isSale ? item.expectedRate : src.commissionRate,
+      kpiRate: isSale ? src.kpiRate : item.expectedRate,
+      adminFeeSale: src.adminFeeSale,
+      customerSupport: src.customerSupport,
+      paymentProgressPct: src.paymentProgressPct,
+      amountPayableThisTime: item.diff,
+      kpiAmount: isSale ? 0 : item.diff,
+      fiscalYear: summary.ref.year,
+      note: `${kind} kỳ ${summary.key}: ${fmtPctVi(item.actualRate)} → ${fmtPctVi(item.expectedRate)} (từ ĐC #${item.reconId})`,
+    });
+  }
+  return out;
 }
