@@ -1,5 +1,8 @@
 /**
- * Fresh import từ BAO CAO DOANH THU.xlsx.
+ * Fresh import từ data-excel/Báo cáo Doanh Thu.xlsx (override: XLSX_PATH=...).
+ *
+ * Phòng: Excel ghi "Hồ Gia"/"1 tỷ", DB tên "Kinh doanh - Hồ Gia"/"Kinh doanh - 1 Tỷ"
+ * → so khớp sau khi bỏ tiền tố "Kinh doanh -" + lowercase. Không tự tạo phòng mới.
  *
  * DEFAULT: WIPE + INSERT products/revenue/cost/payments/invoices; giữ partners/projects/departments/pmg_tiers.
  * --full : WIPE luôn partners + projects + pmg_tiers + activity_logs + product_adjustments;
@@ -19,7 +22,7 @@ import { sql } from "drizzle-orm";
 import * as dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 
-const XLSX_PATH = "/Users/trietnguyen/Documents/Company/BRE/App/CRM/BAO CAO DOANH THU.xlsx";
+const XLSX_PATH = process.env.XLSX_PATH ?? "/Users/trietnguyen/Documents/Company/BRE/App/CRM/data-excel/Báo cáo Doanh Thu.xlsx";
 const APPLY = process.argv.includes("--apply");
 const FULL_WIPE = process.argv.includes("--full");
 
@@ -115,7 +118,14 @@ async function main() {
   for (const p of projects) {
     projectByPair.set(`${p.name}|${p.partnerId}`, p.id);
   }
-  const deptByName = new Map(depts.map((d) => [d.name.toLowerCase(), d.id]));
+  const DEPT_ALIAS: Record<string, string> = { freelancer: "ctv", freelance: "ctv", slk: "đối tác liên kết" };
+  const deptKey = (n: string) => {
+    const k = n.replace(/^kinh doanh\s*-\s*/i, "").replace(/\s+/g, " ").trim().toLowerCase();
+    return DEPT_ALIAS[k] ?? k;
+  };
+  const deptByName = new Map(depts.map((d) => [deptKey(d.name), d.id]));
+  const deptFullName = new Map(depts.map((d) => [deptKey(d.name), d.name]));
+  const unknownDepts = new Map<string, number>();
   const partnerCodes = new Set(partners.map((p) => p.code));
   const projectFullCodes = new Set(projects.map((p) => p.fullCode));
   console.log(`DB: ${partners.length} partners, ${projects.length} projects, ${depts.length} depts`);
@@ -175,9 +185,17 @@ async function main() {
     return id;
   };
 
+  // Phase 0a: financial_transactions.product_id → products (FK NO ACTION).
+  // Giữ link theo product_code: capture trước, set NULL, import xong nối lại.
+  const ftLinks = await client<{ id: number; product_code: string }[]>`
+    SELECT ft.id, p.product_code FROM financial_transactions ft
+    JOIN products p ON p.id = ft.product_id`;
+  console.log(`  financial_transactions gắn căn: ${ftLinks.length} dòng (sẽ nối lại theo mã căn sau import)`);
+
   // Phase 0: Wipe
   console.log(`\n== ${APPLY ? "Wiping" : "(dry-run) Would wipe"} ${FULL_WIPE ? "FULL" : "partial"} ==`);
   if (APPLY) {
+    await client`UPDATE financial_transactions SET product_id = NULL WHERE product_id IS NOT NULL`;
     await db.delete(schema.paymentsOut);
     await db.delete(schema.paymentsIn);
     await db.delete(schema.costReconciliations);
@@ -213,10 +231,11 @@ async function main() {
 
   for (let i = 5; i < rows21.length; i++) {
     const r = rows21[i];
-    if (!r || !r[0]) continue;
+    if (!r) continue;
     const maSP = toStr(r[1]);
     const maCan = toStr(r[2]);
-    if (!maCan || !maSP) continue;
+    // Không phụ thuộc cột STT (Admin có thể bỏ trống STT nhưng vẫn là căn thật)
+    if (!maCan || !maSP || maSP === "#N/A" || maCan === "#N/A") continue;
     // Skip fake "căn thưởng" (thưởng booking chung, không phải căn thật)
     if (/thưởng|thuong/i.test(maCan)) continue;
 
@@ -234,8 +253,10 @@ async function main() {
     }
     const projectId = await ensureProject(duAn, codes.projCode, codes.partnerCode, partnerId);
 
-    const deptName = toStr(r[8]);
-    const deptId = deptByName.get(deptName.toLowerCase()) ?? null;
+    const deptRaw = toStr(r[8]);
+    const deptId = deptRaw ? (deptByName.get(deptKey(deptRaw)) ?? null) : null;
+    const deptName = deptId ? (deptFullName.get(deptKey(deptRaw)) ?? deptRaw) : deptRaw;
+    if (deptRaw && !deptId) unknownDepts.set(deptRaw, (unknownDepts.get(deptRaw) ?? 0) + 1);
 
     if (APPLY) {
       const [ins] = await db
@@ -246,7 +267,7 @@ async function main() {
           projectId,
           customerName: toStr(r[5]) || null,
           unitDescription: toStr(r[6]) || null,
-          salesPerson: toStr(r[7]) ? toTitleCase(toStr(r[7])) : null,
+          salesPerson: toStr(r[7]) ? toTitleCase(norm(toStr(r[7]))) : null,
           deptLeaderName: toStr(r[9]) ? toTitleCase(toStr(r[9])) : null,
           deptName: deptName || null,
           departmentId: deptId,
@@ -288,6 +309,7 @@ async function main() {
   }
 
   console.log(`  ${APPLY ? "Inserted" : "Would insert"}: ${productCount} products`);
+  if (unknownDepts.size) console.log(`  ⚠ PHONG không khớp phòng nào trong DB (department_id=null):`, [...unknownDepts].map(([k, v]) => `${k}×${v}`).join(", "));
   if (skipped.length) console.log(`  Skipped: ${skipped.length}`);
   if (missingProjects.size) console.log(`  Missing projects: ${[...missingProjects].join(", ")}`);
   if (missingPartners.size) console.log(`  Missing partners: ${[...missingPartners].join(", ")}`);
@@ -304,9 +326,10 @@ async function main() {
 
   for (let i = 5; i < rows22.length; i++) {
     const r = rows22[i];
-    if (!r || !r[0]) continue;
+    if (!r) continue;
     const maSP = toStr(r[6]);
     const maCan = toStr(r[7]);
+    if ((!maSP && !maCan) || maSP === "#N/A") continue;
     let productId = productMap.get(maSP) ?? productMap.get(normUnit(maCan));
     if (!productId) {
       revSkip++;
@@ -427,9 +450,10 @@ async function main() {
 
   for (let i = 4; i < rows23.length; i++) {
     const r = rows23[i];
-    if (!r || !r[0]) continue;
+    if (!r) continue;
     const maSP = toStr(r[3]);
     const maCan = toStr(r[4]);
+    if ((!maSP && !maCan) || maSP === "#N/A") continue;
     let productId = productMap.get(maSP) ?? productMap.get(normUnit(maCan));
     if (!productId) {
       costSkip++;
@@ -497,6 +521,17 @@ async function main() {
     console.log(`  Skipped ${costSkip}:`);
     costSkipList.forEach((s) => console.log(`    ${s}`));
   }
+
+  // Phase 4: nối lại financial_transactions theo product_code
+  let relinked = 0;
+  const ftMissing: string[] = [];
+  for (const l of ftLinks) {
+    const pid = productMap.get(l.product_code);
+    if (!pid) { ftMissing.push(l.product_code); continue; }
+    if (APPLY) await client`UPDATE financial_transactions SET product_id = ${pid} WHERE id = ${l.id}`;
+    relinked++;
+  }
+  console.log(`\n== financial_transactions: ${APPLY ? "đã nối lại" : "sẽ nối lại"} ${relinked}/${ftLinks.length}${ftMissing.length ? ` — KHÔNG tìm thấy căn: ${[...new Set(ftMissing)].join(", ")}` : ""}`);
 
   console.log(`\n${APPLY ? "✅ APPLIED" : "\n(dry-run — add --apply to execute)"}`);
   await client.end();
