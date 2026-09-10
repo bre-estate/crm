@@ -52,6 +52,10 @@ async function main() {
   for (const r of rows) {
     const expected = nameToDept.get(r.sales_person.toLowerCase().trim());
     if (!expected) continue;
+    // CHỈ điền khi căn chưa có phòng. Phòng đã có (từ Excel = phòng tại thời
+    // điểm bán) là nguồn chuẩn, không đè theo phòng hiện tại của nhân viên
+    // (VD Cẩm Giang bán 2025 khi còn ở Hồ Gia, nay là TPKD 1 Tỷ).
+    if (r.department_id != null) continue;
     if (r.department_id === expected.id && r.dept_name === expected.name) continue;
     updates.push({
       id: r.id,

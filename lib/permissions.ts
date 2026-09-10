@@ -187,6 +187,7 @@ const PRESETS: Record<Exclude<Role, "owner" | "custom">, Partial<Record<Resource
     departments: ["view", "edit", "delete"],
     employees: ["view", "edit", "delete"],
     finance: ["view"],
+    periods: ["view", "edit"],
     ...reportsView,
     help: ["view"],
   },
@@ -198,6 +199,7 @@ const PRESETS: Record<Exclude<Role, "owner" | "custom">, Partial<Record<Resource
     "costs-report": ["view", "edit"],
     invoices: ["view", "edit"],
     partners: ["view", "edit"],
+    periods: ["view", "edit"],
     help: ["view"],
   },
   // HR: xem giao dịch để đối chiếu; edit riêng giá vốn (nhập HH sale).
@@ -209,6 +211,7 @@ const PRESETS: Record<Exclude<Role, "owner" | "custom">, Partial<Record<Resource
     invoices: ["view"],
     partners: ["view"],
     periods: ["view", "edit"],
+    "payroll.commissions": ["view", "edit"],
     help: ["view"],
   },
 };

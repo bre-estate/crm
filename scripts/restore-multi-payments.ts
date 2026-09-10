@@ -51,7 +51,7 @@ async function main() {
     FROM revenue_reconciliations r JOIN products p ON p.id = r.product_id`;
   const newPays = await sql<{ id: number; recon_id: number; date: string | null; amount: number }[]>`
     SELECT id, reconciliation_id AS recon_id, payment_date AS date, amount FROM payments_in`;
-  const paysByRecon = new Map<number, typeof newPays>();
+  const paysByRecon = new Map<number, { id: number; recon_id: number; date: string | null; amount: number }[]>();
   for (const p of newPays) {
     if (!paysByRecon.has(p.recon_id)) paysByRecon.set(p.recon_id, []);
     paysByRecon.get(p.recon_id)!.push(p);
