@@ -20,6 +20,7 @@ export type CategoryKey =
   // Không tính P&L, chỉ Cash flow (7)
   | "thue_tncn" | "thue_tndn" | "thue_vat"
   | "tra_no_goc" | "chuyen_noi_bo" | "rut_von" | "hoan_khach"
+  | "ky_quy" | "giu_cho_ho_khach"
   // Chưa xác định (1)
   | "chua_phan_loai";
 
@@ -68,6 +69,8 @@ export const CATEGORIES: Record<CategoryKey, CategoryMeta> = {
   chuyen_noi_bo:    { key: "chuyen_noi_bo",    label: "Chuyển giữa TK nội bộ",            group: "non_pnl" },
   rut_von:          { key: "rut_von",          label: "Rút vốn founder",                  group: "non_pnl" },
   hoan_khach:       { key: "hoan_khach",       label: "Hoàn tiền khách",                  group: "non_pnl" },
+  ky_quy:           { key: "ky_quy",           label: "Ký quỹ, đặt cọc dự án, cọc thuê VP", group: "non_pnl" },
+  giu_cho_ho_khach: { key: "giu_cho_ho_khach", label: "Giữ chỗ, YCTV, nộp thay khách",   group: "non_pnl" },
 
   chua_phan_loai:   { key: "chua_phan_loai",   label: "Chưa phân loại",                   group: "unknown" },
 };

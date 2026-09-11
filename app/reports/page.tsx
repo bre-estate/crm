@@ -30,7 +30,7 @@ const SECTIONS: Section[] = [
       {
         href: "/reports/profit-detail",
         title: "1. Lãi/lỗ quản trị (Management P&L)",
-        desc: "Doanh thu, giá vốn, chi phí cố định theo format báo cáo kế toán. Dồn tích từ đối chiếu CRM và sổ NKC, có cột đối chiếu với kế toán.",
+        desc: "Theo dòng tiền: tiền thật thu, chi giá vốn, chi cố định, thuế, ngoài hoạt động, khớp số dư. Có thêm cách nhìn dồn tích để đối chiếu với kế toán.",
         gate: "reports",
       },
       {

@@ -1,10 +1,29 @@
 # SPEC: Lãi/lỗ quản trị (Management P&L)
 
-Trang `/reports/profit-detail`. Code: `lib/management-pnl-core.ts` (hàm thuần, test `tests/management-pnl.test.ts`), `lib/management-pnl.ts` (nạp DB), `lib/reference/kim-pnl-2025.ts` (số kế toán để đối chiếu).
+Trang `/reports/profit-detail`, hai cách nhìn (chốt với operator 12/09/2026):
 
-Mục tiêu: ra được báo cáo lãi lỗ theo đúng format "BC chi tiết lợi nhuận" của kế toán mà không phải chờ sổ kế toán, và khi có sổ thì đối chiếu được từng dòng.
+| Cách nhìn | Dùng để | Code |
+|---|---|---|
+| **Dòng tiền** (mặc định) | Báo cáo quản trị: tiền thật vào ra | `lib/cash-pnl-core.ts` (thuần, test `tests/cash-pnl.test.ts`), `lib/cash-pnl.ts` |
+| Dồn tích | Đối chiếu với báo cáo kế toán (kế toán làm theo dồn tích TT200) | `lib/management-pnl-core.ts`, `lib/management-pnl.ts`, `lib/reference/kim-pnl-2025.ts` |
 
-## 1. Nguồn từng dòng
+## 0. Dòng tiền
+
+Đầu vào là từng "chân tiền": mỗi lần tiền vào hoặc ra bank (TK 11211) và két tiền mặt (TK 1111), kèm tài khoản đối ứng và diễn giải. Không trích trước, không phân bổ, không phải thu phải trả.
+
+Nguồn theo năm:
+- Năm kế toán đã giao sổ NKC (2025): lấy thẳng từ `accounting_journal`. Sổ khớp sao kê tới 44.000 đồng (bank ra 6.552.762.538 so với sao kê 6.552.718.538) và đã có mã tài khoản đối ứng.
+- Năm chưa có sổ (2026): chưa làm. Sẽ lấy từ `bank_transactions` đã duyệt phân loại + sổ chi tiền mặt. Trang hiện cảnh báo.
+
+Phân loại (`classifyCashLeg`): ưu tiên tài khoản đối ứng (131 thu phí môi giới; 3388/1388/141 giữ chỗ, nộp thay, hoàn khách; 244 ký quỹ; 3341 lương và thù lao; 3335 TNCN; 33311 GTGT; 3334 TNDN; 3383/3384/3386 BHXH gom vào lương; 335 chi cho khoản đã trích; 6xx/8xx dùng `classifyNkc`). Trả nhà cung cấp (331) thì đọc diễn giải.
+
+Cấu trúc: 1 thu hoạt động · 2 chi giá vốn (hoa hồng và thưởng nóng, hỗ trợ khách, thưởng quản lý) · 3 chênh gộp · 4 chi cố định (10 dòng) · 5 hoạt động trước thuế · 6 thuế đã nộp · 7 hoạt động ròng · 8 ngoài hoạt động (vốn góp, rút vốn, vay, ký quỹ, giữ chỗ ròng, hoàn khách, chuyển két và bank) · 9 thay đổi tiền = 7 + 8. Dòng 9 phải bằng Δ bank + Δ tiền mặt, trang có ô kiểm.
+
+Kết quả 2025: thu 3.736,1tr · chi giá vốn 1.284,4tr · chi cố định 1.160,0tr · thuế nộp 198,2tr · dòng tiền hoạt động ròng **1.093,6tr** · ngoài hoạt động −299,0tr (ký quỹ 239tr, hoàn khách 100tr, giữ chỗ ròng +40tr) · thay đổi tiền +794,6tr, khớp sổ (bank +1.462,3tr, tiền mặt −667,7tr).
+
+Giới hạn cần biết: lương, thù lao CTV, phí kế toán dịch vụ, BHXH gom một dòng (lệnh chuyển gộp nhiều người, sổ không tách). Thưởng nóng theo căn nằm trong hoa hồng, giống kế toán.
+
+## 1. Dồn tích: nguồn từng dòng
 
 | Dòng | Nguồn | Ghi chú |
 |---|---|---|
