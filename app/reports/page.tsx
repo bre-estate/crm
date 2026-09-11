@@ -30,7 +30,7 @@ const SECTIONS: Section[] = [
       {
         href: "/reports/profit-detail",
         title: "1. Lãi/lỗ quản trị (Management P&L)",
-        desc: "DT − Giá vốn − OPEX. Chuẩn dòng tiền (cash basis) từ sao kê bank. Khớp format báo cáo kế toán.",
+        desc: "Doanh thu, giá vốn, chi phí cố định theo format báo cáo kế toán. Dồn tích từ đối chiếu CRM và sổ NKC, có cột đối chiếu với kế toán.",
         gate: "reports",
       },
       {

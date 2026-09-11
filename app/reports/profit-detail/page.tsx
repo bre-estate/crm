@@ -1,36 +1,31 @@
 /**
- * P&L quản trị (Management P&L) — CHUẨN DỒN TÍCH (accrual) khớp BC kế toán.
- * Nguồn: accounting_journal (NKC do kế toán làm) đã classify per description → 32 bucket.
- *
- * BC kế toán classify cross-TK theo bản chất (không theo mã TK):
- * VD BC 4.1 (345M) = NKC 6411 (198M) + 6417 "hỗ trợ CTV" T1-T8 (156M).
- * Xem lib/transaction-classifier.ts classifyNkc() để hiểu logic.
+ * Lãi/lỗ quản trị theo format "BC chi tiết lợi nhuận" của kế toán, chuẩn dồn tích.
+ * Nguồn: doanh thu và giá vốn từ đối chiếu trong CRM (+ trích trước cuối kỳ), chi phí cố định từ sổ NKC.
+ * Khi kỳ có báo cáo kế toán tham chiếu thì hiện thêm cột kế toán và lệch.
  */
-import { db } from "@/lib/db";
-import { accountingJournal, yearEndAccruals, yearEndOtherAccruals } from "@/lib/schema";
-import { sql, and, gte, lte, ne } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import type { CategoryKey } from "@/lib/transaction-classifier";
+import { loadManagementPnl, findReference, comparePnl, type PnlLine, type PnlComparisonRow } from "@/lib/management-pnl";
 
 export const dynamic = "force-dynamic";
 
 const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
-const pct = (n: number, denom: number) => denom > 0 ? `${((n / denom) * 100).toFixed(2)}%` : "—";
+const fmtDelta = (n: number) => (n === 0 ? "0" : (n > 0 ? "+" : "−") + Math.abs(Math.round(n)).toLocaleString("vi-VN"));
+const pct = (n: number, denom: number) => (denom > 0 ? `${((n / denom) * 100).toFixed(2)}%` : "");
 
 type SP = Promise<{ year?: string; period?: string; q?: string; month?: string }>;
 
 function periodDates(year: number, period: string, q?: number, month?: number): { start: string; end: string; label: string } {
   if (period === "month" && month) {
     const start = `${year}-${String(month).padStart(2, "0")}-01`;
-    const end = new Date(year, month, 0).toISOString().slice(0, 10);
+    const end = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
     return { start, end, label: `T${month}/${year}` };
   }
   if (period === "quarter" && q) {
     const startMonth = (q - 1) * 3 + 1;
     const start = `${year}-${String(startMonth).padStart(2, "0")}-01`;
-    const end = new Date(year, startMonth + 2, 0).toISOString().slice(0, 10);
+    const end = new Date(Date.UTC(year, startMonth + 2, 0)).toISOString().slice(0, 10);
     return { start, end, label: `Q${q}/${year}` };
   }
   return { start: `${year}-01-01`, end: `${year}-12-31`, label: `Năm ${year}` };
@@ -47,114 +42,12 @@ export default async function ProfitDetailPage({ searchParams }: { searchParams:
   const month = sp.month ? Number(sp.month) : undefined;
   const { start, end, label } = periodDates(year, period, q, month);
 
-  // Nguồn 1: Doanh thu từ revenue_reconciliations (BCDT kế toán — sát BC kế toán 1.x)
-  const [rev] = await db.execute(sql`
-    SELECT
-      COALESCE(SUM(total_receivable_this_time), 0)::float8 as total,
-      COALESCE(SUM(cdt_bonus_sale), 0)::float8 as bs,
-      COALESCE(SUM(cdt_bonus_manager), 0)::float8 as bm
-    FROM revenue_reconciliations
-    WHERE reconciliation_date BETWEEN ${start} AND ${end}
-  `) as any[];
-  const dtGross = Number(rev?.total ?? 0);
-  const dtNet = dtGross / 1.1;
-  const bonusSaleGross = Number(rev?.bs ?? 0);
-  const bonusMgrGross = Number(rev?.bm ?? 0);
-  const dtNetNoBonus = dtNet - bonusSaleGross / 1.1 - bonusMgrGross / 1.1;
-
-  // Nguồn 2: Chi phí từ accounting_journal đã classify (accrual dồn tích khớp BC kế toán)
-  const rows = await db
-    .select({
-      category: accountingJournal.category,
-      total: sql<number>`coalesce(sum(amount), 0)::float8`,
-    })
-    .from(accountingJournal)
-    .where(and(
-      gte(accountingJournal.entryDate, start),
-      lte(accountingJournal.entryDate, end),
-      ne(accountingJournal.creditAccount, "911"),
-    ))
-    .groupBy(accountingJournal.category);
-
-  const byKey = new Map<CategoryKey, number>();
-  for (const r of rows) byKey.set((r.category ?? "opex_khac") as CategoryKey, Number(r.total));
-
-  // Nguồn 3: Trích trước cuối kỳ (kế toán breakdown from "251231_Trich truoc 335.xlsx")
-  // Sum theo bucket, add vào NKC bucket đã có
-  const [accrual] = await db
-    .select({
-      hh: sql<number>`coalesce(sum(hh_sale),0)::float8`,
-      cdt: sql<number>`coalesce(sum(cdt_bonus_sale),0)::float8`,
-      ql: sql<number>`coalesce(sum(cty_bonus_ql),0)::float8`,
-      ceo: sql<number>`coalesce(sum(kpi_ceo),0)::float8`,
-      tpkd: sql<number>`coalesce(sum(kpi_tpkd),0)::float8`,
-      admin: sql<number>`coalesce(sum(bonus_admin),0)::float8`,
-      hoTro: sql<number>`coalesce(sum(customer_support),0)::float8`,
-    })
-    .from(yearEndAccruals)
-    .where(and(
-      gte(yearEndAccruals.accrualDate, start),
-      lte(yearEndAccruals.accrualDate, end),
-    ));
-
-  const otherAccruals = await db
-    .select({ category: yearEndOtherAccruals.category, sum: sql<number>`coalesce(sum(amount),0)::float8` })
-    .from(yearEndOtherAccruals)
-    .where(and(
-      gte(yearEndOtherAccruals.accrualDate, start),
-      lte(yearEndOtherAccruals.accrualDate, end),
-    ))
-    .groupBy(yearEndOtherAccruals.category);
-
-  // Merge: add accrual sums vào từng bucket
-  const addToBucket = (k: CategoryKey, amount: number) => {
-    byKey.set(k, (byKey.get(k) ?? 0) + amount);
-  };
-  addToBucket("hh_sale", Number(accrual?.hh ?? 0));
-  addToBucket("cdt_thuong_nvkd", Number(accrual?.cdt ?? 0));
-  addToBucket("cty_thuong_ql", Number(accrual?.ql ?? 0));
-  addToBucket("cty_thuong_ceo", Number(accrual?.ceo ?? 0));
-  addToBucket("cty_thuong_tpkd", Number(accrual?.tpkd ?? 0));
-  addToBucket("cty_thuong_admin", Number(accrual?.admin ?? 0));
-  addToBucket("ho_tro_khach", Number(accrual?.hoTro ?? 0));
-  for (const o of otherAccruals) addToBucket(o.category as CategoryKey, Number(o.sum));
-
-  const get = (k: CategoryKey) => byKey.get(k) ?? 0;
-
-  // BC kế toán 2.x giá vốn trực tiếp
-  const hh_sale = get("hh_sale");
-  const ho_tro_khach = get("ho_tro_khach");
-  const cdt_thuong_nvkd = get("cdt_thuong_nvkd");
-  const cdt_thuong_ql = get("cdt_thuong_ql");
-  const cty_thuong_ql = get("cty_thuong_ql");
-  const cty_thuong_tpkd = get("cty_thuong_tpkd");
-  const cty_thuong_admin = get("cty_thuong_admin");
-  const cty_thuong_ceo = get("cty_thuong_ceo");
-  const totalCogs = hh_sale + ho_tro_khach + cdt_thuong_nvkd + cdt_thuong_ql
-    + cty_thuong_ql + cty_thuong_tpkd + cty_thuong_admin + cty_thuong_ceo;
-  const laiGop = dtNet - totalCogs;
-
-  // BC kế toán 4.x chi phí cố định
-  const luong_nvkd = get("luong_nvkd");
-  const thuong_ds_sale = get("thuong_ds_sale");
-  const luong_admin = get("luong_admin");
-  const marketing = get("marketing");
-  const thue_vp = get("thue_vp");
-  const do_dung_vp = get("do_dung_vp");
-  const di_lai = get("di_lai");
-  const tiep_khach = get("tiep_khach");
-  const dich_vu_ngoai = get("dich_vu_ngoai");
-  const thue_phi_le_phi = get("thue_phi_le_phi");
-  const opex_khac = get("opex_khac");
-  const qly_chung_khac = thue_vp + do_dung_vp + di_lai + tiep_khach + dich_vu_ngoai + thue_phi_le_phi + opex_khac;
-  const totalFixed = luong_nvkd + thuong_ds_sale + luong_admin + marketing + qly_chung_khac;
-
-  const totalOpex = totalCogs + totalFixed;
-  const laiThuan = dtNet - totalOpex;
-
-  // 6.1 Thuế TNDN
-  const thue_tndn = get("thue_tndn");
-  const laiSauThue = laiThuan - thue_tndn;
+  const pnl = await loadManagementPnl({ start, end });
+  const ref = findReference({ start, end });
+  const cmp = ref ? comparePnl(pnl, ref) : null;
+  const cmpByCode = new Map<string, PnlComparisonRow>(cmp?.map((c) => [c.code, c]) ?? []);
+  const explained = cmp?.filter((c) => c.delta != null && Math.abs(c.delta) >= 1000 && c.note) ?? [];
+  const unexplained = cmp?.filter((c) => c.delta != null && Math.abs(c.delta) >= 1000 && !c.note) ?? [];
 
   const years = [2024, 2025, 2026];
   const quarters = [1, 2, 3, 4];
@@ -168,6 +61,8 @@ export default async function ProfitDetailPage({ searchParams }: { searchParams:
     return `/reports/profit-detail?${p}`;
   };
 
+  const denom = pnl.revenue.net;
+
   return (
     <div className="space-y-6">
       <div>
@@ -176,12 +71,10 @@ export default async function ProfitDetailPage({ searchParams }: { searchParams:
         </div>
         <h1 className="text-2xl font-bold mt-1">Báo cáo lãi/lỗ quản trị</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Format BC kế toán — {label}. <b>Chuẩn dồn tích (TT200)</b> từ sổ NKC.
-          Nguồn DT: BCDT kế toán. Nguồn chi phí: accounting_journal classify per description.
+          {label}. Chuẩn dồn tích theo format báo cáo kế toán. Doanh thu và giá vốn lấy từ đối chiếu trong CRM, chi phí cố định lấy từ sổ nhật ký chung.
         </p>
       </div>
 
-      {/* Period selector */}
       <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-3 flex flex-wrap gap-3 items-center text-xs">
         <div>
           <span className="text-slate-500 mr-2">Năm:</span>
@@ -204,100 +97,84 @@ export default async function ProfitDetailPage({ searchParams }: { searchParams:
         </div>
       </div>
 
-      {/* Cash flow report link */}
-      <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-800 flex items-center justify-between">
-        <span>💡 Đây là <b>P&L dồn tích</b> (khớp BC kế toánTC). Muốn xem <b>dòng tiền thực</b> (cash basis)?</span>
-        <Link href="/reports/cash-flow" className="text-blue-700 underline font-medium">→ Xem dòng tiền</Link>
-      </div>
+      {!pnl.opexAvailable && (
+        <div className="bg-amber-50 border border-amber-200 rounded p-3 text-sm text-amber-800">
+          Kỳ này chưa có sổ nhật ký chung từ kế toán nên phần chi phí cố định (mục 4) đang trống. Doanh thu và giá vốn vẫn đầy đủ.
+        </div>
+      )}
 
-      {/* Report table */}
       <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="text-xs text-slate-500">
             <tr>
               <th className="text-left p-2 w-12">STT</th>
               <th className="text-left p-2">Khoản mục</th>
-              <th className="text-right p-2 w-40">Số tiền</th>
-              <th className="text-right p-2 w-24">Tỷ trọng/DT</th>
+              <th className="text-right p-2 w-40">App</th>
+              <th className="text-right p-2 w-20">Tỷ trọng/DT</th>
+              {ref && <th className="text-right p-2 w-40">Kế toán</th>}
+              {ref && <th className="text-right p-2 w-32">Lệch</th>}
             </tr>
           </thead>
           <tbody>
-            <SectionRow stt="1" label="DOANH THU" />
-            <ItemRow stt="1.1" label="Doanh thu gồm VAT" value={dtGross} />
-            <ItemRow stt="1.2" label="Doanh thu không VAT" value={dtNet} highlight />
-            <ItemRow stt="1.3" label="CĐT thưởng sale (gồm VAT)" value={bonusSaleGross} />
-            <ItemRow stt="1.4" label="CĐT thưởng quản lý (gồm VAT)" value={bonusMgrGross} />
-            <ItemRow stt="1.5" label="Doanh thu không gồm thưởng CĐT" value={dtNetNoBonus} />
-
-            <SectionRow stt="2" label="CÁC KHOẢN GIÁ VỐN TRỰC TIẾP" value={totalCogs} pct={pct(totalCogs, dtNet)} />
-            <ItemRow stt="2.1" label="Chi phí hoa hồng" value={hh_sale} pctStr={pct(hh_sale, dtNet)} indent />
-            <ItemRow stt="2.2" label="Chi phí hỗ trợ khách mua BĐS" value={ho_tro_khach} pctStr={pct(ho_tro_khach, dtNet)} indent />
-            <ItemRow stt="2.3" label="CĐT thưởng cho NVKD" value={cdt_thuong_nvkd} pctStr={pct(cdt_thuong_nvkd, dtNet)} indent />
-            <ItemRow stt="2.4" label="CĐT thưởng quản lý sàn" value={cdt_thuong_ql} pctStr={pct(cdt_thuong_ql, dtNet)} indent />
-            <ItemRow stt="2.5" label="Công ty thưởng quản lý sàn" value={cty_thuong_ql} pctStr={pct(cty_thuong_ql, dtNet)} indent />
-            <ItemRow stt="2.6" label="Công ty thưởng trưởng phòng KD" value={cty_thuong_tpkd} pctStr={pct(cty_thuong_tpkd, dtNet)} indent />
-            <ItemRow stt="2.7" label="Công ty thưởng Admin" value={cty_thuong_admin} pctStr={pct(cty_thuong_admin, dtNet)} indent />
-            <ItemRow stt="2.8" label="Công ty thưởng CEO" value={cty_thuong_ceo} pctStr={pct(cty_thuong_ceo, dtNet)} indent />
-
-            <SectionRow stt="3" label="LÃI GỘP" value={laiGop} pct={pct(laiGop, dtNet)} color={laiGop >= 0 ? "green" : "red"} />
-
-            <SectionRow stt="4" label="CHI PHÍ CỐ ĐỊNH" value={totalFixed} pct={pct(totalFixed, dtNet)} />
-            <ItemRow stt="4.1" label="Lương NVKD + BHXH cty" value={luong_nvkd} pctStr={pct(luong_nvkd, dtNet)} indent />
-            <ItemRow stt="4.2" label="Thưởng doanh số + khác sale" value={thuong_ds_sale} pctStr={pct(thuong_ds_sale, dtNet)} indent />
-            <ItemRow stt="4.3" label="Lương QL + Admin + Kế toán + BHXH cty" value={luong_admin} pctStr={pct(luong_admin, dtNet)} indent />
-            <ItemRow stt="4.4" label="Chi phí quảng cáo" value={marketing} pctStr={pct(marketing, dtNet)} indent />
-            <ItemRow stt="4.5" label="Chi phí quản lý chung khác" value={qly_chung_khac} pctStr={pct(qly_chung_khac, dtNet)} indent />
-            <ItemRow stt="" label="↳ Thuê VP + điện nước internet" value={thue_vp} indent2 />
-            <ItemRow stt="" label="↳ Đồ dùng + thiết bị VP" value={do_dung_vp} indent2 />
-            <ItemRow stt="" label="↳ Đi lại + xăng xe" value={di_lai} indent2 />
-            <ItemRow stt="" label="↳ Tiếp khách" value={tiep_khach} indent2 />
-            <ItemRow stt="" label="↳ Dịch vụ mua ngoài" value={dich_vu_ngoai} indent2 />
-            <ItemRow stt="" label="↳ Thuế phí lệ phí" value={thue_phi_le_phi} indent2 />
-            <ItemRow stt="" label="↳ OPEX khác" value={opex_khac} indent2 />
-
-            <SectionRow stt="5" label="TỔNG CHI PHÍ HOẠT ĐỘNG" value={totalOpex} pct={pct(totalOpex, dtNet)} />
-
-            <SectionRow stt="6" label="LỢI NHUẬN TRƯỚC THUẾ" value={laiThuan} pct={pct(laiThuan, dtNet)} color={laiThuan >= 0 ? "green" : "red"} />
-
-            {thue_tndn > 0 && (
-              <>
-                <ItemRow stt="6.1" label="Thuế TNDN" value={thue_tndn} pctStr={pct(thue_tndn, dtNet)} indent />
-                <SectionRow stt="7" label="LỢI NHUẬN SAU THUẾ" value={laiSauThue} pct={pct(laiSauThue, dtNet)} color={laiSauThue >= 0 ? "green" : "red"} />
-              </>
-            )}
+            {pnl.lines.map((l) => (
+              <Row key={l.code} line={l} denom={denom} cmp={cmpByCode.get(l.code)} withRef={!!ref} />
+            ))}
           </tbody>
         </table>
       </div>
 
-      <div className="text-xs text-slate-500 italic space-y-1">
-        <p>💡 <b>Nguồn:</b> revenue_reconciliations (DT) + accounting_journal (sổ NKC dồn tích).</p>
-        <p>💡 Classifier áp per description NKC → 32 bucket (xem <Link href="/finance/bank-review" className="underline">Đối chiếu bank</Link> để hiểu logic).</p>
-        <p>💡 Nếu số không khớp BC kế toán: có thể kế toán gộp cross-TK theo bản chất — cần user override qua UI review NKC.</p>
+      {ref && (
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-4 text-sm space-y-3">
+          <div className="font-semibold">Đối chiếu với {ref.label}</div>
+          <p className="text-slate-600">
+            Cột Lệch = App trừ Kế toán. Dòng có ghi chú là lệch đã tìm ra nguyên nhân.
+          </p>
+          {explained.length > 0 && (
+            <ul className="space-y-2">
+              {explained.map((c) => (
+                <li key={c.code} className="flex gap-3">
+                  <span className="font-mono text-xs text-slate-500 w-10 shrink-0 pt-0.5">{c.code}</span>
+                  <span className="tabular-nums w-32 shrink-0 text-right">{fmtDelta(c.delta!)}</span>
+                  <span className="text-slate-700">{c.note}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {unexplained.length > 0 && (
+            <div className="text-amber-800 bg-amber-50 border border-amber-200 rounded p-2">
+              Chưa có giải thích: {unexplained.map((c) => `${c.code} (${fmtDelta(c.delta!)})`).join(", ")}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="text-xs text-slate-500 space-y-1">
+        <p>Doanh thu: đối chiếu doanh thu theo ngày đối chiếu, gồm VAT và thưởng nóng của CĐT.</p>
+        <p>Giá vốn: đối chiếu giá vốn theo loại chi phí, cộng trích trước cuối năm của kế toán, trừ phần hoàn nhập khi kỳ sau chi thật cho căn đã trích.</p>
+        <p>Chi phí cố định: sổ nhật ký chung đã phân loại, sửa phân loại tại <Link href="/finance/nkc-review" className="underline">Đối chiếu sổ NKC</Link>.</p>
       </div>
     </div>
   );
 }
 
-function SectionRow({ stt, label, value, pct: pctStr, color }: { stt: string; label: string; value?: number; pct?: string; color?: "green" | "red" }) {
-  const cls = color === "green" ? "text-green-700" : color === "red" ? "text-red-700" : "text-slate-800";
+function Row({ line, denom, cmp, withRef }: { line: PnlLine; denom: number; cmp?: PnlComparisonRow; withRef: boolean }) {
+  const isSection = line.kind === "section";
+  const padCls = line.kind === "sub" ? "pl-10" : line.kind === "item" ? "pl-6" : "";
+  const profitLine = line.code === "3" || line.code === "6" || line.code === "7";
+  const colorCls = profitLine ? (line.value >= 0 ? "text-green-700" : "text-red-700") : "";
+  const delta = cmp?.delta ?? null;
+  const deltaCls = delta == null ? "text-slate-400" : Math.abs(delta) < 1000 ? "text-slate-400" : cmp?.note ? "text-slate-700" : "text-amber-700 font-medium";
   return (
-    <tr className="border-t-2 border-slate-300 bg-slate-100 font-bold">
-      <td className="p-2 font-mono">{stt}</td>
-      <td className={`p-2 ${cls}`}>{label}</td>
-      <td className={`p-2 text-right tabular-nums ${cls}`}>{value !== undefined ? fmt(value) : ""}</td>
-      <td className={`p-2 text-right ${cls}`}>{pctStr ?? ""}</td>
-    </tr>
-  );
-}
-
-function ItemRow({ stt, label, value, pctStr, indent, indent2, highlight }: { stt: string; label: string; value: number; pctStr?: string; indent?: boolean; indent2?: boolean; highlight?: boolean }) {
-  const padCls = indent2 ? "pl-10" : indent ? "pl-6" : "";
-  return (
-    <tr className={`border-t border-slate-100 ${highlight ? "bg-blue-50/50" : ""}`}>
-      <td className="p-2 font-mono text-xs text-slate-500">{stt}</td>
-      <td className={`p-2 ${padCls} ${highlight ? "font-semibold" : ""}`}>{label}</td>
-      <td className={`p-2 text-right tabular-nums ${highlight ? "font-semibold" : ""}`}>{fmt(value)}</td>
-      <td className="p-2 text-right text-xs text-slate-500">{pctStr ?? ""}</td>
+    <tr className={isSection ? "border-t-2 border-slate-300 bg-slate-100 font-bold" : "border-t border-slate-100"} title={line.source}>
+      <td className="p-2 font-mono text-xs text-slate-500">{line.code}</td>
+      <td className={`p-2 ${padCls} ${colorCls}`}>
+        {line.label}
+        {line.source && line.kind !== "sub" && <div className="text-[11px] text-slate-400 font-normal">{line.source}</div>}
+      </td>
+      <td className={`p-2 text-right tabular-nums align-top ${colorCls}`}>{fmt(line.value)}</td>
+      <td className="p-2 text-right text-xs text-slate-500 align-top">{line.pctBase ? pct(line.value, denom) : ""}</td>
+      {withRef && <td className="p-2 text-right tabular-nums text-slate-600 align-top">{cmp?.ref == null ? "" : fmt(cmp.ref)}</td>}
+      {withRef && <td className={`p-2 text-right tabular-nums align-top ${deltaCls}`}>{delta == null ? "" : fmtDelta(delta)}</td>}
     </tr>
   );
 }
