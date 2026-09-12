@@ -6,6 +6,7 @@
  * Nguồn các năm chưa có sổ: sao kê + sổ chi tiền mặt (lib/cash-pnl.ts nạp).
  *
  * Nguyên tắc: chỉ tính tiền THẬT SỰ vào/ra. Không trích trước, không phân bổ, không phải thu/phải trả.
+ * Dòng lương tách khối kinh doanh / quản lý theo tỷ lệ sao kê từng người (lib/employee-pay-core.ts).
  */
 import { classifyNkc, type CategoryKey } from "./transaction-classifier";
 
@@ -37,7 +38,7 @@ export function classifyCashLeg(leg: CashLeg): CategoryKey {
 
   if (leg.direction === "in") {
     if (acc === "131") return "dt_hh_so_cap";
-    if (acc === "3388" || acc === "1388" || acc === "138") return T(/hoan|hoàn/i, d) ? "giu_cho_ho_khach" : "giu_cho_ho_khach";
+    if (acc === "3388" || acc === "1388" || acc === "138") return "giu_cho_ho_khach";
     if (acc === "411" || acc === "41111") return "von_gop";
     if (acc === "3411" || acc === "341") return "vay_nhan";
     if (acc === "515" || first === "7") return "khac_thu";
@@ -56,12 +57,12 @@ export function classifyCashLeg(leg: CashLeg): CategoryKey {
   if (acc === "33311" || acc === "3331") return "thue_vat";
   if (acc === "3334") return "thue_tndn";
   if (acc === "3335") return "thue_tncn";
-  if (acc === "3383" || acc === "3384" || acc === "3386" || acc === "338") return "luong_nvkd"; // BHXH, gom vào dòng lương
+  if (acc === "3383" || acc === "3384" || acc === "3386" || acc === "338") return "bhxh";
   if (acc === "335") return T(/ho tro khach|hỗ trợ khách/i, d) ? "ho_tro_khach" : "hh_sale";
   if (acc === "3341" || acc === "334") {
     if (T(/hoa hong|hoa hồng/i, d)) return "hh_sale";
     if (T(/thuong doanh so|thưởng doanh số/i, d)) return "thuong_ds_sale";
-    return "luong_nvkd"; // lương, thù lao CTV, tạm ứng lương: gom một dòng lương
+    return "luong_nvkd"; // lương, thù lao CTV, tạm ứng lương: gom dòng lương, tách khối sau
   }
   if (acc === "331" || acc === "3311") return classifySupplierPayment(d);
   if (acc === "1331" || acc === "133") return "opex_khac"; // VAT phí ngân hàng, lẻ
@@ -90,7 +91,7 @@ function classifySupplierPayment(d: string): CategoryKey {
 export type CashLineKey =
   | "thu_hh" | "thu_khac"
   | "chi_hh_sale" | "chi_ho_tro_khach" | "chi_thuong_ql"
-  | "chi_luong" | "chi_thuong_ds" | "chi_marketing" | "chi_thue_vp" | "chi_do_dung" | "chi_di_lai" | "chi_tiep_khach" | "chi_dich_vu" | "chi_thue_phi" | "chi_khac"
+  | "chi_luong" | "chi_bhxh" | "chi_thuong_ds" | "chi_marketing" | "chi_thue_vp" | "chi_do_dung" | "chi_di_lai" | "chi_tiep_khach" | "chi_dich_vu" | "chi_thue_phi" | "chi_khac"
   | "thue_vat" | "thue_tndn" | "thue_tncn"
   | "von_gop" | "rut_von" | "vay" | "ky_quy" | "giu_cho" | "hoan_khach" | "chuyen_noi_bo" | "chua_phan_loai";
 
@@ -100,7 +101,7 @@ export const CATEGORY_TO_CASH_LINE: Record<CategoryKey, CashLineKey> = {
   hh_sale: "chi_hh_sale", cdt_thuong_nvkd: "chi_hh_sale",
   ho_tro_khach: "chi_ho_tro_khach",
   cdt_thuong_ql: "chi_thuong_ql", cty_thuong_ql: "chi_thuong_ql", cty_thuong_tpkd: "chi_thuong_ql", cty_thuong_admin: "chi_thuong_ql", cty_thuong_ceo: "chi_thuong_ql",
-  luong_nvkd: "chi_luong", luong_admin: "chi_luong", thuong_ds_sale: "chi_thuong_ds", marketing: "chi_marketing",
+  luong_nvkd: "chi_luong", luong_admin: "chi_luong", bhxh: "chi_bhxh", thuong_ds_sale: "chi_thuong_ds", marketing: "chi_marketing",
   thue_vp: "chi_thue_vp", do_dung_vp: "chi_do_dung", di_lai: "chi_di_lai", tiep_khach: "chi_tiep_khach", dich_vu_ngoai: "chi_dich_vu",
   thue_phi_le_phi: "chi_thue_phi", opex_khac: "chi_khac",
   thue_tncn: "thue_tncn", thue_tndn: "thue_tndn", thue_vat: "thue_vat",
@@ -113,15 +114,19 @@ export interface CashLine {
   code: string;
   key?: CashLineKey;
   label: string;
-  value: number;          // dấu theo bản chất: thu dương, chi dương (đã là số chi), tổng theo công thức
+  value: number;
   kind: "section" | "item" | "sub";
   note?: string;
 }
+
+/** Tỷ lệ chia dòng lương theo khối, lấy từ sao kê từng người (employee-pay-core). */
+export interface SalarySplit { kinhDoanh: number; quanLy: number }
 
 export interface CashPnl {
   period: Period;
   available: boolean;
   byLine: Record<CashLineKey, number>;   // thu: +, chi: + (số tiền chi), non-op: net (vào − ra)
+  luongSplit: { kinhDoanh: number; quanLy: number; basis: "sao_ke" | "khong_tach" };
   lines: CashLine[];
   memo: CashLine[];
   totals: {
@@ -135,7 +140,7 @@ export interface CashPnl {
 const NON_OP: CashLineKey[] = ["von_gop", "rut_von", "vay", "ky_quy", "giu_cho", "hoan_khach", "chuyen_noi_bo", "chua_phan_loai"];
 const THU: CashLineKey[] = ["thu_hh", "thu_khac"];
 const GIA_VON: CashLineKey[] = ["chi_hh_sale", "chi_ho_tro_khach", "chi_thuong_ql"];
-const CO_DINH: CashLineKey[] = ["chi_luong", "chi_thuong_ds", "chi_marketing", "chi_thue_vp", "chi_do_dung", "chi_di_lai", "chi_tiep_khach", "chi_dich_vu", "chi_thue_phi", "chi_khac"];
+const CO_DINH: CashLineKey[] = ["chi_luong", "chi_bhxh", "chi_thuong_ds", "chi_marketing", "chi_thue_vp", "chi_do_dung", "chi_di_lai", "chi_tiep_khach", "chi_dich_vu", "chi_thue_phi", "chi_khac"];
 const THUE: CashLineKey[] = ["thue_vat", "thue_tndn", "thue_tncn"];
 
 const LABEL: Record<CashLineKey, string> = {
@@ -144,7 +149,8 @@ const LABEL: Record<CashLineKey, string> = {
   chi_hh_sale: "Hoa hồng và thưởng nóng đã chi cho sale",
   chi_ho_tro_khach: "Hỗ trợ khách mua BĐS đã chi",
   chi_thuong_ql: "Thưởng quản lý sàn, TPKD, Admin, CEO đã chi",
-  chi_luong: "Lương, thù lao CTV, BHXH đã trả",
+  chi_luong: "Lương, thù lao, phụ cấp, phí kế toán đã trả",
+  chi_bhxh: "BHXH, BHYT, BHTN đã nộp",
   chi_thuong_ds: "Thưởng doanh số đã chi",
   chi_marketing: "Quảng cáo, sự kiện",
   chi_thue_vp: "Thuê văn phòng, điện nước, internet",
@@ -167,7 +173,7 @@ const LABEL: Record<CashLineKey, string> = {
   chua_phan_loai: "Chưa phân loại",
 };
 
-export function buildCashPnl(legs: CashLeg[], period: Period, available = true): CashPnl {
+export function buildCashPnl(legs: CashLeg[], period: Period, available = true, salarySplit?: SalarySplit): CashPnl {
   const byLine = Object.fromEntries(Object.keys(LABEL).map((k) => [k, 0])) as Record<CashLineKey, number>;
   const unclassified: CashLeg[] = [];
   let bankIn = 0, bankOut = 0, cashIn = 0, cashOut = 0;
@@ -186,6 +192,13 @@ export function buildCashPnl(legs: CashLeg[], period: Period, available = true):
   }
   for (const k of Object.keys(byLine) as CashLineKey[]) byLine[k] = Math.round(byLine[k]);
 
+  // Chia dòng lương theo tỷ lệ sao kê từng người; tổng vẫn là số sổ.
+  const luongTotal = byLine.chi_luong;
+  const splitSum = (salarySplit?.kinhDoanh ?? 0) + (salarySplit?.quanLy ?? 0);
+  const luongSplit = splitSum > 0
+    ? (() => { const kd = Math.round(luongTotal * (salarySplit!.kinhDoanh / splitSum)); return { kinhDoanh: kd, quanLy: luongTotal - kd, basis: "sao_ke" as const }; })()
+    : { kinhDoanh: luongTotal, quanLy: 0, basis: "khong_tach" as const };
+
   const sum = (keys: CashLineKey[]) => keys.reduce((s, k) => s + byLine[k], 0);
   const thu = sum(THU);
   const chiGiaVon = sum(GIA_VON);
@@ -198,6 +211,15 @@ export function buildCashPnl(legs: CashLeg[], period: Period, available = true):
   const thayDoiTien = hoatDongRong + ngoaiHoatDong;
 
   const item = (code: string, key: CashLineKey): CashLine => ({ code, key, label: LABEL[key], value: byLine[key], kind: "item" });
+  const coDinhLines: CashLine[] = [];
+  CO_DINH.forEach((k, i) => {
+    coDinhLines.push(item(`4.${i + 1}`, k));
+    if (k === "chi_luong") {
+      coDinhLines.push({ code: "4.1a", label: "Khối kinh doanh (NVKD, TPKD, CTV)", value: luongSplit.kinhDoanh, kind: "sub", note: luongSplit.basis === "sao_ke" ? "chia theo tỷ lệ sao kê từng người" : "chưa tách được" });
+      coDinhLines.push({ code: "4.1b", label: "Khối quản lý, admin, kế toán, marketing", value: luongSplit.quanLy, kind: "sub" });
+    }
+  });
+
   const lines: CashLine[] = [
     { code: "1", label: "TIỀN THU TỪ HOẠT ĐỘNG", value: thu, kind: "section" },
     item("1.1", "thu_hh"), item("1.2", "thu_khac"),
@@ -205,7 +227,7 @@ export function buildCashPnl(legs: CashLeg[], period: Period, available = true):
     item("2.1", "chi_hh_sale"), item("2.2", "chi_ho_tro_khach"), item("2.3", "chi_thuong_ql"),
     { code: "3", label: "CHÊNH LỆCH GỘP BẰNG TIỀN", value: chenhGop, kind: "section" },
     { code: "4", label: "TIỀN CHI CỐ ĐỊNH", value: chiCoDinh, kind: "section" },
-    ...CO_DINH.map((k, i) => item(`4.${i + 1}`, k)),
+    ...coDinhLines,
     { code: "5", label: "DÒNG TIỀN HOẠT ĐỘNG TRƯỚC THUẾ", value: hoatDongTruocThue, kind: "section" },
     { code: "6", label: "THUẾ ĐÃ NỘP", value: thue, kind: "section" },
     ...THUE.map((k, i) => item(`6.${i + 1}`, k)),
@@ -218,7 +240,7 @@ export function buildCashPnl(legs: CashLeg[], period: Period, available = true):
   ];
 
   return {
-    period, available, byLine, lines, memo, unclassified,
+    period, available, byLine, luongSplit, lines, memo, unclassified,
     totals: { thu, chiGiaVon, chenhGop, chiCoDinh, hoatDongTruocThue, thue, hoatDongRong, ngoaiHoatDong, thayDoiTien, bankIn, bankOut, cashIn, cashOut },
   };
 }

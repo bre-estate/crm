@@ -19,9 +19,11 @@ Phân loại (`classifyCashLeg`): ưu tiên tài khoản đối ứng (131 thu p
 
 Cấu trúc: 1 thu hoạt động · 2 chi giá vốn (hoa hồng và thưởng nóng, hỗ trợ khách, thưởng quản lý) · 3 chênh gộp · 4 chi cố định (10 dòng) · 5 hoạt động trước thuế · 6 thuế đã nộp · 7 hoạt động ròng · 8 ngoài hoạt động (vốn góp, rút vốn, vay, ký quỹ, giữ chỗ ròng, hoàn khách, chuyển két và bank) · 9 thay đổi tiền = 7 + 8. Dòng 9 phải bằng Δ bank + Δ tiền mặt, trang có ô kiểm.
 
-Kết quả 2025: thu 3.736,1tr · chi giá vốn 1.284,4tr · chi cố định 1.160,0tr · thuế nộp 198,2tr · dòng tiền hoạt động ròng **1.093,6tr** · ngoài hoạt động −299,0tr (ký quỹ 239tr, hoàn khách 100tr, giữ chỗ ròng +40tr) · thay đổi tiền +794,6tr, khớp sổ (bank +1.462,3tr, tiền mặt −667,7tr).
+Kết quả 2025: thu 3.736,1tr · chi giá vốn 1.284,4tr · chi cố định 1.160,0tr (lương 471,3tr, BHXH 88,4tr, quảng cáo 206,2tr, thuê VP 164,6tr, chi không hóa đơn 105,2tr...) · thuế nộp 198,2tr · dòng tiền hoạt động ròng **1.093,6tr** · ngoài hoạt động −299,0tr (ký quỹ 239tr, hoàn khách 100tr, giữ chỗ ròng +40tr) · thay đổi tiền +794,6tr, khớp sổ (bank +1.462,3tr, tiền mặt −667,7tr).
 
-Giới hạn cần biết: lương, thù lao CTV, phí kế toán dịch vụ, BHXH gom một dòng (lệnh chuyển gộp nhiều người, sổ không tách). Thưởng nóng theo căn nằm trong hoa hồng, giống kế toán.
+Tách dòng lương theo khối (`lib/employee-pay-core.ts`, chốt 12/09/2026): sổ NKC ghi lương gộp một bút toán cho cả đợt, nên lấy sao kê từng lệnh chuyển cho nhân sự, khớp tên với `employees` (bỏ dấu, khớp đầu chuỗi) để biết vị trí, rồi chia khối kinh doanh (nvkd, tpkd, ctv) và khối quản lý (ceo, admin, hr, content, kế toán dịch vụ theo ghi chú). Loại tiền đọc từ diễn giải: lương cứng, thù lao/phụ cấp/hỗ trợ, hoa hồng/thưởng nóng/KPI, thưởng doanh số, thưởng khác, phí kế toán. Lệnh gộp "lương + hoa hồng" tách bằng lương tháng gần nhất của chính người đó, không có thì lấy lương cơ bản trong `commission_policies`, không có nữa thì ghi "không tách được". Hoàn YCTV, ứng chi phí, hoàn thuế không tính là thu nhập. Dòng 4.1 tổng vẫn là số sổ, chia 4.1a/4.1b theo tỷ lệ sao kê. BHXH tách riêng dòng 4.2. 2025: khối kinh doanh 252,3tr, khối quản lý 219,0tr, BHXH 88,4tr. Trang có bảng từng người.
+
+Giới hạn cần biết: thưởng nóng theo căn nằm trong hoa hồng, giống kế toán.
 
 ## 1. Dồn tích: nguồn từng dòng
 

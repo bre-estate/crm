@@ -6,8 +6,9 @@
 import { getCurrentUser } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { Fragment } from "react";
 import { loadManagementPnl, findReference, comparePnl, type PnlLine, type PnlComparisonRow } from "@/lib/management-pnl";
-import { loadCashPnl, type CashLine } from "@/lib/cash-pnl";
+import { loadCashPnl, PAY_GROUP_LABEL, PAY_KIND_LABEL, type CashLine, type EmployeePaySummary, type PayGroup, type PayKind } from "@/lib/cash-pnl";
 
 export const dynamic = "force-dynamic";
 
@@ -106,7 +107,7 @@ export default async function ProfitDetailPage({ searchParams }: { searchParams:
 // ───────────────────────── Dòng tiền ─────────────────────────
 
 async function CashView({ start, end }: { start: string; end: string }) {
-  const r = await loadCashPnl({ start, end });
+  const { pnl: r, pay } = await loadCashPnl({ start, end });
   const thu = r.totals.thu;
   const dBank = r.totals.bankIn - r.totals.bankOut;
   const dCash = r.totals.cashIn - r.totals.cashOut;
@@ -147,6 +148,8 @@ async function CashView({ start, end }: { start: string; end: string }) {
         </table>
       </div>
 
+      <EmployeePayTable pay={pay} />
+
       <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-4 text-sm space-y-2">
         <div className="font-semibold">Khớp với số dư</div>
         <table className="text-sm">
@@ -184,15 +187,73 @@ function Stat({ label, value, tone }: { label: string; value: number; tone?: "go
 
 function CashRow({ line, denom }: { line: CashLine; denom: number }) {
   const isSection = line.kind === "section";
+  const isSub = line.kind === "sub";
   const keyLine = ["3", "5", "7", "9"].includes(line.code);
-  const colorCls = keyLine ? (line.value >= 0 ? "text-green-700" : "text-red-700") : "";
+  const colorCls = keyLine ? (line.value >= 0 ? "text-green-700" : "text-red-700") : isSub ? "text-slate-600" : "";
   return (
-    <tr className={isSection ? "border-t-2 border-slate-300 bg-slate-100 font-bold" : "border-t border-slate-100"}>
+    <tr className={isSection ? "border-t-2 border-slate-300 bg-slate-100 font-bold" : isSub ? "text-xs" : "border-t border-slate-100"}>
       <td className="p-2 font-mono text-xs text-slate-500">{line.code}</td>
-      <td className={`p-2 ${isSection ? "" : "pl-6"} ${colorCls}`}>{line.label}</td>
+      <td className={`p-2 ${isSection ? "" : isSub ? "pl-10" : "pl-6"} ${colorCls}`}>{line.label}{line.note && <span className="text-slate-400"> · {line.note}</span>}</td>
       <td className={`p-2 text-right tabular-nums ${colorCls}`}>{fmt(line.value)}</td>
       <td className="p-2 text-right text-xs text-slate-500">{denom > 0 && !isSection ? pct(line.value, denom) : denom > 0 && keyLine ? pct(line.value, denom) : ""}</td>
     </tr>
+  );
+}
+
+
+function EmployeePayTable({ pay }: { pay: EmployeePaySummary }) {
+  if (pay.people.length === 0) return null;
+  const kinds: PayKind[] = ["luong_cung", "thu_lao_phu_cap", "hoa_hong", "thuong_doanh_so", "thuong_khac", "dich_vu_ke_toan", "khac"];
+  const groups: PayGroup[] = ["kinh_doanh", "quan_ly"];
+  return (
+    <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-4 text-sm space-y-3">
+      <div className="font-semibold">Tiền trả cho nhân sự theo người nhận (sao kê)</div>
+      <p className="text-slate-600 text-xs">
+        Khối theo vị trí trong danh sách nhân viên. Loại tiền theo diễn giải lệnh chuyển. Lệnh gộp lương và hoa hồng tách bằng lương tháng gần nhất của người đó, không có thì dùng lương cơ bản trong chính sách. Khoản hoàn YCTV, ứng chi phí, hoàn thuế không tính là thu nhập.
+      </p>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead className="text-slate-500">
+            <tr>
+              <th className="text-left p-1.5">Người nhận</th>
+              <th className="text-left p-1.5">Vị trí</th>
+              {kinds.map((k) => <th key={k} className="text-right p-1.5">{PAY_KIND_LABEL[k]}</th>)}
+              <th className="text-right p-1.5">Tổng</th>
+            </tr>
+          </thead>
+          <tbody>
+            {groups.map((g) => {
+              const people = pay.people.filter((p) => p.group === g);
+              if (people.length === 0) return null;
+              const gs = pay.groups[g];
+              const gTotal = kinds.reduce((s, k) => s + gs[k], 0);
+              return (
+                <Fragment key={g}>
+                  <tr className="bg-slate-100 font-semibold border-t-2 border-slate-300">
+                    <td className="p-1.5" colSpan={2}>{PAY_GROUP_LABEL[g]}</td>
+                    {kinds.map((k) => <td key={k} className="p-1.5 text-right tabular-nums">{gs[k] ? fmt(gs[k]) : ""}</td>)}
+                    <td className="p-1.5 text-right tabular-nums">{fmt(gTotal)}</td>
+                  </tr>
+                  {people.map((p) => (
+                    <tr key={p.employee.id} className="border-t border-slate-100">
+                      <td className="p-1.5">{p.employee.name}{p.lumpSplits.length > 0 && <span className="text-slate-400"> · {p.lumpSplits.length} lệnh gộp, {p.lumpSplits[0].basis}</span>}</td>
+                      <td className="p-1.5 text-slate-500">{p.employee.position}</td>
+                      {kinds.map((k) => <td key={k} className="p-1.5 text-right tabular-nums">{p.byKind[k] ? fmt(p.byKind[k]) : ""}</td>)}
+                      <td className="p-1.5 text-right tabular-nums font-medium">{fmt(p.total)}</td>
+                    </tr>
+                  ))}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      {pay.unmatched.length > 0 && (
+        <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded p-2">
+          Chuyển cho cá nhân không có trong danh sách nhân viên: {Array.from(new Set(pay.unmatched.map((u) => u.partnerName))).join(", ")}.
+        </div>
+      )}
+    </div>
   );
 }
 

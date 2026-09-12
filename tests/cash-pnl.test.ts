@@ -13,10 +13,10 @@ describe("classifyCashLeg theo TK đối ứng", () => {
     expect(classifyCashLeg(leg({ direction: "in", counterAccount: "1111", amount: 1 }))).toBe("chuyen_noi_bo");
     expect(classifyCashLeg(leg({ direction: "in", counterAccount: "515", amount: 1 }))).toBe("khac_thu");
   });
-  test("chi: thuế theo TK, BHXH gom vào lương, 335 hỗ trợ khách, 244 ký quỹ, 3388 nộp thay là giữ chỗ, hoàn là hoàn khách", () => {
+  test("chi: thuế theo TK, BHXH dòng riêng, 335 hỗ trợ khách, 244 ký quỹ, 3388 nộp thay là giữ chỗ, hoàn là hoàn khách", () => {
     expect(classifyCashLeg(leg({ direction: "out", counterAccount: "3335", amount: 1 }))).toBe("thue_tncn");
     expect(classifyCashLeg(leg({ direction: "out", counterAccount: "33311", amount: 1 }))).toBe("thue_vat");
-    expect(classifyCashLeg(leg({ direction: "out", counterAccount: "3383", amount: 1 }))).toBe("luong_nvkd");
+    expect(classifyCashLeg(leg({ direction: "out", counterAccount: "3383", amount: 1 }))).toBe("bhxh");
     expect(classifyCashLeg(leg({ direction: "out", counterAccount: "335", amount: 1, description: "thanh toan ho tro khach hang To Thi Nga" }))).toBe("ho_tro_khach");
     expect(classifyCashLeg(leg({ direction: "out", counterAccount: "244", amount: 1 }))).toBe("ky_quy");
     expect(classifyCashLeg(leg({ direction: "out", counterAccount: "3388", amount: 1, description: "Nop thay Phan Thi Huyen B.16.11" }))).toBe("giu_cho_ho_khach");
@@ -60,13 +60,14 @@ describe("buildCashPnl", () => {
     leg({ direction: "out", counterAccount: "811", amount: 60, channel: "cash", description: "chi khong hoa don" }),
     leg({ date: "2026-01-05", direction: "in", counterAccount: "131", amount: 99_999 }),              // ngoài kỳ
   ];
-  const r = buildCashPnl(legs, P);
+  const r = buildCashPnl(legs, P, true, { kinhDoanh: 3, quanLy: 1 });
 
   test("thu, giá vốn (trừ hoàn), cố định, thuế, ròng", () => {
     expect(r.totals.thu).toBe(1_010);
     expect(r.byLine.chi_hh_sale).toBe(350);
     expect(r.totals.chiGiaVon).toBe(350);
-    expect(r.byLine.chi_luong).toBe(120);
+    expect(r.byLine.chi_luong).toBe(100);
+    expect(r.byLine.chi_bhxh).toBe(20);
     expect(r.byLine.chi_khac).toBe(60);
     expect(r.totals.chiCoDinh).toBe(180);
     expect(r.totals.hoatDongTruocThue).toBe(1_010 - 350 - 180);
@@ -80,6 +81,11 @@ describe("buildCashPnl", () => {
     expect(r.totals.thayDoiTien).toBe(650);
     const kenh = r.totals.bankIn - r.totals.bankOut + r.totals.cashIn - r.totals.cashOut;
     expect(kenh).toBe(650);
+  });
+  test("dòng lương chia theo tỷ lệ sao kê 3:1, tổng giữ nguyên", () => {
+    expect(r.luongSplit).toEqual({ kinhDoanh: 75, quanLy: 25, basis: "sao_ke" });
+    expect(r.lines.find((l) => l.code === "4.1a")!.value).toBe(75);
+    expect(buildCashPnl(legs, P).luongSplit.basis).toBe("khong_tach");
   });
   test("bỏ chân ngoài kỳ, không có chưa phân loại", () => {
     expect(r.unclassified).toHaveLength(0);

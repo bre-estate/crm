@@ -13,7 +13,7 @@ export type CategoryKey =
   | "cdt_thuong_nvkd" | "cdt_thuong_ql"
   | "cty_thuong_ql" | "cty_thuong_tpkd" | "cty_thuong_admin" | "cty_thuong_ceo"
   // OPEX chính (Kim BC 4.1-4.4) (4)
-  | "luong_nvkd" | "thuong_ds_sale" | "luong_admin" | "marketing"
+  | "luong_nvkd" | "thuong_ds_sale" | "luong_admin" | "marketing" | "bhxh"
   // OPEX khác tách từ Kim BC 4.5 (7)
   | "thue_vp" | "do_dung_vp" | "di_lai" | "tiep_khach"
   | "dich_vu_ngoai" | "thue_phi_le_phi" | "opex_khac"
@@ -53,6 +53,7 @@ export const CATEGORIES: Record<CategoryKey, CategoryMeta> = {
   thuong_ds_sale:   { key: "thuong_ds_sale",   label: "Thưởng doanh số + khác sale",      group: "opex", kimBc: "4.2" },
   luong_admin:      { key: "luong_admin",      label: "Lương QL/Admin + BHXH cty",        group: "opex", kimBc: "4.3" },
   marketing:        { key: "marketing",        label: "Chi phí quảng cáo",                group: "opex", kimBc: "4.4" },
+  bhxh:             { key: "bhxh",             label: "BHXH, BHYT, BHTN đã nộp",           group: "opex", kimBc: "4.1" },
 
   thue_vp:          { key: "thue_vp",          label: "Thuê VP + điện nước internet",     group: "opex", kimBc: "4.5" },
   do_dung_vp:       { key: "do_dung_vp",       label: "Đồ dùng + thiết bị VP",            group: "opex", kimBc: "4.5" },
