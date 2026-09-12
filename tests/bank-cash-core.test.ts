@@ -78,3 +78,29 @@ describe("classifyFounderCash", () => {
     expect(classifyFounderCash({ date: "2026-01-15", description: "x", amount: 1, managementGroup: "10. Thứ cấp (loại)", direction: "out" })).toBeNull();
   });
 });
+
+describe("classifyBankRows: giấy nộp thuế, khách hàng trên căn, bảng lương", () => {
+  const ctx2 = {
+    employees,
+    policies: [],
+    taxPayments: [{ paidDate: "2026-04-29", taxType: "gtgt", amount: 147_209_248 }, { paidDate: "2026-04-29", taxType: "tncn", amount: 486_329_740 }],
+    customerNames: ["Nguyễn Thị Thơm", "Đào Thị Thái Hòa"],
+    payroll: new Map([["HO NGUYEN CONG THANH|2025-12", 7_500_000]]),
+  };
+  test("KBNN khớp ngày và số tiền với giấy nộp thuế thì ra đúng loại, không khớp để chưa tách", () => {
+    const legs = classifyBankRows([
+      row({ date: "2026-04-29", description: "NTDT+KB:0120-KBNN Khu vuc II", debit: 147_209_248 }),
+      row({ date: "2026-04-29", description: "NTDT+KB:0120-KBNN Khu vuc II", debit: 486_329_740 }),
+      row({ date: "2026-04-29", description: "NTDT+KB:0120-KBNN Khu vuc II", debit: 57_801 }),
+    ], ctx2);
+    expect(legs.map((l) => l.category)).toEqual(["thue_vat", "thue_tncn", "thue_kbnn"]);
+  });
+  test("tiền vào từ khách hàng trên căn là giữ chỗ, kể cả tên viết liền", () => {
+    expect(classifyBankRows([row({ description: "MBVCB.1409 ThomNguyen chuyen khoan nhanh qua Zalo", credit: 100_000_000 })], ctx2)[0].category).toBe("giu_cho_ho_khach");
+    expect(classifyBankRows([row({ description: "Dao Thi Thai Hoa - 9743", partnerName: "DAO THI THAI HOA", credit: 30_000_000 })], ctx2)[0].category).toBe("giu_cho_ho_khach");
+  });
+  test("lệnh gộp tách bằng bảng lương tháng ghi trong diễn giải", () => {
+    const legs = classifyBankRows([row({ date: "2026-01-05", partnerName: "HO NGUYEN CONG THANH", description: "BRE TT LUONG + PHU CAP + THUONG T12 2025", debit: 87_375_322 })], ctx2);
+    expect(legs.map((l) => [l.category, l.amount])).toEqual([["luong_nvkd", 7_500_000], ["hh_sale", 79_875_322]]);
+  });
+});

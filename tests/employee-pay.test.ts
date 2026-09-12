@@ -79,3 +79,15 @@ describe("summarizeEmployeePay", () => {
     expect(s.unmatched.map((u) => u.partnerName)).toEqual(["NGUYEN DANG KHIET"]);
   });
 });
+
+describe("payrollMonthOf và buildPayrollIndex", () => {
+  test("đọc tháng lương trong diễn giải, không có thì lấy tháng trước", async () => {
+    const { payrollMonthOf, buildPayrollIndex } = await import("@/lib/employee-pay-core");
+    expect(payrollMonthOf("BRE TT LUONG + PHU CAP + THUONG T12 2025", "2026-01-05")).toBe("2025-12");
+    expect(payrollMonthOf("BRE TT Thuong + Thu nhap khac T01 2026", "2026-02-05")).toBe("2026-01");
+    expect(payrollMonthOf("BRE TT Luong thang 10 2025 + Hoa hong", "2025-11-05")).toBe("2025-10");
+    expect(payrollMonthOf("BRE thanh toan hoa hong", "2026-03-06")).toBe("2026-02");
+    const idx = buildPayrollIndex([{ month: "2025-12", name: "Trần Minh Nhật", baseSalary: 5_500_000, allowances: 1_000_000 }]);
+    expect(idx.get("TRAN MINH NHAT|2025-12")).toBe(6_500_000);
+  });
+});

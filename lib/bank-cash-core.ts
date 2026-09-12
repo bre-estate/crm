@@ -7,7 +7,7 @@
  * (5) CĐT và đối tác; (6) từ khóa chi phí; (7) classifier chung; không rõ → chua_phan_loai.
  */
 import { classify, type CategoryKey } from "./transaction-classifier";
-import { classifyPayDescription, groupOf, matchEmployee, stripName, type EmployeeLite } from "./employee-pay-core";
+import { classifyPayDescription, groupOf, matchEmployee, payrollMonthOf, stripName, type EmployeeLite, type PayrollIndex } from "./employee-pay-core";
 import { resolvePolicy, type CommissionPolicy, type Role } from "./commission-policy";
 import type { CashLeg } from "./cash-pnl-core";
 
@@ -30,12 +30,30 @@ const GIU_CHO = /YCTV|DKTV|DKNV|GIU CHO|GCCDK|GCCCD|\bYC\b|DANG KY DU AN|DANG KY
 const HOAN = /HOAN TIEN|HOAN TRA|TRA LAI|HOAN PHIEU|\bHOAN\b|THANH LY/;
 const ROLE_OF: Record<string, Role | undefined> = { nvkd: "nvkd", ctv: "ctv", tpkd: "tpkd", admin: "admin", hr: "admin" };
 
-export interface ClassifyCtx { employees: EmployeeLite[]; policies: CommissionPolicy[] }
+export interface TaxPaymentLite { paidDate: string; taxType: string; amount: number }
+export interface ClassifyCtx {
+  employees: EmployeeLite[];
+  policies: CommissionPolicy[];
+  taxPayments?: TaxPaymentLite[];   // giấy nộp thuế đã đọc từ Drive, để tách loại thuế trên sao kê
+  customerNames?: string[];         // tên khách hàng trên căn (products.customer_name), tiền vào từ họ là giữ chỗ
+  payroll?: PayrollIndex;           // bảng lương từng người theo tháng, để tách lệnh gộp lương + hoa hồng
+}
+const TAX_CAT: Record<string, CategoryKey> = { gtgt: "thue_vat", tncn: "thue_tncn", tndn: "thue_tndn", mon_bai: "thue_phi_le_phi", phat: "opex_khac" };
+const dayDiff = (a: string, b: string) => Math.abs((Date.parse(a) - Date.parse(b)) / 86400000);
+/** Biến "Nguyễn Thị Thơm" thành các dạng có thể gặp trong sao kê: NGUYENTHITHOM, THOMNGUYEN, NGUYEN THI THOM. */
+function nameVariants(name: string): string[] {
+  const parts = stripName(name).split(" ").filter(Boolean);
+  if (parts.length < 2) return [];
+  const full = parts.join("");
+  return [full, parts[parts.length - 1] + parts[0], parts[parts.length - 1] + parts.slice(0, -1).join("")];
+}
 
 /** Trạng thái chạy tuần tự theo ngày: lương tháng gần nhất từng người, để tách lệnh gộp lương + hoa hồng. */
 export function makeBankClassifier(ctx: ClassifyCtx) {
   const lastSalary = new Map<number, number>();
   const T = (re: RegExp, s: string) => re.test(s);
+  const customerVariants = (ctx.customerNames ?? []).flatMap(nameVariants).filter((v) => v.length >= 8);
+  const usedTax = new Set<number>();
 
   return function classifyBankRow(row: BankRowLite): BankLeg[] {
     const direction: "in" | "out" = row.credit > 0 ? "in" : "out";
@@ -54,7 +72,11 @@ export function makeBankClassifier(ctx: ClassifyCtx) {
     if (T(/TERM DEPOSIT|TIET KIEM|TAT TOAN SO TIET KIEM/, d)) return [leg("chuyen_noi_bo", "rule")];
     if (T(/SAN GIAO DICH BDS BRE|SAN GIAO DICH BAT DONG SAN BRE/, p)) return [leg("chuyen_noi_bo", "rule")];
     if (direction === "in" && T(/NOP TIEN VAO TAI KHOAN|NOP TIEN MAT|NOP TIEN$/, d)) return [leg("chuyen_noi_bo", "rule")];
-    if (T(/KBNN|NTDT|KHO BAC/, d) || T(/KHO BAC/, p)) return [leg("thue_kbnn", "rule")];
+    if (T(/KBNN|NTDT|KHO BAC/, d) || T(/KHO BAC/, p)) {
+      const tp = (ctx.taxPayments ?? []).findIndex((t, i) => !usedTax.has(i) && Math.abs(t.amount - amount) < 1 && dayDiff(t.paidDate, row.date) <= 3);
+      if (tp >= 0) { usedTax.add(tp); return [leg(TAX_CAT[ctx.taxPayments![tp].taxType] ?? "thue_kbnn", "rule")]; }
+      return [leg("thue_kbnn", "rule")];
+    }
     if (direction === "in" && T(/TRA LAI SO DU|LAI TIEN GUI|LAI NHAP GOC/, d)) return [leg("khac_thu", "rule")];
     if (T(/BHXH|BAO HIEM XA HOI/, d) || T(/BAO HIEM XA HOI|BHXH/, p)) return [leg("bhxh", "rule")];
 
@@ -71,7 +93,8 @@ export function makeBankClassifier(ctx: ClassifyCtx) {
         return [leg("hoan_khach", "employee")];
       }
       if (kind === "luong_va_hh") {
-        let luong = lastSalary.get(emp.id) ?? 0;
+        let luong = ctx.payroll?.get(`${stripName(emp.name)}|${payrollMonthOf(row.description, row.date)}`) ?? 0;
+        if (!luong) luong = lastSalary.get(emp.id) ?? 0;
         if (!luong) { const role = ROLE_OF[emp.position]; const pol = role ? resolvePolicy(ctx.policies, role, row.date) : null; luong = pol ? Number(pol.baseSalary ?? 0) : 0; }
         luong = Math.min(luong, amount);
         const out: BankLeg[] = [];
@@ -92,8 +115,12 @@ export function makeBankClassifier(ctx: ClassifyCtx) {
       return [leg("khac_thu", "employee")];
     }
 
-    // (4) giữ chỗ, YCTV, booking
+    // (4) giữ chỗ, YCTV, booking. Tiền vào từ người là khách hàng trên căn cũng là giữ chỗ.
     if (T(/KI QUY|KY QUY/, d)) return [leg("ky_quy", "rule")];
+    if (direction === "in" && customerVariants.length > 0) {
+      const hay = (p + " " + d).replace(/\s+/g, "");
+      if (customerVariants.some((v) => hay.includes(v))) return [leg("giu_cho_ho_khach", "rule")];
+    }
     if (T(GIU_CHO, d)) {
       if (direction === "out") {
         if (T(HOAN, d)) return [leg("hoan_khach", "rule")];

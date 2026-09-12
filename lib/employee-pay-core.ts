@@ -70,6 +70,28 @@ export function classifyPayDescription(description: string): PayKind | "luong_va
 
 const ROLE_OF: Record<string, Role | undefined> = { nvkd: "nvkd", ctv: "ctv", tpkd: "tpkd", admin: "admin", hr: "admin" };
 
+/** Bảng lương từng người theo tháng (payroll_months): lương cứng + phụ cấp dùng để tách lệnh gộp. */
+export interface PayrollLite { month: string; name: string; baseSalary: number; allowances: number }
+export type PayrollIndex = Map<string, number>; // `${stripName(name)}|${YYYY-MM}` → lương cứng + phụ cấp
+
+export function buildPayrollIndex(rows: PayrollLite[]): PayrollIndex {
+  const m: PayrollIndex = new Map();
+  for (const r of rows) { const k = `${stripName(r.name)}|${r.month}`; m.set(k, (m.get(k) ?? 0) + r.baseSalary + r.allowances); }
+  return m;
+}
+
+/** Tháng lương mà lệnh chuyển nói tới: "T12 2025", "T01 2026", "thang 10 2025"; không ghi thì lấy tháng trước ngày chuyển. */
+export function payrollMonthOf(description: string, date: string): string {
+  const s = (description ?? "").toUpperCase();
+  const m = s.match(/T(?:HANG)?\s*0?(\d{1,2})[\s./-]+(20\d{2})/) ?? s.match(/T(?:HANG)?\s*0?(\d{1,2})\b/);
+  if (m) {
+    const mo = Number(m[1]); const y = m[2] ? Number(m[2]) : Number(date.slice(0, 4)) - (mo > Number(date.slice(5, 7)) ? 1 : 0);
+    if (mo >= 1 && mo <= 12) return `${y}-${String(mo).padStart(2, "0")}`;
+  }
+  const d = new Date(date + "T00:00:00Z"); d.setUTCMonth(d.getUTCMonth() - 1);
+  return d.toISOString().slice(0, 7);
+}
+
 export interface PayItem { date: string; amount: number; description: string; kind: PayKind | "luong_va_hh"; luong?: number; hoaHong?: number; basis?: string }
 
 export interface PersonPay {
@@ -91,7 +113,7 @@ export interface EmployeePaySummary {
 
 const zeroKinds = () => Object.fromEntries(PAY_KINDS.map((k) => [k, 0])) as Record<PayKind, number>;
 
-export function summarizeEmployeePay(rows: PayRow[], employees: EmployeeLite[], policies: CommissionPolicy[], countFrom?: string): EmployeePaySummary {
+export function summarizeEmployeePay(rows: PayRow[], employees: EmployeeLite[], policies: CommissionPolicy[], countFrom?: string, payroll?: PayrollIndex): EmployeePaySummary {
   const sorted = [...rows].sort((a, b) => a.date.localeCompare(b.date));
   const people = new Map<number, PersonPay>();
   const lastSalary = new Map<number, number>();
@@ -106,8 +128,9 @@ export function summarizeEmployeePay(rows: PayRow[], employees: EmployeeLite[], 
     const counted = !countFrom || r.date >= countFrom;
     if (!counted) { if (kind === "luong_cung") lastSalary.set(e.id, r.amount); continue; } // chỉ dùng để biết lương gần nhất
     if (kind === "luong_va_hh") {
-      let luong = lastSalary.get(e.id) ?? 0;
-      let basis = "lương tháng gần nhất";
+      let luong = payroll?.get(`${stripName(e.name)}|${payrollMonthOf(r.description, r.date)}`) ?? 0;
+      let basis = "bảng lương tháng đó";
+      if (!luong) { luong = lastSalary.get(e.id) ?? 0; basis = "lương tháng gần nhất"; }
       if (!luong) {
         const role = ROLE_OF[e.position];
         const pol = role ? resolvePolicy(policies, role, r.date) : null;

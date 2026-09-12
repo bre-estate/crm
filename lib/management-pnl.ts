@@ -9,7 +9,7 @@ import {
   type AccrualLite, type CostReconLite, type DatedCategoryAmount, type ManagementPnl, type ManagementRaw, type Period, type PnlComparisonRow, type PnlReference, type RevenueRow,
 } from "./management-pnl-core";
 import { KIM_PNL_2025 } from "./reference/kim-pnl-2025";
-import { loadCashLegsFromBank, loadCashLegsFromFounders } from "./cash-pnl";
+import { loadCashContext, loadCashLegsFromBank, loadCashLegsFromFounders } from "./cash-pnl";
 import { classifyCashLeg } from "./cash-pnl-core";
 
 export * from "./management-pnl-core";
@@ -69,7 +69,9 @@ export async function loadManagementRaw(period: Period): Promise<ManagementRaw> 
   let cashOpex: DatedCategoryAmount[] = [];
   if (nkc.length === 0) {
     // Chưa có sổ: chi phí cố định lấy từ sao kê + tiền mặt founder. BHXH gộp vào lương NVKD như cách kế toán trình bày 4.1.
-    const [bank, founders] = await Promise.all([loadCashLegsFromBank(period), loadCashLegsFromFounders(period)]);
+    const ctx = await loadCashContext(period);
+    const bank = await loadCashLegsFromBank(period, ctx);
+    const founders = await loadCashLegsFromFounders(period);
     cashOpex = [...bank, ...founders].map((l) => {
       const c = classifyCashLeg(l);
       return { date: l.date, category: c === "bhxh" ? "luong_nvkd" : c, amount: l.direction === "out" ? l.amount : -l.amount };
