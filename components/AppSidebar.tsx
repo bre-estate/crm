@@ -55,103 +55,64 @@ type NavGroup = {
 type NavEntry = NavLeaf | NavGroup;
 const isGroup = (n: NavEntry): n is NavGroup => "children" in n;
 
-// Nav được reorganize theo tần suất dùng, không phải theo domain:
-// - HÀNG NGÀY: những trang mở nhiều nhất
-// - CƠ SỞ DỮ LIỆU: setup entities (ít khi sửa)
-// - BÁO CÁO: 3 báo cáo chính + 1 group deep dives
-// - KẾ TOÁN: cho owner cần audit
-// - QUẢN TRỊ HỆ THỐNG: chỉ owner
+// Menu gọn: 5 nhóm, mỗi nhóm tối đa 7 mục (chốt với operator 12/09/2026).
+// Báo cáo chỉ đưa 4 báo cáo chính lên menu; đủ 17 báo cáo nằm ở trang /reports dạng thẻ.
+// Nhóm không có resource riêng: quyền xét từng mục con, nhóm rỗng thì ẩn.
 const NAV: NavEntry[] = [
   { href: "/", label: "Tổng quan" },
   {
-    label: "Đối tác & Dự án",
+    label: "Giao dịch",
     children: [
-      { href: "/partners", label: "Đối tác", resource: "partners" },
-      { href: "/projects", label: "Dự án", resource: "products" },
-    ],
-  },
-  {
-    label: "Giao dịch sơ cấp",
-    children: [
-      { href: "/products", label: "Danh sách căn", resource: "products" },
+      { href: "/products", label: "Căn sơ cấp", resource: "products" },
       { href: "/revenues", label: "Doanh thu", resource: "revenues" },
       { href: "/costs", label: "Giá vốn", resource: "costs" },
       { href: "/invoices", label: "Hóa đơn", resource: "invoices" },
+      { href: "/secondary-sales", label: "Căn thứ cấp", resource: "products" },
     ],
   },
   {
-    label: "Giao dịch thứ cấp",
-    children: [
-      { href: "/secondary-sales", label: "Danh sách căn", resource: "products" },
-    ],
-  },
-  {
-    label: "Báo cáo quản trị",
+    label: "Báo cáo",
     href: "/reports",
     children: [
-      { href: "/reports/kpi-dashboard", label: "🎯 KPI Dashboard", resource: "reports.kpi-dashboard" },
-      { href: "/reports/profit-detail", label: "Lãi/lỗ (dồn tích)", resource: "reports.profit-detail" },
-      { href: "/reports/cash-flow", label: "Dòng tiền", resource: "reports.cash-flow" },
-      { href: "/reports/ar-aging", label: "Tuổi nợ phải thu", resource: "reports.ar-aging" },
-      { href: "/reports/ap-aging", label: "Tuổi nợ phải trả", resource: "reports.ap-aging" },
-      { href: "/reports/balance-sheet", label: "Bảng cân đối", resource: "reports.balance-sheet" },
-      { href: "/reports/sales", label: "Báo cáo bán hàng", resource: "reports.sales" },
-      { href: "/reports/commissions", label: "Báo cáo hoa hồng", resource: "reports.commissions" },
-      { href: "/reports/project-profitability", label: "Lãi/lỗ theo dự án", resource: "reports.project-profitability" },
-      { href: "/reports/expenses", label: "Phân tích chi phí", resource: "reports.expenses" },
-      { href: "/reports/break-even", label: "Điểm hòa vốn", resource: "reports.break-even" },
-      // Deep dives (Phase 2 sắp gom lại thành Sales report + Commission)
-      { href: "/reports/unit-profitability", label: "Lãi từng căn", resource: "reports.unit-profitability", section: "Chi tiết" },
-      { href: "/reports/segments", label: "Phân khúc căn", resource: "reports.segments", section: "Chi tiết" },
-      { href: "/reports/people", label: "Theo nhân sự", resource: "reports.people", section: "Chi tiết" },
-      { href: "/reports/projects", label: "Theo dự án", resource: "reports.overview", section: "Chi tiết" },
-      { href: "/reports/partners", label: "Theo đối tác", resource: "reports.overview", section: "Chi tiết" },
+      { href: "/reports/profit-detail", label: "Lãi/lỗ và dòng tiền", resource: "reports.profit-detail" },
+      { href: "/reports/kpi-dashboard", label: "KPI", resource: "reports.kpi-dashboard" },
+      { href: "/reports/sales", label: "Bán hàng", resource: "reports.sales" },
+      { href: "/reports/commissions", label: "Hoa hồng", resource: "reports.commissions" },
     ],
   },
   {
     label: "Kế toán",
-    href: "/finance",
-    resource: "finance",
     children: [
-      { href: "/expenses", label: "Chi phí (Yêu cầu chi)", ownerOnly: true },
+      { href: "/periods", label: "Kỳ HH và thưởng", resource: "periods" },
       { href: "/payroll/commissions", label: "Xuất bảng HH", resource: "payroll.commissions" },
-      { href: "/periods", label: "Kỳ HH & thưởng", resource: "periods" },
-      { href: "/finance/capital", label: "Vốn góp founder", resource: "finance" },
-      { href: "/finance/assets", label: "Tài sản cố định", resource: "finance" },
+      { href: "/expenses", label: "Yêu cầu chi", ownerOnly: true },
+      { href: "/finance/bank-review", label: "Sao kê bank", resource: "finance" },
+      { href: "/finance/nkc-review", label: "Sổ NKC", resource: "finance" },
       { href: "/finance/transactions", label: "Giao dịch tài chính", resource: "finance" },
-      { href: "/finance/bank-review", label: "Đối chiếu sao kê bank", resource: "finance" },
-      { href: "/finance/nkc-review", label: "Đối chiếu sổ NKC", resource: "finance" },
+      { href: "/finance", label: "Vốn góp và tài sản", resource: "finance", exact: true },
     ],
   },
   {
-    label: "Nhân sự",
+    label: "Danh mục",
     children: [
+      { href: "/partners", label: "Đối tác", resource: "partners" },
+      { href: "/projects", label: "Dự án", resource: "products" },
       { href: "/employees", label: "Nhân viên", resource: "employees" },
       { href: "/departments", label: "Phòng ban", resource: "departments" },
     ],
   },
   {
-    label: "Quản trị hệ thống",
+    label: "Hệ thống",
     children: [
-      { href: "/admin/users", label: "Quản lý user", ownerOnly: true },
+      { href: "/admin/users", label: "Người dùng", ownerOnly: true },
       { href: "/admin/data-checks", label: "Kiểm tra dữ liệu", ownerOnly: true },
-      { href: "/admin/chat-analytics", label: "Phân tích chatbot", ownerOnly: true },
-      { href: "/admin/audit/missing-cost", label: "Đối chiếu Excel vs App", ownerOnly: true },
       { href: "/admin/activity", label: "Lịch sử hoạt động", resource: "admin.activity" },
       { href: "/admin/import-logs", label: "Nhật ký import", resource: "admin.activity" },
+      { href: "/admin/chat-analytics", label: "Phân tích chatbot", ownerOnly: true },
+      { href: "/admin/audit/missing-cost", label: "Đối chiếu Excel và app", ownerOnly: true },
     ],
   },
-  {
-    label: "Hướng dẫn",
-    children: [
-      { href: "/help/nhap-doi-tac", label: "🤝 Nhập đối tác", resource: "help" },
-      { href: "/help/nhap-du-an", label: "🏗️ Nhập dự án", resource: "help" },
-      { href: "/help/nhap-can", label: "🏢 Nhập căn", resource: "help" },
-      { href: "/help/nhap-doanh-thu", label: "📥 Nhập doanh thu", resource: "help" },
-      { href: "/help/nhap-doi-chieu-gia-von", label: "💸 Nhập giá vốn", resource: "help" },
-      { href: "/help/accounting-basics", label: "📚 Kế toán căn bản", resource: "help" },
-    ],
-  },
+  { href: "/help", label: "Hướng dẫn", resource: "help" },
 ];
 
 function isActive(pathname: string, href: string, exact = false): boolean {
@@ -422,7 +383,8 @@ export default function AppSidebar({
                 const visibleChildren = n.children.filter((c) => canSee(c));
                 if (visibleChildren.length === 0) return null;
 
-                const parentActive = n.href ? pathname === n.href : false;
+                const childActive = visibleChildren.some((c) => isActive(pathname, c.href, c.exact));
+                const parentActive = n.href ? (pathname === n.href || (!childActive && pathname.startsWith(n.href + "/"))) : false;
                 return (
                   <SidebarMenuItem key={n.label}>
                     {n.href ? (
