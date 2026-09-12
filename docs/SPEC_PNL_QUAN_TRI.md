@@ -13,7 +13,8 @@ Trang `/reports/profit-detail`, hai cách nhìn (chốt với operator 12/09/202
 
 Nguồn theo năm:
 - Năm kế toán đã giao sổ NKC (2025): lấy thẳng từ `accounting_journal`. Sổ khớp sao kê tới 44.000 đồng (bank ra 6.552.762.538 so với sao kê 6.552.718.538) và đã có mã tài khoản đối ứng.
-- Năm chưa có sổ (2026): chưa làm. Sẽ lấy từ `bank_transactions` đã duyệt phân loại + sổ chi tiền mặt. Trang hiện cảnh báo.
+- Năm chưa có sổ (2026): `lib/bank-cash-core.ts` biến từng dòng `bank_transactions` thành chân tiền, cộng sổ chi tiền mặt founder (`financial_transactions` nguồn merged-*, coi như két 1111 giống cách kế toán ghi, bỏ nhóm thứ cấp). Thứ tự luật: sửa tay ở bank-review → nội bộ/thuế kho bạc/BHXH → người nhận là nhân viên (đọc loại tiền như employee-pay, lệnh gộp tách bằng lương tháng gần nhất, có lấy 3 tháng trước kỳ để biết lương) → giữ chỗ/YCTV/booking → từ khóa chi phí → CĐT/đối tác → classifier chung; không rõ thì `chua_phan_loai` (dòng 8.8, trang chỉ chỗ sửa). Khi kế toán giao sổ NKC năm đó, trang tự chuyển về sổ. Sao kê không ghi loại thuế nên thuế nộp kho bạc để một dòng `thue_kbnn` (sau lấy từ 0.2.5 Sổ theo dõi nộp thuế). Dồn tích 2026: mục 4 tạm lấy từ cùng bộ chân tiền này (`opexSource = "bank"`), BHXH gộp vào 4.1.
+- Diễn giải lương 2026 đổi cách ghi: "LUONG + PHU CAP + THUONG T12", "Thuong + Thu nhap khac T01". "Thu nhập khác" trên bảng lương là hoa hồng theo căn, nên tính hoa hồng; lệnh có cả lương lẫn thưởng thì tách. Lưu ý `stripName` bỏ số và dấu +, regex không được dựa vào số.
 
 Phân loại (`classifyCashLeg`): ưu tiên tài khoản đối ứng (131 thu phí môi giới; 3388/1388/141 giữ chỗ, nộp thay, hoàn khách; 244 ký quỹ; 3341 lương và thù lao; 3335 TNCN; 33311 GTGT; 3334 TNDN; 3383/3384/3386 BHXH gom vào lương; 335 chi cho khoản đã trích; 6xx/8xx dùng `classifyNkc`). Trả nhà cung cấp (331) thì đọc diễn giải.
 

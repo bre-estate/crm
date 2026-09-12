@@ -18,7 +18,7 @@ export type CategoryKey =
   | "thue_vp" | "do_dung_vp" | "di_lai" | "tiep_khach"
   | "dich_vu_ngoai" | "thue_phi_le_phi" | "opex_khac"
   // Không tính P&L, chỉ Cash flow (7)
-  | "thue_tncn" | "thue_tndn" | "thue_vat"
+  | "thue_tncn" | "thue_tndn" | "thue_vat" | "thue_kbnn"
   | "tra_no_goc" | "chuyen_noi_bo" | "rut_von" | "hoan_khach"
   | "ky_quy" | "giu_cho_ho_khach"
   // Chưa xác định (1)
@@ -66,6 +66,7 @@ export const CATEGORIES: Record<CategoryKey, CategoryMeta> = {
   thue_tncn:        { key: "thue_tncn",        label: "Nộp TNCN",                         group: "non_pnl" },
   thue_tndn:        { key: "thue_tndn",        label: "Nộp TNDN",                         group: "non_pnl" },
   thue_vat:         { key: "thue_vat",         label: "Nộp VAT",                          group: "non_pnl" },
+  thue_kbnn:        { key: "thue_kbnn",        label: "Nộp thuế kho bạc, chưa tách loại", group: "non_pnl" },
   tra_no_goc:       { key: "tra_no_goc",       label: "Trả nợ gốc vay",                   group: "non_pnl" },
   chuyen_noi_bo:    { key: "chuyen_noi_bo",    label: "Chuyển giữa TK nội bộ",            group: "non_pnl" },
   rut_von:          { key: "rut_von",          label: "Rút vốn founder",                  group: "non_pnl" },

@@ -47,17 +47,23 @@ export function groupOf(e: EmployeeLite): PayGroup {
   return ["nvkd", "tpkd", "ctv"].includes(e.position) ? "kinh_doanh" : "quan_ly";
 }
 
+/**
+ * Diễn giải lệnh chuyển cho nhân sự → loại tiền.
+ * Từ 2026 kế toán chuyển gộp theo bảng lương: "LUONG + PHU CAP + THUONG T12", "Thuong + Thu nhap khac T01".
+ * "Thu nhập khác" trên bảng lương là hoa hồng và thưởng theo căn, nên tính là hoa hồng.
+ */
 export function classifyPayDescription(description: string): PayKind | "luong_va_hh" {
   const s = stripName(description);
   if (/UNG CHI PHI|HOAN TIEN|HOAN TRA|TIEP KHACH|YCTV|GIU CHO|DAT COC/.test(s)) return "khong_tinh";
   if (/PHI DICH VU|TOKEN|HDDT|KE TOAN|CHUAN HOA SO/.test(s)) return "dich_vu_ke_toan";
-  const hasLuong = /LUONG/.test(s);
-  const hasHH = /HOA HONG|THUONG NONG|\bHH\b|KPI/.test(s);
+  const hasLuong = /LUONG|THU LAO|PHU CAP|HO TRO/.test(s);
+  // stripName đã bỏ số và dấu "+", nên "LUONG + PHU CAP + THUONG T12" thành "LUONG PHU CAP THUONG T"
+  const hasHH = /HOA HONG|THUONG NONG|\bHH\b|KPI|THU NHAP KHAC|THUONG CTV|BO SUNG THUONG|(LUONG|THU LAO|PHU CAP).*THUONG/.test(s);
+  if (/THUONG DOANH SO/.test(s) && !hasLuong) return "thuong_doanh_so";
   if (hasLuong && hasHH) return "luong_va_hh";
-  if (/THUONG DOANH SO/.test(s)) return "thuong_doanh_so";
   if (hasHH) return "hoa_hong";
   if (/THUONG/.test(s)) return "thuong_khac";
-  if (hasLuong) return "luong_cung";
+  if (/LUONG/.test(s)) return "luong_cung";
   if (/THU LAO|PHU CAP|HO TRO/.test(s)) return "thu_lao_phu_cap";
   return "khac";
 }
@@ -85,7 +91,7 @@ export interface EmployeePaySummary {
 
 const zeroKinds = () => Object.fromEntries(PAY_KINDS.map((k) => [k, 0])) as Record<PayKind, number>;
 
-export function summarizeEmployeePay(rows: PayRow[], employees: EmployeeLite[], policies: CommissionPolicy[]): EmployeePaySummary {
+export function summarizeEmployeePay(rows: PayRow[], employees: EmployeeLite[], policies: CommissionPolicy[], countFrom?: string): EmployeePaySummary {
   const sorted = [...rows].sort((a, b) => a.date.localeCompare(b.date));
   const people = new Map<number, PersonPay>();
   const lastSalary = new Map<number, number>();
@@ -97,6 +103,8 @@ export function summarizeEmployeePay(rows: PayRow[], employees: EmployeeLite[], 
     let pp = people.get(e.id);
     if (!pp) { pp = { employee: e, group: groupOf(e), byKind: zeroKinds(), total: 0, lumpSplits: [], items: [] }; people.set(e.id, pp); }
     const kind = classifyPayDescription(r.description);
+    const counted = !countFrom || r.date >= countFrom;
+    if (!counted) { if (kind === "luong_cung") lastSalary.set(e.id, r.amount); continue; } // chỉ dùng để biết lương gần nhất
     if (kind === "luong_va_hh") {
       let luong = lastSalary.get(e.id) ?? 0;
       let basis = "lương tháng gần nhất";
@@ -120,6 +128,7 @@ export function summarizeEmployeePay(rows: PayRow[], employees: EmployeeLite[], 
     if (kind === "luong_cung") lastSalary.set(e.id, r.amount);
   }
 
+  for (const [id, pp] of people) if (pp.items.length === 0) people.delete(id);
   const groups: Record<PayGroup, Record<PayKind, number>> = { kinh_doanh: zeroKinds(), quan_ly: zeroKinds() };
   for (const pp of people.values()) for (const k of PAY_KINDS) groups[pp.group][k] += pp.byKind[k];
   const salary = (g: Record<PayKind, number>) => g.luong_cung + g.thu_lao_phu_cap + g.dich_vu_ke_toan;

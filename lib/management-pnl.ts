@@ -9,6 +9,8 @@ import {
   type AccrualLite, type CostReconLite, type DatedCategoryAmount, type ManagementPnl, type ManagementRaw, type Period, type PnlComparisonRow, type PnlReference, type RevenueRow,
 } from "./management-pnl-core";
 import { KIM_PNL_2025 } from "./reference/kim-pnl-2025";
+import { loadCashLegsFromBank, loadCashLegsFromFounders } from "./cash-pnl";
+import { classifyCashLeg } from "./cash-pnl-core";
 
 export * from "./management-pnl-core";
 
@@ -63,7 +65,17 @@ export async function loadManagementRaw(period: Period): Promise<ManagementRaw> 
     },
   }));
   const dated = (rows: Row[]): DatedCategoryAmount[] => rows.map((r) => ({ date: String(r.date), category: r.category == null ? null : String(r.category), amount: num(r.amount) }));
-  return { revenue, recons, accruals, nkc: dated(nkcRows), otherAccruals: dated(otherAccrualRows) };
+  const nkc = dated(nkcRows);
+  let cashOpex: DatedCategoryAmount[] = [];
+  if (nkc.length === 0) {
+    // Chưa có sổ: chi phí cố định lấy từ sao kê + tiền mặt founder. BHXH gộp vào lương NVKD như cách kế toán trình bày 4.1.
+    const [bank, founders] = await Promise.all([loadCashLegsFromBank(period), loadCashLegsFromFounders(period)]);
+    cashOpex = [...bank, ...founders].map((l) => {
+      const c = classifyCashLeg(l);
+      return { date: l.date, category: c === "bhxh" ? "luong_nvkd" : c, amount: l.direction === "out" ? l.amount : -l.amount };
+    });
+  }
+  return { revenue, recons, accruals, nkc, otherAccruals: dated(otherAccrualRows), cashOpex };
 }
 
 export async function loadManagementPnl(period: Period): Promise<{ pnl: ManagementPnl; monthly: ReturnType<typeof buildManagementMonthly> }> {

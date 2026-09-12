@@ -172,7 +172,8 @@ export interface ManagementPnl {
   opex: OpexResult;
   totals: { cogs: number; grossProfit: number; fixed: number; otherFixed: number; totalOpex: number; profitBeforeTax: number; tax: number; profitAfterTax: number };
   lines: PnlLine[];
-  opexAvailable: boolean; // false khi kỳ chưa có sổ NKC
+  opexAvailable: boolean; // false khi kỳ chưa có nguồn chi phí cố định
+  opexSource: "nkc" | "bank" | "none"; // sổ NKC, hay sao kê + tiền mặt founder (năm chưa có sổ)
   units: number;          // căn có đối chiếu doanh thu trong kỳ
 }
 
@@ -252,7 +253,7 @@ export function assemblePnl(
   }
 
   return {
-    period, revenue, cogs, opex, lines, opexAvailable, units: 0,
+    period, revenue, cogs, opex, lines, opexAvailable, opexSource: opexAvailable ? "nkc" : "none", units: 0,
     totals: { cogs: cogsTotal, grossProfit, fixed, otherFixed, totalOpex, profitBeforeTax, tax, profitAfterTax },
   };
 }
@@ -313,16 +314,19 @@ export interface ManagementRaw {
   accruals: AccrualLite[];
   nkc: DatedCategoryAmount[];        // sổ NKC đã phân loại, đã bỏ bút toán kết chuyển
   otherAccruals: DatedCategoryAmount[];
+  cashOpex?: DatedCategoryAmount[];  // năm chưa có sổ: chi phí cố định từ sao kê + tiền mặt founder (tiền vào ghi âm)
 }
 
 export function buildManagementPnl(raw: ManagementRaw, period: Period): ManagementPnl {
   const revenue = computeRevenueFromRows(raw.revenue, period);
   const cogs = computeCogs(raw.recons, raw.accruals, period);
-  const opexRows = [...raw.nkc, ...raw.otherAccruals].filter((r) => inPeriod(r.date, period));
+  const hasNkc = raw.nkc.some((r) => inPeriod(r.date, period));
+  const cashOpex = hasNkc ? [] : (raw.cashOpex ?? []);
+  const opexRows = [...raw.nkc, ...raw.otherAccruals, ...cashOpex].filter((r) => inPeriod(r.date, period));
   const opex = computeOpex(opexRows);
-  const opexAvailable = raw.nkc.some((r) => inPeriod(r.date, period));
+  const opexSource: ManagementPnl["opexSource"] = hasNkc ? "nkc" : cashOpex.length > 0 ? "bank" : "none";
   const units = new Set(raw.revenue.filter((r) => inPeriod(r.date, period) && r.productId != null).map((r) => r.productId)).size;
-  return { ...assemblePnl(period, revenue, cogs, opex, opexAvailable), units };
+  return { ...assemblePnl(period, revenue, cogs, opex, opexSource !== "none"), opexSource, units };
 }
 
 export interface AccrualMonth {

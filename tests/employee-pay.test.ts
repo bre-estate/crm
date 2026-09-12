@@ -39,6 +39,11 @@ describe("classifyPayDescription", () => {
     expect(classifyPayDescription("BRE TT Hoan tien YCTV du an FENICA")).toBe("khong_tinh");
     expect(classifyPayDescription("BRE TT Ung Chi Phi Thang 4 2026")).toBe("khong_tinh");
     expect(classifyPayDescription("BRE thanh toan HH 26-06")).toBe("hoa_hong");
+    expect(classifyPayDescription("BRE TT LUONG + PHU CAP + THUONG T12 2025")).toBe("luong_va_hh");
+    expect(classifyPayDescription("BRE TT Thuong + Thu nhap khac T01 2026")).toBe("hoa_hong");
+    expect(classifyPayDescription("BRE TT THU LAO CTV + HO TRO + THUONG CTV T12 2025")).toBe("luong_va_hh");
+    expect(classifyPayDescription("BRE TT Thuong thang 5")).toBe("thuong_khac");
+    expect(classifyPayDescription("BRE TT THUONG DOANH SO T11+T12 2025")).toBe("thuong_doanh_so");
   });
 });
 

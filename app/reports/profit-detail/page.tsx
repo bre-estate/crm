@@ -141,7 +141,7 @@ function RatioCards({ r, thuLabel, thu, gop, coDinh, rong, rongLabel }: { r: Rat
 // ───────────────────────── Dòng tiền ─────────────────────────
 
 async function CashView({ start, end, months }: { start: string; end: string; months: number }) {
-  const { pnl: r, monthly, units } = await loadCashPnl({ start, end });
+  const { pnl: r, monthly, units, source } = await loadCashPnl({ start, end });
   const thu = r.totals.thu;
   const dBank = r.totals.bankIn - r.totals.bankOut;
   const dCash = r.totals.cashIn - r.totals.cashOut;
@@ -151,13 +151,20 @@ async function CashView({ start, end, months }: { start: string; end: string; mo
   if (!r.available) {
     return (
       <div className="bg-amber-50 border border-amber-200 rounded p-3 text-sm text-amber-800">
-        Kỳ này chưa có sổ nhật ký chung từ kế toán nên chưa dựng được dòng tiền. Bản dòng tiền cho năm chưa có sổ sẽ lấy từ sao kê đã duyệt phân loại và sổ chi tiền mặt, đang làm sau.
+        Kỳ này chưa có dữ liệu tiền: không có sổ nhật ký chung, cũng chưa có sao kê.
       </div>
     );
   }
 
   return (
     <>
+      {source === "bank" && (
+        <div className="bg-sky-50 border border-sky-200 rounded p-3 text-sm text-sky-900">
+          Kỳ này chưa có sổ kế toán. Số lấy từ sao kê Techcombank phân loại theo luật (người nhận, diễn giải) và sổ chi tiền mặt của founder.
+          {r.unclassified.length > 0 && <> Còn <b>{r.unclassified.length}</b> khoản chưa phân loại, sửa tại <Link href="/finance/bank-review" className="underline">Sao kê bank</Link>, sửa tay được ưu tiên.</>}
+          {" "}Thuế nộp kho bạc chưa tách được loại vì sao kê không ghi.
+        </div>
+      )}
       <RatioCards r={ratios} thuLabel="Tiền thu hoạt động" thu={thu} gop={r.totals.chenhGop} coDinh={r.totals.chiCoDinh} rong={r.totals.hoatDongRong} rongLabel="Dòng tiền hoạt động ròng" />
 
       {monthly.length > 1 && <CashMonthlyTable rows={monthly} />}
@@ -197,7 +204,9 @@ async function CashView({ start, end, months }: { start: string; end: string; mo
       </div>
 
       <div className="text-xs text-slate-500 space-y-1">
-        <p>Nguồn: từng lần tiền vào ra trên sổ nhật ký chung (TK 11211 bank, TK 1111 tiền mặt). Phân loại theo tài khoản đối ứng kế toán đã ghi, trả nhà cung cấp thì đọc diễn giải.</p>
+        <p>{source === "nkc"
+          ? "Nguồn: từng lần tiền vào ra trên sổ nhật ký chung (TK 11211 bank, TK 1111 tiền mặt). Phân loại theo tài khoản đối ứng kế toán đã ghi, trả nhà cung cấp thì đọc diễn giải."
+          : "Nguồn: sao kê Techcombank và sổ chi tiền mặt founder. Khi kế toán giao sổ nhật ký chung, trang tự chuyển sang dùng sổ."}</p>
         <p>Dòng lương chia khối kinh doanh và quản lý theo tỷ lệ sao kê từng người. Xem từng người tại <Link href="/finance/employee-pay" className="underline">Tiền trả nhân sự</Link>.</p>
         <p>Thuế TNCN là tiền khấu trừ của nhân viên nộp hộ, để riêng ở mục 6 để nhìn đúng tiền ra khỏi công ty.</p>
       </div>
@@ -276,9 +285,14 @@ async function AccrualView({ start, end, months }: { start: string; end: string;
 
   return (
     <>
-      {!pnl.opexAvailable && (
+      {pnl.opexSource === "none" && (
         <div className="bg-amber-50 border border-amber-200 rounded p-3 text-sm text-amber-800">
-          Kỳ này chưa có sổ nhật ký chung từ kế toán nên phần chi phí cố định (mục 4) đang trống, biên và điểm hòa vốn chưa đúng. Doanh thu và giá vốn vẫn đầy đủ.
+          Kỳ này chưa có sổ nhật ký chung và cũng chưa có sao kê nên phần chi phí cố định (mục 4) đang trống, biên và điểm hòa vốn chưa đúng. Doanh thu và giá vốn vẫn đầy đủ.
+        </div>
+      )}
+      {pnl.opexSource === "bank" && (
+        <div className="bg-sky-50 border border-sky-200 rounded p-3 text-sm text-sky-900">
+          Kỳ này chưa có sổ kế toán: doanh thu và giá vốn theo đối chiếu (dồn tích), còn chi phí cố định mục 4 tạm lấy theo tiền đã chi trên sao kê và sổ tiền mặt founder. Khi kế toán giao sổ, mục 4 tự chuyển sang sổ.
         </div>
       )}
 

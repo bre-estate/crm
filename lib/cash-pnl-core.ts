@@ -92,7 +92,7 @@ export type CashLineKey =
   | "thu_hh" | "thu_khac"
   | "chi_hh_sale" | "chi_ho_tro_khach" | "chi_thuong_ql"
   | "chi_luong" | "chi_bhxh" | "chi_thuong_ds" | "chi_marketing" | "chi_thue_vp" | "chi_do_dung" | "chi_di_lai" | "chi_tiep_khach" | "chi_dich_vu" | "chi_thue_phi" | "chi_khac"
-  | "thue_vat" | "thue_tndn" | "thue_tncn"
+  | "thue_vat" | "thue_tndn" | "thue_tncn" | "thue_kbnn"
   | "von_gop" | "rut_von" | "vay" | "ky_quy" | "giu_cho" | "hoan_khach" | "chuyen_noi_bo" | "chua_phan_loai";
 
 /** category → dòng báo cáo dòng tiền. Tiền vào ở dòng chi phí là hoàn lại chi phí (trừ). */
@@ -104,7 +104,7 @@ export const CATEGORY_TO_CASH_LINE: Record<CategoryKey, CashLineKey> = {
   luong_nvkd: "chi_luong", luong_admin: "chi_luong", bhxh: "chi_bhxh", thuong_ds_sale: "chi_thuong_ds", marketing: "chi_marketing",
   thue_vp: "chi_thue_vp", do_dung_vp: "chi_do_dung", di_lai: "chi_di_lai", tiep_khach: "chi_tiep_khach", dich_vu_ngoai: "chi_dich_vu",
   thue_phi_le_phi: "chi_thue_phi", opex_khac: "chi_khac",
-  thue_tncn: "thue_tncn", thue_tndn: "thue_tndn", thue_vat: "thue_vat",
+  thue_tncn: "thue_tncn", thue_tndn: "thue_tndn", thue_vat: "thue_vat", thue_kbnn: "thue_kbnn",
   tra_no_goc: "vay", chuyen_noi_bo: "chuyen_noi_bo", rut_von: "rut_von", hoan_khach: "hoan_khach",
   ky_quy: "ky_quy", giu_cho_ho_khach: "giu_cho",
   chua_phan_loai: "chua_phan_loai",
@@ -141,7 +141,7 @@ const NON_OP: CashLineKey[] = ["von_gop", "rut_von", "vay", "ky_quy", "giu_cho",
 const THU: CashLineKey[] = ["thu_hh", "thu_khac"];
 const GIA_VON: CashLineKey[] = ["chi_hh_sale", "chi_ho_tro_khach", "chi_thuong_ql"];
 const CO_DINH: CashLineKey[] = ["chi_luong", "chi_bhxh", "chi_thuong_ds", "chi_marketing", "chi_thue_vp", "chi_do_dung", "chi_di_lai", "chi_tiep_khach", "chi_dich_vu", "chi_thue_phi", "chi_khac"];
-const THUE: CashLineKey[] = ["thue_vat", "thue_tndn", "thue_tncn"];
+const THUE: CashLineKey[] = ["thue_vat", "thue_tndn", "thue_tncn", "thue_kbnn"];
 
 const LABEL: Record<CashLineKey, string> = {
   thu_hh: "Tiền thu phí môi giới và thưởng từ CĐT, đối tác",
@@ -163,6 +163,7 @@ const LABEL: Record<CashLineKey, string> = {
   thue_vat: "Thuế GTGT đã nộp",
   thue_tndn: "Thuế TNDN đã nộp",
   thue_tncn: "Thuế TNCN đã nộp (khấu trừ hộ nhân viên)",
+  thue_kbnn: "Nộp kho bạc chưa tách loại (GTGT, TNDN, TNCN)",
   von_gop: "Vốn góp nhận từ founder",
   rut_von: "Hoàn, rút vốn founder",
   vay: "Vay nhận trừ trả nợ gốc",
