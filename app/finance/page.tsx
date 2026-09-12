@@ -118,6 +118,13 @@ export default async function FinanceLandingPage() {
         />
 
         <SectionCard
+          title="Tiền trả nhân sự"
+          desc="Từng lệnh chuyển cho nhân viên trên sao kê: lương cứng, thù lao, hoa hồng, thưởng. Lọc theo kỳ, người, khối."
+          href="/finance/employee-pay"
+          badge="Sao kê"
+        />
+
+        <SectionCard
           title="Tài sản cố định"
           desc="Tài sản cố định / công cụ dụng cụ (máy móc, thiết bị văn phòng) với khấu hao đường thẳng 3 năm. Khấu hao/tháng cộng vào chi phí hoạt động."
           href="/finance/assets"

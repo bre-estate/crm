@@ -244,3 +244,63 @@ export function buildCashPnl(legs: CashLeg[], period: Period, available = true, 
     totals: { thu, chiGiaVon, chenhGop, chiCoDinh, hoatDongTruocThue, thue, hoatDongRong, ngoaiHoatDong, thayDoiTien, bankIn, bankOut, cashIn, cashOut },
   };
 }
+
+// ───────────────────────── Theo tháng và tỷ suất ─────────────────────────
+
+const pad2 = (n: number) => String(n).padStart(2, "0");
+
+/** Cắt kỳ thành từng tháng (tháng đầu và cuối cắt theo biên kỳ). */
+export function monthsOf(period: Period): { period: Period; label: string }[] {
+  const out: { period: Period; label: string }[] = [];
+  let y = Number(period.start.slice(0, 4)), m = Number(period.start.slice(5, 7));
+  for (let i = 0; i < 120; i++) {
+    const start = `${y}-${pad2(m)}-01`;
+    if (start > period.end) break;
+    const end = `${y}-${pad2(m)}-${pad2(new Date(Date.UTC(y, m, 0)).getUTCDate())}`;
+    out.push({ period: { start: start < period.start ? period.start : start, end: end > period.end ? period.end : end }, label: `T${m}` });
+    m++; if (m > 12) { m = 1; y++; }
+  }
+  return out;
+}
+
+export interface CashMonth {
+  label: string; period: Period;
+  thu: number; chiGiaVon: number; chenhGop: number; chiCoDinh: number; thue: number; hoatDongRong: number; ngoaiHoatDong: number; thayDoiTien: number;
+}
+
+export function buildCashMonthly(legs: CashLeg[], period: Period, salarySplit?: SalarySplit): CashMonth[] {
+  return monthsOf(period).map(({ period: p, label }) => {
+    const t = buildCashPnl(legs, p, true, salarySplit).totals;
+    return { label, period: p, thu: t.thu, chiGiaVon: t.chiGiaVon, chenhGop: t.chenhGop, chiCoDinh: t.chiCoDinh, thue: t.thue, hoatDongRong: t.hoatDongRong, ngoaiHoatDong: t.ngoaiHoatDong, thayDoiTien: t.thayDoiTien };
+  });
+}
+
+export interface Ratios {
+  soThang: number;
+  bienGop: number | null;          // chênh gộp / thu
+  bienHoatDong: number | null;     // hoạt động ròng / thu
+  thuBinhQuanThang: number;
+  chiCoDinhBinhQuanThang: number;
+  hoaVonThu: number | null;        // chi cố định / biên gộp, cả kỳ
+  hoaVonThuThang: number | null;   // mỗi tháng
+  anToan: number | null;           // (thu − hòa vốn) / thu
+}
+
+/** Tỷ suất và điểm hòa vốn: doanh thu cần để chênh gộp bù hết chi cố định (chưa gồm thuế). */
+export function computeRatios(thu: number, chenhGop: number, chiCoDinh: number, rong: number, soThang: number): Ratios {
+  const bienGop = thu > 0 ? chenhGop / thu : null;
+  const hoaVonThu = bienGop && bienGop > 0 ? chiCoDinh / bienGop : null;
+  const n = Math.max(1, soThang);
+  return {
+    soThang: n,
+    bienGop,
+    bienHoatDong: thu > 0 ? rong / thu : null,
+    thuBinhQuanThang: Math.round(thu / n),
+    chiCoDinhBinhQuanThang: Math.round(chiCoDinh / n),
+    hoaVonThu: hoaVonThu == null ? null : Math.round(hoaVonThu),
+    hoaVonThuThang: hoaVonThu == null ? null : Math.round(hoaVonThu / n),
+    anToan: hoaVonThu == null || thu <= 0 ? null : (thu - hoaVonThu) / thu,
+  };
+}
+
+export const cashRatios = (p: CashPnl, soThang: number) => computeRatios(p.totals.thu, p.totals.chenhGop, p.totals.chiCoDinh, p.totals.hoatDongRong, soThang);

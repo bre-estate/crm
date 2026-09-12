@@ -64,12 +64,15 @@ export function classifyPayDescription(description: string): PayKind | "luong_va
 
 const ROLE_OF: Record<string, Role | undefined> = { nvkd: "nvkd", ctv: "ctv", tpkd: "tpkd", admin: "admin", hr: "admin" };
 
+export interface PayItem { date: string; amount: number; description: string; kind: PayKind | "luong_va_hh"; luong?: number; hoaHong?: number; basis?: string }
+
 export interface PersonPay {
   employee: EmployeeLite;
   group: PayGroup;
   byKind: Record<PayKind, number>;
   total: number;           // không gồm khong_tinh
   lumpSplits: { date: string; amount: number; luong: number; hoaHong: number; basis: string }[];
+  items: PayItem[];
 }
 
 export interface EmployeePaySummary {
@@ -92,7 +95,7 @@ export function summarizeEmployeePay(rows: PayRow[], employees: EmployeeLite[], 
     const e = matchEmployee(r.partnerName, employees);
     if (!e) { if (looksLikePerson(r.partnerName)) unmatched.push(r); continue; }
     let pp = people.get(e.id);
-    if (!pp) { pp = { employee: e, group: groupOf(e), byKind: zeroKinds(), total: 0, lumpSplits: [] }; people.set(e.id, pp); }
+    if (!pp) { pp = { employee: e, group: groupOf(e), byKind: zeroKinds(), total: 0, lumpSplits: [], items: [] }; people.set(e.id, pp); }
     const kind = classifyPayDescription(r.description);
     if (kind === "luong_va_hh") {
       let luong = lastSalary.get(e.id) ?? 0;
@@ -108,8 +111,10 @@ export function summarizeEmployeePay(rows: PayRow[], employees: EmployeeLite[], 
       pp.byKind.hoa_hong += r.amount - luong;
       pp.total += r.amount;
       pp.lumpSplits.push({ date: r.date, amount: r.amount, luong, hoaHong: r.amount - luong, basis });
+      pp.items.push({ date: r.date, amount: r.amount, description: r.description, kind, luong, hoaHong: r.amount - luong, basis });
       continue;
     }
+    pp.items.push({ date: r.date, amount: r.amount, description: r.description, kind });
     pp.byKind[kind] += r.amount;
     if (kind !== "khong_tinh") pp.total += r.amount;
     if (kind === "luong_cung") lastSalary.set(e.id, r.amount);

@@ -81,12 +81,17 @@ export function computeCogs(recons: CostReconLite[], accruals: AccrualLite[], pe
   const out = Object.fromEntries(COGS_KEYS.map((k) => [k, { recon: 0, accrual: 0, release: 0, total: 0 }])) as CogsResult;
 
   const reconInPeriod = new Map<string, number>(); // `${unit}|${key}` → Σ recon trong kỳ
+  const reconBefore = new Map<string, { date: string; amount: number }[]>(); // đối chiếu trước kỳ, để biết đã hoàn nhập bao nhiêu
   for (const r of recons) {
     const key = COST_TYPE_TO_COGS[r.costType];
-    if (!key || !inPeriod(r.date, period)) continue;
-    out[key].recon += r.amount;
+    if (!key) continue;
     const k = `${normalizeUnit(r.unitCode)}|${key}`;
-    reconInPeriod.set(k, (reconInPeriod.get(k) ?? 0) + r.amount);
+    if (inPeriod(r.date, period)) {
+      out[key].recon += r.amount;
+      reconInPeriod.set(k, (reconInPeriod.get(k) ?? 0) + r.amount);
+    } else if (r.date < period.start) {
+      const arr = reconBefore.get(k) ?? []; arr.push({ date: r.date, amount: r.amount }); reconBefore.set(k, arr);
+    }
   }
 
   for (const a of accruals) {
@@ -98,8 +103,11 @@ export function computeCogs(recons: CostReconLite[], accruals: AccrualLite[], pe
       for (const [key, amt] of Object.entries(a.amounts) as [CogsKey, number][]) {
         if (!amt) continue;
         const k = `${normalizeUnit(a.unitCode)}|${key}`;
+        // Phần đã chi từ sau ngày trích tới trước kỳ này coi như đã hoàn nhập ở kỳ trước
+        const priorPaid = (reconBefore.get(k) ?? []).filter((x) => x.date > a.date).reduce((s, x) => s + x.amount, 0);
+        const remaining = Math.max(0, amt - priorPaid);
         const paid = reconInPeriod.get(k) ?? 0;
-        if (paid > 0) out[key].release += Math.min(paid, amt);
+        if (paid > 0 && remaining > 0) out[key].release += Math.min(paid, remaining);
       }
     }
   }
@@ -113,6 +121,8 @@ export function computeCogs(recons: CostReconLite[], accruals: AccrualLite[], pe
 }
 
 export interface RevenueInput { gross: number; bonusSale: number; bonusMgr: number }
+export interface RevenueRow extends RevenueInput { date: string }
+export interface DatedCategoryAmount extends CategoryAmount { date: string }
 export interface RevenueResult { gross: number; net: number; bonusSale: number; bonusMgr: number; netNoBonus: number }
 
 export function computeRevenue(i: RevenueInput): RevenueResult {
@@ -124,6 +134,12 @@ export function computeRevenue(i: RevenueInput): RevenueResult {
     bonusMgr: Math.round(i.bonusMgr),
     netNoBonus: Math.round(net - (i.bonusSale + i.bonusMgr) / 1.1),
   };
+}
+
+export function computeRevenueFromRows(rows: RevenueRow[], period: Period): RevenueResult {
+  const acc = { gross: 0, bonusSale: 0, bonusMgr: 0 };
+  for (const r of rows) if (inPeriod(r.date, period)) { acc.gross += r.gross; acc.bonusSale += r.bonusSale; acc.bonusMgr += r.bonusMgr; }
+  return computeRevenue(acc);
 }
 
 export type OpexResult = Record<OpexKey, number> & { thue_tndn: number };
@@ -287,3 +303,48 @@ export function compareToReference(pnl: ManagementPnl, ref: PnlReference): PnlCo
 }
 
 export const referenceMatchesPeriod = (ref: PnlReference, p: Period) => ref.period.start === p.start && ref.period.end === p.end;
+
+// ───────────────────────── Dữ liệu thô, theo tháng, tỷ suất ─────────────────────────
+
+export interface ManagementRaw {
+  revenue: RevenueRow[];
+  recons: CostReconLite[];           // gồm cả đối chiếu trước kỳ (để tính hoàn nhập)
+  accruals: AccrualLite[];
+  nkc: DatedCategoryAmount[];        // sổ NKC đã phân loại, đã bỏ bút toán kết chuyển
+  otherAccruals: DatedCategoryAmount[];
+}
+
+export function buildManagementPnl(raw: ManagementRaw, period: Period): ManagementPnl {
+  const revenue = computeRevenueFromRows(raw.revenue, period);
+  const cogs = computeCogs(raw.recons, raw.accruals, period);
+  const opexRows = [...raw.nkc, ...raw.otherAccruals].filter((r) => inPeriod(r.date, period));
+  const opex = computeOpex(opexRows);
+  const opexAvailable = raw.nkc.some((r) => inPeriod(r.date, period));
+  return assemblePnl(period, revenue, cogs, opex, opexAvailable);
+}
+
+export interface AccrualMonth {
+  label: string; period: Period;
+  revenueNet: number; cogs: number; grossProfit: number; fixed: number; profitBeforeTax: number; opexAvailable: boolean;
+}
+
+export function buildManagementMonthly(raw: ManagementRaw, period: Period): AccrualMonth[] {
+  return monthsOfPeriod(period).map(({ period: p, label }) => {
+    const x = buildManagementPnl(raw, p);
+    return { label, period: p, revenueNet: x.revenue.net, cogs: x.totals.cogs, grossProfit: x.totals.grossProfit, fixed: x.totals.fixed, profitBeforeTax: x.totals.profitBeforeTax, opexAvailable: x.opexAvailable };
+  });
+}
+
+const pad2 = (n: number) => String(n).padStart(2, "0");
+export function monthsOfPeriod(period: Period): { period: Period; label: string }[] {
+  const out: { period: Period; label: string }[] = [];
+  let y = Number(period.start.slice(0, 4)), m = Number(period.start.slice(5, 7));
+  for (let i = 0; i < 120; i++) {
+    const start = `${y}-${pad2(m)}-01`;
+    if (start > period.end) break;
+    const end = `${y}-${pad2(m)}-${pad2(new Date(Date.UTC(y, m, 0)).getUTCDate())}`;
+    out.push({ period: { start: start < period.start ? period.start : start, end: end > period.end ? period.end : end }, label: `T${m}` });
+    m++; if (m > 12) { m = 1; y++; }
+  }
+  return out;
+}

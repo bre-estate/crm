@@ -25,6 +25,13 @@ Tách dòng lương theo khối (`lib/employee-pay-core.ts`, chốt 12/09/2026):
 
 Giới hạn cần biết: thưởng nóng theo căn nằm trong hoa hồng, giống kế toán.
 
+### Thẻ tổng quan, theo tháng, hòa vốn (thêm 12/09/2026)
+Cả hai cách nhìn có: 6 thẻ (thu/doanh thu, chênh gộp và biên gộp, chi cố định, ròng và biên ròng, hòa vốn, biên an toàn), bảng theo tháng (nạp dữ liệu một lần, core cắt theo tháng, cộng 12 tháng bằng cả năm), rồi bảng chi tiết. Hòa vốn = chi cố định ÷ biên gộp, chưa gồm thuế; "thu cần mỗi tháng" = hòa vốn ÷ số tháng của kỳ. Biên an toàn = (thu − hòa vốn) ÷ thu. 2025 dòng tiền: biên gộp 65,6%, biên hoạt động 29,3%, thu cần 147,3tr/tháng so với thực tế 311,3tr/tháng.
+
+Hoàn nhập trích trước khi cắt theo tháng: phần đã chi từ sau ngày trích tới trước kỳ đang xét coi như đã hoàn nhập, kỳ này chỉ hoàn phần còn lại (`computeCogs`, test "không tính hai lần").
+
+Tiền trả nhân sự theo người tách ra trang riêng `/finance/employee-pay` (quyền finance): lọc năm, từ/đến ngày, khối, người; sort theo cột; bấm tên ra từng lệnh chuyển.
+
 ## 1. Dồn tích: nguồn từng dòng
 
 | Dòng | Nguồn | Ghi chú |

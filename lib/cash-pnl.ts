@@ -6,7 +6,7 @@
  */
 import { db } from "./db";
 import { sql } from "drizzle-orm";
-import { buildCashPnl, type CashLeg, type CashPnl, type Period } from "./cash-pnl-core";
+import { buildCashPnl, buildCashMonthly, type CashLeg, type CashMonth, type CashPnl, type Period } from "./cash-pnl-core";
 import { summarizeEmployeePay, type EmployeeLite, type EmployeePaySummary, type PayRow } from "./employee-pay-core";
 import type { CommissionPolicy } from "./commission-policy";
 
@@ -70,8 +70,9 @@ export async function loadEmployeePay(period: Period): Promise<EmployeePaySummar
   return summarizeEmployeePay(payRows, employees, policies);
 }
 
-export async function loadCashPnl(period: Period): Promise<{ pnl: CashPnl; pay: EmployeePaySummary }> {
+export async function loadCashPnl(period: Period): Promise<{ pnl: CashPnl; monthly: CashMonth[]; pay: EmployeePaySummary }> {
   const [legs, pay] = await Promise.all([loadCashLegsFromJournal(period), loadEmployeePay(period)]);
-  const pnl = buildCashPnl(legs, period, legs.length > 0, { kinhDoanh: pay.salaryByGroup.kinh_doanh, quanLy: pay.salaryByGroup.quan_ly });
-  return { pnl, pay };
+  const split = { kinhDoanh: pay.salaryByGroup.kinh_doanh, quanLy: pay.salaryByGroup.quan_ly };
+  const pnl = buildCashPnl(legs, period, legs.length > 0, split);
+  return { pnl, monthly: buildCashMonthly(legs, period, split), pay };
 }

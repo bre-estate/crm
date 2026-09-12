@@ -2,35 +2,37 @@
  * Báo cáo lãi/lỗ quản trị. Hai cách nhìn:
  *  - Dòng tiền (mặc định): tiền thật vào/ra bank + két, từ chân tiền sổ NKC (năm có sổ).
  *  - Dồn tích: theo format báo cáo kế toán, có cột đối chiếu với số kế toán khi kỳ có tham chiếu.
+ * Mỗi cách nhìn: thẻ tổng quan (biên, hòa vốn), bảng theo tháng, rồi bảng chi tiết từng dòng.
  */
 import { getCurrentUser } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Fragment } from "react";
-import { loadManagementPnl, findReference, comparePnl, type PnlLine, type PnlComparisonRow } from "@/lib/management-pnl";
-import { loadCashPnl, PAY_GROUP_LABEL, PAY_KIND_LABEL, type CashLine, type EmployeePaySummary, type PayGroup, type PayKind } from "@/lib/cash-pnl";
+import { loadManagementPnl, findReference, comparePnl, type PnlLine, type PnlComparisonRow, type AccrualMonth } from "@/lib/management-pnl";
+import { loadCashPnl, computeRatios, type CashLine, type CashMonth, type Ratios } from "@/lib/cash-pnl";
 
 export const dynamic = "force-dynamic";
 
 const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
+const fmtM = (n: number) => `${(n / 1_000_000).toLocaleString("vi-VN", { maximumFractionDigits: 1 })}`;
 const fmtDelta = (n: number) => (n === 0 ? "0" : (n > 0 ? "+" : "−") + Math.abs(Math.round(n)).toLocaleString("vi-VN"));
-const pct = (n: number, denom: number) => (denom > 0 ? `${((n / denom) * 100).toFixed(2)}%` : "");
+const pct = (n: number, denom: number) => (denom > 0 ? `${((n / denom) * 100).toFixed(1)}%` : "");
+const pctR = (r: number | null) => (r == null ? "" : `${(r * 100).toFixed(1)}%`);
 
 type SP = Promise<{ year?: string; period?: string; q?: string; month?: string; basis?: string }>;
 
-function periodDates(year: number, period: string, q?: number, month?: number): { start: string; end: string; label: string } {
+function periodDates(year: number, period: string, q?: number, month?: number): { start: string; end: string; label: string; months: number } {
   if (period === "month" && month) {
     const start = `${year}-${String(month).padStart(2, "0")}-01`;
     const end = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
-    return { start, end, label: `T${month}/${year}` };
+    return { start, end, label: `T${month}/${year}`, months: 1 };
   }
   if (period === "quarter" && q) {
     const startMonth = (q - 1) * 3 + 1;
     const start = `${year}-${String(startMonth).padStart(2, "0")}-01`;
     const end = new Date(Date.UTC(year, startMonth + 2, 0)).toISOString().slice(0, 10);
-    return { start, end, label: `Q${q}/${year}` };
+    return { start, end, label: `Q${q}/${year}`, months: 3 };
   }
-  return { start: `${year}-01-01`, end: `${year}-12-31`, label: `Năm ${year}` };
+  return { start: `${year}-01-01`, end: `${year}-12-31`, label: `Năm ${year}`, months: 12 };
 }
 
 export default async function ProfitDetailPage({ searchParams }: { searchParams: SP }) {
@@ -43,11 +45,11 @@ export default async function ProfitDetailPage({ searchParams }: { searchParams:
   const q = sp.q ? Number(sp.q) : undefined;
   const month = sp.month ? Number(sp.month) : undefined;
   const basis = sp.basis === "accrual" ? "accrual" : "cash";
-  const { start, end, label } = periodDates(year, period, q, month);
+  const { start, end, label, months } = periodDates(year, period, q, month);
 
   const years = [2024, 2025, 2026];
   const quarters = [1, 2, 3, 4];
-  const months = Array.from({ length: 12 }, (_, i) => i + 1);
+  const monthList = Array.from({ length: 12 }, (_, i) => i + 1);
   const linkTo = (params: { year?: number; period?: string; q?: number; month?: number; basis?: string }) => {
     const p = new URLSearchParams();
     p.set("year", String(params.year ?? year));
@@ -64,11 +66,11 @@ export default async function ProfitDetailPage({ searchParams }: { searchParams:
         <div className="text-xs">
           <Link href="/reports" className="text-blue-600 hover:underline">← Báo cáo</Link>
         </div>
-        <h1 className="text-2xl font-bold mt-1">Báo cáo lãi/lỗ quản trị</h1>
+        <h1 className="text-2xl font-bold mt-1">Lãi/lỗ và dòng tiền</h1>
         <p className="text-sm text-slate-500 mt-1">
           {label}. {basis === "cash"
             ? "Theo dòng tiền: chỉ tính tiền thật đã vào và đã ra khỏi bank và két tiền mặt."
-            : "Theo dồn tích, đúng format báo cáo kế toán, để đối chiếu với số kế toán."}
+            : "Theo dồn tích: doanh thu và chi phí ghi nhận theo kỳ phát sinh, đúng format báo cáo kế toán."}
         </p>
       </div>
 
@@ -76,7 +78,7 @@ export default async function ProfitDetailPage({ searchParams }: { searchParams:
         <div>
           <span className="text-slate-500 mr-2">Cách nhìn:</span>
           <Link href={linkTo({ basis: "cash" })} className={`inline-block px-2 py-1 rounded mr-1 ${basis === "cash" ? "bg-slate-800 text-white" : "bg-slate-100 hover:bg-slate-200"}`}>Dòng tiền</Link>
-          <Link href={linkTo({ basis: "accrual" })} className={`inline-block px-2 py-1 rounded mr-1 ${basis === "accrual" ? "bg-slate-800 text-white" : "bg-slate-100 hover:bg-slate-200"}`}>Dồn tích (đối chiếu kế toán)</Link>
+          <Link href={linkTo({ basis: "accrual" })} className={`inline-block px-2 py-1 rounded mr-1 ${basis === "accrual" ? "bg-slate-800 text-white" : "bg-slate-100 hover:bg-slate-200"}`}>Dồn tích</Link>
         </div>
         <div>
           <span className="text-slate-500 mr-2">Năm:</span>
@@ -93,25 +95,58 @@ export default async function ProfitDetailPage({ searchParams }: { searchParams:
         </div>
         <div>
           <span className="text-slate-500 mr-2">Tháng:</span>
-          {months.map((m) => (
+          {monthList.map((m) => (
             <Link key={m} href={linkTo({ period: "month", month: m })} className={`inline-block px-1.5 py-1 rounded mr-1 text-[10px] ${period === "month" && month === m ? "bg-green-500 text-white" : "bg-slate-100 hover:bg-slate-200"}`}>T{m}</Link>
           ))}
         </div>
       </div>
 
-      {basis === "cash" ? <CashView start={start} end={end} /> : <AccrualView start={start} end={end} />}
+      {basis === "cash" ? <CashView start={start} end={end} months={months} /> : <AccrualView start={start} end={end} months={months} />}
+    </div>
+  );
+}
+
+// ───────────────────────── Thẻ tổng quan dùng chung ─────────────────────────
+
+function Stat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: "good" | "bad" }) {
+  const cls = tone === "good" ? "text-green-700" : tone === "bad" ? "text-red-700" : "";
+  return (
+    <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-3">
+      <div className="text-xs text-slate-500">{label}</div>
+      <div className={`text-lg font-semibold tabular-nums ${cls}`}>{value}</div>
+      {sub && <div className="text-[11px] text-slate-500 mt-0.5">{sub}</div>}
+    </div>
+  );
+}
+
+function RatioCards({ r, thuLabel, thu, gop, coDinh, rong, rongLabel }: { r: Ratios; thuLabel: string; thu: number; gop: number; coDinh: number; rong: number; rongLabel: string }) {
+  const hoaVonOk = r.hoaVonThuThang != null && r.thuBinhQuanThang >= r.hoaVonThuThang;
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 text-sm">
+      <Stat label={thuLabel} value={fmt(thu)} sub={r.soThang > 1 ? `bình quân ${fmtM(r.thuBinhQuanThang)}tr/tháng` : undefined} />
+      <Stat label="Chênh gộp" value={fmt(gop)} sub={`biên gộp ${pctR(r.bienGop)}`} tone={gop >= 0 ? "good" : "bad"} />
+      <Stat label="Chi cố định" value={fmt(coDinh)} sub={r.soThang > 1 ? `bình quân ${fmtM(r.chiCoDinhBinhQuanThang)}tr/tháng` : undefined} />
+      <Stat label={rongLabel} value={fmt(rong)} sub={`biên ${pctR(r.bienHoatDong)}`} tone={rong >= 0 ? "good" : "bad"} />
+      <Stat
+        label="Hòa vốn: thu cần mỗi tháng"
+        value={r.hoaVonThuThang == null ? "chưa tính được" : fmt(r.hoaVonThuThang)}
+        sub={r.hoaVonThuThang == null ? "chưa có biên gộp dương" : `= chi cố định ÷ biên gộp. Thực tế ${fmtM(r.thuBinhQuanThang)}tr/tháng`}
+        tone={r.hoaVonThuThang == null ? undefined : hoaVonOk ? "good" : "bad"}
+      />
+      <Stat label="Biên an toàn" value={pctR(r.anToan)} sub="phần thu vượt điểm hòa vốn" tone={r.anToan == null ? undefined : r.anToan >= 0 ? "good" : "bad"} />
     </div>
   );
 }
 
 // ───────────────────────── Dòng tiền ─────────────────────────
 
-async function CashView({ start, end }: { start: string; end: string }) {
-  const { pnl: r, pay } = await loadCashPnl({ start, end });
+async function CashView({ start, end, months }: { start: string; end: string; months: number }) {
+  const { pnl: r, monthly } = await loadCashPnl({ start, end });
   const thu = r.totals.thu;
   const dBank = r.totals.bankIn - r.totals.bankOut;
   const dCash = r.totals.cashIn - r.totals.cashOut;
   const khop = Math.abs(dBank + dCash - r.totals.thayDoiTien) < 1000;
+  const ratios = computeRatios(thu, r.totals.chenhGop, r.totals.chiCoDinh, r.totals.hoatDongRong, months);
 
   if (!r.available) {
     return (
@@ -123,12 +158,9 @@ async function CashView({ start, end }: { start: string; end: string }) {
 
   return (
     <>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-        <Stat label="Tiền thu hoạt động" value={r.totals.thu} />
-        <Stat label="Dòng tiền hoạt động ròng" value={r.totals.hoatDongRong} tone={r.totals.hoatDongRong >= 0 ? "good" : "bad"} />
-        <Stat label="Ngoài hoạt động (ròng)" value={r.totals.ngoaiHoatDong} />
-        <Stat label="Thay đổi tiền trong kỳ" value={r.totals.thayDoiTien} tone={r.totals.thayDoiTien >= 0 ? "good" : "bad"} />
-      </div>
+      <RatioCards r={ratios} thuLabel="Tiền thu hoạt động" thu={thu} gop={r.totals.chenhGop} coDinh={r.totals.chiCoDinh} rong={r.totals.hoatDongRong} rongLabel="Dòng tiền hoạt động ròng" />
+
+      {monthly.length > 1 && <CashMonthlyTable rows={monthly} />}
 
       <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
         <table className="w-full text-sm">
@@ -148,8 +180,6 @@ async function CashView({ start, end }: { start: string; end: string }) {
         </table>
       </div>
 
-      <EmployeePayTable pay={pay} />
-
       <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-4 text-sm space-y-2">
         <div className="font-semibold">Khớp với số dư</div>
         <table className="text-sm">
@@ -168,19 +198,51 @@ async function CashView({ start, end }: { start: string; end: string }) {
 
       <div className="text-xs text-slate-500 space-y-1">
         <p>Nguồn: từng lần tiền vào ra trên sổ nhật ký chung (TK 11211 bank, TK 1111 tiền mặt). Phân loại theo tài khoản đối ứng kế toán đã ghi, trả nhà cung cấp thì đọc diễn giải.</p>
-        <p>Lương, thù lao CTV, phí kế toán dịch vụ, BHXH gom một dòng vì lệnh chuyển gộp nhiều người. Thưởng nóng theo căn tính vào hoa hồng, giống cách kế toán hạch toán.</p>
+        <p>Dòng lương chia khối kinh doanh và quản lý theo tỷ lệ sao kê từng người. Xem từng người tại <Link href="/finance/employee-pay" className="underline">Tiền trả nhân sự</Link>.</p>
         <p>Thuế TNCN là tiền khấu trừ của nhân viên nộp hộ, để riêng ở mục 6 để nhìn đúng tiền ra khỏi công ty.</p>
       </div>
     </>
   );
 }
 
-function Stat({ label, value, tone }: { label: string; value: number; tone?: "good" | "bad" }) {
-  const cls = tone === "good" ? "text-green-700" : tone === "bad" ? "text-red-700" : "";
+function CashMonthlyTable({ rows }: { rows: CashMonth[] }) {
+  const sum = (k: keyof Omit<CashMonth, "label" | "period">) => rows.reduce((s, m) => s + m[k], 0);
+  const lines: { label: string; key: keyof Omit<CashMonth, "label" | "period">; bold?: boolean; tone?: boolean }[] = [
+    { label: "Tiền thu hoạt động", key: "thu" },
+    { label: "Chi giá vốn", key: "chiGiaVon" },
+    { label: "Chênh gộp", key: "chenhGop", bold: true, tone: true },
+    { label: "Chi cố định", key: "chiCoDinh" },
+    { label: "Thuế đã nộp", key: "thue" },
+    { label: "Hoạt động ròng", key: "hoatDongRong", bold: true, tone: true },
+    { label: "Ngoài hoạt động", key: "ngoaiHoatDong" },
+    { label: "Thay đổi tiền", key: "thayDoiTien", bold: true, tone: true },
+  ];
   return (
-    <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-3">
-      <div className="text-xs text-slate-500">{label}</div>
-      <div className={`text-lg font-semibold tabular-nums ${cls}`}>{fmt(value)}</div>
+    <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
+      <div className="px-3 pt-3 text-sm font-semibold">Theo tháng (triệu đồng)</div>
+      <table className="w-full text-xs">
+        <thead className="text-slate-500">
+          <tr>
+            <th className="text-left p-2">Khoản mục</th>
+            {rows.map((m) => <th key={m.label} className="text-right p-2">{m.label}</th>)}
+            <th className="text-right p-2 font-semibold">Cộng</th>
+          </tr>
+        </thead>
+        <tbody>
+          {lines.map((l) => (
+            <tr key={l.key} className={`border-t border-slate-100 ${l.bold ? "font-semibold bg-slate-50" : ""}`}>
+              <td className="p-2">{l.label}</td>
+              {rows.map((m) => <td key={m.label} className={`p-2 text-right tabular-nums ${l.tone && m[l.key] < 0 ? "text-red-700" : ""}`}>{m[l.key] ? fmtM(m[l.key]) : ""}</td>)}
+              <td className={`p-2 text-right tabular-nums font-semibold ${l.tone && sum(l.key) < 0 ? "text-red-700" : ""}`}>{fmtM(sum(l.key))}</td>
+            </tr>
+          ))}
+          <tr className="border-t border-slate-200 text-slate-500">
+            <td className="p-2">Biên gộp</td>
+            {rows.map((m) => <td key={m.label} className="p-2 text-right tabular-nums">{pct(m.chenhGop, m.thu)}</td>)}
+            <td className="p-2 text-right tabular-nums">{pct(sum("chenhGop"), sum("thu"))}</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -195,86 +257,34 @@ function CashRow({ line, denom }: { line: CashLine; denom: number }) {
       <td className="p-2 font-mono text-xs text-slate-500">{line.code}</td>
       <td className={`p-2 ${isSection ? "" : isSub ? "pl-10" : "pl-6"} ${colorCls}`}>{line.label}{line.note && <span className="text-slate-400"> · {line.note}</span>}</td>
       <td className={`p-2 text-right tabular-nums ${colorCls}`}>{fmt(line.value)}</td>
-      <td className="p-2 text-right text-xs text-slate-500">{denom > 0 && !isSection ? pct(line.value, denom) : denom > 0 && keyLine ? pct(line.value, denom) : ""}</td>
+      <td className="p-2 text-right text-xs text-slate-500">{denom > 0 && (!isSection || keyLine) ? pct(line.value, denom) : ""}</td>
     </tr>
-  );
-}
-
-
-function EmployeePayTable({ pay }: { pay: EmployeePaySummary }) {
-  if (pay.people.length === 0) return null;
-  const kinds: PayKind[] = ["luong_cung", "thu_lao_phu_cap", "hoa_hong", "thuong_doanh_so", "thuong_khac", "dich_vu_ke_toan", "khac"];
-  const groups: PayGroup[] = ["kinh_doanh", "quan_ly"];
-  return (
-    <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-4 text-sm space-y-3">
-      <div className="font-semibold">Tiền trả cho nhân sự theo người nhận (sao kê)</div>
-      <p className="text-slate-600 text-xs">
-        Khối theo vị trí trong danh sách nhân viên. Loại tiền theo diễn giải lệnh chuyển. Lệnh gộp lương và hoa hồng tách bằng lương tháng gần nhất của người đó, không có thì dùng lương cơ bản trong chính sách. Khoản hoàn YCTV, ứng chi phí, hoàn thuế không tính là thu nhập.
-      </p>
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs">
-          <thead className="text-slate-500">
-            <tr>
-              <th className="text-left p-1.5">Người nhận</th>
-              <th className="text-left p-1.5">Vị trí</th>
-              {kinds.map((k) => <th key={k} className="text-right p-1.5">{PAY_KIND_LABEL[k]}</th>)}
-              <th className="text-right p-1.5">Tổng</th>
-            </tr>
-          </thead>
-          <tbody>
-            {groups.map((g) => {
-              const people = pay.people.filter((p) => p.group === g);
-              if (people.length === 0) return null;
-              const gs = pay.groups[g];
-              const gTotal = kinds.reduce((s, k) => s + gs[k], 0);
-              return (
-                <Fragment key={g}>
-                  <tr className="bg-slate-100 font-semibold border-t-2 border-slate-300">
-                    <td className="p-1.5" colSpan={2}>{PAY_GROUP_LABEL[g]}</td>
-                    {kinds.map((k) => <td key={k} className="p-1.5 text-right tabular-nums">{gs[k] ? fmt(gs[k]) : ""}</td>)}
-                    <td className="p-1.5 text-right tabular-nums">{fmt(gTotal)}</td>
-                  </tr>
-                  {people.map((p) => (
-                    <tr key={p.employee.id} className="border-t border-slate-100">
-                      <td className="p-1.5">{p.employee.name}{p.lumpSplits.length > 0 && <span className="text-slate-400"> · {p.lumpSplits.length} lệnh gộp, {p.lumpSplits[0].basis}</span>}</td>
-                      <td className="p-1.5 text-slate-500">{p.employee.position}</td>
-                      {kinds.map((k) => <td key={k} className="p-1.5 text-right tabular-nums">{p.byKind[k] ? fmt(p.byKind[k]) : ""}</td>)}
-                      <td className="p-1.5 text-right tabular-nums font-medium">{fmt(p.total)}</td>
-                    </tr>
-                  ))}
-                </Fragment>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      {pay.unmatched.length > 0 && (
-        <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded p-2">
-          Chuyển cho cá nhân không có trong danh sách nhân viên: {Array.from(new Set(pay.unmatched.map((u) => u.partnerName))).join(", ")}.
-        </div>
-      )}
-    </div>
   );
 }
 
 // ───────────────────────── Dồn tích ─────────────────────────
 
-async function AccrualView({ start, end }: { start: string; end: string }) {
-  const pnl = await loadManagementPnl({ start, end });
+async function AccrualView({ start, end, months }: { start: string; end: string; months: number }) {
+  const { pnl, monthly } = await loadManagementPnl({ start, end });
   const ref = findReference({ start, end });
   const cmp = ref ? comparePnl(pnl, ref) : null;
   const cmpByCode = new Map<string, PnlComparisonRow>(cmp?.map((c) => [c.code, c]) ?? []);
   const explained = cmp?.filter((c) => c.delta != null && Math.abs(c.delta) >= 1000 && c.note) ?? [];
   const unexplained = cmp?.filter((c) => c.delta != null && Math.abs(c.delta) >= 1000 && !c.note) ?? [];
   const denom = pnl.revenue.net;
+  const ratios = computeRatios(pnl.revenue.net, pnl.totals.grossProfit, pnl.totals.fixed, pnl.totals.profitBeforeTax, months);
 
   return (
     <>
       {!pnl.opexAvailable && (
         <div className="bg-amber-50 border border-amber-200 rounded p-3 text-sm text-amber-800">
-          Kỳ này chưa có sổ nhật ký chung từ kế toán nên phần chi phí cố định (mục 4) đang trống. Doanh thu và giá vốn vẫn đầy đủ.
+          Kỳ này chưa có sổ nhật ký chung từ kế toán nên phần chi phí cố định (mục 4) đang trống, biên và điểm hòa vốn chưa đúng. Doanh thu và giá vốn vẫn đầy đủ.
         </div>
       )}
+
+      <RatioCards r={ratios} thuLabel="Doanh thu không VAT" thu={pnl.revenue.net} gop={pnl.totals.grossProfit} coDinh={pnl.totals.fixed} rong={pnl.totals.profitBeforeTax} rongLabel="Lợi nhuận trước thuế" />
+
+      {monthly.length > 1 && <AccrualMonthlyTable rows={monthly} />}
 
       <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
         <table className="w-full text-sm">
@@ -322,9 +332,49 @@ async function AccrualView({ start, end }: { start: string; end: string }) {
       <div className="text-xs text-slate-500 space-y-1">
         <p>Doanh thu: đối chiếu doanh thu theo ngày đối chiếu, gồm VAT và thưởng nóng của CĐT.</p>
         <p>Giá vốn: đối chiếu giá vốn theo loại chi phí, cộng trích trước cuối năm của kế toán, trừ phần hoàn nhập khi kỳ sau chi thật cho căn đã trích.</p>
-        <p>Chi phí cố định: sổ nhật ký chung đã phân loại, sửa phân loại tại <Link href="/finance/nkc-review" className="underline">Đối chiếu sổ NKC</Link>.</p>
+        <p>Chi phí cố định: sổ nhật ký chung đã phân loại, sửa phân loại tại <Link href="/finance/nkc-review" className="underline">Sổ NKC</Link>.</p>
       </div>
     </>
+  );
+}
+
+function AccrualMonthlyTable({ rows }: { rows: AccrualMonth[] }) {
+  const sum = (k: "revenueNet" | "cogs" | "grossProfit" | "fixed" | "profitBeforeTax") => rows.reduce((s, m) => s + m[k], 0);
+  const lines: { label: string; key: "revenueNet" | "cogs" | "grossProfit" | "fixed" | "profitBeforeTax"; bold?: boolean; tone?: boolean }[] = [
+    { label: "Doanh thu không VAT", key: "revenueNet" },
+    { label: "Giá vốn", key: "cogs" },
+    { label: "Lãi gộp", key: "grossProfit", bold: true, tone: true },
+    { label: "Chi phí cố định", key: "fixed" },
+    { label: "Lợi nhuận trước thuế", key: "profitBeforeTax", bold: true, tone: true },
+  ];
+  return (
+    <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
+      <div className="px-3 pt-3 text-sm font-semibold">Theo tháng (triệu đồng)</div>
+      <table className="w-full text-xs">
+        <thead className="text-slate-500">
+          <tr>
+            <th className="text-left p-2">Khoản mục</th>
+            {rows.map((m) => <th key={m.label} className="text-right p-2">{m.label}{!m.opexAvailable && <span title="chưa có sổ NKC tháng này"> *</span>}</th>)}
+            <th className="text-right p-2 font-semibold">Cộng</th>
+          </tr>
+        </thead>
+        <tbody>
+          {lines.map((l) => (
+            <tr key={l.key} className={`border-t border-slate-100 ${l.bold ? "font-semibold bg-slate-50" : ""}`}>
+              <td className="p-2">{l.label}</td>
+              {rows.map((m) => <td key={m.label} className={`p-2 text-right tabular-nums ${l.tone && m[l.key] < 0 ? "text-red-700" : ""}`}>{m[l.key] ? fmtM(m[l.key]) : ""}</td>)}
+              <td className={`p-2 text-right tabular-nums font-semibold ${l.tone && sum(l.key) < 0 ? "text-red-700" : ""}`}>{fmtM(sum(l.key))}</td>
+            </tr>
+          ))}
+          <tr className="border-t border-slate-200 text-slate-500">
+            <td className="p-2">Biên gộp</td>
+            {rows.map((m) => <td key={m.label} className="p-2 text-right tabular-nums">{pct(m.grossProfit, m.revenueNet)}</td>)}
+            <td className="p-2 text-right tabular-nums">{pct(sum("grossProfit"), sum("revenueNet"))}</td>
+          </tr>
+        </tbody>
+      </table>
+      {rows.some((m) => !m.opexAvailable) && <div className="px-3 pb-2 text-[11px] text-slate-500">* tháng chưa có sổ NKC nên chi phí cố định bằng 0.</div>}
+    </div>
   );
 }
 

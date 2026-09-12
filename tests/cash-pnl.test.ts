@@ -92,3 +92,27 @@ describe("buildCashPnl", () => {
     expect(r.lines.find((l) => l.code === "7")!.value).toBe(450);
   });
 });
+
+describe("monthsOf, buildCashMonthly, computeRatios", () => {
+  test("cắt kỳ theo tháng và cắt biên", async () => {
+    const { monthsOf, buildCashMonthly, computeRatios } = await import("@/lib/cash-pnl-core");
+    const ms = monthsOf({ start: "2025-11-15", end: "2026-01-10" });
+    expect(ms.map((m) => `${m.label}:${m.period.start}..${m.period.end}`)).toEqual([
+      "T11:2025-11-15..2025-11-30", "T12:2025-12-01..2025-12-31", "T1:2026-01-01..2026-01-10",
+    ]);
+    const legs: CashLeg[] = [
+      leg({ date: "2025-01-05", direction: "in", counterAccount: "131", amount: 1_000 }),
+      leg({ date: "2025-02-05", direction: "in", counterAccount: "131", amount: 500 }),
+      leg({ date: "2025-02-06", direction: "out", counterAccount: "6417", amount: 200, description: "hoa hong" }),
+    ];
+    const rows = buildCashMonthly(legs, { start: "2025-01-01", end: "2025-02-28" });
+    expect(rows.map((r) => [r.label, r.thu, r.chiGiaVon])).toEqual([["T1", 1_000, 0], ["T2", 500, 200]]);
+    const r = computeRatios(1_500, 1_300, 650, 600, 2);
+    expect(r.bienGop).toBeCloseTo(1_300 / 1_500);
+    expect(r.hoaVonThu).toBe(750);
+    expect(r.hoaVonThuThang).toBe(375);
+    expect(r.thuBinhQuanThang).toBe(750);
+    expect(r.anToan).toBeCloseTo(0.5);
+    expect(computeRatios(0, 0, 100, -100, 1).hoaVonThu).toBeNull();
+  });
+});

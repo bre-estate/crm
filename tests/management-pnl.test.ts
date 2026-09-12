@@ -111,3 +111,21 @@ describe("assemblePnl + compareToReference", () => {
     expect(cmp.find((c) => c.code === "2.6")!.note).toContain("B.26.20");
   });
 });
+
+describe("hoàn nhập trích trước không tính hai lần khi cắt theo tháng", () => {
+  test("trích 80tr, T1 chi 70tr hoàn 70tr, T3 chi thêm 20tr chỉ hoàn 10tr còn lại; cộng 12 tháng bằng cả năm", async () => {
+    const { computeCogs, buildManagementMonthly, buildManagementPnl } = await import("@/lib/management-pnl-core");
+    const recons2: CostReconLite[] = [
+      { date: "2026-01-08", unitCode: "B.26.20", costType: "sale_commission", amount: 70_000_000 },
+      { date: "2026-03-06", unitCode: "B-26-20", costType: "sale_commission", amount: 20_000_000 },
+    ];
+    const acc2: AccrualLite[] = [{ date: "2025-12-31", unitCode: "B.26.20", amounts: { hh_sale: 80_000_000 } }];
+    expect(computeCogs(recons2, acc2, { start: "2026-01-01", end: "2026-01-31" }).hh_sale).toMatchObject({ recon: 70_000_000, release: 70_000_000, total: 0 });
+    expect(computeCogs(recons2, acc2, { start: "2026-03-01", end: "2026-03-31" }).hh_sale).toMatchObject({ recon: 20_000_000, release: 10_000_000, total: 10_000_000 });
+    const raw = { revenue: [], recons: recons2, accruals: acc2, nkc: [], otherAccruals: [] };
+    const months = buildManagementMonthly(raw, Y2026);
+    expect(months).toHaveLength(12);
+    expect(months.reduce((s, m) => s + m.cogs, 0)).toBe(buildManagementPnl(raw, Y2026).totals.cogs);
+    expect(buildManagementPnl(raw, Y2026).totals.cogs).toBe(10_000_000);
+  });
+});
