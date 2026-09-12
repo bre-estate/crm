@@ -114,5 +114,9 @@ describe("monthsOf, buildCashMonthly, computeRatios", () => {
     expect(r.thuBinhQuanThang).toBe(750);
     expect(r.anToan).toBeCloseTo(0.5);
     expect(computeRatios(0, 0, 100, -100, 1).hoaVonThu).toBeNull();
+    const u = computeRatios(1_500, 1_300, 650, 600, 2, 10);
+    expect(u.thuMoiCan).toBe(150);
+    expect(u.canBinhQuanThang).toBe(5);
+    expect(u.canCanMoiThang).toBe(2.5); // 375 mỗi tháng ÷ 150 mỗi căn
   });
 });

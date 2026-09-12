@@ -43,7 +43,7 @@ QUY TẮC TUYỆT ĐỐI:
    - "biên gộp dự án", "dự án nào lỗ", "top lãi dự án" → getProjectProfitability
    - "lãi năm nay", "P&L quý", "công ty lãi hay lỗ" → getPnL
    - "điểm hòa vốn", "cần bán bao nhiêu căn hòa vốn", "biên an toàn" → getBreakEven
-7. Không có tool phù hợp → trả lời rõ scope hỗ trợ (đủ tools cover: HH per NV, chi dư, thông tin căn, list căn dự án, chính sách dự án, so sánh CĐT, ranking dự án, AR/AP aging, obligations, sales, project profit, P&L, break-even).
+7. Không có tool phù hợp → trả lời rõ scope hỗ trợ (đủ tools cover: HH per NV, chi dư, thông tin căn, list căn dự án, chính sách dự án, so sánh CĐT, ranking dự án, AR/AP aging, obligations, sales, project profit, P&L có hòa vốn).
 8. Khi tool trả về link (linkChiTiet), dùng markdown [Xem chi tiết](/products/N). CHECK link đúng căn trước khi trả.
 9. Nhiều căn cùng match → hỏi user chọn, KHÔNG tự đoán.
 

@@ -130,7 +130,7 @@ function RatioCards({ r, thuLabel, thu, gop, coDinh, rong, rongLabel }: { r: Rat
       <Stat
         label="Hòa vốn: thu cần mỗi tháng"
         value={r.hoaVonThuThang == null ? "chưa tính được" : fmt(r.hoaVonThuThang)}
-        sub={r.hoaVonThuThang == null ? "chưa có biên gộp dương" : `= chi cố định ÷ biên gộp. Thực tế ${fmtM(r.thuBinhQuanThang)}tr/tháng`}
+        sub={r.hoaVonThuThang == null ? "chưa có biên gộp dương" : `= chi cố định ÷ biên gộp. Thực tế ${fmtM(r.thuBinhQuanThang)}tr/tháng${r.canCanMoiThang != null ? `. Khoảng ${r.canCanMoiThang} căn/tháng, thực tế ${r.canBinhQuanThang} căn, bình quân ${fmtM(r.thuMoiCan!)}tr/căn` : ""}`}
         tone={r.hoaVonThuThang == null ? undefined : hoaVonOk ? "good" : "bad"}
       />
       <Stat label="Biên an toàn" value={pctR(r.anToan)} sub="phần thu vượt điểm hòa vốn" tone={r.anToan == null ? undefined : r.anToan >= 0 ? "good" : "bad"} />
@@ -141,12 +141,12 @@ function RatioCards({ r, thuLabel, thu, gop, coDinh, rong, rongLabel }: { r: Rat
 // ───────────────────────── Dòng tiền ─────────────────────────
 
 async function CashView({ start, end, months }: { start: string; end: string; months: number }) {
-  const { pnl: r, monthly } = await loadCashPnl({ start, end });
+  const { pnl: r, monthly, units } = await loadCashPnl({ start, end });
   const thu = r.totals.thu;
   const dBank = r.totals.bankIn - r.totals.bankOut;
   const dCash = r.totals.cashIn - r.totals.cashOut;
   const khop = Math.abs(dBank + dCash - r.totals.thayDoiTien) < 1000;
-  const ratios = computeRatios(thu, r.totals.chenhGop, r.totals.chiCoDinh, r.totals.hoatDongRong, months);
+  const ratios = computeRatios(thu, r.totals.chenhGop, r.totals.chiCoDinh, r.totals.hoatDongRong, months, units);
 
   if (!r.available) {
     return (
@@ -272,7 +272,7 @@ async function AccrualView({ start, end, months }: { start: string; end: string;
   const explained = cmp?.filter((c) => c.delta != null && Math.abs(c.delta) >= 1000 && c.note) ?? [];
   const unexplained = cmp?.filter((c) => c.delta != null && Math.abs(c.delta) >= 1000 && !c.note) ?? [];
   const denom = pnl.revenue.net;
-  const ratios = computeRatios(pnl.revenue.net, pnl.totals.grossProfit, pnl.totals.fixed, pnl.totals.profitBeforeTax, months);
+  const ratios = computeRatios(pnl.revenue.net, pnl.totals.grossProfit, pnl.totals.fixed, pnl.totals.profitBeforeTax, months, pnl.units);
 
   return (
     <>

@@ -197,7 +197,7 @@ export default async function KpiDashboardPage({ searchParams }: { searchParams:
           <Link href="/reports/commissions" className="bg-white border rounded px-3 py-1.5 hover:bg-slate-100">Hoa hồng →</Link>
           <Link href="/reports/project-profitability" className="bg-white border rounded px-3 py-1.5 hover:bg-slate-100">Lãi/lỗ dự án →</Link>
           <Link href="/reports/expenses" className="bg-white border rounded px-3 py-1.5 hover:bg-slate-100">Phân tích CP →</Link>
-          <Link href="/reports/break-even" className="bg-white border rounded px-3 py-1.5 hover:bg-slate-100">Hòa vốn →</Link>
+          <Link href="/reports/profit-detail" className="bg-white border rounded px-3 py-1.5 hover:bg-slate-100">Hòa vốn →</Link>
           <Link href="/reports/balance-sheet" className="bg-white border rounded px-3 py-1.5 hover:bg-slate-100">Bảng cân đối →</Link>
         </div>
       </div>

@@ -20,7 +20,7 @@ const num = (v: unknown) => (v == null ? 0 : Number(v));
 export async function loadManagementRaw(period: Period): Promise<ManagementRaw> {
   const [revRows, reconRows, accrualRows, otherAccrualRows, nkcRows] = await Promise.all([
     db.execute(sql`
-      SELECT reconciliation_date AS date, coalesce(total_receivable_this_time,0)::float8 AS gross,
+      SELECT reconciliation_date AS date, product_id, coalesce(total_receivable_this_time,0)::float8 AS gross,
              coalesce(cdt_bonus_sale,0)::float8 AS bs, coalesce(cdt_bonus_manager,0)::float8 AS bm
       FROM revenue_reconciliations
       WHERE reconciliation_date BETWEEN ${period.start} AND ${period.end}
@@ -53,7 +53,7 @@ export async function loadManagementRaw(period: Period): Promise<ManagementRaw> 
     `) as unknown as Row[],
   ]);
 
-  const revenue: RevenueRow[] = revRows.map((r) => ({ date: String(r.date), gross: num(r.gross), bonusSale: num(r.bs), bonusMgr: num(r.bm) }));
+  const revenue: RevenueRow[] = revRows.map((r) => ({ date: String(r.date), productId: r.product_id == null ? undefined : Number(r.product_id), gross: num(r.gross), bonusSale: num(r.bs), bonusMgr: num(r.bm) }));
   const recons: CostReconLite[] = reconRows.map((r) => ({ date: String(r.date), unitCode: String(r.unit_code), costType: String(r.cost_type), amount: num(r.amount) }));
   const accruals: AccrualLite[] = accrualRows.map((r) => ({
     date: String(r.date), unitCode: String(r.unit_code),

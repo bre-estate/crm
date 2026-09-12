@@ -30,7 +30,6 @@ const SECTIONS: Section[] = [
       { href: "/reports/profit-detail", title: "Lãi/lỗ quản trị", desc: "Theo dòng tiền: thu, chi giá vốn, chi cố định, thuế, ngoài hoạt động, khớp số dư. Có cách nhìn dồn tích để đối chiếu kế toán.", gate: "reports" },
       { href: "/reports/cash-flow", title: "Dòng tiền ngân hàng", desc: "Số dư, runway, tiền vào ra theo tháng từ sao kê Techcombank.", gate: "owner" },
       { href: "/reports/kpi-dashboard", title: "KPI dashboard", desc: "Chỉ số chính theo kỳ: doanh thu, biên gộp, số căn, hoa hồng.", gate: "reports" },
-      { href: "/reports/break-even", title: "Điểm hòa vốn", desc: "Chi phí cố định so với biên gộp, cần bao nhiêu doanh thu mỗi tháng.", gate: "reports" },
       { href: "/reports/balance-sheet", title: "Bảng cân đối quản trị", desc: "Tài sản, nợ, vốn tại một thời điểm. Nguồn sổ NKC.", gate: "reports" },
     ],
   },

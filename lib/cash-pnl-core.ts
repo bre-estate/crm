@@ -284,14 +284,23 @@ export interface Ratios {
   hoaVonThu: number | null;        // chi cố định / biên gộp, cả kỳ
   hoaVonThuThang: number | null;   // mỗi tháng
   anToan: number | null;           // (thu − hòa vốn) / thu
+  soCan: number;                   // căn có đối chiếu doanh thu trong kỳ
+  thuMoiCan: number | null;        // thu bình quân mỗi căn
+  canBinhQuanThang: number | null; // căn bình quân mỗi tháng
+  canCanMoiThang: number | null;   // căn cần bán mỗi tháng để hòa vốn
 }
 
 /** Tỷ suất và điểm hòa vốn: doanh thu cần để chênh gộp bù hết chi cố định (chưa gồm thuế). */
-export function computeRatios(thu: number, chenhGop: number, chiCoDinh: number, rong: number, soThang: number): Ratios {
+export function computeRatios(thu: number, chenhGop: number, chiCoDinh: number, rong: number, soThang: number, soCan = 0): Ratios {
   const bienGop = thu > 0 ? chenhGop / thu : null;
   const hoaVonThu = bienGop && bienGop > 0 ? chiCoDinh / bienGop : null;
   const n = Math.max(1, soThang);
+  const thuMoiCan = soCan > 0 && thu > 0 ? thu / soCan : null;
   return {
+    soCan,
+    thuMoiCan: thuMoiCan == null ? null : Math.round(thuMoiCan),
+    canBinhQuanThang: soCan > 0 ? Math.round((soCan / n) * 10) / 10 : null,
+    canCanMoiThang: hoaVonThu == null || thuMoiCan == null ? null : Math.round((hoaVonThu / n / thuMoiCan) * 10) / 10,
     soThang: n,
     bienGop,
     bienHoatDong: thu > 0 ? rong / thu : null,
@@ -303,4 +312,4 @@ export function computeRatios(thu: number, chenhGop: number, chiCoDinh: number, 
   };
 }
 
-export const cashRatios = (p: CashPnl, soThang: number) => computeRatios(p.totals.thu, p.totals.chenhGop, p.totals.chiCoDinh, p.totals.hoatDongRong, soThang);
+export const cashRatios = (p: CashPnl, soThang: number, soCan = 0) => computeRatios(p.totals.thu, p.totals.chenhGop, p.totals.chiCoDinh, p.totals.hoatDongRong, soThang, soCan);

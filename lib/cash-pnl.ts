@@ -70,9 +70,15 @@ export async function loadEmployeePay(period: Period): Promise<EmployeePaySummar
   return summarizeEmployeePay(payRows, employees, policies);
 }
 
-export async function loadCashPnl(period: Period): Promise<{ pnl: CashPnl; monthly: CashMonth[]; pay: EmployeePaySummary }> {
-  const [legs, pay] = await Promise.all([loadCashLegsFromJournal(period), loadEmployeePay(period)]);
+/** Số căn có đối chiếu doanh thu trong kỳ, để quy hòa vốn ra số căn. */
+export async function loadUnitsInPeriod(period: Period): Promise<number> {
+  const r = (await db.execute(sql`SELECT count(DISTINCT product_id)::int AS n FROM revenue_reconciliations WHERE reconciliation_date BETWEEN ${period.start} AND ${period.end}`)) as unknown as Row[];
+  return num(r[0]?.n);
+}
+
+export async function loadCashPnl(period: Period): Promise<{ pnl: CashPnl; monthly: CashMonth[]; pay: EmployeePaySummary; units: number }> {
+  const [legs, pay, units] = await Promise.all([loadCashLegsFromJournal(period), loadEmployeePay(period), loadUnitsInPeriod(period)]);
   const split = { kinhDoanh: pay.salaryByGroup.kinh_doanh, quanLy: pay.salaryByGroup.quan_ly };
   const pnl = buildCashPnl(legs, period, legs.length > 0, split);
-  return { pnl, monthly: buildCashMonthly(legs, period, split), pay };
+  return { pnl, monthly: buildCashMonthly(legs, period, split), pay, units };
 }

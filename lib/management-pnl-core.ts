@@ -121,7 +121,7 @@ export function computeCogs(recons: CostReconLite[], accruals: AccrualLite[], pe
 }
 
 export interface RevenueInput { gross: number; bonusSale: number; bonusMgr: number }
-export interface RevenueRow extends RevenueInput { date: string }
+export interface RevenueRow extends RevenueInput { date: string; productId?: number }
 export interface DatedCategoryAmount extends CategoryAmount { date: string }
 export interface RevenueResult { gross: number; net: number; bonusSale: number; bonusMgr: number; netNoBonus: number }
 
@@ -173,6 +173,7 @@ export interface ManagementPnl {
   totals: { cogs: number; grossProfit: number; fixed: number; otherFixed: number; totalOpex: number; profitBeforeTax: number; tax: number; profitAfterTax: number };
   lines: PnlLine[];
   opexAvailable: boolean; // false khi kỳ chưa có sổ NKC
+  units: number;          // căn có đối chiếu doanh thu trong kỳ
 }
 
 const COGS_LABEL: Record<CogsKey, string> = {
@@ -251,7 +252,7 @@ export function assemblePnl(
   }
 
   return {
-    period, revenue, cogs, opex, lines, opexAvailable,
+    period, revenue, cogs, opex, lines, opexAvailable, units: 0,
     totals: { cogs: cogsTotal, grossProfit, fixed, otherFixed, totalOpex, profitBeforeTax, tax, profitAfterTax },
   };
 }
@@ -320,7 +321,8 @@ export function buildManagementPnl(raw: ManagementRaw, period: Period): Manageme
   const opexRows = [...raw.nkc, ...raw.otherAccruals].filter((r) => inPeriod(r.date, period));
   const opex = computeOpex(opexRows);
   const opexAvailable = raw.nkc.some((r) => inPeriod(r.date, period));
-  return assemblePnl(period, revenue, cogs, opex, opexAvailable);
+  const units = new Set(raw.revenue.filter((r) => inPeriod(r.date, period) && r.productId != null).map((r) => r.productId)).size;
+  return { ...assemblePnl(period, revenue, cogs, opex, opexAvailable), units };
 }
 
 export interface AccrualMonth {
