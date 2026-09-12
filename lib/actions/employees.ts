@@ -13,7 +13,7 @@ const EmployeeSchema = z.object({
   phone: z.string().trim().optional().nullable(),
   position: z.enum([
     "ceo", "tpkd", "nvkd", "admin", "ctv",
-    "hr", "content_writer", "video_editor", "accountant",
+    "hr", "content_writer", "video_editor", "cameraman", "accountant",
   ]),
   departmentId: z.coerce.number().int().nullable().optional(),
   aliasOfId: z.coerce.number().int().nullable().optional(),

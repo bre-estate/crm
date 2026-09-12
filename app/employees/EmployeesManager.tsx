@@ -46,6 +46,7 @@ const POSITION_LABEL: Record<string, string> = {
   hr: "HR",
   content_writer: "Content Writer",
   video_editor: "Video Editor",
+  cameraman: "Cameraman",
   accountant: "Kế toán",
 };
 
@@ -58,6 +59,7 @@ const POSITION_COLOR: Record<string, string> = {
   hr: "bg-teal-100 text-teal-700",
   content_writer: "bg-cyan-100 text-cyan-700",
   video_editor: "bg-indigo-100 text-indigo-700",
+  cameraman: "bg-violet-100 text-violet-700",
   accountant: "bg-emerald-100 text-emerald-700",
 };
 
@@ -72,6 +74,7 @@ const POSITION_OPTIONS = [
   { value: "accountant", label: "Kế toán" },
   { value: "content_writer", label: "Content Writer" },
   { value: "video_editor", label: "Video Editor" },
+  { value: "cameraman", label: "Cameraman" },
 ];
 
 export default function EmployeesManager({

@@ -479,13 +479,18 @@ export const employees = pgTable("employees", {
   // Preset cứng — thêm mới bằng cách sửa enum + POSITION_LABEL/COLOR ở
   // app/employees/EmployeesManager.tsx. Không dùng bảng positions riêng.
   position: text("position", {
-    enum: ["ceo", "tpkd", "nvkd", "admin", "ctv", "hr", "content_writer", "video_editor", "accountant"],
+    enum: ["ceo", "tpkd", "nvkd", "admin", "ctv", "hr", "content_writer", "video_editor", "cameraman", "accountant"],
   })
     .notNull()
     .default("nvkd"),
   departmentId: integer("department_id").references(() => departments.id),
   active: boolean("active").default(true),
   note: text("note"),
+  // Từ Danh Sách Nhân Viên (Drive 3-Nhân Sự): mã NV-xxx / CTV-xxx, loại HĐ, ngày vào, ngày nghỉ (YYYY-MM-DD)
+  code: text("code"),
+  contractType: text("contract_type"),
+  startDate: text("start_date"),
+  endDate: text("end_date"),
   // Nếu set → NV này chỉ đứng tên trên chứng từ, doanh số thực về owner.
   aliasOfId: integer("alias_of_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
