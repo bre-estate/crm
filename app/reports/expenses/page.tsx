@@ -5,8 +5,7 @@
 import { db } from "@/lib/db";
 import { accountingJournal, yearEndAccruals, yearEndOtherAccruals } from "@/lib/schema";
 import { sql, and, gte, lte, ne } from "drizzle-orm";
-import { getCurrentUser } from "@/lib/auth";
-import { notFound } from "next/navigation";
+import { requirePermission } from "@/lib/auth";
 import Link from "next/link";
 import { CATEGORIES, type CategoryKey } from "@/lib/transaction-classifier";
 
@@ -26,8 +25,7 @@ const EXPENSE_BUCKETS: CategoryKey[] = [
 ];
 
 export default async function ExpenseAnalysisPage({ searchParams }: { searchParams: SP }) {
-  const user = await getCurrentUser();
-  if (!user) notFound();
+  await requirePermission("reports.expenses");
   const sp = await searchParams;
   const year = Number(sp.year) || 2025;
 

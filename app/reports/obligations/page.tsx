@@ -7,8 +7,7 @@
 import { db } from "@/lib/db";
 import { revenueReconciliations, paymentsIn, costReconciliations } from "@/lib/schema";
 import { sql } from "drizzle-orm";
-import { getCurrentUser } from "@/lib/auth";
-import { notFound } from "next/navigation";
+import { requirePermission } from "@/lib/auth";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -16,8 +15,7 @@ export const dynamic = "force-dynamic";
 const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
 
 export default async function ObligationsPage() {
-  const user = await getCurrentUser();
-  if (!user || user.role !== "owner") notFound();
+  await requirePermission("reports.obligations");
 
   // 1) Còn thu CĐT = revenue_reconciliations.total_receivable − payments_in
   const [rev] = await db

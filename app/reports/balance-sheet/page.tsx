@@ -5,8 +5,7 @@
 import { db } from "@/lib/db";
 import { trialBalance } from "@/lib/schema";
 import { sql, eq, and } from "drizzle-orm";
-import { getCurrentUser } from "@/lib/auth";
-import { notFound } from "next/navigation";
+import { requirePermission } from "@/lib/auth";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -45,8 +44,7 @@ const VCSH = [
 ];
 
 export default async function BalanceSheetPage({ searchParams }: { searchParams: SP }) {
-  const user = await getCurrentUser();
-  if (!user) notFound();
+  await requirePermission("reports.balance-sheet");
   const sp = await searchParams;
   const periodEnd = sp.period || "2025-12-31";
 

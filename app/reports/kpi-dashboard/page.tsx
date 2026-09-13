@@ -8,8 +8,7 @@ import {
   accountingJournal, yearEndAccruals, bankTransactions, trialBalance,
 } from "@/lib/schema";
 import { sql, and, gte, lte, eq, ne, desc } from "drizzle-orm";
-import { getCurrentUser } from "@/lib/auth";
-import { notFound } from "next/navigation";
+import { requirePermission } from "@/lib/auth";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -19,8 +18,7 @@ const fmtM = (n: number) => Math.abs(n) >= 1_000_000_000 ? (n / 1_000_000_000).t
 type SP = Promise<{ year?: string }>;
 
 export default async function KpiDashboardPage({ searchParams }: { searchParams: SP }) {
-  const user = await getCurrentUser();
-  if (!user) notFound();
+  await requirePermission("reports.kpi-dashboard");
   const sp = await searchParams;
   const year = Number(sp.year) || 2025;
   const start = `${year}-01-01`;

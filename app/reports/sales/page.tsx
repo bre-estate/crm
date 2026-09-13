@@ -6,8 +6,7 @@
 import { db } from "@/lib/db";
 import { revenueReconciliations, products, invoices, projects, partners, departments } from "@/lib/schema";
 import { sql, and, gte, lte, eq, desc } from "drizzle-orm";
-import { getCurrentUser } from "@/lib/auth";
-import { notFound } from "next/navigation";
+import { requirePermission } from "@/lib/auth";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -41,8 +40,7 @@ const TABS = [
 type TabKey = typeof TABS[number]["key"];
 
 export default async function SalesReportPage({ searchParams }: { searchParams: SP }) {
-  const user = await getCurrentUser();
-  if (!user) notFound();
+  await requirePermission("reports.sales");
   const sp = await searchParams;
   const year = Number(sp.year) || 2025;
   const period = sp.period ?? "year";

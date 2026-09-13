@@ -5,8 +5,7 @@
 import { db } from "@/lib/db";
 import { bankTransactions } from "@/lib/schema";
 import { sql, desc, gte, lte, and } from "drizzle-orm";
-import { getCurrentUser } from "@/lib/auth";
-import { notFound } from "next/navigation";
+import { requirePermission } from "@/lib/auth";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -75,8 +74,7 @@ function classifyOut(partnerName: string | null, description: string): string {
 type SP = Promise<{ year?: string }>;
 
 export default async function CashFlowPage({ searchParams }: { searchParams: SP }) {
-  const user = await getCurrentUser();
-  if (!user || user.role !== "owner") notFound();
+  await requirePermission("reports.cash-flow");
 
   const sp = await searchParams;
   const year = sp.year ?? "2025";

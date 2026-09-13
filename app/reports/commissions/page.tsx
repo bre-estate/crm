@@ -5,8 +5,7 @@
 import { db } from "@/lib/db";
 import { costReconciliations, products, paymentsOut } from "@/lib/schema";
 import { sql, and, gte, lte, eq, desc } from "drizzle-orm";
-import { getCurrentUser } from "@/lib/auth";
-import { notFound } from "next/navigation";
+import { requirePermission } from "@/lib/auth";
 import Link from "next/link";
 import { getEmployeeOverpaid } from "@/lib/employee-overpaid";
 
@@ -29,8 +28,7 @@ function periodDates(year: number, period: string, q?: number, month?: number) {
 }
 
 export default async function CommissionReportPage({ searchParams }: { searchParams: SP }) {
-  const user = await getCurrentUser();
-  if (!user) notFound();
+  await requirePermission("reports.commissions");
   const sp = await searchParams;
   const year = Number(sp.year) || 2025;
   const period = sp.period ?? "year";

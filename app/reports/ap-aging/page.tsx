@@ -6,8 +6,7 @@
  */
 import { db } from "@/lib/db";
 import { sql } from "drizzle-orm";
-import { getCurrentUser } from "@/lib/auth";
-import { notFound } from "next/navigation";
+import { requirePermission } from "@/lib/auth";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -25,8 +24,7 @@ interface AgingRow {
 }
 
 export default async function APAgingPage() {
-  const user = await getCurrentUser();
-  if (!user) notFound();
+  await requirePermission("reports.ap-aging");
 
   const today = new Date().toISOString().slice(0, 10);
 
