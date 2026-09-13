@@ -737,7 +737,8 @@ export const bankTransactions = pgTable("bank_transactions", {
   accountNumber: text("account_number").notNull(),
   requestDate: timestamp("request_date", { withTimezone: true }).notNull(),
   transactionDate: text("transaction_date").notNull(),
-  referenceNumber: text("reference_number").notNull().unique(),
+  referenceNumber: text("reference_number").notNull(), // duy nhất theo (reference_number, nợ, có), xem 0045
+  statementSeq: integer("statement_seq"), // thứ tự dòng trên sao kê, lớn = mới
   partnerBank: text("partner_bank"),
   partnerAccount: text("partner_account"),
   partnerName: text("partner_name"),

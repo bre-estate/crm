@@ -70,6 +70,8 @@ export function makeBankClassifier(ctx: ClassifyCtx) {
 
     // (2) nội bộ, thuế, BHXH
     if (T(/TERM DEPOSIT|TIET KIEM|TAT TOAN SO TIET KIEM/, d)) return [leg("chuyen_noi_bo", "rule")];
+    // BHXH trước luật "tài khoản công ty": lệnh BHXH bị hoàn về mang tên công ty, phải trừ vào BHXH chứ không phải chuyển nội bộ.
+    if (T(/BHXH|BAO HIEM XA HOI/, d) || T(/BAO HIEM XA HOI|BHXH/, p)) return [leg("bhxh", "rule")];
     if (T(/SAN GIAO DICH BDS BRE|SAN GIAO DICH BAT DONG SAN BRE/, p)) return [leg("chuyen_noi_bo", "rule")];
     if (direction === "in" && T(/NOP TIEN VAO TAI KHOAN|NOP TIEN MAT|NOP TIEN$/, d)) return [leg("chuyen_noi_bo", "rule")];
     if (T(/KBNN|NTDT|KHO BAC/, d) || T(/KHO BAC/, p)) {
@@ -78,7 +80,6 @@ export function makeBankClassifier(ctx: ClassifyCtx) {
       return [leg("thue_kbnn", "rule")];
     }
     if (direction === "in" && T(/TRA LAI SO DU|LAI TIEN GUI|LAI NHAP GOC/, d)) return [leg("khac_thu", "rule")];
-    if (T(/BHXH|BAO HIEM XA HOI/, d) || T(/BAO HIEM XA HOI|BHXH/, p)) return [leg("bhxh", "rule")];
 
     // (3) nhân viên
     const emp = matchEmployee(row.partnerName, ctx.employees);

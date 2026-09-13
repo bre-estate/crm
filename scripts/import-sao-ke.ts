@@ -1,6 +1,7 @@
 /**
- * Import 10 CSV sao kê Techcombank cty → bank_transactions.
- * Dedup by reference_number.
+ * Import CSV sao kê Techcombank cty → bank_transactions.
+ * Dedup theo (số bút toán, nợ, có): Techcombank dùng lại số bút toán cho lệnh hoàn.
+ * statement_seq = thứ tự dòng trên sao kê (file xếp theo ngày, trong file dòng đầu là mới nhất).
  */
 import { config } from "dotenv";
 config({ path: ".env.local" });
@@ -26,14 +27,22 @@ async function main() {
   }, async (log) => {
   // Apply migration
   await sql.unsafe(readFileSync("drizzle/0029_bank_transactions.sql", "utf-8"));
-  console.log("✅ Migration 0029 applied\n");
+  await sql.unsafe(readFileSync("drizzle/0045_bank_statement_seq.sql", "utf-8"));
+  console.log("✅ Migration 0029 + 0045 applied\n");
 
   const files = readdirSync(FOLDER).filter((f) => f.endsWith(".csv"));
   console.log(`Found ${files.length} CSV files.\n`);
 
-  let totalRows = 0, insertedTotal = 0, skippedTotal = 0, errorTotal = 0;
+  // Xếp file theo ngày giao dịch cũ nhất trong file, để statement_seq tăng dần theo thời gian.
+  const firstDate = (file: string) => {
+    const m = readFileSync(`${FOLDER}/${file}`, "utf-8").match(/\d{4}-\d{2}-\d{2}/g);
+    return m ? m.sort()[0] : "9999";
+  };
+  files.sort((a, b) => firstDate(a).localeCompare(firstDate(b)));
 
-  for (const file of files) {
+  let totalRows = 0, insertedTotal = 0, errorTotal = 0;
+
+  for (const [fileRank, file] of files.entries()) {
     const path = `${FOLDER}/${file}`;
     let raw: string;
     try {
@@ -72,10 +81,11 @@ async function main() {
       continue;
     }
 
-    let inserted = 0, skipped = 0, errored = 0;
-    for (const r of records) {
+    let inserted = 0, errored = 0;
+    for (const [idx, r] of records.entries()) {
       const ref = String(r["So but toan/Reference number"] ?? "").trim();
       if (!ref) continue;
+      const seq = fileRank * 100_000 + (records.length - idx); // dòng đầu file là mới nhất
 
       // Skip footer/summary lines
       const requestDate = String(r["Ngay KH thuc hien/Requesting date"] ?? "").trim();
@@ -94,7 +104,7 @@ async function main() {
             account_number, request_date, transaction_date, reference_number,
             partner_bank, partner_account, partner_name, description,
             debit_amount, credit_amount, fee_interest, vat, running_balance,
-            source_file
+            source_file, statement_seq
           ) VALUES (
             ${account}, ${requestDate}::timestamptz, ${txDate}::date, ${ref},
             ${String(r["Ngan hang doi tac / Remitter's bank"] ?? "").trim() || null},
@@ -102,9 +112,10 @@ async function main() {
             ${String(r["Tên tài khoản đối ứng/Remitter's account name"] ?? "").trim() || null},
             ${String(r["Dien giai/Description"] ?? "").trim()},
             ${debit}, ${credit}, ${fee}, ${vat}, ${balance},
-            ${file}
+            ${file}, ${seq}
           )
-          ON CONFLICT (reference_number) DO NOTHING`;
+          ON CONFLICT (reference_number, coalesce(debit_amount, 0), coalesce(credit_amount, 0))
+          DO UPDATE SET statement_seq = EXCLUDED.statement_seq, running_balance = EXCLUDED.running_balance`;
         inserted++;
       } catch (e: any) {
         errored++;

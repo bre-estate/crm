@@ -8,7 +8,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { loadManagementPnl, findReference, comparePnl, type PnlLine, type PnlComparisonRow, type AccrualMonth } from "@/lib/management-pnl";
-import { loadCashPnl, computeRatios, monthsWithData, type CashLine, type CashMonth, type Ratios } from "@/lib/cash-pnl";
+import { loadCashPnl, computeRatios, monthsWithData, type BankBalance, type CashLine, type CashMonth, type Ratios } from "@/lib/cash-pnl";
 
 export const dynamic = "force-dynamic";
 
@@ -142,7 +142,7 @@ function RatioCards({ r, thuLabel, thu, gop, coDinh, rong, rongLabel }: { r: Rat
 // ───────────────────────── Dòng tiền ─────────────────────────
 
 async function CashView({ start, end, months }: { start: string; end: string; months: number }) {
-  const { pnl: r, monthly, units, source, dataThrough } = await loadCashPnl({ start, end });
+  const { pnl: r, monthly, units, source, dataThrough, bankBalance: bb } = await loadCashPnl({ start, end });
   const thu = r.totals.thu;
   const dBank = r.totals.bankIn - r.totals.bankOut;
   const dCash = r.totals.cashIn - r.totals.cashOut;
@@ -205,6 +205,7 @@ async function CashView({ start, end, months }: { start: string; end: string; mo
             <tr className="font-semibold"><td className="pr-6 py-0.5">Cộng, so với dòng 9</td><td className={`text-right tabular-nums ${khop ? "text-green-700" : "text-red-700"}`}>{fmtDelta(dBank + dCash)} {khop ? "khớp" : "lệch"}</td></tr>
           </tbody>
         </table>
+        {bb && <BankBalanceCheck bb={bb} dBank={dBank} />}
         {r.unclassified.length > 0 && (
           <div className="text-amber-800 bg-amber-50 border border-amber-200 rounded p-2">
             {r.unclassified.length} khoản chưa phân loại, đang nằm ở dòng 8.8.
@@ -220,6 +221,32 @@ async function CashView({ start, end, months }: { start: string; end: string; mo
         <p>Thuế TNCN là tiền khấu trừ của nhân viên nộp hộ, để riêng ở mục 6 để nhìn đúng tiền ra khỏi công ty.</p>
       </div>
     </>
+  );
+}
+
+/** Đối chiếu tổng dòng tiền bank trong báo cáo với số dư đầu và cuối trên sao kê. Lệch nghĩa là sao kê thiếu dòng. */
+function BankBalanceCheck({ bb, dBank }: { bb: BankBalance; dBank: number }) {
+  const dSaoKe = bb.close - bb.open;
+  const lech = Math.round(dBank - dSaoKe);
+  const khop = Math.abs(lech) < 1000;
+  const tongCuoi = bb.close + bb.tietKiemRong;
+  return (
+    <div className="border-t pt-2 space-y-1">
+      <div className="font-semibold">Đối chiếu với số dư trên sao kê</div>
+      <table className="text-sm">
+        <tbody>
+          <tr><td className="pr-6 py-0.5 text-slate-600">Số dư bank đầu kỳ, trước giao dịch đầu ngày {fmtD(bb.openDate)}</td><td className="text-right tabular-nums">{fmt(bb.open)}</td></tr>
+          <tr><td className="pr-6 py-0.5 text-slate-600">Số dư bank cuối kỳ, sau giao dịch cuối ngày {fmtD(bb.closeDate)}</td><td className="text-right tabular-nums">{fmt(bb.close)}</td></tr>
+          <tr><td className="pr-6 py-0.5 text-slate-600">Thay đổi theo sao kê</td><td className="text-right tabular-nums">{fmtDelta(dSaoKe)}</td></tr>
+          <tr><td className="pr-6 py-0.5 text-slate-600">Thay đổi theo các dòng đã nạp vào báo cáo</td><td className="text-right tabular-nums">{fmtDelta(dBank)}</td></tr>
+          <tr className="font-semibold"><td className="pr-6 py-0.5">Chênh lệch</td><td className={`text-right tabular-nums ${khop ? "text-green-700" : "text-red-700"}`}>{khop ? "0, sao kê đủ dòng" : `${fmtDelta(lech)}, sao kê thiếu dòng`}</td></tr>
+          {bb.tietKiemRong > 0 && (
+            <tr><td className="pr-6 py-0.5 text-slate-600">Đang gửi tiết kiệm có kỳ hạn (chuyển từ bank, vẫn là tiền công ty)</td><td className="text-right tabular-nums">{fmt(bb.tietKiemRong)}</td></tr>
+          )}
+        </tbody>
+      </table>
+      <p className="text-slate-600">Tiền công ty trong ngân hàng cuối kỳ: <b>{fmt(tongCuoi)}</b>{bb.tietKiemRong > 0 ? " (bank cộng tiết kiệm)" : ""}, so với đầu kỳ {fmt(bb.open)} là <b>{fmtDelta(tongCuoi - bb.open)}</b>. Phần này gồm cả tiền giữ hộ khách chưa hoàn, xem dòng 8.</p>
+    </div>
   );
 }
 

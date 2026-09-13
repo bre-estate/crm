@@ -19,7 +19,8 @@ describe("classifyBankRows: các nhóm rõ", () => {
     expect(one({ description: "Open term deposit 149", debit: 300 })[0].category).toBe("chuyen_noi_bo");
     expect(one({ description: "NTDT+KB:0120-KBNN Khu vuc II", debit: 5, partnerName: "KHO BAC NHA NUOC" })[0].category).toBe("thue_kbnn");
     expect(one({ description: "+BHXH+103+00+TZE767L", debit: 5, partnerName: "BAO HIEM XA HOI CO SO BINH THANH" })[0].category).toBe("bhxh");
-    expect(one({ description: "BHXH+103 hoan", credit: 5, partnerName: "CTY TNHH SAN GIAO DICH BDS BRE" })[0].category).toBe("chuyen_noi_bo");
+    // Lệnh BHXH bị hoàn về (cùng số bút toán với lệnh nộp) trừ vào dòng BHXH, không phải chuyển nội bộ
+    expect(one({ description: "BHXH+103 hoan", credit: 5, partnerName: "CTY TNHH SAN GIAO DICH BDS BRE" })[0]).toMatchObject({ category: "bhxh", direction: "in" });
   });
   test("giữ chỗ, YCTV, hoàn khách, ký quỹ", () => {
     expect(one({ description: "LUU HONG VAN 0144 YCTV DU AN FENICA", credit: 480 })[0].category).toBe("giu_cho_ho_khach");

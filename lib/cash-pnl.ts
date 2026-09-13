@@ -148,20 +148,44 @@ export async function loadCashLegs(period: Period, ctx?: CashContext): Promise<{
   return { legs, source: legs.length > 0 ? "bank" : "none" };
 }
 
+/** Số dư sao kê đầu và cuối kỳ (theo thứ tự dòng trên sao kê), và tiền đang gửi tiết kiệm có kỳ hạn trong kỳ. */
+export interface BankBalance { openDate: string; open: number; closeDate: string; close: number; tietKiemRong: number }
+
+export async function loadBankBalance(period: Period): Promise<BankBalance | null> {
+  const rows = (await db.execute(sql`
+    WITH k AS (
+      SELECT (transaction_date::date)::text AS date, statement_seq, coalesce(running_balance,0)::float8 AS bal,
+             coalesce(credit_amount,0)::float8 AS cr, coalesce(debit_amount,0)::float8 AS dr, description
+      FROM bank_transactions
+      WHERE transaction_date::date BETWEEN ${period.start}::date AND ${period.end}::date AND statement_seq IS NOT NULL
+    )
+    SELECT
+      (SELECT date FROM k ORDER BY statement_seq ASC LIMIT 1) AS open_date,
+      (SELECT bal - cr - dr FROM k ORDER BY statement_seq ASC LIMIT 1) AS open_bal,
+      (SELECT date FROM k ORDER BY statement_seq DESC LIMIT 1) AS close_date,
+      (SELECT bal FROM k ORDER BY statement_seq DESC LIMIT 1) AS close_bal,
+      (SELECT coalesce(sum(-dr - cr), 0) FROM k WHERE upper(description) ~ 'TERM DEPOSIT|TIET KIEM') AS tiet_kiem
+  `)) as unknown as Row[];
+  const r = rows[0];
+  if (!r || r.open_date == null) return null;
+  return { openDate: String(r.open_date), open: num(r.open_bal), closeDate: String(r.close_date), close: num(r.close_bal), tietKiemRong: num(r.tiet_kiem) };
+}
+
 /** Số căn có đối chiếu doanh thu trong kỳ, để quy hòa vốn ra số căn. */
 export async function loadUnitsInPeriod(period: Period): Promise<number> {
   const r = (await db.execute(sql`SELECT count(DISTINCT product_id)::int AS n FROM revenue_reconciliations WHERE reconciliation_date BETWEEN ${period.start} AND ${period.end}`)) as unknown as Row[];
   return num(r[0]?.n);
 }
 
-export async function loadCashPnl(period: Period): Promise<{ pnl: CashPnl; monthly: CashMonth[]; pay: EmployeePaySummary; units: number; source: CashSource; dataThrough: string | null }> {
+export async function loadCashPnl(period: Period): Promise<{ pnl: CashPnl; monthly: CashMonth[]; pay: EmployeePaySummary; units: number; source: CashSource; dataThrough: string | null; bankBalance: BankBalance | null }> {
   // Chạy tuần tự: pooler Supabase hủy câu lệnh khi quá nhiều query song song.
   const ctx = await loadCashContext(period);
   const { legs, source } = await loadCashLegs(period, ctx);
   const pay = await loadEmployeePay(period, ctx);
   const units = await loadUnitsInPeriod(period);
+  const bankBalance = source === "bank" ? await loadBankBalance(period) : null;
   const split = { kinhDoanh: pay.salaryByGroup.kinh_doanh, quanLy: pay.salaryByGroup.quan_ly };
   const pnl = buildCashPnl(legs, period, legs.length > 0, split);
   const dataThrough = legs.reduce<string | null>((m, l) => (l.date >= period.start && l.date <= period.end && (!m || l.date > m) ? l.date : m), null);
-  return { pnl, monthly: buildCashMonthly(legs, period, split), pay, units, source, dataThrough };
+  return { pnl, monthly: buildCashMonthly(legs, period, split), pay, units, source, dataThrough, bankBalance };
 }
