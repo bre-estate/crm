@@ -16,6 +16,8 @@ const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
 const fmtM = (n: number) => `${(n / 1_000_000).toLocaleString("vi-VN", { maximumFractionDigits: 1 })}`;
 const fmtDelta = (n: number) => (n === 0 ? "0" : (n > 0 ? "+" : "−") + Math.abs(Math.round(n)).toLocaleString("vi-VN"));
 const pct = (n: number, denom: number) => (denom > 0 ? `${((n / denom) * 100).toFixed(1)}%` : "");
+// Biên theo tháng: tháng không có tiền CĐT về (thu chỉ vài trăm nghìn lãi tài khoản) thì tỷ lệ vô nghĩa, để trống.
+const pctMonth = (n: number, denom: number) => (denom >= 10_000_000 ? pct(n, denom) : "");
 const pctR = (r: number | null) => (r == null ? "" : `${(r * 100).toFixed(1)}%`);
 
 type SP = Promise<{ year?: string; period?: string; q?: string; month?: string; basis?: string }>;
@@ -247,7 +249,7 @@ function CashMonthlyTable({ rows }: { rows: CashMonth[] }) {
           ))}
           <tr className="border-t border-slate-200 text-slate-500">
             <td className="p-2">Biên gộp</td>
-            {rows.map((m) => <td key={m.label} className="p-2 text-right tabular-nums">{pct(m.chenhGop, m.thu)}</td>)}
+            {rows.map((m) => <td key={m.label} className="p-2 text-right tabular-nums">{pctMonth(m.chenhGop, m.thu)}</td>)}
             <td className="p-2 text-right tabular-nums">{pct(sum("chenhGop"), sum("thu"))}</td>
           </tr>
         </tbody>
@@ -382,7 +384,7 @@ function AccrualMonthlyTable({ rows }: { rows: AccrualMonth[] }) {
           ))}
           <tr className="border-t border-slate-200 text-slate-500">
             <td className="p-2">Biên gộp</td>
-            {rows.map((m) => <td key={m.label} className="p-2 text-right tabular-nums">{pct(m.grossProfit, m.revenueNet)}</td>)}
+            {rows.map((m) => <td key={m.label} className="p-2 text-right tabular-nums">{pctMonth(m.grossProfit, m.revenueNet)}</td>)}
             <td className="p-2 text-right tabular-nums">{pct(sum("grossProfit"), sum("revenueNet"))}</td>
           </tr>
         </tbody>
