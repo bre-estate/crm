@@ -314,3 +314,12 @@ export function computeRatios(thu: number, chenhGop: number, chiCoDinh: number, 
 }
 
 export const cashRatios = (p: CashPnl, soThang: number, soCan = 0) => computeRatios(p.totals.thu, p.totals.chenhGop, p.totals.chiCoDinh, p.totals.hoatDongRong, soThang, soCan);
+
+/** Số tháng thực có dữ liệu trong kỳ: từ đầu kỳ tới ngày có giao dịch cuối (kỳ đang dở thì không chia cho 12). */
+export function monthsWithData(period: Period, dataThrough: string | null): number {
+  if (!dataThrough || dataThrough < period.start) return 1;
+  const end = dataThrough < period.end ? dataThrough : period.end;
+  const y0 = Number(period.start.slice(0, 4)), m0 = Number(period.start.slice(5, 7));
+  const y1 = Number(end.slice(0, 4)), m1 = Number(end.slice(5, 7));
+  return Math.max(1, (y1 - y0) * 12 + (m1 - m0) + 1);
+}

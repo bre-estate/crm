@@ -8,16 +8,15 @@ import { getCurrentUser } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { loadManagementPnl, findReference, comparePnl, type PnlLine, type PnlComparisonRow, type AccrualMonth } from "@/lib/management-pnl";
-import { loadCashPnl, computeRatios, type CashLine, type CashMonth, type Ratios } from "@/lib/cash-pnl";
+import { loadCashPnl, computeRatios, monthsWithData, type CashLine, type CashMonth, type Ratios } from "@/lib/cash-pnl";
 
 export const dynamic = "force-dynamic";
 
 const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
 const fmtM = (n: number) => `${(n / 1_000_000).toLocaleString("vi-VN", { maximumFractionDigits: 1 })}`;
+const fmtD = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
 const fmtDelta = (n: number) => (n === 0 ? "0" : (n > 0 ? "+" : "−") + Math.abs(Math.round(n)).toLocaleString("vi-VN"));
 const pct = (n: number, denom: number) => (denom > 0 ? `${((n / denom) * 100).toFixed(1)}%` : "");
-// Biên theo tháng: tháng không có tiền CĐT về (thu chỉ vài trăm nghìn lãi tài khoản) thì tỷ lệ vô nghĩa, để trống.
-const pctMonth = (n: number, denom: number) => (denom >= 10_000_000 ? pct(n, denom) : "");
 const pctR = (r: number | null) => (r == null ? "" : `${(r * 100).toFixed(1)}%`);
 
 type SP = Promise<{ year?: string; period?: string; q?: string; month?: string; basis?: string }>;
@@ -143,12 +142,14 @@ function RatioCards({ r, thuLabel, thu, gop, coDinh, rong, rongLabel }: { r: Rat
 // ───────────────────────── Dòng tiền ─────────────────────────
 
 async function CashView({ start, end, months }: { start: string; end: string; months: number }) {
-  const { pnl: r, monthly, units, source } = await loadCashPnl({ start, end });
+  const { pnl: r, monthly, units, source, dataThrough } = await loadCashPnl({ start, end });
   const thu = r.totals.thu;
   const dBank = r.totals.bankIn - r.totals.bankOut;
   const dCash = r.totals.cashIn - r.totals.cashOut;
   const khop = Math.abs(dBank + dCash - r.totals.thayDoiTien) < 1000;
-  const ratios = computeRatios(thu, r.totals.chenhGop, r.totals.chiCoDinh, r.totals.hoatDongRong, months, units);
+  const soThang = Math.min(months, monthsWithData({ start, end }, dataThrough));
+  const ratios = computeRatios(thu, r.totals.chenhGop, r.totals.chiCoDinh, r.totals.hoatDongRong, soThang, units);
+  const partial = dataThrough != null && dataThrough < end;
 
   if (!r.available) {
     return (
@@ -167,9 +168,15 @@ async function CashView({ start, end, months }: { start: string; end: string; mo
           {" "}Thuế nộp kho bạc chưa tách được loại vì sao kê không ghi.
         </div>
       )}
+      {partial && (
+        <div className="text-sm text-slate-600">Số liệu đến <b>{fmtD(dataThrough!)}</b>, tức {soThang} tháng. Bình quân tháng và điểm hòa vốn chia cho {soThang} tháng.</div>
+      )}
+
       <RatioCards r={ratios} thuLabel="Tiền thu hoạt động" thu={thu} gop={r.totals.chenhGop} coDinh={r.totals.chiCoDinh} rong={r.totals.hoatDongRong} rongLabel="Dòng tiền hoạt động ròng" />
 
-      {monthly.length > 1 && <CashMonthlyTable rows={monthly} />}
+      <CashQuickRead r={r} monthly={monthly} />
+
+      {monthly.length > 1 && <CashMonthlyTable rows={monthly} dataThrough={dataThrough} />}
 
       <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
         <table className="w-full text-sm">
@@ -216,8 +223,38 @@ async function CashView({ start, end, months }: { start: string; end: string; mo
   );
 }
 
-function CashMonthlyTable({ rows }: { rows: CashMonth[] }) {
+function CashQuickRead({ r, monthly }: { r: Awaited<ReturnType<typeof loadCashPnl>>["pnl"]; monthly: CashMonth[] }) {
+  const t = r.totals;
+  const b = r.byLine;
+  const thueRo = b.thue_vat + b.thue_tndn;
+  const amMonths = monthly.filter((m) => m.hoatDongRong < 0);
+  const khongThu = monthly.filter((m) => m.thu < 10_000_000 && (m.chiGiaVon > 0 || m.chiCoDinh > 0));
+  return (
+    <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-4 text-sm space-y-2">
+      <div className="font-semibold">Đọc nhanh</div>
+      <ul className="list-disc pl-5 space-y-1 text-slate-700">
+        <li>Thu về <b>{fmtM(t.thu)}tr</b>. Trả hoa hồng và giá vốn <b>{fmtM(t.chiGiaVon)}tr</b>, còn lại <b>{fmtM(t.chenhGop)}tr</b> ({pctR(t.thu > 0 ? t.chenhGop / t.thu : null)}).</li>
+        <li>Chi cố định (lương, BHXH, thuê văn phòng, quảng cáo...) <b>{fmtM(t.chiCoDinh)}tr</b>. Sau chi cố định còn <b className={t.hoatDongTruocThue >= 0 ? "text-green-700" : "text-red-700"}>{fmtM(t.hoatDongTruocThue)}tr</b>.</li>
+        <li>
+          Nộp thuế <b>{fmtM(t.thue)}tr</b>
+          {t.thue > 0 && <>: thuế của công ty (GTGT, TNDN) {fmtM(thueRo)}tr, TNCN khấu trừ hộ nhân viên {fmtM(b.thue_tncn)}tr{b.thue_kbnn ? <>, chưa rõ loại {fmtM(b.thue_kbnn)}tr</> : null}</>}.
+          {" "}Dòng tiền hoạt động ròng <b className={t.hoatDongRong >= 0 ? "text-green-700" : "text-red-700"}>{fmtM(t.hoatDongRong)}tr</b>.
+        </li>
+        {(b.giu_cho !== 0 || b.hoan_khach !== 0) && (
+          <li>Tiền giữ chỗ khách đi qua tài khoản: thu hộ trừ chi hộ {fmtM(b.giu_cho)}tr, hoàn khách {fmtM(b.hoan_khach)}tr. Không phải tiền của công ty, không tính vào lãi lỗ.</li>
+        )}
+        {b.chuyen_noi_bo !== 0 && <li>Chuyển nội bộ (gửi tiết kiệm, nộp tiền mặt, ứng chi phí) {fmtM(b.chuyen_noi_bo)}tr, vẫn là tiền công ty.</li>}
+        {amMonths.length > 0 && (
+          <li>Tháng dòng tiền hoạt động âm: {amMonths.map((m) => m.label).join(", ")}. {khongThu.length > 0 && <>Trong đó {khongThu.map((m) => m.label).join(", ")} không có CĐT chuyển phí nhưng vẫn trả hoa hồng và chi phí. </>}Sàn thu tiền theo đợt CĐT trả, còn chi đều hàng tháng, nên nhìn cả kỳ mới đúng.</li>
+        )}
+      </ul>
+    </div>
+  );
+}
+
+function CashMonthlyTable({ rows, dataThrough }: { rows: CashMonth[]; dataThrough: string | null }) {
   const sum = (k: keyof Omit<CashMonth, "label" | "period">) => rows.reduce((s, m) => s + m[k], 0);
+  const hasData = (m: CashMonth) => !dataThrough || m.period.start <= dataThrough;
   const lines: { label: string; key: keyof Omit<CashMonth, "label" | "period">; bold?: boolean; tone?: boolean }[] = [
     { label: "Tiền thu hoạt động", key: "thu" },
     { label: "Chi giá vốn", key: "chiGiaVon" },
@@ -228,6 +265,8 @@ function CashMonthlyTable({ rows }: { rows: CashMonth[] }) {
     { label: "Ngoài hoạt động", key: "ngoaiHoatDong" },
     { label: "Thay đổi tiền", key: "thayDoiTien", bold: true, tone: true },
   ];
+  let luyKe = 0;
+  const cum = rows.map((m) => (luyKe += m.hoatDongRong));
   return (
     <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
       <div className="px-3 pt-3 text-sm font-semibold">Theo tháng (triệu đồng)</div>
@@ -235,7 +274,7 @@ function CashMonthlyTable({ rows }: { rows: CashMonth[] }) {
         <thead className="text-slate-500">
           <tr>
             <th className="text-left p-2">Khoản mục</th>
-            {rows.map((m) => <th key={m.label} className="text-right p-2">{m.label}</th>)}
+            {rows.map((m) => <th key={m.label} className={`text-right p-2 ${hasData(m) ? "" : "text-slate-300"}`}>{m.label}</th>)}
             <th className="text-right p-2 font-semibold">Cộng</th>
           </tr>
         </thead>
@@ -243,17 +282,25 @@ function CashMonthlyTable({ rows }: { rows: CashMonth[] }) {
           {lines.map((l) => (
             <tr key={l.key} className={`border-t border-slate-100 ${l.bold ? "font-semibold bg-slate-50" : ""}`}>
               <td className="p-2">{l.label}</td>
-              {rows.map((m) => <td key={m.label} className={`p-2 text-right tabular-nums ${l.tone && m[l.key] < 0 ? "text-red-700" : ""}`}>{m[l.key] ? fmtM(m[l.key]) : ""}</td>)}
+              {rows.map((m) => <td key={m.label} className={`p-2 text-right tabular-nums ${l.tone && m[l.key] < 0 ? "text-red-700" : ""}`}>{hasData(m) ? (m[l.key] ? fmtM(m[l.key]) : "0") : ""}</td>)}
               <td className={`p-2 text-right tabular-nums font-semibold ${l.tone && sum(l.key) < 0 ? "text-red-700" : ""}`}>{fmtM(sum(l.key))}</td>
             </tr>
           ))}
+          <tr className="border-t border-slate-200 text-slate-600 italic">
+            <td className="p-2">Lũy kế hoạt động ròng</td>
+            {rows.map((m, i) => <td key={m.label} className={`p-2 text-right tabular-nums ${cum[i] < 0 ? "text-red-700" : ""}`}>{hasData(m) ? fmtM(cum[i]) : ""}</td>)}
+            <td className="p-2" />
+          </tr>
           <tr className="border-t border-slate-200 text-slate-500">
             <td className="p-2">Biên gộp</td>
-            {rows.map((m) => <td key={m.label} className="p-2 text-right tabular-nums">{pctMonth(m.chenhGop, m.thu)}</td>)}
+            {rows.map((m) => <td key={m.label} className="p-2 text-right tabular-nums">{!hasData(m) ? "" : m.thu >= 10_000_000 ? pct(m.chenhGop, m.thu) : <span className="text-slate-400" title="Tháng này CĐT không chuyển phí, chỉ có lãi tài khoản, không tính biên">không thu</span>}</td>)}
             <td className="p-2 text-right tabular-nums">{pct(sum("chenhGop"), sum("thu"))}</td>
           </tr>
         </tbody>
       </table>
+      {dataThrough && dataThrough < rows[rows.length - 1].period.end && (
+        <div className="px-3 pb-2 text-[11px] text-slate-500">Dữ liệu đến {fmtD(dataThrough)}. Tháng cuối chưa đủ, các tháng sau chưa có.</div>
+      )}
     </div>
   );
 }
@@ -276,14 +323,16 @@ function CashRow({ line, denom }: { line: CashLine; denom: number }) {
 // ───────────────────────── Dồn tích ─────────────────────────
 
 async function AccrualView({ start, end, months }: { start: string; end: string; months: number }) {
-  const { pnl, monthly } = await loadManagementPnl({ start, end });
+  const { pnl, monthly, dataThrough } = await loadManagementPnl({ start, end });
   const ref = findReference({ start, end });
   const cmp = ref ? comparePnl(pnl, ref) : null;
   const cmpByCode = new Map<string, PnlComparisonRow>(cmp?.map((c) => [c.code, c]) ?? []);
   const explained = cmp?.filter((c) => c.delta != null && Math.abs(c.delta) >= 1000 && c.note) ?? [];
   const unexplained = cmp?.filter((c) => c.delta != null && Math.abs(c.delta) >= 1000 && !c.note) ?? [];
   const denom = pnl.revenue.net;
-  const ratios = computeRatios(pnl.revenue.net, pnl.totals.grossProfit, pnl.totals.fixed, pnl.totals.profitBeforeTax, months, pnl.units);
+  const soThang = Math.min(months, monthsWithData({ start, end }, dataThrough));
+  const ratios = computeRatios(pnl.revenue.net, pnl.totals.grossProfit, pnl.totals.fixed, pnl.totals.profitBeforeTax, soThang, pnl.units);
+  const partial = dataThrough != null && dataThrough < end;
 
   return (
     <>
@@ -298,9 +347,13 @@ async function AccrualView({ start, end, months }: { start: string; end: string;
         </div>
       )}
 
+      {partial && (
+        <div className="text-sm text-slate-600">Số liệu đến <b>{fmtD(dataThrough!)}</b>, tức {soThang} tháng. Bình quân tháng và điểm hòa vốn chia cho {soThang} tháng.</div>
+      )}
+
       <RatioCards r={ratios} thuLabel="Doanh thu không VAT" thu={pnl.revenue.net} gop={pnl.totals.grossProfit} coDinh={pnl.totals.fixed} rong={pnl.totals.profitBeforeTax} rongLabel="Lợi nhuận trước thuế" />
 
-      {monthly.length > 1 && <AccrualMonthlyTable rows={monthly} />}
+      {monthly.length > 1 && <AccrualMonthlyTable rows={monthly} dataThrough={dataThrough} />}
 
       <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
         <table className="w-full text-sm">
@@ -354,8 +407,9 @@ async function AccrualView({ start, end, months }: { start: string; end: string;
   );
 }
 
-function AccrualMonthlyTable({ rows }: { rows: AccrualMonth[] }) {
+function AccrualMonthlyTable({ rows, dataThrough }: { rows: AccrualMonth[]; dataThrough: string | null }) {
   const sum = (k: "revenueNet" | "cogs" | "grossProfit" | "fixed" | "profitBeforeTax") => rows.reduce((s, m) => s + m[k], 0);
+  const hasData = (m: AccrualMonth) => !dataThrough || m.period.start <= dataThrough;
   const lines: { label: string; key: "revenueNet" | "cogs" | "grossProfit" | "fixed" | "profitBeforeTax"; bold?: boolean; tone?: boolean }[] = [
     { label: "Doanh thu không VAT", key: "revenueNet" },
     { label: "Giá vốn", key: "cogs" },
@@ -370,7 +424,7 @@ function AccrualMonthlyTable({ rows }: { rows: AccrualMonth[] }) {
         <thead className="text-slate-500">
           <tr>
             <th className="text-left p-2">Khoản mục</th>
-            {rows.map((m) => <th key={m.label} className="text-right p-2">{m.label}{!m.opexAvailable && <span title="chưa có sổ NKC tháng này"> *</span>}</th>)}
+            {rows.map((m) => <th key={m.label} className={`text-right p-2 ${hasData(m) ? "" : "text-slate-300"}`}>{m.label}{hasData(m) && !m.opexAvailable && <span title="chưa có sổ NKC tháng này"> *</span>}</th>)}
             <th className="text-right p-2 font-semibold">Cộng</th>
           </tr>
         </thead>
@@ -378,13 +432,13 @@ function AccrualMonthlyTable({ rows }: { rows: AccrualMonth[] }) {
           {lines.map((l) => (
             <tr key={l.key} className={`border-t border-slate-100 ${l.bold ? "font-semibold bg-slate-50" : ""}`}>
               <td className="p-2">{l.label}</td>
-              {rows.map((m) => <td key={m.label} className={`p-2 text-right tabular-nums ${l.tone && m[l.key] < 0 ? "text-red-700" : ""}`}>{m[l.key] ? fmtM(m[l.key]) : ""}</td>)}
+              {rows.map((m) => <td key={m.label} className={`p-2 text-right tabular-nums ${l.tone && m[l.key] < 0 ? "text-red-700" : ""}`}>{hasData(m) ? (m[l.key] ? fmtM(m[l.key]) : "0") : ""}</td>)}
               <td className={`p-2 text-right tabular-nums font-semibold ${l.tone && sum(l.key) < 0 ? "text-red-700" : ""}`}>{fmtM(sum(l.key))}</td>
             </tr>
           ))}
           <tr className="border-t border-slate-200 text-slate-500">
             <td className="p-2">Biên gộp</td>
-            {rows.map((m) => <td key={m.label} className="p-2 text-right tabular-nums">{pctMonth(m.grossProfit, m.revenueNet)}</td>)}
+            {rows.map((m) => <td key={m.label} className="p-2 text-right tabular-nums">{!hasData(m) ? "" : m.revenueNet >= 10_000_000 ? pct(m.grossProfit, m.revenueNet) : <span className="text-slate-400" title="Tháng này không ghi nhận doanh thu, không tính biên">không thu</span>}</td>)}
             <td className="p-2 text-right tabular-nums">{pct(sum("grossProfit"), sum("revenueNet"))}</td>
           </tr>
         </tbody>

@@ -154,7 +154,7 @@ export async function loadUnitsInPeriod(period: Period): Promise<number> {
   return num(r[0]?.n);
 }
 
-export async function loadCashPnl(period: Period): Promise<{ pnl: CashPnl; monthly: CashMonth[]; pay: EmployeePaySummary; units: number; source: CashSource }> {
+export async function loadCashPnl(period: Period): Promise<{ pnl: CashPnl; monthly: CashMonth[]; pay: EmployeePaySummary; units: number; source: CashSource; dataThrough: string | null }> {
   // Chạy tuần tự: pooler Supabase hủy câu lệnh khi quá nhiều query song song.
   const ctx = await loadCashContext(period);
   const { legs, source } = await loadCashLegs(period, ctx);
@@ -162,5 +162,6 @@ export async function loadCashPnl(period: Period): Promise<{ pnl: CashPnl; month
   const units = await loadUnitsInPeriod(period);
   const split = { kinhDoanh: pay.salaryByGroup.kinh_doanh, quanLy: pay.salaryByGroup.quan_ly };
   const pnl = buildCashPnl(legs, period, legs.length > 0, split);
-  return { pnl, monthly: buildCashMonthly(legs, period, split), pay, units, source };
+  const dataThrough = legs.reduce<string | null>((m, l) => (l.date >= period.start && l.date <= period.end && (!m || l.date > m) ? l.date : m), null);
+  return { pnl, monthly: buildCashMonthly(legs, period, split), pay, units, source, dataThrough };
 }

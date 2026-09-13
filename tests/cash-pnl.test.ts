@@ -120,3 +120,14 @@ describe("monthsOf, buildCashMonthly, computeRatios", () => {
     expect(u.canCanMoiThang).toBe(2.5); // 375 mỗi tháng ÷ 150 mỗi căn
   });
 });
+
+describe("monthsWithData", () => {
+  test("kỳ đang dở chỉ đếm tới tháng có dữ liệu cuối", async () => {
+    const { monthsWithData } = await import("@/lib/cash-pnl-core");
+    const Y = { start: "2026-01-01", end: "2026-12-31" };
+    expect(monthsWithData(Y, "2026-08-03")).toBe(8);
+    expect(monthsWithData(Y, "2026-12-31")).toBe(12);
+    expect(monthsWithData(Y, null)).toBe(1);
+    expect(monthsWithData({ start: "2026-04-01", end: "2026-06-30" }, "2026-05-15")).toBe(2);
+  });
+});

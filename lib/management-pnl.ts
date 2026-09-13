@@ -80,9 +80,12 @@ export async function loadManagementRaw(period: Period): Promise<ManagementRaw> 
   return { revenue, recons, accruals, nkc, otherAccruals: dated(otherAccrualRows), cashOpex };
 }
 
-export async function loadManagementPnl(period: Period): Promise<{ pnl: ManagementPnl; monthly: ReturnType<typeof buildManagementMonthly> }> {
+export async function loadManagementPnl(period: Period): Promise<{ pnl: ManagementPnl; monthly: ReturnType<typeof buildManagementMonthly>; dataThrough: string | null }> {
   const raw = await loadManagementRaw(period);
-  return { pnl: buildManagementPnl(raw, period), monthly: buildManagementMonthly(raw, period) };
+  const inP = (d: string) => d >= period.start && d <= period.end;
+  const dates = [...raw.revenue.map((r) => r.date), ...raw.recons.map((r) => r.date), ...raw.nkc.map((r) => r.date), ...(raw.cashOpex ?? []).map((r) => r.date)].filter(inP);
+  const dataThrough = dates.length ? dates.reduce((m, d) => (d > m ? d : m)) : null;
+  return { pnl: buildManagementPnl(raw, period), monthly: buildManagementMonthly(raw, period), dataThrough };
 }
 
 export function findReference(period: Period): PnlReference | null {
