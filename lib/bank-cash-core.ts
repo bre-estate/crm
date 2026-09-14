@@ -80,6 +80,8 @@ export function makeBankClassifier(ctx: ClassifyCtx) {
       return [leg("thue_kbnn", "rule")];
     }
     if (direction === "in" && T(/TRA LAI SO DU|LAI TIEN GUI|LAI NHAP GOC/, d)) return [leg("khac_thu", "rule")];
+    // Phí ngân hàng: tiền nằm ở cột phí và thuế, diễn giải dạng "THU PHI SAO KE", "PHI PHAT HANH SEC".
+    if (direction === "out" && T(/^(THU )?PHI |PHI QUAN LY TAI KHOAN|PHI THUONG NIEN|PHI DICH VU NGAN HANG/, d) && !p) return [leg("dich_vu_ngoai", "rule")];
 
     // (3) nhân viên
     const emp = matchEmployee(row.partnerName, ctx.employees);
@@ -139,7 +141,7 @@ export function makeBankClassifier(ctx: ClassifyCtx) {
       if (T(/VTMH|NHA HANG|TIEP KHACH|AN UONG|CAFE|HAM RUOU|RUOU|\bBIA\b/, d) || T(/VTMH|NHA HANG/, p)) return [leg("tiep_khach", "rule")];
       if (T(/WIFI|\bWIP\b/, d)) return [leg("thue_vp", "rule")];
       if (T(/DONG PHUC|IN AN|QUANG CAO|MARKETING|TO ROI|TIEC|SU KIEN|BANNER|STANDEE|PROPERTYGURU|BATDONGSAN|CHAY ADS|FACEBOOK|GOOGLE/, d) || T(/BDS\d/, raw) || T(/ALPHA BETA|GIA SON|QUANG CAO|PROPERTYGURU|IN AN/, p)) return [leg("marketing", "rule")];
-      if (T(/NOI THAT|BAN GHE|MAY TINH|THIET BI|MAY IN|VAN PHONG PHAM|DO DUNG|TO GAP|BIA HO SO|GIAY IN/, d) || T(/\bDH\d{4}-\d+/, raw) || T(/NOI THAT/, p)) return [leg("do_dung_vp", "rule")];
+      if (T(/NOI THAT|BAN GHE|MAY (VI )?TINH|THIET BI|MAY IN|VAN PHONG PHAM|DO DUNG|TO GAP|BIA HO SO|GIAY IN/, d) || T(/\bDH\d{4}-\d+/, raw) || T(/NOI THAT/, p)) return [leg("do_dung_vp", "rule")];
       if (T(/\bGLU\b/, p)) return [leg("marketing", "rule")]; // đồng phục
       if (T(/CHU KY SO|HOA DON DIEN TU|HDDT|PHAP LUAT|LUAT SU|CONG CHUNG|TU VAN/, d) || T(/CHU KY SO/, p)) return [leg("dich_vu_ngoai", "rule")];
       if (T(/VAN CHUYEN|TAXI|GRAB|MAY BAY|CONG TAC|KHACH SAN/, d)) return [leg("di_lai", "rule")];

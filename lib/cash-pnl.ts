@@ -116,7 +116,10 @@ export async function loadCashLegsFromBank(period: Period, ctx?: CashContext): P
   const c = ctx ?? (await loadCashContext(period));
   const rows = (await db.execute(sql`
       SELECT id, (transaction_date::date)::text AS date, partner_name, description,
-             coalesce(credit_amount,0)::float8 AS credit, -coalesce(debit_amount,0)::float8 AS debit, category, category_source
+             coalesce(credit_amount,0)::float8 AS credit,
+             -- Dòng phí ngân hàng để tiền ở cột phí và thuế, cột nợ bằng 0.
+             -(coalesce(debit_amount,0) + coalesce(fee_interest,0) + coalesce(vat,0))::float8 AS debit,
+             category, category_source
       FROM bank_transactions
       WHERE transaction_date::date BETWEEN (${period.start}::date - interval '3 months') AND ${period.end}::date
     `)) as unknown as Row[];
@@ -155,7 +158,8 @@ export async function loadBankBalance(period: Period): Promise<BankBalance | nul
   const rows = (await db.execute(sql`
     WITH k AS (
       SELECT (transaction_date::date)::text AS date, statement_seq, coalesce(running_balance,0)::float8 AS bal,
-             coalesce(credit_amount,0)::float8 AS cr, coalesce(debit_amount,0)::float8 AS dr, description
+             coalesce(credit_amount,0)::float8 AS cr,
+             (coalesce(debit_amount,0) + coalesce(fee_interest,0) + coalesce(vat,0))::float8 AS dr, description
       FROM bank_transactions
       WHERE transaction_date::date BETWEEN ${period.start}::date AND ${period.end}::date AND statement_seq IS NOT NULL
     )

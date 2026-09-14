@@ -105,3 +105,11 @@ describe("classifyBankRows: giấy nộp thuế, khách hàng trên căn, bảng
     expect(legs.map((l) => [l.category, l.amount])).toEqual([["luong_nvkd", 7_500_000], ["hh_sale", 79_875_322]]);
   });
 });
+
+describe("classifyBankRows: phí ngân hàng", () => {
+  test("dòng phí ngân hàng vào chi dịch vụ mua ngoài", () => {
+    expect(one({ description: "THU PHI SAO KE 63 TRANG", debit: 346_500 })[0].category).toBe("dich_vu_ngoai");
+    expect(one({ description: "PHI PHAT HANH 1 CUON SEC.", debit: 44_000 })[0].category).toBe("dich_vu_ngoai");
+    expect(one({ description: "Cong ty BRE thanh toan tien mua may vi tinh", debit: 31_840_000 })[0].category).toBe("do_dung_vp");
+  });
+});
