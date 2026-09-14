@@ -152,7 +152,7 @@ export async function loadCashLegs(period: Period, ctx?: CashContext): Promise<{
 }
 
 /** Số dư sao kê đầu và cuối kỳ (theo thứ tự dòng trên sao kê), và tiền đang gửi tiết kiệm có kỳ hạn trong kỳ. */
-export interface BankBalance { openDate: string; open: number; closeDate: string; close: number; tietKiemRong: number }
+export interface BankBalance { openDate: string; open: number; closeDate: string; close: number; tietKiemRong: number; tietKiemDate: string | null }
 
 export async function loadBankBalance(period: Period): Promise<BankBalance | null> {
   const rows = (await db.execute(sql`
@@ -168,11 +168,15 @@ export async function loadBankBalance(period: Period): Promise<BankBalance | nul
       (SELECT bal - cr - dr FROM k ORDER BY statement_seq ASC LIMIT 1) AS open_bal,
       (SELECT date FROM k ORDER BY statement_seq DESC LIMIT 1) AS close_date,
       (SELECT bal FROM k ORDER BY statement_seq DESC LIMIT 1) AS close_bal,
-      (SELECT coalesce(sum(-dr - cr), 0) FROM k WHERE upper(description) ~ 'TERM DEPOSIT|TIET KIEM') AS tiet_kiem
+      (SELECT coalesce(sum(-dr - cr), 0) FROM k WHERE upper(description) ~ 'TERM DEPOSIT|TIET KIEM') AS tiet_kiem,
+      (SELECT max(date) FROM k WHERE upper(description) ~ 'TERM DEPOSIT|TIET KIEM') AS tiet_kiem_date
   `)) as unknown as Row[];
   const r = rows[0];
   if (!r || r.open_date == null) return null;
-  return { openDate: String(r.open_date), open: num(r.open_bal), closeDate: String(r.close_date), close: num(r.close_bal), tietKiemRong: num(r.tiet_kiem) };
+  return {
+    openDate: String(r.open_date), open: num(r.open_bal), closeDate: String(r.close_date), close: num(r.close_bal),
+    tietKiemRong: num(r.tiet_kiem), tietKiemDate: r.tiet_kiem_date == null ? null : String(r.tiet_kiem_date),
+  };
 }
 
 /** Số căn có đối chiếu doanh thu trong kỳ, để quy hòa vốn ra số căn. */

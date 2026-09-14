@@ -170,8 +170,6 @@ async function CashView({ start, end, months }: { start: string; end: string; mo
   const ratios = computeRatios(t.thu, t.chenhGop, t.chiCoDinh, t.hoatDongRong, soThang, units);
   const partial = dataThrough != null && dataThrough < end;
   const giuHo = b.giu_cho + b.hoan_khach; // còn giữ hộ khách: nhận trừ đã hoàn
-  const tienCuoi = bb ? bb.close + bb.tietKiemRong : null;
-  const dTien = bb && tienCuoi != null ? tienCuoi - bb.open : t.thayDoiTien;
   const amMonths = monthly.filter((m) => m.hoatDongRong < 0 && (!dataThrough || m.period.start <= dataThrough));
   const khongThu = amMonths.filter((m) => m.thu < 10_000_000 && (m.chiGiaVon > 0 || m.chiCoDinh > 0));
   const bbLech = bb ? Math.round(dBank - (bb.close - bb.open)) : 0;
@@ -185,8 +183,13 @@ async function CashView({ start, end, months }: { start: string; end: string; mo
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <Headline label="Tiền thu hoạt động" value={fmt(t.thu)} sub={soThang > 1 ? `${soThang} tháng, bình quân ${fmtM(ratios.thuBinhQuanThang)}tr/tháng` : undefined} />
         <Headline label="Dòng tiền hoạt động ròng" value={fmt(t.hoatDongRong)} tone={t.hoatDongRong >= 0 ? "good" : "bad"} sub="thu trừ giá vốn, chi cố định và thuế đã nộp" />
-        {bb && tienCuoi != null ? (
-          <Headline label="Tiền công ty cuối kỳ" value={fmt(tienCuoi)} tone={dTien >= 0 ? "good" : "bad"} sub={<>đầu kỳ {fmtM(bb.open)}tr, <b>{fmtDeltaM(dTien)}</b>{bb.tietKiemRong > 0 ? <>. Gồm bank {fmtM(bb.close)}tr và tiết kiệm {fmtM(bb.tietKiemRong)}tr</> : null}</>} />
+        {bb ? (
+          <Headline
+            label={`Số dư tài khoản ngày ${fmtD(bb.closeDate)}`}
+            value={fmt(bb.close)}
+            tone={bb.close - bb.open >= 0 ? "good" : "bad"}
+            sub={<>đầu kỳ {fmtM(bb.open)}tr, <b>{fmtDeltaM(bb.close - bb.open)}</b>. Đúng bằng số dư cuối trên sao kê.{bb.tietKiemRong > 0 ? <> Ngoài ra còn {fmtM(bb.tietKiemRong)}tr đã chuyển sang tiết kiệm có kỳ hạn, chưa quay lại tài khoản này.</> : null}</>}
+          />
         ) : (
           <Headline label="Thay đổi tiền trong kỳ" value={fmtDelta(t.thayDoiTien)} tone={t.thayDoiTien >= 0 ? "good" : "bad"} sub="bank và két tiền mặt, gồm cả tiền giữ hộ khách" />
         )}
@@ -213,10 +216,11 @@ async function CashView({ start, end, months }: { start: string; end: string; mo
           {(b.giu_cho !== 0 || b.hoan_khach !== 0) && (
             <li>Tiền giữ chỗ của khách đi qua tài khoản: nhận {fmtM(b.giu_cho)}tr, đã hoàn {fmtM(-b.hoan_khach)}tr, <b>đang giữ hộ {fmtM(giuHo)}tr</b>. Tiền này của khách, sẽ hoàn hoặc chuyển CĐT, không tính vào lãi lỗ.</li>
           )}
-          {bb && tienCuoi != null ? (
+          {bb ? (
             <li>
-              Tiền công ty đầu kỳ <b>{fmtM(bb.open)}tr</b>, cuối kỳ <b>{fmtM(tienCuoi)}tr</b>{bb.tietKiemRong > 0 ? ` (bank ${fmtM(bb.close)}tr, tiết kiệm ${fmtM(bb.tietKiemRong)}tr)` : ""}, tức <b className={dTien >= 0 ? "text-green-700" : "text-red-700"}>{fmtDeltaM(dTien)}</b>.
-              {giuHo !== 0 && <> Trừ phần giữ hộ khách thì tiền thật của công ty <b className={dTien - giuHo >= 0 ? "text-green-700" : "text-red-700"}>{fmtDeltaM(dTien - giuHo)}</b>.</>}
+              Số dư tài khoản đầu kỳ <b>{fmtM(bb.open)}tr</b>, cuối kỳ <b>{fmtM(bb.close)}tr</b>, tức <b className={bb.close - bb.open >= 0 ? "text-green-700" : "text-red-700"}>{fmtDeltaM(bb.close - bb.open)}</b>.
+              {bb.tietKiemRong > 0 && <> Riêng <b>{fmtM(bb.tietKiemRong)}tr</b> đã chuyển sang tiết kiệm có kỳ hạn ngày {fmtD(bb.tietKiemDate ?? bb.openDate)} và chưa quay lại, nên vẫn là tiền công ty nhưng không nằm trong số dư trên.</>}
+              {giuHo !== 0 && <> Trong số dư còn có <b>{fmtM(giuHo)}tr</b> giữ hộ khách, không phải tiền của công ty.</>}
             </li>
           ) : (
             <li>Tiền trong bank và két thay đổi <b className={t.thayDoiTien >= 0 ? "text-green-700" : "text-red-700"}>{fmtDeltaM(t.thayDoiTien)}</b> trong kỳ{giuHo !== 0 ? <>, trong đó giữ hộ khách {fmtDeltaM(giuHo)}</> : null}.</li>
@@ -298,7 +302,7 @@ function BankBalanceCheck({ bb, dBank }: { bb: BankBalance; dBank: number }) {
           <tr><td className="pr-6 py-0.5 text-slate-600">Thay đổi theo các dòng đã nạp vào báo cáo</td><td className="text-right tabular-nums">{fmtDelta(dBank)}</td></tr>
           <tr className="font-semibold"><td className="pr-6 py-0.5">Chênh lệch</td><td className={`text-right tabular-nums ${khop ? "text-green-700" : "text-red-700"}`}>{khop ? "0, sao kê đủ dòng" : `${fmtDelta(lech)}, sao kê thiếu dòng`}</td></tr>
           {bb.tietKiemRong > 0 && (
-            <tr><td className="pr-6 py-0.5 text-slate-600">Đang gửi tiết kiệm có kỳ hạn, chuyển từ bank, vẫn là tiền công ty</td><td className="text-right tabular-nums">{fmt(bb.tietKiemRong)}</td></tr>
+            <tr><td className="pr-6 py-0.5 text-slate-600">Đã chuyển sang tiết kiệm có kỳ hạn{bb.tietKiemDate ? ` ngày ${fmtD(bb.tietKiemDate)}` : ""}, chưa quay lại tài khoản, nằm ngoài số dư trên</td><td className="text-right tabular-nums">{fmt(bb.tietKiemRong)}</td></tr>
           )}
         </tbody>
       </table>

@@ -41,28 +41,41 @@ const strip = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(
 const nameKey = (s: string) => strip(s).replace(/\bTHI\b/g, "").replace(/\s+/g, " ").trim();
 
 const pad = (n: number) => String(n).padStart(2, "0");
-/** Ô ngày trong Excel bị gõ lẫn dd/mm và mm/dd. Nếu tháng không khớp tháng lương đầu/cuối mà đảo ngày-tháng thì khớp, thì đảo. */
-function fixSwap(ymd: string | null, monthHint: string | null): string | null {
-  if (!ymd || !monthHint) return ymd;
-  const m = monthHint.match(/^(\d{1,2})\/(\d{4})$/); if (!m) return ymd;
-  const hint = `${m[2]}-${m[1].padStart(2, "0")}`;
-  if (ymd.startsWith(hint)) return ymd;
-  const [y, mo, d] = ymd.split("-");
-  if (Number(d) <= 12 && `${y}-${d}` === hint) return `${y}-${d}-${mo}`;
-  return ymd;
-}
-function toYmd(v: unknown): string | null {
-  if (v == null || v === "") return null;
-  if (typeof v === "number") { const d = XLSX.SSF.parse_date_code(v); return d ? `${d.y}-${pad(d.m)}-${pad(d.d)}` : null; }
-  if (v instanceof Date) return `${v.getFullYear()}-${pad(v.getMonth() + 1)}-${pad(v.getDate())}`;
+
+/**
+ * Ngày trong Danh Sách Nhân Viên đều được gõ dạng ngày/tháng/năm.
+ * Ô nào Sheets nhận ra là ngày thì lưu theo tháng/ngày, nên ngày <= 12 bị đảo (01/12/2024 thành 2024-01-12);
+ * ngày > 12 không đọc được nên nằm lại dạng chữ và vẫn đúng. Operator xác nhận cách đọc này 14/09/2026.
+ * `swapped` = true nghĩa là ô lưu dạng ngày và đã đảo lại, để in cảnh báo cho người kiểm.
+ */
+interface Ymd { ymd: string | null; swapped: boolean }
+const NO_DATE: Ymd = { ymd: null, swapped: false };
+
+function toYmd(v: unknown): Ymd {
+  if (v == null || v === "") return NO_DATE;
+  const fromDate = (y: number, mo: number, d: number): Ymd =>
+    d <= 12 ? { ymd: `${y}-${pad(d)}-${pad(mo)}`, swapped: true } : { ymd: `${y}-${pad(mo)}-${pad(d)}`, swapped: false };
+  if (typeof v === "number") { const d = XLSX.SSF.parse_date_code(v); return d ? fromDate(d.y, d.m, d.d) : NO_DATE; }
+  if (v instanceof Date) return fromDate(v.getFullYear(), v.getMonth() + 1, v.getDate());
   const s = String(v).trim();
-  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/); if (m) return `${m[1]}-${m[2]}-${m[3]}`;
-  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); if (m) return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
-  m = s.match(/^(\d{1,2})\/(\d{4})$/); if (m) return `${m[2]}-${m[1].padStart(2, "0")}-01`;
-  return null; // "không khớp bhxh" và các ghi chú khác
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/); if (m) return fromDate(Number(m[1]), Number(m[2]), Number(m[3]));
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); if (m) return { ymd: `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`, swapped: false };
+  m = s.match(/^(\d{1,2})\/(\d{4})$/); if (m) return { ymd: `${m[2]}-${m[1].padStart(2, "0")}-01`, swapped: false };
+  return NO_DATE; // "không khớp bhxh" và các ghi chú khác
 }
 
-type XRow = { name: string; code: string | null; position: string; positionRaw: string; active: boolean; email: string | null; phone: string | null; contractType: string | null; startDate: string | null; endDate: string | null; salaryFirst: string | null };
+/** Tháng lương đầu/cuối nếu có thì là bằng chứng mạnh hơn, dùng để bác cách đọc đã đảo. */
+function withHint(d: Ymd, monthHint: string | null): string | null {
+  if (!d.ymd || !monthHint) return d.ymd;
+  const m = monthHint.match(/^(\d{1,2})\/(\d{4})$/); if (!m) return d.ymd;
+  const hint = `${m[2]}-${m[1].padStart(2, "0")}`;
+  if (d.ymd.startsWith(hint)) return d.ymd;
+  const [y, mo, dd] = d.ymd.split("-");
+  if (`${y}-${dd}` === hint) return `${y}-${dd}-${mo}`; // cách đọc kia mới khớp tháng lương
+  return d.ymd;
+}
+
+type XRow = { name: string; code: string | null; position: string; positionRaw: string; active: boolean; email: string | null; phone: string | null; contractType: string | null; startDate: string | null; endDate: string | null; salaryFirst: string | null; dateSwapped: boolean };
 
 function readExcel(): XRow[] {
   const wb = XLSX.read(fs.readFileSync(XLSX_PATH));
@@ -78,6 +91,8 @@ function readExcel(): XRow[] {
     if (!position) throw new Error(`Chức vụ chưa map: "${positionRaw}" (${name})`);
     if (code?.startsWith("CTV-")) position = "ctv"; // CTV đối tác 65%, khác NVKD hợp đồng CTV
     const status = String(r["Tình trạng"] ?? "").toLowerCase();
+    const start = toYmd(r["Ngày bắt đầu làm việc"]);
+    const end = toYmd(r["Thời điểm chấm dứt HĐ"]);
     const emailRaw = r["Email"] == null ? null : String(r["Email"]).trim();
     out.push({
       name, positionRaw, position,
@@ -86,8 +101,9 @@ function readExcel(): XRow[] {
       email: emailRaw || null,
       phone: r["Điện Thoại"] == null ? null : String(r["Điện Thoại"]).replace(/\.0$/, "").trim() || null,
       contractType: r["Loại hợp đồng"] == null ? null : String(r["Loại hợp đồng"]).trim(),
-      startDate: fixSwap(toYmd(r["Ngày bắt đầu làm việc"]), r["Tháng đầu có lương"] == null ? null : String(r["Tháng đầu có lương"])),
-      endDate: fixSwap(toYmd(r["Thời điểm chấm dứt HĐ"]), r["Tháng cuối có lương"] == null ? null : String(r["Tháng cuối có lương"])),
+      startDate: withHint(start, r["Tháng đầu có lương"] == null ? null : String(r["Tháng đầu có lương"])),
+      endDate: withHint(end, r["Tháng cuối có lương"] == null ? null : String(r["Tháng cuối có lương"])),
+      dateSwapped: start.swapped || end.swapped,
       salaryFirst: r["Tháng đầu có lương"] == null ? null : String(r["Tháng đầu có lương"]),
     });
   }
@@ -120,6 +136,13 @@ async function main() {
   const onlyCrm = emps.filter((e) => !seen.has(e.id));
 
   console.log(`Excel ${xrows.length} người · CRM ${emps.length} · cập nhật ${updates.length} · thêm mới ${inserts.length} · chỉ có trong CRM ${onlyCrm.length}\n`);
+
+  const swapped = xrows.filter((x) => x.dateSwapped);
+  if (swapped.length) {
+    console.log(`== ĐÃ ĐẢO NGÀY/THÁNG (${swapped.length} người, ô lưu dạng ngày nên Sheets hiểu tháng/ngày) ==`);
+    for (const x of swapped) console.log(`  ${x.name}: ${x.startDate ?? "∅"} → ${x.endDate ?? "∅"}`);
+    console.log("  Sửa gốc: gõ lại mấy ô này trong Excel thành dạng chữ như 01/12/2024.\n");
+  }
   console.log("== CẬP NHẬT ==");
   for (const u of updates) console.log(`#${u.id} ${u.name}: ` + Object.entries(u.changes).map(([k, [a, b]]) => `${k} ${a ?? "∅"} → ${b ?? "∅"}`).join(" | "));
   console.log("\n== THÊM MỚI ==");
