@@ -285,7 +285,9 @@ const RULES: Rule[] = [
 
   // Dịch vụ ngoài
   { category: "dich_vu_ngoai", priority: 72, confidence: 85, requireOutflow: true,
-    patterns: [/kế toán thuê/i, /ke toan thue/i, /luật sư/i, /luat su/i,
+    patterns: [/^(thu )?phi (sao ke|phat hanh|thuong nien|quan ly tai khoan|dich vu ngan hang)/i,
+      /khám sức khỏe/i, /kham suc khoe/i,
+      /kế toán thuê/i, /ke toan thue/i, /luật sư/i, /luat su/i,
       /tư vấn/i, /tu van/i, /dịch vụ pháp lý/i, /dich vu phap ly/i,
       /công chứng/i, /cong chung/i, /tra cứu.*pháp luật/i, /tra cuu.*phap luat/i] },
 

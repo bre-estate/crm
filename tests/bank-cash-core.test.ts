@@ -111,5 +111,10 @@ describe("classifyBankRows: phí ngân hàng", () => {
     expect(one({ description: "THU PHI SAO KE 63 TRANG", debit: 346_500 })[0].category).toBe("dich_vu_ngoai");
     expect(one({ description: "PHI PHAT HANH 1 CUON SEC.", debit: 44_000 })[0].category).toBe("dich_vu_ngoai");
     expect(one({ description: "Cong ty BRE thanh toan tien mua may vi tinh", debit: 31_840_000 })[0].category).toBe("do_dung_vp");
+    expect(one({ description: "BRE TT Kham suc khoe dinh ky cho nhan vien", debit: 3_381_000 })[0].category).toBe("dich_vu_ngoai");
+  });
+  test("nhân viên chuyển trả lại thù lao thì trừ vào dòng lương", () => {
+    expect(one({ description: "HO THI LAN KIM chuyen lai thu lao thang 7", credit: 333_333, partnerName: "HO THI LAN KIM" })[0])
+      .toMatchObject({ category: "luong_admin", direction: "in" });
   });
 });

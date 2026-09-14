@@ -82,6 +82,8 @@ export function makeBankClassifier(ctx: ClassifyCtx) {
     if (direction === "in" && T(/TRA LAI SO DU|LAI TIEN GUI|LAI NHAP GOC/, d)) return [leg("khac_thu", "rule")];
     // Phí ngân hàng: tiền nằm ở cột phí và thuế, diễn giải dạng "THU PHI SAO KE", "PHI PHAT HANH SEC".
     if (direction === "out" && T(/^(THU )?PHI |PHI QUAN LY TAI KHOAN|PHI THUONG NIEN|PHI DICH VU NGAN HANG/, d) && !p) return [leg("dich_vu_ngoai", "rule")];
+    // Khám sức khỏe định kỳ cho nhân viên: dịch vụ mua ngoài, không phải lương.
+    if (direction === "out" && T(/KHAM SUC KHOE/, d)) return [leg("dich_vu_ngoai", "rule")];
 
     // (3) nhân viên
     const emp = matchEmployee(row.partnerName, ctx.employees);
@@ -111,6 +113,10 @@ export function makeBankClassifier(ctx: ClassifyCtx) {
         hoa_hong: "hh_sale", thuong_doanh_so: "thuong_ds_sale", thuong_khac: "thuong_ds_sale",
       };
       return [leg(map[kind] ?? luongCat, "employee")];
+    }
+    // Nhân viên chuyển trả lại phần lương hoặc thù lao đã nhận thừa: trừ vào chính dòng lương đó.
+    if (emp && direction === "in" && T(/CHUYEN LAI|TRA LAI|HOAN LAI|NOP LAI/, d) && T(/THU LAO|LUONG|PHU CAP|PHI DICH VU/, d)) {
+      return [leg(groupOf(emp) === "kinh_doanh" ? "luong_nvkd" : "luong_admin", "employee")];
     }
     if (emp && direction === "in") {
       if (T(GIU_CHO, d)) return [leg("giu_cho_ho_khach", "employee")];
