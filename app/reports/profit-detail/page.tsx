@@ -8,7 +8,7 @@ import { requirePermission } from "@/lib/auth";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { loadManagementPnl, findReference, comparePnl, type PnlLine, type PnlComparisonRow, type AccrualMonth } from "@/lib/management-pnl";
-import { loadCashPnl, computeRatios, monthsWithData, type BankBalance, type CashLine, type CashMonth, type Ratios } from "@/lib/cash-pnl";
+import { loadCashPnl, loadFounderSpendOutsideBooks, computeRatios, monthsWithData, type BankBalance, type CashLine, type CashMonth, type Ratios } from "@/lib/cash-pnl";
 
 export const dynamic = "force-dynamic";
 
@@ -382,6 +382,8 @@ function CashRow({ line, denom }: { line: CashLine; denom: number }) {
 
 async function AccrualView({ start, end, months }: { start: string; end: string; months: number }) {
   const { pnl, monthly, dataThrough } = await loadManagementPnl({ start, end });
+  // Bản dồn tích bám sổ kế toán, nên phần founder chi từ tài khoản cá nhân chưa nằm trong đó.
+  const ngoaiSo = pnl.opexSource === "nkc" ? await loadFounderSpendOutsideBooks({ start, end }) : 0;
   const ref = findReference({ start, end });
   const cmp = ref ? comparePnl(pnl, ref) : null;
   const cmpByCode = new Map<string, PnlComparisonRow>(cmp?.map((c) => [c.code, c]) ?? []);
@@ -419,6 +421,13 @@ async function AccrualView({ start, end, months }: { start: string; end: string;
               So với {ref.label}: {explained.length + unexplained.length === 0
                 ? "khớp từng dòng."
                 : <>{explained.length} dòng lệch đã rõ nguyên nhân{unexplained.length > 0 ? <>, <b className="text-amber-800">{unexplained.length} dòng chưa giải thích được</b></> : null}. Chi tiết ở khối Đối chiếu bên dưới.</>}
+            </li>
+          )}
+          {ngoaiSo > 0 && (
+            <li>
+              Ngoài sổ kế toán, hai người sáng lập còn bỏ <b>{fmtM(ngoaiSo)}tr</b> từ tài khoản cá nhân để chi cho công ty trong kỳ này.
+              Tính thêm khoản đó thì lợi nhuận trước thuế là <b className={lo - ngoaiSo >= 0 ? "text-green-700" : "text-red-700"}>{fmtM(lo - ngoaiSo)}tr</b>.
+              Bản dồn tích giữ nguyên số của kế toán để còn đối chiếu, bản dòng tiền đã tính đủ.
             </li>
           )}
           {amMonths.length > 0 && soThang > 1 && <li>Tháng lỗ: {amMonths.map((m) => m.label).join(", ")}. Doanh thu ghi nhận theo ngày đối chiếu từng đợt, còn chi phí đều hàng tháng.</li>}

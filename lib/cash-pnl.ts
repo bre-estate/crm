@@ -130,23 +130,47 @@ export async function loadCashLegsFromBank(period: Period, ctx?: CashContext): P
   return classifyBankRows(bankRows, c, period.start);
 }
 
-/** Sổ chi tiền mặt founder (financial_transactions merged-*), coi như két tiền mặt công ty giống cách kế toán ghi TK 1111. */
+/**
+ * Sổ chi cá nhân của hai founder (bảng founder_spending, nguồn Drive 0.2.6).
+ * Đây là tiền công ty đã tiêu nhưng không đi qua tài khoản công ty nên sao kê không thấy.
+ * Bảng đã loại sẵn: tiền nộp vào tài khoản công ty, khoản công ty tự trả, và khoản chi từ doanh thu thứ cấp.
+ */
 export async function loadCashLegsFromFounders(period: Period): Promise<CashLeg[]> {
+  // Vài ô "Ngày chi" trong file gõ sai năm hoặc sai tháng; lệch với cột Tháng thì tin cột Tháng.
+  const ngay = sql`CASE WHEN spend_date IS NOT NULL AND to_char(spend_date, 'YYYY-MM') = month
+                        THEN spend_date ELSE (month || '-01')::date END`;
   const rows = (await db.execute(sql`
-    SELECT transaction_date::text AS date, description, coalesce(amount,0)::float8 AS amount, management_group, direction
-    FROM financial_transactions
-    WHERE source_file LIKE 'merged%' AND transaction_date BETWEEN ${period.start} AND ${period.end}
+    SELECT (${ngay})::text AS date, title, detail, category, coalesce(amount,0)::float8 AS amount
+    FROM founder_spending
+    WHERE is_company_spend AND (${ngay}) BETWEEN ${period.start}::date AND ${period.end}::date
   `)) as unknown as Row[];
-  const fr: FounderCashRow[] = rows.map((r) => ({ date: String(r.date), description: String(r.description ?? ""), amount: num(r.amount), managementGroup: r.management_group == null ? null : String(r.management_group), direction: String(r.direction) === "in" ? "in" : "out" }));
-  return founderCashToLegs(fr);
+  return rows.map((r) => ({
+    date: String(r.date), channel: "cash" as const, direction: "out" as const, amount: num(r.amount),
+    counterAccount: "", category: String(r.category) as CashLeg["category"],
+    description: `${String(r.title ?? "")}${r.detail ? ` — ${String(r.detail)}` : ""}`.trim(),
+  }));
 }
 
-/** Chân tiền cho kỳ: có sổ NKC thì dùng sổ, không thì sao kê + tiền mặt founder. */
+/**
+ * Tiền founder bỏ ra trong kỳ mà sổ kế toán KHÔNG ghi.
+ * Dùng cho bản dồn tích: bản đó bám sổ Kim để còn đối chiếu, nên phải nói rõ còn thiếu bao nhiêu.
+ */
+export async function loadFounderSpendOutsideBooks(period: Period): Promise<number> {
+  const ngay = sql`CASE WHEN spend_date IS NOT NULL AND to_char(spend_date, 'YYYY-MM') = month
+                        THEN spend_date ELSE (month || '-01')::date END`;
+  const r = (await db.execute(sql`
+    SELECT coalesce(sum(amount), 0)::float8 AS n FROM founder_spending
+    WHERE is_company_spend AND (${ngay}) BETWEEN ${period.start}::date AND ${period.end}::date
+  `)) as unknown as Row[];
+  return num(r[0]?.n);
+}
+
+/** Chân tiền cho kỳ: sổ NKC nếu kế toán đã giao, không thì sao kê; sổ chi cá nhân founder luôn được cộng thêm. */
 export async function loadCashLegs(period: Period, ctx?: CashContext): Promise<{ legs: CashLeg[]; source: CashSource }> {
-  const journal = await loadCashLegsFromJournal(period);
-  if (journal.length > 0) return { legs: journal, source: "nkc" };
-  const bank = await loadCashLegsFromBank(period, ctx);
   const founders = await loadCashLegsFromFounders(period);
+  const journal = await loadCashLegsFromJournal(period);
+  if (journal.length > 0) return { legs: [...journal, ...founders], source: "nkc" };
+  const bank = await loadCashLegsFromBank(period, ctx);
   const legs = [...bank, ...founders];
   return { legs, source: legs.length > 0 ? "bank" : "none" };
 }
