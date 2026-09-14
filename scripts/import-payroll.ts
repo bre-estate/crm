@@ -19,12 +19,13 @@ const nfc = (s: string) => s.normalize("NFC");
 const up = (v: unknown) => nfc(String(v ?? "")).toUpperCase().replace(/\s+/g, " ").trim();
 const num = (v: unknown) => (typeof v === "number" ? v : typeof v === "string" && /^-?[\d.,]+$/.test(v.trim()) ? Number(v.replace(/,/g, "")) : 0);
 
-export interface PayrollRow { month: string; kind: "hdld" | "ctv"; code: string | null; name: string; position: string | null; baseSalary: number; allowances: number; commission: number; bonus: number; grossTotal: number | null; sourceFile: string }
+export interface PayrollRow { month: string; kind: "hdld" | "ctv"; code: string | null; name: string; position: string | null; baseSalary: number; allowances: number; commission: number; bonus: number; grossTotal: number | null; netPay: number | null; sourceFile: string }
 
 const ALLOWANCE_HEADS = ["PHỤ CẤP", "CHUYÊN CẦN", "KHOÁN CHI", "TIỀN HỖ TRỢ", "HỖ TRỢ XĂNG", "HỖ TRỢ ĐIỆN", "CHI PHÍ ĐI LẠI", "CHI PHÍ GIẤY TỜ", "TRANG BỊ", "CHI PHÍ HỖ TRỢ", "LƯƠNG TĂNG CA", "TRUY LÃNH"];
 const BONUS_HEADS = ["THƯỞNG"];
 const BASE_HEADS_HDLD = ["LƯƠNG CƠ BẢN"];
-const BASE_HEADS_CTV = ["THÙ LAO"];
+// Sheet CTV mỗi tháng đặt tên cột một kiểu: "THÙ LAO", có tháng ghi thẳng "LƯƠNG".
+const BASE_HEADS_CTV = ["THÙ LAO", "LƯƠNG"];
 
 function parseSheet(rows: unknown[][], kind: "hdld" | "ctv", month: string, sourceFile: string): PayrollRow[] {
   // Tìm dòng tiêu đề chính (có "HỌ VÀ TÊN") và dòng tiêu đề phụ ngay dưới
@@ -36,12 +37,15 @@ function parseSheet(rows: unknown[][], kind: "hdld" | "ctv", month: string, sour
   const nameCol = h1.findIndex((h) => h.startsWith("HỌ VÀ TÊN"));
   const codeCol = h1.findIndex((h) => h.startsWith("MÃ SỐ"));
   const posCol = h1.findIndex((h) => h.startsWith("VỊ TRÍ"));
-  const baseCols = col((h) => (kind === "hdld" ? BASE_HEADS_HDLD : BASE_HEADS_CTV).some((k) => h.startsWith(k)));
   const allowCols = col((h) => ALLOWANCE_HEADS.some((k) => h.startsWith(k)));
+  // Cột lương gốc không được trùng cột phụ cấp (ví dụ "LƯƠNG TĂNG CA" đã tính là phụ cấp).
+  const baseCols = col((h) => (kind === "hdld" ? BASE_HEADS_HDLD : BASE_HEADS_CTV).some((k) => h.startsWith(k))).filter((i) => !allowCols.includes(i));
   const commCols = col((h) => h.startsWith("HOA HỒNG"));
   const bonusCols = col((h) => BONUS_HEADS.some((k) => h.startsWith(k)));
   // "TỔNG CỘNG" đầu tiên sau nhóm lương là tổng thu nhập; các TỔNG CỘNG sau là BHXH
   const totalCol = head.findIndex((h, i) => h.startsWith("TỔNG CỘNG") && i > Math.max(0, ...baseCols, ...commCols));
+  // Nhiều tháng kế toán bỏ trống các cột thành phần, chỉ điền số thực trả ở cuối dòng.
+  const netCol = head.findIndex((h) => h.startsWith("TIỀN LƯƠNG CÒN LẠI"));
 
   const out: PayrollRow[] = [];
   for (const r of rows.slice(hi + 2)) {
@@ -55,8 +59,10 @@ function parseSheet(rows: unknown[][], kind: "hdld" | "ctv", month: string, sour
       position: posCol >= 0 && r[posCol] ? nfc(String(r[posCol])).trim() : null,
       baseSalary: sum(baseCols), allowances: sum(allowCols), commission: sum(commCols), bonus: sum(bonusCols),
       grossTotal: totalCol >= 0 && num(r[totalCol]) ? num(r[totalCol]) : null,
+      netPay: netCol >= 0 && num(r[netCol]) ? num(r[netCol]) : null,
     };
-    if (row.baseSalary || row.allowances || row.commission || row.bonus) out.push(row);
+    // Giữ cả dòng chỉ có tổng hoặc chỉ có số thực trả, nếu không sẽ mất người trong tháng đó.
+    if (row.baseSalary || row.allowances || row.commission || row.bonus || row.grossTotal || row.netPay) out.push(row);
   }
   return out;
 }
@@ -94,10 +100,12 @@ async function main() {
   if (!APPLY) { console.log(`(chạy thử, ${all.length} dòng, thêm --apply để ghi)`); return; }
   const sql = postgres(process.env.DATABASE_URL!);
   await sql.unsafe(fs.readFileSync("drizzle/0044_payroll_months.sql", "utf8"));
+  await sql`ALTER TABLE payroll_months ADD COLUMN IF NOT EXISTS net_pay NUMERIC(15, 0)`;
+  await sql`TRUNCATE payroll_months RESTART IDENTITY`;
   for (const r of all) {
-    await sql`INSERT INTO payroll_months (month, kind, code, name, position, base_salary, allowances, commission, bonus, gross_total, source_file)
-      VALUES (${r.month}, ${r.kind}, ${r.code}, ${r.name}, ${r.position}, ${r.baseSalary}, ${r.allowances}, ${r.commission}, ${r.bonus}, ${r.grossTotal}, ${r.sourceFile})
-      ON CONFLICT (month, kind, name) DO UPDATE SET code = EXCLUDED.code, position = EXCLUDED.position, base_salary = EXCLUDED.base_salary, allowances = EXCLUDED.allowances, commission = EXCLUDED.commission, bonus = EXCLUDED.bonus, gross_total = EXCLUDED.gross_total, source_file = EXCLUDED.source_file`;
+    await sql`INSERT INTO payroll_months (month, kind, code, name, position, base_salary, allowances, commission, bonus, gross_total, net_pay, source_file)
+      VALUES (${r.month}, ${r.kind}, ${r.code}, ${r.name}, ${r.position}, ${r.baseSalary}, ${r.allowances}, ${r.commission}, ${r.bonus}, ${r.grossTotal}, ${r.netPay}, ${r.sourceFile})
+      ON CONFLICT (month, kind, name) DO UPDATE SET code = EXCLUDED.code, position = EXCLUDED.position, base_salary = EXCLUDED.base_salary, allowances = EXCLUDED.allowances, commission = EXCLUDED.commission, bonus = EXCLUDED.bonus, gross_total = EXCLUDED.gross_total, net_pay = EXCLUDED.net_pay, source_file = EXCLUDED.source_file`;
   }
   console.log(`Đã ghi ${all.length} dòng bảng lương.`);
   await sql.end();
