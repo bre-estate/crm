@@ -13,9 +13,15 @@ export const dynamic = "force-dynamic";
 
 const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
 const fmtM = (n: number) => `${(n / 1_000_000).toLocaleString("vi-VN", { maximumFractionDigits: 1 })}`;
+/** Số trong câu chữ: dưới 1 tỷ thì ghi triệu, từ 1 tỷ trở lên đổi sang tỷ cho dễ đọc. */
+const fmtT = (n: number) => {
+  const a = Math.abs(n);
+  if (a >= 1_000_000_000) return `${(n / 1_000_000_000).toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} tỷ`;
+  return `${(n / 1_000_000).toLocaleString("vi-VN", { maximumFractionDigits: 1 })}tr`;
+};
+const fmtDeltaT = (n: number) => (Math.round(n / 1e5) === 0 ? "0" : (n > 0 ? "+" : "−") + fmtT(Math.abs(n)));
 const fmtD = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
 const fmtDelta = (n: number) => (n === 0 ? "0" : (n > 0 ? "+" : "−") + Math.abs(Math.round(n)).toLocaleString("vi-VN"));
-const fmtDeltaM = (n: number) => (Math.round(n / 1e5) === 0 ? "0" : (n > 0 ? "+" : "−") + fmtM(Math.abs(n)) + "tr");
 const pct = (n: number, denom: number) => (denom > 0 ? `${((n / denom) * 100).toFixed(1)}%` : "");
 const pctR = (r: number | null) => (r == null ? "" : `${(r * 100).toFixed(1)}%`);
 
@@ -249,14 +255,14 @@ async function CashView({ start, end, months }: { start: string; end: string; mo
           label="Dòng tiền hoạt động ròng"
           value={fmt(t.hoatDongRong)}
           tone={t.hoatDongRong >= 0 ? "good" : "bad"}
-          sub={<>Thu {fmtM(t.thu)}tr, trừ giá vốn {fmtM(t.chiGiaVon)}tr, chi cố định {fmtM(t.chiCoDinh)}tr và thuế {fmtM(t.thue)}tr. Tiếng Anh: net cash flow from operating activities.</>}
+          sub={<>Thu {fmtT(t.thu)}, trừ giá vốn {fmtT(t.chiGiaVon)}, chi cố định {fmtT(t.chiCoDinh)} và thuế {fmtT(t.thue)}. Tiếng Anh: net cash flow from operating activities.</>}
         />
         {bb ? (
           <BigTile
             label={`Số dư tài khoản ngày ${fmtD(bb.closeDate)}`}
             value={fmt(bb.close)}
             tone={bb.close - bb.open >= 0 ? "good" : "bad"}
-            sub={<>Đầu kỳ {fmtM(bb.open)}tr, <b>{fmtDeltaM(bb.close - bb.open)}</b>, đúng bằng số dư cuối trên sao kê.{bb.tietKiemRong > 0 ? <> Ngoài ra còn {fmtM(bb.tietKiemRong)}tr gửi tiết kiệm có kỳ hạn.</> : null}</>}
+            sub={<>Đầu kỳ {fmtT(bb.open)}, <b>{fmtDeltaT(bb.close - bb.open)}</b>, đúng bằng số dư cuối trên sao kê.{bb.tietKiemRong > 0 ? <> Ngoài ra còn {fmtT(bb.tietKiemRong)} gửi tiết kiệm có kỳ hạn.</> : null}</>}
           />
         ) : (
           <BigTile label="Thay đổi tiền trong kỳ" value={fmtDelta(t.thayDoiTien)} tone={t.thayDoiTien >= 0 ? "good" : "bad"} sub="bank và két tiền mặt" />
@@ -268,18 +274,18 @@ async function CashView({ start, end, months }: { start: string; end: string; mo
           label="Biên dòng tiền hoạt động" en="operating cash flow margin"
           value={bienTien == null ? "—" : pctR(bienTien)}
           tone={bienTien == null ? undefined : bienTien >= 0 ? "good" : "bad"}
-          sub={bienTien == null ? "chưa có doanh thu" : <>doanh thu {fmtM(doanhThu)}tr, thu về {pctR(bienTien)} tiền mặt</>}
+          sub={bienTien == null ? "chưa có doanh thu" : <>doanh thu {fmtT(doanhThu)}, thu về {pctR(bienTien)} tiền mặt</>}
         />
         <SmallTile
           label="Tỷ lệ chuyển đổi tiền" en="cash conversion"
           value={chuyenDoi == null ? "—" : pctR(chuyenDoi)}
-          sub={chuyenDoi == null ? "kỳ này chưa có lợi nhuận" : <>trong {fmtM(lntt)}tr lợi nhuận, bấy nhiêu đã thành tiền</>}
+          sub={chuyenDoi == null ? "kỳ này chưa có lợi nhuận" : <>trong {fmtT(lntt)} lợi nhuận, bấy nhiêu đã thành tiền</>}
         />
         <SmallTile
           label="Tiền đủ trụ bao lâu" en="cash runway"
           value={soThangTru == null ? "—" : `${soThangTru.toFixed(1)} tháng`}
           tone={soThangTru == null ? undefined : soThangTru >= 6 ? "good" : "bad"}
-          sub={soThangTru == null ? "chưa có số dư cuối kỳ" : <>tiền {fmtM(tienCoTh!)}tr, chi cố định {fmtM(coDinhThang)}tr mỗi tháng</>}
+          sub={soThangTru == null ? "chưa có số dư cuối kỳ" : <>tiền {fmtT(tienCoTh!)}, chi cố định {fmtT(coDinhThang)} mỗi tháng</>}
         />
 
         {monthly.length > 1 && (
@@ -296,7 +302,7 @@ async function CashView({ start, end, months }: { start: string; end: string; mo
           ? "Nguồn: từng lần tiền vào ra trên sổ nhật ký chung của kế toán, cộng sổ chi cá nhân của hai người sáng lập."
           : "Nguồn: sao kê Techcombank phân loại theo luật, cộng sổ chi cá nhân của hai người sáng lập. Kỳ này chưa có sổ kế toán."}
         {r.unclassified.length > 0 && <> Còn <b>{r.unclassified.length}</b> khoản chưa phân loại, sửa tại <Link href="/finance/bank-review" className="underline">Sao kê bank</Link>.</>}
-        {giuHo !== 0 && <> Trong số dư có {fmtM(giuHo)}tr tiền khách giữ chỗ chưa hoàn, không phải tiền của công ty.</>}
+        {giuHo !== 0 && <> Trong số dư có {fmtT(giuHo)} tiền khách giữ chỗ chưa hoàn, không phải tiền của công ty.</>}
       </div>
 
       {monthly.length > 1 && (
@@ -336,7 +342,7 @@ async function CashView({ start, end, months }: { start: string; end: string; mo
         {r.unclassified.length > 0 && <Banner tone="warn">{r.unclassified.length} khoản chưa phân loại, đang nằm ở dòng 8.8.</Banner>}
       </Fold>
 
-      <Fold title="Điểm hòa vốn theo tiền" teaser={ratios.hoaVonThuThang != null ? <>cần thu {fmtM(ratios.hoaVonThuThang)}tr mỗi tháng</> : <>chưa tính được</>}>
+      <Fold title="Điểm hòa vốn theo tiền" teaser={ratios.hoaVonThuThang != null ? <>cần thu {fmtT(ratios.hoaVonThuThang)} mỗi tháng</> : <>chưa tính được</>}>
         <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
           <SmallTile label="Chênh gộp bằng tiền" value={fmt(t.chenhGop)} sub={`biên ${pctR(ratios.bienGop)}`} tone={t.chenhGop >= 0 ? "good" : "bad"} />
           <SmallTile label="Hòa vốn: thu cần mỗi tháng" value={ratios.hoaVonThuThang == null ? "—" : fmt(ratios.hoaVonThuThang)} sub={ratios.canCanMoiThang != null ? <>khoảng {ratios.canCanMoiThang} căn mỗi tháng, thực tế {ratios.canBinhQuanThang} căn</> : undefined} />
@@ -467,7 +473,7 @@ async function AccrualView({ start, end, months }: { start: string; end: string;
       <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
         <BigTile
           label="Lợi nhuận trước thuế" value={fmt(lo)} tone={lo >= 0 ? "good" : "bad"}
-          sub={<>Biên {pctR(ratios.bienHoatDong)} trên doanh thu {fmtM(denom)}tr. Tiếng Anh: profit before tax.{sauThue ? <> Sau thuế còn {fmtM(sauThue)}tr.</> : null}</>}
+          sub={<>Biên {pctR(ratios.bienHoatDong)} trên doanh thu {fmtT(denom)}. Tiếng Anh: profit before tax.{sauThue ? <> Sau thuế còn {fmtT(sauThue)}.</> : null}</>}
         />
         <BigTile
           label="Lãi gộp" value={fmt(pnl.totals.grossProfit)} tone={pnl.totals.grossProfit >= 0 ? "good" : "bad"}
@@ -476,9 +482,9 @@ async function AccrualView({ start, end, months }: { start: string; end: string;
 
         <Waterfall title="Doanh thu đi về đâu" note="ghi theo kỳ phát sinh, không theo ngày tiền vào ra" steps={buoc} />
 
-        <SmallTile label="Điểm hòa vốn" en="break-even" value={ratios.hoaVonThuThang == null ? "—" : `${fmtM(ratios.hoaVonThuThang)}tr`} sub={ratios.canCanMoiThang != null ? <>mỗi tháng, khoảng {ratios.canCanMoiThang} căn, thực tế {ratios.canBinhQuanThang} căn</> : "chi phí cố định chia biên gộp"} />
+        <SmallTile label="Điểm hòa vốn" en="break-even" value={ratios.hoaVonThuThang == null ? "—" : `${fmtT(ratios.hoaVonThuThang)}`} sub={ratios.canCanMoiThang != null ? <>mỗi tháng, khoảng {ratios.canCanMoiThang} căn, thực tế {ratios.canBinhQuanThang} căn</> : "chi phí cố định chia biên gộp"} />
         <SmallTile label="Biên an toàn" en="margin of safety" value={pctR(ratios.anToan)} sub="doanh thu tụt bấy nhiêu vẫn chưa lỗ" tone={ratios.anToan == null ? undefined : ratios.anToan >= 0 ? "good" : "bad"} />
-        <SmallTile label="Doanh thu mỗi căn" value={ratios.thuMoiCan == null ? "—" : `${fmtM(ratios.thuMoiCan)}tr`} sub={ratios.soCan ? <>{ratios.soCan} căn có đối chiếu trong kỳ</> : "chưa có căn nào"} />
+        <SmallTile label="Doanh thu mỗi căn" value={ratios.thuMoiCan == null ? "—" : `${fmtT(ratios.thuMoiCan)}`} sub={ratios.soCan ? <>{ratios.soCan} căn có đối chiếu trong kỳ</> : "chưa có căn nào"} />
 
         {monthly.length > 1 && (
           <MonthBars
@@ -492,8 +498,8 @@ async function AccrualView({ start, end, months }: { start: string; end: string;
       {pnl.opexSource === "none" && <Banner tone="warn">Kỳ này chưa có sổ kế toán và cũng chưa có sao kê nên chi phí cố định đang trống, lợi nhuận và hòa vốn chưa đúng.</Banner>}
       {ngoaiSo > 0 && (
         <Banner tone="info">
-          Ngoài sổ kế toán, hai người sáng lập còn bỏ <b>{fmtM(ngoaiSo)}tr</b> từ tài khoản cá nhân để chi cho công ty trong kỳ này.
-          Tính thêm khoản đó thì lợi nhuận trước thuế là <b>{fmtM(lo - ngoaiSo)}tr</b>. Bản dồn tích giữ nguyên số của kế toán để còn đối chiếu, bản dòng tiền đã tính đủ.
+          Ngoài sổ kế toán, hai người sáng lập còn bỏ <b>{fmtT(ngoaiSo)}</b> từ tài khoản cá nhân để chi cho công ty trong kỳ này.
+          Tính thêm khoản đó thì lợi nhuận trước thuế là <b>{fmtT(lo - ngoaiSo)}</b>. Bản dồn tích giữ nguyên số của kế toán để còn đối chiếu, bản dòng tiền đã tính đủ.
         </Banner>
       )}
 
