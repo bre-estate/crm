@@ -166,3 +166,36 @@ describe("tách thưởng quản lý khỏi lệnh gộp hoa hồng", () => {
     expect(legs.map((l) => [l.category, l.amount])).toEqual([["hh_sale", 20_000_000]]);
   });
 });
+
+describe("lệnh ghi là thưởng cho người quản lý cũng bóc được KPI", () => {
+  test("admin nhận lệnh 'Thuong thang 5' đúng bằng KPI đã đối chiếu thì vào thưởng quản lý", () => {
+    const ctx4 = {
+      employees: [{ id: 19, name: "Danh Hoàng Thị Tường Vi", position: "admin" }, { id: 5, name: "Vũ Thị Ngọc Duyên", position: "nvkd" }],
+      policies: [],
+      managerBonus: [{ employeeName: "Danh Hoàng Thị Tường Vi", month: "2026-06", category: "cty_thuong_admin" as const, amount: 5_406_627 }],
+    };
+    const legs = classifyBankRows([
+      row({ date: "2026-06-05", partnerName: "DANH HOANG THI TUONG VI", description: "BRE TT Thuong thang 5", debit: 5_406_627 }),
+      // NVKD thì vẫn là thưởng doanh số, không bóc
+      row({ date: "2026-06-05", partnerName: "VU THI NGOC DUYEN", description: "BRE TT Thuong thang 5", debit: 1_464_546 }),
+    ], ctx4);
+    expect(legs.map((l) => [l.category, l.amount])).toEqual([
+      ["cty_thuong_admin", 5_406_627], ["thuong_ds_sale", 1_464_546],
+    ]);
+  });
+  test("thưởng riêng cho quản lý, không khớp kỳ KPI nào, vẫn vào thưởng quản lý và KHÔNG trừ kho", () => {
+    const ctx5 = {
+      employees: [{ id: 3, name: "Hồ Nguyễn Công Thành", position: "tpkd" }],
+      policies: [],
+      managerBonus: [{ employeeName: "Hồ Nguyễn Công Thành", month: "2026-08", category: "cty_thuong_tpkd" as const, amount: 31_613_136 }],
+    };
+    const legs = classifyBankRows([
+      row({ date: "2026-08-05", partnerName: "HO NGUYEN CONG THANH", description: "BRE TT Thuong TPKD xuat sac 06 thang dau nam", debit: 10_000_000 }),
+      row({ date: "2026-09-05", partnerName: "HO NGUYEN CONG THANH", description: "BRE TT Hoa hong, Thuong va Thu Nhap Khac T08 2026", debit: 130_065_038 }),
+    ], ctx5);
+    expect(legs.map((l) => [l.category, l.amount])).toEqual([
+      ["cty_thuong_tpkd", 10_000_000],
+      ["cty_thuong_tpkd", 31_613_136], ["hh_sale", 98_451_902],
+    ]);
+  });
+});

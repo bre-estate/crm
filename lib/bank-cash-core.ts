@@ -31,6 +31,8 @@ const HOAN = /HOAN TIEN|HOAN TRA|TRA LAI|HOAN PHIEU|\bHOAN\b|THANH LY/;
 /** Diễn giải tiền vào mang nghĩa doanh thu của công ty, không phải tiền giữ hộ khách. */
 const REVENUE_IN = /PHI MOI GIOI|\bPMG\b|PHI MG\b|TT PDV|PHI DICH VU MOI GIOI|THUONG NONG|PHI THUONG NONG|HOA HONG/;
 const ROLE_OF: Record<string, Role | undefined> = { nvkd: "nvkd", ctv: "ctv", tpkd: "tpkd", admin: "admin", hr: "admin" };
+/** Thưởng trả cho người giữ vị trí quản lý thuộc nhóm thưởng quản lý, không phải thưởng doanh số sale. */
+const BONUS_BY_POS: Record<string, CategoryKey | undefined> = { ceo: "cty_thuong_ceo", tpkd: "cty_thuong_tpkd", admin: "cty_thuong_admin" };
 
 export interface TaxPaymentLite { paidDate: string; taxType: string; amount: number }
 /** Một khoản thưởng quản lý hoặc KPI đã đối chiếu, chờ khớp với lệnh chuyển tiền. */
@@ -112,9 +114,9 @@ export function makeBankClassifier(ctx: ClassifyCtx) {
         return [leg("hoan_khach", "employee")];
       }
       // Lệnh gộp hoa hồng và thưởng: lấy phần thưởng quản lý ra khỏi hoa hồng, trừ dần kho theo kỳ.
-      const splitThuongQL = (ten: string, ngay: string, tien: number, mk: typeof leg): BankLeg[] => {
+      const splitThuongQL = (ten: string, ngay: string, tien: number, mk: typeof leg, conLaiCat: CategoryKey = "hh_sale"): BankLeg[] => {
         const kho = khoThuong.get(stripName(ten));
-        if (!kho || tien <= 0) return [mk("hh_sale", "employee", tien)];
+        if (!kho || tien <= 0) return [mk(conLaiCat, "employee", tien)];
         const thangChi = ngay.slice(0, 7);
         const out: BankLeg[] = [];
         let conLai = tien;
@@ -124,7 +126,7 @@ export function makeBankClassifier(ctx: ClassifyCtx) {
           b.amount -= lay; conLai -= lay;
           out.push(mk(b.category, "employee", lay));
         }
-        if (conLai > 0) out.push(mk("hh_sale", "employee", conLai));
+        if (conLai > 0) out.push(mk(conLaiCat, "employee", conLai));
         return out;
       };
       if (kind === "luong_va_hh") {
@@ -143,6 +145,15 @@ export function makeBankClassifier(ctx: ClassifyCtx) {
         hoa_hong: "hh_sale", thuong_doanh_so: "thuong_ds_sale", thuong_khac: "thuong_ds_sale",
       };
       const cat = map[kind] ?? luongCat;
+      const thuongQL = BONUS_BY_POS[emp.position];
+      if (cat === "thuong_ds_sale" && thuongQL) {
+        // Lệnh "thưởng" cho người quản lý. Khớp đúng số với một kỳ KPI đã đối chiếu thì là KPI kỳ đó,
+        // không khớp thì là thưởng riêng, vẫn thuộc nhóm thưởng quản lý nhưng KHÔNG trừ kho KPI.
+        const kho = khoThuong.get(stripName(emp.name)) ?? [];
+        const hit = kho.find((b) => b.amount > 0 && b.month <= row.date.slice(0, 7) && Math.abs(b.amount - amount) < 1);
+        if (hit) { hit.amount = 0; return [leg(hit.category, "employee")]; }
+        return [leg(thuongQL, "employee")];
+      }
       if (cat === "hh_sale") return splitThuongQL(emp.name, row.date, amount, leg);
       return [leg(cat, "employee")];
     }
