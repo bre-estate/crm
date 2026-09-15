@@ -143,16 +143,16 @@ function RatioCards({ r, thuLabel, thu, gop, coDinh, rong, rongLabel }: { r: Rat
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
       <Stat label={thuLabel} value={fmt(thu)} sub={r.soThang > 1 ? `bình quân ${fmtM(r.thuBinhQuanThang)}tr/tháng` : undefined} />
-      <Stat label="Chênh gộp" value={fmt(gop)} sub={`biên gộp ${pctR(r.bienGop)}`} tone={gop >= 0 ? "good" : "bad"} />
+      <Stat label="Lãi gộp" value={fmt(gop)} sub={`biên gộp ${pctR(r.bienGop)} (gross margin)`} tone={gop >= 0 ? "good" : "bad"} />
       <Stat label="Chi cố định" value={fmt(coDinh)} sub={r.soThang > 1 ? `bình quân ${fmtM(r.chiCoDinhBinhQuanThang)}tr/tháng` : undefined} />
-      <Stat label={rongLabel} value={fmt(rong)} sub={`biên ${pctR(r.bienHoatDong)}`} tone={rong >= 0 ? "good" : "bad"} />
+      <Stat label={rongLabel} value={fmt(rong)} sub={`biên lợi nhuận ${pctR(r.bienHoatDong)} (net margin)`} tone={rong >= 0 ? "good" : "bad"} />
       <Stat
-        label="Hòa vốn: thu cần mỗi tháng"
+        label="Điểm hòa vốn: doanh thu cần mỗi tháng"
         value={r.hoaVonThuThang == null ? "chưa tính được" : fmt(r.hoaVonThuThang)}
         sub={r.hoaVonThuThang == null ? "chưa có biên gộp dương" : `= chi cố định ÷ biên gộp. Thực tế ${fmtM(r.thuBinhQuanThang)}tr/tháng${r.canCanMoiThang != null ? `. Khoảng ${r.canCanMoiThang} căn/tháng, thực tế ${r.canBinhQuanThang} căn, bình quân ${fmtM(r.thuMoiCan!)}tr/căn` : ""}`}
         tone={r.hoaVonThuThang == null ? undefined : hoaVonOk ? "good" : "bad"}
       />
-      <Stat label="Biên an toàn" value={pctR(r.anToan)} sub="phần thu vượt điểm hòa vốn" tone={r.anToan == null ? undefined : r.anToan >= 0 ? "good" : "bad"} />
+      <Stat label="Biên an toàn" value={pctR(r.anToan)} sub="doanh thu có thể tụt bấy nhiêu mà chưa lỗ (margin of safety)" tone={r.anToan == null ? undefined : r.anToan >= 0 ? "good" : "bad"} />
     </div>
   );
 }
@@ -169,6 +169,10 @@ async function CashView({ start, end, months }: { start: string; end: string; mo
   const soThang = Math.min(months, monthsWithData({ start, end }, dataThrough));
   const ratios = computeRatios(t.thu, t.chenhGop, t.chiCoDinh, t.hoatDongRong, soThang, units);
   const partial = dataThrough != null && dataThrough < end;
+  // Chỉ số chuẩn để so tiền với lãi là tỷ lệ chuyển đổi tiền: dòng tiền hoạt động chia lợi nhuận.
+  const { pnl: acc } = await loadManagementPnl({ start, end });
+  const lntt = acc.totals.profitBeforeTax;
+  const chuyenDoi = lntt > 0 ? t.hoatDongRong / lntt : null;
   const giuHo = b.giu_cho + b.hoan_khach; // còn giữ hộ khách: nhận trừ đã hoàn
   const amMonths = monthly.filter((m) => m.hoatDongRong < 0 && (!dataThrough || m.period.start <= dataThrough));
   const khongThu = amMonths.filter((m) => m.thu < 10_000_000 && (m.chiGiaVon > 0 || m.chiCoDinh > 0));
@@ -261,9 +265,25 @@ async function CashView({ start, end, months }: { start: string; end: string; mo
         </div>
       </Fold>
 
-      <Fold title="Biên và điểm hòa vốn" teaser={<>biên gộp {pctR(ratios.bienGop)}{ratios.hoaVonThuThang != null ? `, cần thu ${fmtM(ratios.hoaVonThuThang)}tr/tháng để hòa vốn` : ""}</>}>
-        <RatioCards r={ratios} thuLabel="Tiền thu hoạt động" thu={t.thu} gop={t.chenhGop} coDinh={t.chiCoDinh} rong={t.hoatDongRong} rongLabel="Dòng tiền hoạt động ròng" />
-        <p className="text-xs text-slate-500">Hòa vốn chưa gồm thuế. Biên an toàn là phần thu thực tế vượt mức hòa vốn.</p>
+      <Fold
+        title="Chỉ số dòng tiền"
+        teaser={chuyenDoi != null ? <>{pctR(chuyenDoi)} lợi nhuận đã thành tiền mặt</> : <>chưa có lợi nhuận để so</>}
+      >
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+          <Stat label="Dòng tiền hoạt động trước thuế" value={fmt(t.hoatDongTruocThue)} sub="thu trừ giá vốn và chi cố định" tone={t.hoatDongTruocThue >= 0 ? "good" : "bad"} />
+          <Stat label="Thuế đã nộp trong kỳ" value={fmt(t.thue)} sub="gồm cả thuế của kỳ trước và thuế nộp hộ nhân viên" />
+          <Stat label="Dòng tiền hoạt động ròng" value={fmt(t.hoatDongRong)} sub="tiếng Anh: net cash flow from operating activities" tone={t.hoatDongRong >= 0 ? "good" : "bad"} />
+          <Stat
+            label="Tỷ lệ chuyển đổi tiền"
+            value={chuyenDoi == null ? "chưa tính được" : pctR(chuyenDoi)}
+            sub={chuyenDoi == null ? "kỳ này chưa có lợi nhuận dương" : `dòng tiền hoạt động ÷ lợi nhuận trước thuế ${fmtM(lntt)}tr. Tiếng Anh: cash conversion`}
+            tone={chuyenDoi == null ? undefined : chuyenDoi >= 1 ? "good" : undefined}
+          />
+        </div>
+        <p className="text-xs text-slate-500">
+          Biên lợi nhuận, điểm hòa vốn và biên an toàn là chỉ số của báo cáo lãi lỗ, xem ở cách nhìn Dồn tích.
+          Lấy dòng tiền chia tiền thu không phải chỉ số chuẩn nên trang này không hiện.
+        </p>
       </Fold>
 
       <Fold

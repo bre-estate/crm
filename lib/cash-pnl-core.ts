@@ -279,7 +279,7 @@ export function buildCashMonthly(legs: CashLeg[], period: Period, salarySplit?: 
 export interface Ratios {
   soThang: number;
   bienGop: number | null;          // chênh gộp / thu
-  bienHoatDong: number | null;     // hoạt động ròng / thu
+  bienHoatDong: number | null;     // lợi nhuận / doanh thu. CHỈ dùng cho bản dồn tích; lấy dòng tiền chia tiền thu không phải chỉ số chuẩn nào.
   thuBinhQuanThang: number;
   chiCoDinhBinhQuanThang: number;
   hoaVonThu: number | null;        // chi cố định / biên gộp, cả kỳ
