@@ -58,10 +58,11 @@ export function makeBankClassifier(ctx: ClassifyCtx) {
   const lastSalary = new Map<number, number>();
   // Kho thưởng quản lý còn chưa khớp lệnh chi, theo từng người, xếp theo kỳ đối chiếu.
   // Lệnh chi thường gộp hoa hồng với thưởng và không ghi rõ phần nào, nên trừ dần từ kỳ cũ nhất.
+  // Chép ra bản riêng: hàm này trừ dần số trong kho, không được chạm vào dữ liệu của người gọi.
   const khoThuong = new Map<string, ManagerBonusLite[]>();
   for (const b of ctx.managerBonus ?? []) {
     const k = stripName(b.employeeName);
-    (khoThuong.get(k) ?? khoThuong.set(k, []).get(k)!).push(b);
+    (khoThuong.get(k) ?? khoThuong.set(k, []).get(k)!).push({ ...b });
   }
   for (const list of khoThuong.values()) list.sort((a, b) => a.month.localeCompare(b.month));
   const T = (re: RegExp, s: string) => re.test(s);
