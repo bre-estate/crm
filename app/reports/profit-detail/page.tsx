@@ -170,10 +170,17 @@ async function CashView({ start, end, months }: { start: string; end: string; mo
   const ratios = computeRatios(t.thu, t.chenhGop, t.chiCoDinh, t.hoatDongRong, soThang, units);
   const partial = dataThrough != null && dataThrough < end;
   // Chỉ số chuẩn để so tiền với lãi là tỷ lệ chuyển đổi tiền: dòng tiền hoạt động chia lợi nhuận.
+  const giuHo = b.giu_cho + b.hoan_khach; // còn giữ hộ khách: nhận trừ đã hoàn
   const { pnl: acc } = await loadManagementPnl({ start, end });
   const lntt = acc.totals.profitBeforeTax;
+  const doanhThu = acc.revenue.net;
+  // Biên dòng tiền hoạt động: mẫu số là DOANH THU, không phải tiền thu.
+  const bienTien = doanhThu > 0 ? t.hoatDongRong / doanhThu : null;
   const chuyenDoi = lntt > 0 ? t.hoatDongRong / lntt : null;
-  const giuHo = b.giu_cho + b.hoan_khach; // còn giữ hộ khách: nhận trừ đã hoàn
+  // Số tháng còn trụ được nếu ngừng bán: tiền đang có trừ tiền giữ hộ khách, chia chi cố định bình quân tháng.
+  const tienCoTh = bb ? bb.close + bb.tietKiemRong - Math.max(giuHo, 0) : null;
+  const coDinhThang = t.chiCoDinh / Math.max(1, soThang);
+  const soThangTru = tienCoTh != null && coDinhThang > 0 ? tienCoTh / coDinhThang : null;
   const amMonths = monthly.filter((m) => m.hoatDongRong < 0 && (!dataThrough || m.period.start <= dataThrough));
   const khongThu = amMonths.filter((m) => m.thu < 10_000_000 && (m.chiGiaVon > 0 || m.chiCoDinh > 0));
   const bbLech = bb ? Math.round(dBank - (bb.close - bb.open)) : 0;
@@ -267,22 +274,34 @@ async function CashView({ start, end, months }: { start: string; end: string; mo
 
       <Fold
         title="Chỉ số dòng tiền"
-        teaser={chuyenDoi != null ? <>{pctR(chuyenDoi)} lợi nhuận đã thành tiền mặt</> : <>chưa có lợi nhuận để so</>}
+        teaser={<>{bienTien != null ? <>doanh thu 100đ giữ lại {pctR(bienTien)} tiền mặt</> : <>chưa có doanh thu để so</>}{soThangTru != null ? `, tiền đủ trụ ${soThangTru.toFixed(1)} tháng` : ""}</>}
       >
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
           <Stat label="Dòng tiền hoạt động trước thuế" value={fmt(t.hoatDongTruocThue)} sub="thu trừ giá vốn và chi cố định" tone={t.hoatDongTruocThue >= 0 ? "good" : "bad"} />
           <Stat label="Thuế đã nộp trong kỳ" value={fmt(t.thue)} sub="gồm cả thuế của kỳ trước và thuế nộp hộ nhân viên" />
-          <Stat label="Dòng tiền hoạt động ròng" value={fmt(t.hoatDongRong)} sub="tiếng Anh: net cash flow from operating activities" tone={t.hoatDongRong >= 0 ? "good" : "bad"} />
+          <Stat label="Dòng tiền hoạt động ròng" value={fmt(t.hoatDongRong)} sub="net cash flow from operating activities" tone={t.hoatDongRong >= 0 ? "good" : "bad"} />
+          <Stat
+            label="Biên dòng tiền hoạt động"
+            value={bienTien == null ? "chưa tính được" : pctR(bienTien)}
+            sub={bienTien == null ? "kỳ này chưa ghi nhận doanh thu" : `dòng tiền hoạt động ÷ doanh thu ${fmtM(doanhThu)}tr. Operating cash flow margin`}
+            tone={bienTien == null ? undefined : bienTien >= 0 ? "good" : "bad"}
+          />
           <Stat
             label="Tỷ lệ chuyển đổi tiền"
             value={chuyenDoi == null ? "chưa tính được" : pctR(chuyenDoi)}
-            sub={chuyenDoi == null ? "kỳ này chưa có lợi nhuận dương" : `dòng tiền hoạt động ÷ lợi nhuận trước thuế ${fmtM(lntt)}tr. Tiếng Anh: cash conversion`}
+            sub={chuyenDoi == null ? "kỳ này chưa có lợi nhuận dương" : `dòng tiền hoạt động ÷ lợi nhuận trước thuế ${fmtM(lntt)}tr. Cash conversion`}
             tone={chuyenDoi == null ? undefined : chuyenDoi >= 1 ? "good" : undefined}
+          />
+          <Stat
+            label="Tiền đủ trụ bao lâu"
+            value={soThangTru == null ? "chưa tính được" : `${soThangTru.toFixed(1)} tháng`}
+            sub={soThangTru == null ? "chưa có số dư cuối kỳ" : `tiền của công ty ${fmtM(tienCoTh!)}tr ÷ chi cố định ${fmtM(coDinhThang)}tr/tháng. Cash runway`}
+            tone={soThangTru == null ? undefined : soThangTru >= 6 ? "good" : "bad"}
           />
         </div>
         <p className="text-xs text-slate-500">
-          Biên lợi nhuận, điểm hòa vốn và biên an toàn là chỉ số của báo cáo lãi lỗ, xem ở cách nhìn Dồn tích.
-          Lấy dòng tiền chia tiền thu không phải chỉ số chuẩn nên trang này không hiện.
+          Biên dòng tiền lấy mẫu số là doanh thu, không phải tiền thu, vì tiền thu còn gồm VAT và tiền của kỳ khác.
+          Tiền đủ trụ đã trừ phần đang giữ hộ khách. Biên lợi nhuận, điểm hòa vốn và biên an toàn nằm ở cách nhìn Dồn tích.
         </p>
       </Fold>
 
