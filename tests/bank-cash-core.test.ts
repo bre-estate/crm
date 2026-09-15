@@ -30,6 +30,15 @@ describe("classifyBankRows: các nhóm rõ", () => {
     expect(one({ description: "DXMDVietnam chi thuong booking DA Fenica theo HD", credit: 62, partnerName: "CTY CO PHAN DXMD VIET NAM" })[0].category).toBe("dt_hh_so_cap");
     expect(one({ description: "DXMDVietnam hoan tien DA Fenica theo Bang ke", credit: 1170, partnerName: "CTY CO PHAN DXMD VIET NAM" })[0].category).toBe("giu_cho_ho_khach");
   });
+  test("tiền vào nói phí môi giới hay thưởng nóng là doanh thu, dù câu có tạm ứng dự án hay booking", () => {
+    // Công ty không giữ tiền của khách: cọc vào là chuyển đi ngay, còn mấy khoản này là tiền của công ty.
+    expect(one({ description: "DATA LOCA TAM UNG PHI MOI GIOI DU AN EGD THEO HOA DON SO 4", credit: 452_095_853 })[0].category).toBe("dt_hh_so_cap");
+    expect(one({ description: "Tam ung phi thuong nong Dot 1 du an EGV cho Dai ly BDS BRE", credit: 11_000_000 })[0].category).toBe("dt_hh_so_cap");
+    // Tên chủ đầu tư nằm trong diễn giải chứ không ở tên tài khoản cũng phải nhận ra
+    expect(one({ description: "DXMDVietnam chi thuong booking DA Fenica theo HD so 22", credit: 62_650_000 })[0].category).toBe("dt_hh_so_cap");
+    // Cọc của khách thì vẫn là giữ chỗ
+    expect(one({ description: "Tran Hoai Thuong 2066 YCTV DU AN FENICA", credit: 30_000_000 })[0].category).toBe("giu_cho_ho_khach");
+  });
   test("CĐT trả phí môi giới là doanh thu; CĐT nhận thưởng booking là hoa hồng chi", () => {
     expect(one({ description: "BAMLAND CK PHI MOI GIOI VA TN DA TT AVIO HD SO 39", credit: 279 })[0].category).toBe("dt_hh_so_cap");
     expect(one({ description: "DXMDVietnam TT PDV dot 1 DA Fenica theo HD so 33", credit: 548, partnerName: "CTY CO PHAN DXMD VIET NAM" })[0].category).toBe("dt_hh_so_cap");

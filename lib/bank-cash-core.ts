@@ -28,6 +28,8 @@ const CDT = /DXMD|DATA ?LOCA|DANH KHOI|BAM ?LAND|BCONS|VAN XUAN|\bVXS\b|ZLAND|PI
 const COMPANY = /\bCTY\b|CONG TY|COMPANY|\bJSC\b|CTCP|CT TNHH|\bCN\b|BANK|KHO BAC|BAO HIEM|BHXH|PROPERTY|SERVICE|CORP|INVESTMENT/;
 const GIU_CHO = /YCTV|DKTV|DKNV|GIU CHO|GCCDK|GCCCD|\bYC\b|DANG KY DU AN|DANG KY NV|NOP THAY|DAT COC|DAT CHO|BOOKING|DAT MUA|GIU UT|CHUYEN HO|\bCK HO\b|TAM UNG.*(DU AN|DA )/;
 const HOAN = /HOAN TIEN|HOAN TRA|TRA LAI|HOAN PHIEU|\bHOAN\b|THANH LY/;
+/** Diễn giải tiền vào mang nghĩa doanh thu của công ty, không phải tiền giữ hộ khách. */
+const REVENUE_IN = /PHI MOI GIOI|\bPMG\b|PHI MG\b|TT PDV|PHI DICH VU MOI GIOI|THUONG NONG|PHI THUONG NONG|HOA HONG/;
 const ROLE_OF: Record<string, Role | undefined> = { nvkd: "nvkd", ctv: "ctv", tpkd: "tpkd", admin: "admin", hr: "admin" };
 
 export interface TaxPaymentLite { paidDate: string; taxType: string; amount: number }
@@ -136,7 +138,10 @@ export function makeBankClassifier(ctx: ClassifyCtx) {
         if (T(/THUONG|HOA HONG/, d)) return [leg("hh_sale", "rule")]; // thưởng booking trả cho đối tác
         return [leg("giu_cho_ho_khach", "rule")];
       }
-      if (T(CDT, p) && T(/THUONG/, d) && !T(HOAN, d)) return [leg("dt_hh_so_cap", "rule")];
+      // Tiền vào mang nghĩa phí môi giới, thưởng nóng, phí dịch vụ là DOANH THU của công ty,
+      // dù câu có chữ "tạm ứng dự án" hay "booking". Công ty không giữ tiền của khách.
+      if (T(REVENUE_IN, d) && !T(HOAN, d)) return [leg("dt_hh_so_cap", "rule")];
+      if ((T(CDT, p) || T(CDT, d)) && T(/THUONG/, d) && !T(HOAN, d)) return [leg("dt_hh_so_cap", "rule")];
       return [leg("giu_cho_ho_khach", "rule")];
     }
 
