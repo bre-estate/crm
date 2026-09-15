@@ -236,6 +236,15 @@ async function CashView({ start, end, months }: { start: string; end: string; mo
     return <Banner tone="warn">Kỳ này chưa có dữ liệu tiền: không có sổ nhật ký chung, cũng chưa có sao kê.</Banner>;
   }
 
+  // Đi thẳng từ tiền thu về xuống tiền còn lại, đúng dòng 1 đến dòng 7 của bảng chi tiết.
+  const buocThang: FlowStep[] = [
+    { label: "Tiền thu về", value: t.thu, kind: "start" },
+    { label: "Trả hoa hồng và thưởng cho sale", value: t.chiGiaVon, kind: "sub" },
+    { label: "Chi vận hành cố định", value: t.chiCoDinh, kind: "sub" },
+    { label: "Thuế đã nộp", value: t.thue, kind: "sub" },
+    { label: "Dòng tiền hoạt động ròng", value: t.hoatDongRong, kind: "end" },
+  ];
+
   // Cầu nối từ lợi nhuận sang tiền. Cộng lại đúng bằng dòng tiền hoạt động ròng.
   const buoc: FlowStep[] = ([
     { label: "Lợi nhuận trước thuế", value: lntt, kind: "start" },
@@ -267,6 +276,12 @@ async function CashView({ start, end, months }: { start: string; end: string; mo
         ) : (
           <BigTile label="Thay đổi tiền trong kỳ" value={fmtDelta(t.thayDoiTien)} tone={t.thayDoiTien >= 0 ? "good" : "bad"} sub="bank và két tiền mặt" />
         )}
+
+        <Waterfall
+          title="Tiền vào rồi đi đâu"
+          note="tiền thật vào ra từ việc bán hàng; vốn góp và vay không nằm ở đây mà ở dòng 8, vì là hoạt động tài chính"
+          steps={buocThang}
+        />
 
         <Waterfall title="Từ lợi nhuận sang tiền mặt" note="vì sao hai con số khác nhau, cộng lại khớp từng đồng" steps={buoc} />
 
