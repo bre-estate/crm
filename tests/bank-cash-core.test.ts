@@ -127,3 +127,42 @@ describe("classifyBankRows: phí ngân hàng", () => {
       .toMatchObject({ category: "luong_admin", direction: "in" });
   });
 });
+
+describe("tách thưởng quản lý khỏi lệnh gộp hoa hồng", () => {
+  const ctx3 = {
+    employees: [{ id: 3, name: "Hồ Nguyễn Công Thành", position: "tpkd" }, { id: 1, name: "Đoàn Lê Bách", position: "ceo" }],
+    policies: [],
+    managerBonus: [
+      { employeeName: "Hồ Nguyễn Công Thành", month: "2026-02", category: "cty_thuong_tpkd" as const, amount: 34_145_462 },
+      { employeeName: "Đoàn Lê Bách", month: "2026-02", category: "cty_thuong_ceo" as const, amount: 119_503_122 },
+      { employeeName: "Đoàn Lê Bách", month: "2026-02", category: "cty_thuong_ql" as const, amount: 20_000_000 },
+    ],
+  };
+  test("lệnh gộp bóc ra phần thưởng, phần còn lại mới là hoa hồng", () => {
+    const legs = classifyBankRows([row({ date: "2026-03-06", partnerName: "HO NGUYEN CONG THANH",
+      description: "BRE TT hoa hong, thuong va thu nhap khac T02 2026", debit: 142_089_768 })], ctx3);
+    expect(legs.map((l) => [l.category, l.amount])).toEqual([
+      ["cty_thuong_tpkd", 34_145_462], ["hh_sale", 107_944_306],
+    ]);
+  });
+  test("một người có nhiều loại thưởng thì bóc đủ từng loại", () => {
+    const legs = classifyBankRows([row({ date: "2026-03-06", partnerName: "DOAN LE BACH",
+      description: "BRE TT hoa hong, thuong va thu nhap khac T02 2026", debit: 148_722_115 })], ctx3);
+    expect(legs.map((l) => [l.category, l.amount])).toEqual([
+      ["cty_thuong_ceo", 119_503_122], ["cty_thuong_ql", 20_000_000], ["hh_sale", 9_218_993],
+    ]);
+    expect(legs.reduce((s, l) => s + l.amount, 0)).toBe(148_722_115);
+  });
+  test("kho thưởng trừ dần, lệnh sau không lấy lại phần đã bóc", () => {
+    const legs = classifyBankRows([
+      row({ date: "2026-03-06", partnerName: "HO NGUYEN CONG THANH", description: "BRE TT hoa hong, thuong T02 2026", debit: 142_089_768 }),
+      row({ date: "2026-04-06", partnerName: "HO NGUYEN CONG THANH", description: "BRE TT hoa hong, thuong T03 2026", debit: 50_000_000 }),
+    ], ctx3);
+    expect(legs.filter((l) => l.date === "2026-04-06").map((l) => [l.category, l.amount])).toEqual([["hh_sale", 50_000_000]]);
+  });
+  test("thưởng của kỳ sau ngày chi thì chưa bóc", () => {
+    const legs = classifyBankRows([row({ date: "2026-01-06", partnerName: "HO NGUYEN CONG THANH",
+      description: "BRE TT hoa hong T12 2025", debit: 20_000_000 })], ctx3);
+    expect(legs.map((l) => [l.category, l.amount])).toEqual([["hh_sale", 20_000_000]]);
+  });
+});

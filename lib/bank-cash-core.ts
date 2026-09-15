@@ -33,12 +33,15 @@ const REVENUE_IN = /PHI MOI GIOI|\bPMG\b|PHI MG\b|TT PDV|PHI DICH VU MOI GIOI|TH
 const ROLE_OF: Record<string, Role | undefined> = { nvkd: "nvkd", ctv: "ctv", tpkd: "tpkd", admin: "admin", hr: "admin" };
 
 export interface TaxPaymentLite { paidDate: string; taxType: string; amount: number }
+/** Một khoản thưởng quản lý hoặc KPI đã đối chiếu, chờ khớp với lệnh chuyển tiền. */
+export interface ManagerBonusLite { employeeName: string; month: string; category: CategoryKey; amount: number }
 export interface ClassifyCtx {
   employees: EmployeeLite[];
   policies: CommissionPolicy[];
   taxPayments?: TaxPaymentLite[];   // giấy nộp thuế đã đọc từ Drive, để tách loại thuế trên sao kê
   customerNames?: string[];         // tên khách hàng trên căn (products.customer_name), tiền vào từ họ là giữ chỗ
   payroll?: PayrollIndex;           // bảng lương từng người theo tháng, để tách lệnh gộp lương + hoa hồng
+  managerBonus?: ManagerBonusLite[]; // thưởng quản lý và KPI đã đối chiếu, để tách khỏi lệnh gộp hoa hồng
 }
 const TAX_CAT: Record<string, CategoryKey> = { gtgt: "thue_vat", tncn: "thue_tncn", tndn: "thue_tndn", mon_bai: "thue_phi_le_phi", phat: "opex_khac" };
 const dayDiff = (a: string, b: string) => Math.abs((Date.parse(a) - Date.parse(b)) / 86400000);
@@ -53,6 +56,14 @@ function nameVariants(name: string): string[] {
 /** Trạng thái chạy tuần tự theo ngày: lương tháng gần nhất từng người, để tách lệnh gộp lương + hoa hồng. */
 export function makeBankClassifier(ctx: ClassifyCtx) {
   const lastSalary = new Map<number, number>();
+  // Kho thưởng quản lý còn chưa khớp lệnh chi, theo từng người, xếp theo kỳ đối chiếu.
+  // Lệnh chi thường gộp hoa hồng với thưởng và không ghi rõ phần nào, nên trừ dần từ kỳ cũ nhất.
+  const khoThuong = new Map<string, ManagerBonusLite[]>();
+  for (const b of ctx.managerBonus ?? []) {
+    const k = stripName(b.employeeName);
+    (khoThuong.get(k) ?? khoThuong.set(k, []).get(k)!).push(b);
+  }
+  for (const list of khoThuong.values()) list.sort((a, b) => a.month.localeCompare(b.month));
   const T = (re: RegExp, s: string) => re.test(s);
   const customerVariants = (ctx.customerNames ?? []).flatMap(nameVariants).filter((v) => v.length >= 8);
   const usedTax = new Set<number>();
@@ -99,6 +110,22 @@ export function makeBankClassifier(ctx: ClassifyCtx) {
         if (T(/TIEP KHACH/, d)) return [leg("tiep_khach", "employee")];
         return [leg("hoan_khach", "employee")];
       }
+      // Lệnh gộp hoa hồng và thưởng: lấy phần thưởng quản lý ra khỏi hoa hồng, trừ dần kho theo kỳ.
+      const splitThuongQL = (ten: string, ngay: string, tien: number, mk: typeof leg): BankLeg[] => {
+        const kho = khoThuong.get(stripName(ten));
+        if (!kho || tien <= 0) return [mk("hh_sale", "employee", tien)];
+        const thangChi = ngay.slice(0, 7);
+        const out: BankLeg[] = [];
+        let conLai = tien;
+        for (const b of kho) {
+          if (conLai <= 0 || b.amount <= 0 || b.month > thangChi) continue;
+          const lay = Math.min(b.amount, conLai);
+          b.amount -= lay; conLai -= lay;
+          out.push(mk(b.category, "employee", lay));
+        }
+        if (conLai > 0) out.push(mk("hh_sale", "employee", conLai));
+        return out;
+      };
       if (kind === "luong_va_hh") {
         let luong = ctx.payroll?.get(`${stripName(emp.name)}|${payrollMonthOf(row.description, row.date)}`) ?? 0;
         if (!luong) luong = lastSalary.get(emp.id) ?? 0;
@@ -106,7 +133,7 @@ export function makeBankClassifier(ctx: ClassifyCtx) {
         luong = Math.min(luong, amount);
         const out: BankLeg[] = [];
         if (luong > 0) out.push(leg(luongCat, "employee", luong));
-        if (amount - luong > 0) out.push(leg("hh_sale", "employee", amount - luong));
+        if (amount - luong > 0) out.push(...splitThuongQL(emp.name, row.date, amount - luong, leg));
         return out;
       }
       if (kind === "luong_cung") lastSalary.set(emp.id, amount);
@@ -114,7 +141,9 @@ export function makeBankClassifier(ctx: ClassifyCtx) {
         luong_cung: luongCat, thu_lao_phu_cap: luongCat, khac: luongCat, dich_vu_ke_toan: "luong_admin",
         hoa_hong: "hh_sale", thuong_doanh_so: "thuong_ds_sale", thuong_khac: "thuong_ds_sale",
       };
-      return [leg(map[kind] ?? luongCat, "employee")];
+      const cat = map[kind] ?? luongCat;
+      if (cat === "hh_sale") return splitThuongQL(emp.name, row.date, amount, leg);
+      return [leg(cat, "employee")];
     }
     // Nhân viên chuyển trả lại phần lương hoặc thù lao đã nhận thừa: trừ vào chính dòng lương đó.
     if (emp && direction === "in" && T(/CHUYEN LAI|TRA LAI|HOAN LAI|NOP LAI/, d) && T(/THU LAO|LUONG|PHU CAP|PHI DICH VU/, d)) {

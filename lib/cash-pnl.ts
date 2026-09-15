@@ -8,7 +8,7 @@ import { db } from "./db";
 import { sql } from "drizzle-orm";
 import { buildCashPnl, buildCashMonthly, type CashLeg, type CashMonth, type CashPnl, type Period } from "./cash-pnl-core";
 import { summarizeEmployeePay, buildPayrollIndex, type EmployeeLite, type EmployeePaySummary, type PayRow, type PayrollIndex, type PayrollLite } from "./employee-pay-core";
-import { classifyBankRows, founderCashToLegs, type BankRowLite, type FounderCashRow, type TaxPaymentLite } from "./bank-cash-core";
+import { classifyBankRows, founderCashToLegs, type BankRowLite, type FounderCashRow, type ManagerBonusLite, type TaxPaymentLite } from "./bank-cash-core";
 import type { CommissionPolicy } from "./commission-policy";
 
 export * from "./cash-pnl-core";
@@ -81,12 +81,37 @@ async function loadTaxPayments(): Promise<TaxPaymentLite[]> {
   } catch { return []; }
 }
 
+/**
+ * Thưởng quản lý và KPI đã đối chiếu, lấy từ cost_reconciliations (nhập từ Báo Cáo Doanh Thu).
+ * Dùng để bóc phần thưởng ra khỏi lệnh chuyển tiền gộp "hoa hồng, thưởng và thu nhập khác".
+ */
+const BONUS_CAT: Record<string, ManagerBonusLite["category"]> = {
+  kpi_ceo: "cty_thuong_ceo", kpi_tpkd: "cty_thuong_tpkd", kpi_admin: "cty_thuong_admin",
+  bonus_manager: "cty_thuong_ql", cdt_bonus_manager: "cdt_thuong_ql",
+};
+async function loadManagerBonus(): Promise<ManagerBonusLite[]> {
+  try {
+    const rows = (await db.execute(sql`
+      SELECT employee_name, substr(reconciliation_date::text, 1, 7) AS month, cost_type,
+             sum(coalesce(amount_payable_this_time, 0))::float8 AS amount
+      FROM cost_reconciliations
+      WHERE cost_type IN ('kpi_ceo','kpi_tpkd','kpi_admin','bonus_manager','cdt_bonus_manager')
+        AND employee_name IS NOT NULL AND coalesce(amount_payable_this_time, 0) > 0
+      GROUP BY 1, 2, 3
+    `)) as unknown as Row[];
+    return rows.map((r) => ({
+      employeeName: String(r.employee_name), month: String(r.month),
+      category: BONUS_CAT[String(r.cost_type)] ?? "cty_thuong_ql", amount: num(r.amount),
+    }));
+  } catch { return []; }
+}
+
 async function loadCustomerNames(): Promise<string[]> {
   const rows = (await db.execute(sql`SELECT DISTINCT customer_name FROM products WHERE customer_name IS NOT NULL AND customer_name <> ''`)) as unknown as Row[];
   return rows.map((r) => String(r.customer_name));
 }
 
-export interface CashContext { employees: EmployeeLite[]; policies: CommissionPolicy[]; taxPayments: TaxPaymentLite[]; customerNames: string[]; payroll: PayrollIndex }
+export interface CashContext { employees: EmployeeLite[]; policies: CommissionPolicy[]; taxPayments: TaxPaymentLite[]; customerNames: string[]; payroll: PayrollIndex; managerBonus: ManagerBonusLite[] }
 
 /** Nạp một lần các bảng tra cứu dùng chung, tránh bắn nhiều query song song qua pooler (bị statement timeout). */
 export async function loadCashContext(period: Period): Promise<CashContext> {
@@ -94,7 +119,8 @@ export async function loadCashContext(period: Period): Promise<CashContext> {
   const taxPayments = await loadTaxPayments();
   const customerNames = await loadCustomerNames();
   const payroll = await loadPayrollIndex(period);
-  return { employees, policies, taxPayments, customerNames, payroll };
+  const managerBonus = await loadManagerBonus();
+  return { employees, policies, taxPayments, customerNames, payroll, managerBonus };
 }
 
 /** Tiền trả cho nhân sự trên sao kê trong kỳ, tách theo người và loại tiền. */
