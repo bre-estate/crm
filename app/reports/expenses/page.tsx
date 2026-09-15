@@ -27,7 +27,7 @@ const EXPENSE_BUCKETS: CategoryKey[] = [
 export default async function ExpenseAnalysisPage({ searchParams }: { searchParams: SP }) {
   await requirePermission("reports.expenses");
   const sp = await searchParams;
-  const year = Number(sp.year) || 2025;
+  const year = Number(sp.year) || new Date().getFullYear();
 
   // NKC actual per bucket per month
   const nkcRows = await db.execute(sql`

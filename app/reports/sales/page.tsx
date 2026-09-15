@@ -42,7 +42,7 @@ type TabKey = typeof TABS[number]["key"];
 export default async function SalesReportPage({ searchParams }: { searchParams: SP }) {
   await requirePermission("reports.sales");
   const sp = await searchParams;
-  const year = Number(sp.year) || 2025;
+  const year = Number(sp.year) || new Date().getFullYear();
   const period = sp.period ?? "year";
   const q = sp.q ? Number(sp.q) : undefined;
   const month = sp.month ? Number(sp.month) : undefined;

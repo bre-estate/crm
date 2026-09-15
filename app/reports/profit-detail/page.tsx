@@ -46,7 +46,7 @@ export default async function ProfitDetailPage({ searchParams }: { searchParams:
   await requirePermission("reports.profit-detail");
   const sp = await searchParams;
 
-  const year = Number(sp.year) || 2026;
+  const year = Number(sp.year) || new Date().getFullYear();
   const period = sp.period ?? "year";
   const q = sp.q ? Number(sp.q) : undefined;
   const month = sp.month ? Number(sp.month) : undefined;

@@ -22,7 +22,7 @@ function periodDates(year: number, period: string, q?: number, month?: number) {
 export default async function ProjectProfitabilityPage({ searchParams }: { searchParams: SP }) {
   await requirePermission("reports.project-profitability");
   const sp = await searchParams;
-  const year = Number(sp.year) || 2025;
+  const year = Number(sp.year) || new Date().getFullYear();
   const period = sp.period ?? "year";
   const q = sp.q ? Number(sp.q) : undefined;
   const month = sp.month ? Number(sp.month) : undefined;

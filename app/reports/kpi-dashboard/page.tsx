@@ -20,7 +20,7 @@ type SP = Promise<{ year?: string }>;
 export default async function KpiDashboardPage({ searchParams }: { searchParams: SP }) {
   await requirePermission("reports.kpi-dashboard");
   const sp = await searchParams;
-  const year = Number(sp.year) || 2025;
+  const year = Number(sp.year) || new Date().getFullYear();
   const start = `${year}-01-01`;
   const end = `${year}-12-31`;
   const today = new Date().toISOString().slice(0, 10);
