@@ -1,14 +1,13 @@
 /**
- * Báo cáo lãi/lỗ quản trị. Hai cách nhìn:
- *  - Dòng tiền (mặc định): tiền thật vào/ra bank + két. Năm có sổ NKC lấy chân tiền sổ, chưa có sổ lấy sao kê + tiền mặt founder.
- *  - Dồn tích: theo format báo cáo kế toán, có cột đối chiếu với số kế toán khi kỳ có tham chiếu.
- * Bố cục kể chuyện (chốt 13/09/2026): 3 con số đầu trang, khối Đọc nhanh luôn mở, các bảng gập lại.
+ * Báo cáo lãi/lỗ quản trị. Hai cách nhìn: Dòng tiền (mặc định) và Dồn tích.
+ * Bố cục bento (chốt 16/09/2026): mở ra thấy ngay hai con số quyết định, rồi biểu đồ bậc thang
+ * giải thích vì sao lợi nhuận và tiền lệch nhau, rồi ba chỉ số nhỏ. Bảng chi tiết nằm trong khối gập.
  */
 import { requirePermission } from "@/lib/auth";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { loadManagementPnl, findReference, comparePnl, type PnlLine, type PnlComparisonRow, type AccrualMonth } from "@/lib/management-pnl";
-import { loadCashPnl, loadFounderSpendOutsideBooks, computeRatios, monthsWithData, type BankBalance, type CashLine, type CashMonth, type Ratios } from "@/lib/cash-pnl";
+import { loadCashPnl, loadFounderSpendOutsideBooks, computeRatios, monthsWithData, type BankBalance, type CashLine, type CashMonth } from "@/lib/cash-pnl";
 
 export const dynamic = "force-dynamic";
 
@@ -41,59 +40,54 @@ export default async function ProfitDetailPage({ searchParams }: { searchParams:
   await requirePermission("reports.profit-detail");
   const sp = await searchParams;
 
-  const year = Number(sp.year) || 2025;
+  const year = Number(sp.year) || 2026;
   const period = sp.period ?? "year";
   const q = sp.q ? Number(sp.q) : undefined;
   const month = sp.month ? Number(sp.month) : undefined;
   const basis = sp.basis === "accrual" ? "accrual" : "cash";
   const { start, end, label, months } = periodDates(year, period, q, month);
 
-  const years = [2024, 2025, 2026];
-  const quarters = [1, 2, 3, 4];
-  const monthList = Array.from({ length: 12 }, (_, i) => i + 1);
-  const linkTo = (params: { year?: number; period?: string; q?: number; month?: number; basis?: string }) => {
-    const p = new URLSearchParams();
-    p.set("year", String(params.year ?? year));
-    p.set("period", params.period ?? period);
-    if (params.q !== undefined) p.set("q", String(params.q));
-    if (params.month !== undefined) p.set("month", String(params.month));
-    p.set("basis", params.basis ?? basis);
-    return `/reports/profit-detail?${p}`;
+  const linkTo = (p: { year?: number; period?: string; q?: number; month?: number; basis?: string }) => {
+    const u = new URLSearchParams();
+    u.set("year", String(p.year ?? year));
+    u.set("period", p.period ?? period);
+    if (p.q !== undefined) u.set("q", String(p.q));
+    if (p.month !== undefined) u.set("month", String(p.month));
+    u.set("basis", p.basis ?? basis);
+    return `/reports/profit-detail?${u}`;
   };
-  const pill = (active: boolean, activeCls = "bg-slate-800 text-white") => `inline-block px-2 py-1 rounded ${active ? activeCls : "bg-slate-100 hover:bg-slate-200"}`;
+  const pill = (on: boolean, onCls = "bg-slate-800 text-white") =>
+    `inline-block px-2.5 py-1 rounded-md text-xs ${on ? onCls : "bg-slate-100 hover:bg-slate-200 text-slate-700"}`;
 
   return (
-    <div className="max-w-4xl space-y-5">
-      <div>
-        <div className="text-xs">
-          <Link href="/reports" className="text-blue-600 hover:underline">← Báo cáo</Link>
+    <div className="max-w-6xl space-y-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <Link href="/reports" className="text-xs text-blue-600 hover:underline">← Báo cáo</Link>
+          <h1 className="text-2xl font-bold mt-1">Lãi/lỗ và dòng tiền</h1>
+          <p className="text-sm text-slate-500">{label}</p>
         </div>
-        <h1 className="text-2xl font-bold mt-1">Lãi/lỗ và dòng tiền</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          {label}. {basis === "cash"
-            ? "Theo dòng tiền: chỉ tính tiền thật đã vào và đã ra khỏi bank và két tiền mặt."
-            : "Theo dồn tích: doanh thu và chi phí ghi nhận theo kỳ phát sinh, đúng format báo cáo kế toán."}
-        </p>
-      </div>
-
-      <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-3 flex flex-wrap gap-x-5 gap-y-2 items-center text-xs">
-        <div className="flex gap-1 items-center">
-          <Link href={linkTo({ basis: "cash" })} className={pill(basis === "cash")}>Dòng tiền</Link>
-          <Link href={linkTo({ basis: "accrual" })} className={pill(basis === "accrual")}>Dồn tích</Link>
-        </div>
-        <div className="flex gap-1 items-center">
-          {years.map((y) => <Link key={y} href={linkTo({ year: y })} className={pill(y === year, "bg-orange-500 text-white")}>{y}</Link>)}
-        </div>
-        <div className="flex gap-1 items-center">
-          <Link href={linkTo({ period: "year" })} className={pill(period === "year", "bg-blue-500 text-white")}>Cả năm</Link>
-          {quarters.map((qi) => <Link key={qi} href={linkTo({ period: "quarter", q: qi })} className={pill(period === "quarter" && q === qi, "bg-blue-500 text-white")}>Q{qi}</Link>)}
-        </div>
-        <details className="relative">
-          <summary className={`cursor-pointer list-none ${pill(period === "month", "bg-green-600 text-white")}`}>{period === "month" ? `Tháng ${month}` : "Chọn tháng"}</summary>
-          <div className="absolute z-10 mt-1 bg-card rounded-lg ring-1 ring-foreground/10 shadow p-2 grid grid-cols-6 gap-1 w-56">
-            {monthList.map((m) => <Link key={m} href={linkTo({ period: "month", month: m })} className={`text-center ${pill(period === "month" && month === m, "bg-green-600 text-white")}`}>T{m}</Link>)}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <div className="flex gap-1">
+            <Link href={linkTo({ basis: "cash" })} className={pill(basis === "cash")}>Dòng tiền</Link>
+            <Link href={linkTo({ basis: "accrual" })} className={pill(basis === "accrual")}>Dồn tích</Link>
           </div>
-        </details>
+          <div className="flex gap-1">
+            {[2024, 2025, 2026].map((y) => <Link key={y} href={linkTo({ year: y })} className={pill(y === year, "bg-orange-500 text-white")}>{y}</Link>)}
+          </div>
+          <div className="flex gap-1">
+            <Link href={linkTo({ period: "year" })} className={pill(period === "year", "bg-blue-600 text-white")}>Cả năm</Link>
+            {[1, 2, 3, 4].map((qi) => <Link key={qi} href={linkTo({ period: "quarter", q: qi })} className={pill(period === "quarter" && q === qi, "bg-blue-600 text-white")}>Q{qi}</Link>)}
+          </div>
+          <details className="relative">
+            <summary className={`cursor-pointer list-none ${pill(period === "month", "bg-green-600 text-white")}`}>{period === "month" ? `Tháng ${month}` : "Tháng"}</summary>
+            <div className="absolute right-0 z-10 mt-1 bg-card rounded-lg ring-1 ring-foreground/10 shadow-lg p-2 grid grid-cols-6 gap-1 w-56">
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                <Link key={m} href={linkTo({ period: "month", month: m })} className={`text-center ${pill(period === "month" && month === m, "bg-green-600 text-white")}`}>T{m}</Link>
+              ))}
+            </div>
+          </details>
+        </div>
       </div>
 
       {basis === "cash" ? <CashView start={start} end={end} months={months} /> : <AccrualView start={start} end={end} months={months} />}
@@ -101,60 +95,112 @@ export default async function ProfitDetailPage({ searchParams }: { searchParams:
   );
 }
 
-// ───────────────────────── Khối dùng chung ─────────────────────────
+// ───────────────────────── Khối bento dùng chung ─────────────────────────
 
-function Headline({ label, value, sub, tone }: { label: string; value: string; sub?: ReactNode; tone?: "good" | "bad" }) {
-  const cls = tone === "good" ? "text-green-700" : tone === "bad" ? "text-red-700" : "";
+const TONE = { good: "text-green-700", bad: "text-red-700" } as const;
+
+/** Ô lớn: một con số quyết định, đọc được từ xa. */
+function BigTile({ label, value, tone, sub }: { label: string; value: string; tone?: "good" | "bad"; sub?: ReactNode }) {
   return (
-    <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-4">
-      <div className="text-xs text-slate-500">{label}</div>
-      <div className={`text-2xl font-bold tabular-nums mt-1 ${cls}`}>{value}</div>
-      {sub && <div className="text-xs text-slate-500 mt-1 leading-snug">{sub}</div>}
+    <div className="md:col-span-3 bg-card rounded-xl ring-1 ring-foreground/10 p-5 flex flex-col gap-1">
+      <div className="text-xs uppercase tracking-wide text-slate-500">{label}</div>
+      <div className={`text-3xl font-bold tabular-nums leading-tight ${tone ? TONE[tone] : ""}`}>{value}</div>
+      {sub && <div className="text-xs text-slate-500 leading-snug mt-0.5">{sub}</div>}
     </div>
   );
 }
 
-function Stat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: "good" | "bad" }) {
-  const cls = tone === "good" ? "text-green-700" : tone === "bad" ? "text-red-700" : "";
+/** Ô nhỏ: chỉ số phụ, ba cái một hàng. */
+function SmallTile({ label, value, sub, tone, en }: { label: string; value: string; sub?: ReactNode; tone?: "good" | "bad"; en?: string }) {
   return (
-    <div className="rounded-lg bg-slate-50 p-3">
-      <div className="text-xs text-slate-500">{label}</div>
-      <div className={`text-base font-semibold tabular-nums ${cls}`}>{value}</div>
-      {sub && <div className="text-[11px] text-slate-500 mt-0.5">{sub}</div>}
+    <div className="md:col-span-2 bg-card rounded-xl ring-1 ring-foreground/10 p-4 flex flex-col gap-0.5">
+      <div className="text-xs text-slate-500">{label}{en && <span className="text-slate-400"> · {en}</span>}</div>
+      <div className={`text-xl font-semibold tabular-nums ${tone ? TONE[tone] : ""}`}>{value}</div>
+      {sub && <div className="text-[11px] text-slate-500 leading-snug">{sub}</div>}
     </div>
   );
 }
 
-/** Khối gập được. Tiêu đề kèm một dòng tóm tắt để chưa mở cũng biết bên trong nói gì. */
-function Fold({ title, teaser, open, children }: { title: string; teaser?: ReactNode; open?: boolean; children: ReactNode }) {
+interface FlowStep { label: string; value: number; kind: "start" | "add" | "sub" | "end" }
+
+/** Biểu đồ bậc thang: từ một con số đầu, cộng trừ từng bước, ra con số cuối. */
+function Waterfall({ title, note, steps }: { title: string; note?: string; steps: FlowStep[] }) {
+  const max = Math.max(...steps.map((s) => Math.abs(s.value)), 1);
   return (
-    <details open={open} className="group bg-card rounded-xl ring-1 ring-foreground/10">
-      <summary className="cursor-pointer list-none select-none flex flex-wrap items-baseline gap-x-3 gap-y-1 p-3 text-sm">
+    <div className="md:col-span-6 bg-card rounded-xl ring-1 ring-foreground/10 p-5 flex flex-col gap-3">
+      <div className="flex items-baseline gap-3 flex-wrap">
+        <span className="text-sm font-semibold">{title}</span>
+        {note && <span className="text-xs text-slate-500">{note}</span>}
+      </div>
+      <div className="flex flex-col gap-1.5">
+        {steps.map((s) => {
+          const w = Math.max(1.5, (Math.abs(s.value) / max) * 100);
+          const mau = s.kind === "sub" ? "bg-red-400" : s.kind === "end" ? (s.value >= 0 ? "bg-green-600" : "bg-red-600") : s.kind === "start" ? "bg-slate-600" : "bg-sky-500";
+          const dau = s.kind === "sub" ? "−" : s.kind === "add" ? "+" : "";
+          return (
+            <div key={s.label} className="grid grid-cols-[minmax(8rem,14rem)_1fr_auto] items-center gap-3">
+              <div className={`text-xs ${s.kind === "end" || s.kind === "start" ? "font-semibold text-slate-800" : "text-slate-600"}`}>{s.label}</div>
+              <div className="h-4 bg-slate-100 rounded-sm overflow-hidden">
+                <div className={`h-full ${mau} rounded-sm`} style={{ width: `${w}%` }} />
+              </div>
+              <div className={`text-sm tabular-nums text-right w-36 ${s.kind === "sub" ? "text-red-700" : s.kind === "end" ? (s.value >= 0 ? "text-green-700 font-semibold" : "text-red-700 font-semibold") : ""}`}>
+                {dau}{fmt(Math.abs(s.value))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** Cột theo tháng: dương lên trên, âm xuống dưới, có đường 0 ở giữa. */
+function MonthBars({ title, rows, note }: { title: string; rows: { label: string; value: number; has: boolean }[]; note?: string }) {
+  const max = Math.max(...rows.map((r) => Math.abs(r.value)), 1);
+  return (
+    <div className="md:col-span-6 bg-card rounded-xl ring-1 ring-foreground/10 p-5 flex flex-col gap-3">
+      <div className="flex items-baseline gap-3 flex-wrap">
+        <span className="text-sm font-semibold">{title}</span>
+        {note && <span className="text-xs text-slate-500">{note}</span>}
+        <span className="text-xs text-slate-400 ml-auto">triệu đồng</span>
+      </div>
+      <div className="flex items-stretch gap-1.5 overflow-x-auto">
+        {rows.map((r) => {
+          const h = r.has ? Math.max(2, (Math.abs(r.value) / max) * 56) : 0;
+          return (
+            <div key={r.label} className="flex-1 min-w-[2.4rem] flex flex-col items-center gap-1">
+              <div className="h-14 w-full flex items-end justify-center">
+                {r.has && r.value >= 0 && <div className="w-full bg-green-600 rounded-t-sm" style={{ height: `${h}px` }} />}
+              </div>
+              <div className="h-px w-full bg-slate-300" />
+              <div className="h-14 w-full flex items-start justify-center">
+                {r.has && r.value < 0 && <div className="w-full bg-red-500 rounded-b-sm" style={{ height: `${h}px` }} />}
+              </div>
+              <div className="text-[10px] text-slate-500">{r.label}</div>
+              <div className={`text-[10px] tabular-nums ${r.value < 0 ? "text-red-700" : "text-slate-600"}`}>{r.has ? fmtM(r.value) : "—"}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function Fold({ title, teaser, children }: { title: string; teaser?: ReactNode; children: ReactNode }) {
+  return (
+    <details className="group bg-card rounded-xl ring-1 ring-foreground/10">
+      <summary className="cursor-pointer list-none select-none flex flex-wrap items-baseline gap-x-3 gap-y-1 p-4 text-sm">
         <span className="font-semibold"><span className="inline-block w-4 text-slate-400 transition-transform group-open:rotate-90">▸</span>{title}</span>
         {teaser && <span className="text-xs text-slate-500">{teaser}</span>}
       </summary>
-      <div className="px-3 pb-3 space-y-3">{children}</div>
+      <div className="px-4 pb-4 space-y-3">{children}</div>
     </details>
   );
 }
 
-function RatioCards({ r, thuLabel, thu, gop, coDinh, rong, rongLabel }: { r: Ratios; thuLabel: string; thu: number; gop: number; coDinh: number; rong: number; rongLabel: string }) {
-  const hoaVonOk = r.hoaVonThuThang != null && r.thuBinhQuanThang >= r.hoaVonThuThang;
-  return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-      <Stat label={thuLabel} value={fmt(thu)} sub={r.soThang > 1 ? `bình quân ${fmtM(r.thuBinhQuanThang)}tr/tháng` : undefined} />
-      <Stat label="Lãi gộp" value={fmt(gop)} sub={`biên gộp ${pctR(r.bienGop)} (gross margin)`} tone={gop >= 0 ? "good" : "bad"} />
-      <Stat label="Chi cố định" value={fmt(coDinh)} sub={r.soThang > 1 ? `bình quân ${fmtM(r.chiCoDinhBinhQuanThang)}tr/tháng` : undefined} />
-      <Stat label={rongLabel} value={fmt(rong)} sub={`biên lợi nhuận ${pctR(r.bienHoatDong)} (net margin)`} tone={rong >= 0 ? "good" : "bad"} />
-      <Stat
-        label="Điểm hòa vốn: doanh thu cần mỗi tháng"
-        value={r.hoaVonThuThang == null ? "chưa tính được" : fmt(r.hoaVonThuThang)}
-        sub={r.hoaVonThuThang == null ? "chưa có biên gộp dương" : `= chi cố định ÷ biên gộp. Thực tế ${fmtM(r.thuBinhQuanThang)}tr/tháng${r.canCanMoiThang != null ? `. Khoảng ${r.canCanMoiThang} căn/tháng, thực tế ${r.canBinhQuanThang} căn, bình quân ${fmtM(r.thuMoiCan!)}tr/căn` : ""}`}
-        tone={r.hoaVonThuThang == null ? undefined : hoaVonOk ? "good" : "bad"}
-      />
-      <Stat label="Biên an toàn" value={pctR(r.anToan)} sub="doanh thu có thể tụt bấy nhiêu mà chưa lỗ (margin of safety)" tone={r.anToan == null ? undefined : r.anToan >= 0 ? "good" : "bad"} />
-    </div>
-  );
+function Banner({ tone, children }: { tone: "info" | "warn"; children: ReactNode }) {
+  const cls = tone === "warn" ? "bg-amber-50 border-amber-200 text-amber-800" : "bg-sky-50 border-sky-200 text-sky-900";
+  return <div className={`rounded-lg border p-3 text-sm ${cls}`}>{children}</div>;
 }
 
 // ───────────────────────── Dòng tiền ─────────────────────────
@@ -168,82 +214,93 @@ async function CashView({ start, end, months }: { start: string; end: string; mo
   const khop = Math.abs(dBank + dCash - t.thayDoiTien) < 1000;
   const soThang = Math.min(months, monthsWithData({ start, end }, dataThrough));
   const ratios = computeRatios(t.thu, t.chenhGop, t.chiCoDinh, t.hoatDongRong, soThang, units);
-  const partial = dataThrough != null && dataThrough < end;
-  // Chỉ số chuẩn để so tiền với lãi là tỷ lệ chuyển đổi tiền: dòng tiền hoạt động chia lợi nhuận.
-  const giuHo = b.giu_cho + b.hoan_khach; // còn giữ hộ khách: nhận trừ đã hoàn
+  const giuHo = b.giu_cho + b.hoan_khach;
   const { pnl: acc } = await loadManagementPnl({ start, end });
   const lntt = acc.totals.profitBeforeTax;
   const doanhThu = acc.revenue.net;
-  // Biên dòng tiền hoạt động: mẫu số là DOANH THU, không phải tiền thu.
+  const gomVat = acc.revenue.gross ?? doanhThu;
   const bienTien = doanhThu > 0 ? t.hoatDongRong / doanhThu : null;
   const chuyenDoi = lntt > 0 ? t.hoatDongRong / lntt : null;
-  // Số tháng còn trụ được nếu ngừng bán: tiền đang có trừ tiền giữ hộ khách, chia chi cố định bình quân tháng.
   const tienCoTh = bb ? bb.close + bb.tietKiemRong - Math.max(giuHo, 0) : null;
   const coDinhThang = t.chiCoDinh / Math.max(1, soThang);
   const soThangTru = tienCoTh != null && coDinhThang > 0 ? tienCoTh / coDinhThang : null;
-  const amMonths = monthly.filter((m) => m.hoatDongRong < 0 && (!dataThrough || m.period.start <= dataThrough));
-  const khongThu = amMonths.filter((m) => m.thu < 10_000_000 && (m.chiGiaVon > 0 || m.chiCoDinh > 0));
   const bbLech = bb ? Math.round(dBank - (bb.close - bb.open)) : 0;
 
   if (!r.available) {
-    return <div className="bg-amber-50 border border-amber-200 rounded p-3 text-sm text-amber-800">Kỳ này chưa có dữ liệu tiền: không có sổ nhật ký chung, cũng chưa có sao kê.</div>;
+    return <Banner tone="warn">Kỳ này chưa có dữ liệu tiền: không có sổ nhật ký chung, cũng chưa có sao kê.</Banner>;
   }
+
+  // Cầu nối từ lợi nhuận sang tiền. Cộng lại đúng bằng dòng tiền hoạt động ròng.
+  const buoc: FlowStep[] = ([
+    { label: "Lợi nhuận trước thuế", value: lntt, kind: "start" },
+    { label: "VAT thu hộ trong giá bán", value: gomVat - doanhThu, kind: "add" },
+    { label: "Thu tiền hơn doanh thu ghi nhận", value: t.thu - gomVat, kind: "add" },
+    { label: "Giá vốn ghi nhận hơn tiền đã chi", value: acc.totals.cogs - t.chiGiaVon, kind: "add" },
+    { label: "Chi phí ghi nhận hơn tiền đã chi", value: acc.totals.fixed - t.chiCoDinh, kind: "add" },
+    { label: "Thuế đã nộp", value: t.thue, kind: "sub" },
+    { label: "Dòng tiền hoạt động ròng", value: t.hoatDongRong, kind: "end" },
+  ] as FlowStep[]).filter((s) => s.kind !== "add" || Math.abs(s.value) >= 1000);
+  for (const s of buoc) if (s.kind === "add" && s.value < 0) { s.kind = "sub"; s.value = -s.value; }
 
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <Headline label="Tiền thu hoạt động" value={fmt(t.thu)} sub={soThang > 1 ? `${soThang} tháng, bình quân ${fmtM(ratios.thuBinhQuanThang)}tr/tháng` : undefined} />
-        <Headline label="Dòng tiền hoạt động ròng" value={fmt(t.hoatDongRong)} tone={t.hoatDongRong >= 0 ? "good" : "bad"} sub="thu trừ giá vốn, chi cố định và thuế đã nộp" />
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
+        <BigTile
+          label="Dòng tiền hoạt động ròng"
+          value={fmt(t.hoatDongRong)}
+          tone={t.hoatDongRong >= 0 ? "good" : "bad"}
+          sub={<>Thu {fmtM(t.thu)}tr, trừ giá vốn {fmtM(t.chiGiaVon)}tr, chi cố định {fmtM(t.chiCoDinh)}tr và thuế {fmtM(t.thue)}tr. Tiếng Anh: net cash flow from operating activities.</>}
+        />
         {bb ? (
-          <Headline
+          <BigTile
             label={`Số dư tài khoản ngày ${fmtD(bb.closeDate)}`}
             value={fmt(bb.close)}
             tone={bb.close - bb.open >= 0 ? "good" : "bad"}
-            sub={<>đầu kỳ {fmtM(bb.open)}tr, <b>{fmtDeltaM(bb.close - bb.open)}</b>. Đúng bằng số dư cuối trên sao kê.{bb.tietKiemRong > 0 ? <> Ngoài ra còn {fmtM(bb.tietKiemRong)}tr đã chuyển sang tiết kiệm có kỳ hạn, chưa quay lại tài khoản này.</> : null}</>}
+            sub={<>Đầu kỳ {fmtM(bb.open)}tr, <b>{fmtDeltaM(bb.close - bb.open)}</b>, đúng bằng số dư cuối trên sao kê.{bb.tietKiemRong > 0 ? <> Ngoài ra còn {fmtM(bb.tietKiemRong)}tr gửi tiết kiệm có kỳ hạn.</> : null}</>}
           />
         ) : (
-          <Headline label="Thay đổi tiền trong kỳ" value={fmtDelta(t.thayDoiTien)} tone={t.thayDoiTien >= 0 ? "good" : "bad"} sub="bank và két tiền mặt, gồm cả tiền giữ hộ khách" />
+          <BigTile label="Thay đổi tiền trong kỳ" value={fmtDelta(t.thayDoiTien)} tone={t.thayDoiTien >= 0 ? "good" : "bad"} sub="bank và két tiền mặt" />
+        )}
+
+        <Waterfall title="Từ lợi nhuận sang tiền mặt" note="vì sao hai con số khác nhau, cộng lại khớp từng đồng" steps={buoc} />
+
+        <SmallTile
+          label="Biên dòng tiền hoạt động" en="operating cash flow margin"
+          value={bienTien == null ? "—" : pctR(bienTien)}
+          tone={bienTien == null ? undefined : bienTien >= 0 ? "good" : "bad"}
+          sub={bienTien == null ? "chưa có doanh thu" : <>doanh thu {fmtM(doanhThu)}tr, thu về {pctR(bienTien)} tiền mặt</>}
+        />
+        <SmallTile
+          label="Tỷ lệ chuyển đổi tiền" en="cash conversion"
+          value={chuyenDoi == null ? "—" : pctR(chuyenDoi)}
+          sub={chuyenDoi == null ? "kỳ này chưa có lợi nhuận" : <>trong {fmtM(lntt)}tr lợi nhuận, bấy nhiêu đã thành tiền</>}
+        />
+        <SmallTile
+          label="Tiền đủ trụ bao lâu" en="cash runway"
+          value={soThangTru == null ? "—" : `${soThangTru.toFixed(1)} tháng`}
+          tone={soThangTru == null ? undefined : soThangTru >= 6 ? "good" : "bad"}
+          sub={soThangTru == null ? "chưa có số dư cuối kỳ" : <>tiền {fmtM(tienCoTh!)}tr, chi cố định {fmtM(coDinhThang)}tr mỗi tháng</>}
+        />
+
+        {monthly.length > 1 && (
+          <MonthBars
+            title="Dòng tiền hoạt động ròng theo tháng"
+            note={dataThrough ? `số liệu đến ${fmtD(dataThrough)}` : undefined}
+            rows={monthly.map((m) => ({ label: m.label, value: m.hoatDongRong, has: !dataThrough || m.period.start <= dataThrough }))}
+          />
         )}
       </div>
 
       <div className="text-xs text-slate-500">
-        {partial && <>Số liệu đến <b>{fmtD(dataThrough!)}</b>, tức {soThang} tháng. Bình quân và hòa vốn chia cho {soThang} tháng. </>}
         {source === "nkc"
-          ? "Nguồn: từng lần tiền vào ra trên sổ nhật ký chung của kế toán."
-          : "Nguồn: sao kê Techcombank phân loại theo luật và sổ chi tiền mặt founder, kỳ này chưa có sổ kế toán."}
+          ? "Nguồn: từng lần tiền vào ra trên sổ nhật ký chung của kế toán, cộng sổ chi cá nhân của hai người sáng lập."
+          : "Nguồn: sao kê Techcombank phân loại theo luật, cộng sổ chi cá nhân của hai người sáng lập. Kỳ này chưa có sổ kế toán."}
         {r.unclassified.length > 0 && <> Còn <b>{r.unclassified.length}</b> khoản chưa phân loại, sửa tại <Link href="/finance/bank-review" className="underline">Sao kê bank</Link>.</>}
-      </div>
-
-      <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-4 text-sm">
-        <div className="font-semibold mb-2">Đọc nhanh</div>
-        <ol className="list-decimal pl-5 space-y-1.5 text-slate-700">
-          <li>Thu về <b>{fmtM(t.thu)}tr</b> từ CĐT và đối tác. Trả hoa hồng, hỗ trợ khách <b>{fmtM(t.chiGiaVon)}tr</b>, còn <b>{fmtM(t.chenhGop)}tr</b> ({pctR(t.thu > 0 ? t.chenhGop / t.thu : null)}).</li>
-          <li>Chi cố định <b>{fmtM(t.chiCoDinh)}tr</b>: lương {fmtM(b.chi_luong)}tr, BHXH {fmtM(b.chi_bhxh)}tr, văn phòng {fmtM(b.chi_thue_vp)}tr, quảng cáo {fmtM(b.chi_marketing)}tr, còn lại {fmtM(t.chiCoDinh - b.chi_luong - b.chi_bhxh - b.chi_thue_vp - b.chi_marketing)}tr. Sau chi cố định còn <b className={t.hoatDongTruocThue >= 0 ? "text-green-700" : "text-red-700"}>{fmtM(t.hoatDongTruocThue)}tr</b>.</li>
-          <li>
-            Nộp thuế <b>{fmtM(t.thue)}tr</b>{t.thue > 0 && <>: GTGT {fmtM(b.thue_vat)}tr, TNDN {fmtM(b.thue_tndn)}tr, TNCN nộp hộ nhân viên {fmtM(b.thue_tncn)}tr{b.thue_kbnn ? <>, chưa rõ loại {fmtM(b.thue_kbnn)}tr</> : null}</>}.
-            {" "}Còn lại <b className={t.hoatDongRong >= 0 ? "text-green-700" : "text-red-700"}>{fmtM(t.hoatDongRong)}tr</b>, là dòng tiền hoạt động ròng.
-            {t.hoatDongRong < 0 && t.hoatDongTruocThue > 0 && <> Âm vì thuế nộp trong kỳ, gồm cả thuế của kỳ trước nộp năm nay, lớn hơn phần còn lại sau chi cố định.</>}
-          </li>
-          {(b.giu_cho !== 0 || b.hoan_khach !== 0) && (
-            <li>Tiền giữ chỗ của khách đi qua tài khoản: nhận {fmtM(b.giu_cho)}tr, đã hoàn {fmtM(-b.hoan_khach)}tr, <b>đang giữ hộ {fmtM(giuHo)}tr</b>. Tiền này của khách, sẽ hoàn hoặc chuyển CĐT, không tính vào lãi lỗ.</li>
-          )}
-          {bb ? (
-            <li>
-              Số dư tài khoản đầu kỳ <b>{fmtM(bb.open)}tr</b>, cuối kỳ <b>{fmtM(bb.close)}tr</b>, tức <b className={bb.close - bb.open >= 0 ? "text-green-700" : "text-red-700"}>{fmtDeltaM(bb.close - bb.open)}</b>.
-              {bb.tietKiemRong > 0 && <> Riêng <b>{fmtM(bb.tietKiemRong)}tr</b> đã chuyển sang tiết kiệm có kỳ hạn ngày {fmtD(bb.tietKiemDate ?? bb.openDate)} và chưa quay lại, nên vẫn là tiền công ty nhưng không nằm trong số dư trên.</>}
-              {giuHo !== 0 && <> Trong số dư còn có <b>{fmtM(giuHo)}tr</b> giữ hộ khách, không phải tiền của công ty.</>}
-            </li>
-          ) : (
-            <li>Tiền trong bank và két thay đổi <b className={t.thayDoiTien >= 0 ? "text-green-700" : "text-red-700"}>{fmtDeltaM(t.thayDoiTien)}</b> trong kỳ{giuHo !== 0 ? <>, trong đó giữ hộ khách {fmtDeltaM(giuHo)}</> : null}.</li>
-          )}
-          {amMonths.length > 0 && soThang > 1 && (
-            <li>Tháng âm: {amMonths.map((m) => m.label).join(", ")}.{khongThu.length > 0 && <> {khongThu.map((m) => m.label).join(", ")} không có CĐT chuyển phí nhưng vẫn trả hoa hồng và chi phí.</>} Sàn thu theo đợt CĐT trả, chi đều hàng tháng, nên nhìn cả kỳ mới đúng.</li>
-          )}
-        </ol>
+        {giuHo !== 0 && <> Trong số dư có {fmtM(giuHo)}tr tiền khách giữ chỗ chưa hoàn, không phải tiền của công ty.</>}
       </div>
 
       {monthly.length > 1 && (
-        <Fold title="Theo tháng" teaser={<>{soThang} tháng có số{amMonths.length > 0 ? `, âm ${amMonths.map((m) => m.label).join(", ")}` : ", không tháng nào âm"}</>}>
+        <Fold title="Bảng theo tháng" teaser={<>{soThang} tháng có số liệu</>}>
           <CashMonthlyTable rows={monthly} dataThrough={dataThrough} />
         </Fold>
       )}
@@ -252,12 +309,7 @@ async function CashView({ start, end, months }: { start: string; end: string; mo
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="text-xs text-slate-500">
-              <tr>
-                <th className="text-left p-2 w-12">STT</th>
-                <th className="text-left p-2">Khoản mục</th>
-                <th className="text-right p-2 w-40">Số tiền</th>
-                <th className="text-right p-2 w-24">Tỷ trọng/thu</th>
-              </tr>
+              <tr><th className="text-left p-2 w-12">STT</th><th className="text-left p-2">Khoản mục</th><th className="text-right p-2 w-40">Số tiền</th><th className="text-right p-2 w-24">Tỷ trọng/thu</th></tr>
             </thead>
             <tbody>
               {r.lines.map((l) => <CashRow key={l.code} line={l} denom={t.thu} />)}
@@ -266,43 +318,7 @@ async function CashView({ start, end, months }: { start: string; end: string; mo
             </tbody>
           </table>
         </div>
-        <div className="text-xs text-slate-500 space-y-1">
-          <p>Dòng lương chia khối kinh doanh và quản lý theo tỷ lệ sao kê từng người. Xem từng người tại <Link href="/finance/employee-pay" className="underline">Tiền trả nhân sự</Link>.</p>
-          <p>Thuế TNCN là tiền khấu trừ của nhân viên nộp hộ, để riêng ở mục 6 để nhìn đúng tiền ra khỏi công ty.</p>
-        </div>
-      </Fold>
-
-      <Fold
-        title="Chỉ số dòng tiền"
-        teaser={<>{bienTien != null ? <>doanh thu 100đ giữ lại {pctR(bienTien)} tiền mặt</> : <>chưa có doanh thu để so</>}{soThangTru != null ? `, tiền đủ trụ ${soThangTru.toFixed(1)} tháng` : ""}</>}
-      >
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-          <Stat label="Dòng tiền hoạt động trước thuế" value={fmt(t.hoatDongTruocThue)} sub="thu trừ giá vốn và chi cố định" tone={t.hoatDongTruocThue >= 0 ? "good" : "bad"} />
-          <Stat label="Thuế đã nộp trong kỳ" value={fmt(t.thue)} sub="gồm cả thuế của kỳ trước và thuế nộp hộ nhân viên" />
-          <Stat label="Dòng tiền hoạt động ròng" value={fmt(t.hoatDongRong)} sub="net cash flow from operating activities" tone={t.hoatDongRong >= 0 ? "good" : "bad"} />
-          <Stat
-            label="Biên dòng tiền hoạt động"
-            value={bienTien == null ? "chưa tính được" : pctR(bienTien)}
-            sub={bienTien == null ? "kỳ này chưa ghi nhận doanh thu" : `dòng tiền hoạt động ÷ doanh thu ${fmtM(doanhThu)}tr. Operating cash flow margin`}
-            tone={bienTien == null ? undefined : bienTien >= 0 ? "good" : "bad"}
-          />
-          <Stat
-            label="Tỷ lệ chuyển đổi tiền"
-            value={chuyenDoi == null ? "chưa tính được" : pctR(chuyenDoi)}
-            sub={chuyenDoi == null ? "kỳ này chưa có lợi nhuận dương" : `dòng tiền hoạt động ÷ lợi nhuận trước thuế ${fmtM(lntt)}tr. Cash conversion`}
-            tone={chuyenDoi == null ? undefined : chuyenDoi >= 1 ? "good" : undefined}
-          />
-          <Stat
-            label="Tiền đủ trụ bao lâu"
-            value={soThangTru == null ? "chưa tính được" : `${soThangTru.toFixed(1)} tháng`}
-            sub={soThangTru == null ? "chưa có số dư cuối kỳ" : `tiền của công ty ${fmtM(tienCoTh!)}tr ÷ chi cố định ${fmtM(coDinhThang)}tr/tháng. Cash runway`}
-            tone={soThangTru == null ? undefined : soThangTru >= 6 ? "good" : "bad"}
-          />
-        </div>
-        <p className="text-xs text-slate-500">
-          Biên dòng tiền lấy mẫu số là doanh thu, không phải tiền thu, vì tiền thu còn gồm VAT và tiền của kỳ khác.
-          Tiền đủ trụ đã trừ phần đang giữ hộ khách. Biên lợi nhuận, điểm hòa vốn và biên an toàn nằm ở cách nhìn Dồn tích.
-        </p>
+        <p className="text-xs text-slate-500">Dòng lương chia khối kinh doanh và quản lý theo tỷ lệ sao kê từng người, xem tại <Link href="/finance/employee-pay" className="underline">Tiền trả nhân sự</Link>. Thuế thu nhập cá nhân là tiền khấu trừ của nhân viên nộp hộ.</p>
       </Fold>
 
       <Fold
@@ -317,15 +333,21 @@ async function CashView({ start, end, months }: { start: string; end: string; mo
           </tbody>
         </table>
         {bb && <BankBalanceCheck bb={bb} dBank={dBank} />}
-        {r.unclassified.length > 0 && (
-          <div className="text-amber-800 bg-amber-50 border border-amber-200 rounded p-2 text-sm">{r.unclassified.length} khoản chưa phân loại, đang nằm ở dòng 8.8.</div>
-        )}
+        {r.unclassified.length > 0 && <Banner tone="warn">{r.unclassified.length} khoản chưa phân loại, đang nằm ở dòng 8.8.</Banner>}
+      </Fold>
+
+      <Fold title="Điểm hòa vốn theo tiền" teaser={ratios.hoaVonThuThang != null ? <>cần thu {fmtM(ratios.hoaVonThuThang)}tr mỗi tháng</> : <>chưa tính được</>}>
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
+          <SmallTile label="Chênh gộp bằng tiền" value={fmt(t.chenhGop)} sub={`biên ${pctR(ratios.bienGop)}`} tone={t.chenhGop >= 0 ? "good" : "bad"} />
+          <SmallTile label="Hòa vốn: thu cần mỗi tháng" value={ratios.hoaVonThuThang == null ? "—" : fmt(ratios.hoaVonThuThang)} sub={ratios.canCanMoiThang != null ? <>khoảng {ratios.canCanMoiThang} căn mỗi tháng, thực tế {ratios.canBinhQuanThang} căn</> : undefined} />
+          <SmallTile label="Biên an toàn" value={pctR(ratios.anToan)} sub="phần thu vượt mức hòa vốn" tone={ratios.anToan == null ? undefined : ratios.anToan >= 0 ? "good" : "bad"} />
+        </div>
+        <p className="text-xs text-slate-500">Hòa vốn ở đây tính trên tiền thu và chưa gồm thuế. Bản chuẩn tính trên doanh thu nằm ở cách nhìn Dồn tích.</p>
       </Fold>
     </>
   );
 }
 
-/** Đối chiếu tổng dòng tiền bank trong báo cáo với số dư đầu và cuối trên sao kê. Lệch nghĩa là sao kê thiếu dòng. */
 function BankBalanceCheck({ bb, dBank }: { bb: BankBalance; dBank: number }) {
   const dSaoKe = bb.close - bb.open;
   const lech = Math.round(dBank - dSaoKe);
@@ -390,7 +412,7 @@ function CashMonthlyTable({ rows, dataThrough }: { rows: CashMonth[]; dataThroug
           </tr>
           <tr className="border-t border-slate-200 text-slate-500">
             <td className="p-2">Biên gộp</td>
-            {rows.map((m) => <td key={m.label} className="p-2 text-right tabular-nums">{!hasData(m) ? "" : m.thu >= 10_000_000 ? pct(m.chenhGop, m.thu) : <span className="text-slate-400" title="Tháng này CĐT không chuyển phí, chỉ có lãi tài khoản, không tính biên">không thu</span>}</td>)}
+            {rows.map((m) => <td key={m.label} className="p-2 text-right tabular-nums">{!hasData(m) ? "" : m.thu >= 10_000_000 ? pct(m.chenhGop, m.thu) : <span className="text-slate-400" title="Tháng này CĐT không chuyển phí, không tính biên">không thu</span>}</td>)}
             <td className="p-2 text-right tabular-nums">{pct(sum("chenhGop"), sum("thu"))}</td>
           </tr>
         </tbody>
@@ -421,7 +443,6 @@ function CashRow({ line, denom }: { line: CashLine; denom: number }) {
 
 async function AccrualView({ start, end, months }: { start: string; end: string; months: number }) {
   const { pnl, monthly, dataThrough } = await loadManagementPnl({ start, end });
-  // Bản dồn tích bám sổ kế toán, nên phần founder chi từ tài khoản cá nhân chưa nằm trong đó.
   const ngoaiSo = pnl.opexSource === "nkc" ? await loadFounderSpendOutsideBooks({ start, end }) : 0;
   const ref = findReference({ start, end });
   const cmp = ref ? comparePnl(pnl, ref) : null;
@@ -431,50 +452,58 @@ async function AccrualView({ start, end, months }: { start: string; end: string;
   const denom = pnl.revenue.net;
   const soThang = Math.min(months, monthsWithData({ start, end }, dataThrough));
   const ratios = computeRatios(pnl.revenue.net, pnl.totals.grossProfit, pnl.totals.fixed, pnl.totals.profitBeforeTax, soThang, pnl.units);
-  const partial = dataThrough != null && dataThrough < end;
   const lo = pnl.totals.profitBeforeTax;
-  const amMonths = monthly.filter((m) => m.profitBeforeTax < 0 && (!dataThrough || m.period.start <= dataThrough));
+  const sauThue = pnl.lines.find((l) => l.code === "7")?.value ?? null;
+
+  const buoc: FlowStep[] = [
+    { label: "Doanh thu không VAT", value: denom, kind: "start" },
+    { label: "Giá vốn", value: pnl.totals.cogs, kind: "sub" },
+    { label: "Chi phí cố định", value: pnl.totals.fixed, kind: "sub" },
+    { label: "Lợi nhuận trước thuế", value: lo, kind: "end" },
+  ];
 
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <Headline label="Doanh thu không VAT" value={fmt(pnl.revenue.net)} sub={soThang > 1 ? `${soThang} tháng, bình quân ${fmtM(ratios.thuBinhQuanThang)}tr/tháng` : undefined} />
-        <Headline label="Lãi gộp" value={fmt(pnl.totals.grossProfit)} tone={pnl.totals.grossProfit >= 0 ? "good" : "bad"} sub={`doanh thu trừ giá vốn, biên ${pctR(ratios.bienGop)}`} />
-        <Headline label="Lợi nhuận trước thuế" value={fmt(lo)} tone={lo >= 0 ? "good" : "bad"} sub={pnl.opexSource === "none" ? "chưa có chi phí cố định, số này chưa đúng" : "lãi gộp trừ chi phí cố định"} />
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
+        <BigTile
+          label="Lợi nhuận trước thuế" value={fmt(lo)} tone={lo >= 0 ? "good" : "bad"}
+          sub={<>Biên {pctR(ratios.bienHoatDong)} trên doanh thu {fmtM(denom)}tr. Tiếng Anh: profit before tax.{sauThue ? <> Sau thuế còn {fmtM(sauThue)}tr.</> : null}</>}
+        />
+        <BigTile
+          label="Lãi gộp" value={fmt(pnl.totals.grossProfit)} tone={pnl.totals.grossProfit >= 0 ? "good" : "bad"}
+          sub={<>Biên gộp {pctR(ratios.bienGop)}. Doanh thu trừ hoa hồng, hỗ trợ khách và thưởng, tức phần còn lại để nuôi bộ máy.</>}
+        />
+
+        <Waterfall title="Doanh thu đi về đâu" note="ghi theo kỳ phát sinh, không theo ngày tiền vào ra" steps={buoc} />
+
+        <SmallTile label="Điểm hòa vốn" en="break-even" value={ratios.hoaVonThuThang == null ? "—" : `${fmtM(ratios.hoaVonThuThang)}tr`} sub={ratios.canCanMoiThang != null ? <>mỗi tháng, khoảng {ratios.canCanMoiThang} căn, thực tế {ratios.canBinhQuanThang} căn</> : "chi phí cố định chia biên gộp"} />
+        <SmallTile label="Biên an toàn" en="margin of safety" value={pctR(ratios.anToan)} sub="doanh thu tụt bấy nhiêu vẫn chưa lỗ" tone={ratios.anToan == null ? undefined : ratios.anToan >= 0 ? "good" : "bad"} />
+        <SmallTile label="Doanh thu mỗi căn" value={ratios.thuMoiCan == null ? "—" : `${fmtM(ratios.thuMoiCan)}tr`} sub={ratios.soCan ? <>{ratios.soCan} căn có đối chiếu trong kỳ</> : "chưa có căn nào"} />
+
+        {monthly.length > 1 && (
+          <MonthBars
+            title="Lợi nhuận trước thuế theo tháng"
+            note={dataThrough ? `số liệu đến ${fmtD(dataThrough)}` : undefined}
+            rows={monthly.map((m) => ({ label: m.label, value: m.profitBeforeTax, has: !dataThrough || m.period.start <= dataThrough }))}
+          />
+        )}
       </div>
+
+      {pnl.opexSource === "none" && <Banner tone="warn">Kỳ này chưa có sổ kế toán và cũng chưa có sao kê nên chi phí cố định đang trống, lợi nhuận và hòa vốn chưa đúng.</Banner>}
+      {ngoaiSo > 0 && (
+        <Banner tone="info">
+          Ngoài sổ kế toán, hai người sáng lập còn bỏ <b>{fmtM(ngoaiSo)}tr</b> từ tài khoản cá nhân để chi cho công ty trong kỳ này.
+          Tính thêm khoản đó thì lợi nhuận trước thuế là <b>{fmtM(lo - ngoaiSo)}tr</b>. Bản dồn tích giữ nguyên số của kế toán để còn đối chiếu, bản dòng tiền đã tính đủ.
+        </Banner>
+      )}
 
       <div className="text-xs text-slate-500">
-        {partial && <>Số liệu đến <b>{fmtD(dataThrough!)}</b>, tức {soThang} tháng. Bình quân và hòa vốn chia cho {soThang} tháng. </>}
         {pnl.opexSource === "nkc" && "Doanh thu và giá vốn theo đối chiếu trong CRM, chi phí cố định theo sổ nhật ký chung của kế toán."}
-        {pnl.opexSource === "bank" && "Doanh thu và giá vốn theo đối chiếu trong CRM. Chưa có sổ kế toán nên chi phí cố định tạm lấy theo tiền đã chi trên sao kê và sổ tiền mặt founder."}
-        {pnl.opexSource === "none" && <span className="text-amber-800">Chưa có sổ kế toán và cũng chưa có sao kê nên chi phí cố định đang trống, lợi nhuận và hòa vốn chưa đúng.</span>}
-      </div>
-
-      <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-4 text-sm">
-        <div className="font-semibold mb-2">Đọc nhanh</div>
-        <ol className="list-decimal pl-5 space-y-1.5 text-slate-700">
-          <li>Doanh thu không VAT <b>{fmtM(pnl.revenue.net)}tr</b>. Giá vốn (hoa hồng, hỗ trợ khách, thưởng, gồm trích trước) <b>{fmtM(pnl.totals.cogs)}tr</b>, lãi gộp <b>{fmtM(pnl.totals.grossProfit)}tr</b> ({pctR(ratios.bienGop)}).</li>
-          <li>Chi phí cố định <b>{fmtM(pnl.totals.fixed)}tr</b>. Lợi nhuận trước thuế <b className={lo >= 0 ? "text-green-700" : "text-red-700"}>{fmtM(lo)}tr</b>{soThang > 1 ? <>, bình quân {fmtM(lo / soThang)}tr/tháng</> : null}.</li>
-          {ref && (
-            <li>
-              So với {ref.label}: {explained.length + unexplained.length === 0
-                ? "khớp từng dòng."
-                : <>{explained.length} dòng lệch đã rõ nguyên nhân{unexplained.length > 0 ? <>, <b className="text-amber-800">{unexplained.length} dòng chưa giải thích được</b></> : null}. Chi tiết ở khối Đối chiếu bên dưới.</>}
-            </li>
-          )}
-          {ngoaiSo > 0 && (
-            <li>
-              Ngoài sổ kế toán, hai người sáng lập còn bỏ <b>{fmtM(ngoaiSo)}tr</b> từ tài khoản cá nhân để chi cho công ty trong kỳ này.
-              Tính thêm khoản đó thì lợi nhuận trước thuế là <b className={lo - ngoaiSo >= 0 ? "text-green-700" : "text-red-700"}>{fmtM(lo - ngoaiSo)}tr</b>.
-              Bản dồn tích giữ nguyên số của kế toán để còn đối chiếu, bản dòng tiền đã tính đủ.
-            </li>
-          )}
-          {amMonths.length > 0 && soThang > 1 && <li>Tháng lỗ: {amMonths.map((m) => m.label).join(", ")}. Doanh thu ghi nhận theo ngày đối chiếu từng đợt, còn chi phí đều hàng tháng.</li>}
-        </ol>
+        {pnl.opexSource === "bank" && "Doanh thu và giá vốn theo đối chiếu trong CRM. Chưa có sổ kế toán nên chi phí cố định tạm lấy theo tiền đã chi trên sao kê và sổ cá nhân của hai người sáng lập."}
       </div>
 
       {monthly.length > 1 && (
-        <Fold title="Theo tháng" teaser={<>{soThang} tháng có số{amMonths.length > 0 ? `, lỗ ${amMonths.map((m) => m.label).join(", ")}` : ", không tháng nào lỗ"}</>}>
+        <Fold title="Bảng theo tháng" teaser={<>{soThang} tháng có số liệu</>}>
           <AccrualMonthlyTable rows={monthly} dataThrough={dataThrough} />
         </Fold>
       )}
@@ -484,33 +513,21 @@ async function AccrualView({ start, end, months }: { start: string; end: string;
           <table className="w-full text-sm">
             <thead className="text-xs text-slate-500">
               <tr>
-                <th className="text-left p-2 w-12">STT</th>
-                <th className="text-left p-2">Khoản mục</th>
-                <th className="text-right p-2 w-40">App</th>
-                <th className="text-right p-2 w-20">Tỷ trọng/DT</th>
+                <th className="text-left p-2 w-12">STT</th><th className="text-left p-2">Khoản mục</th>
+                <th className="text-right p-2 w-40">App</th><th className="text-right p-2 w-20">Tỷ trọng/DT</th>
                 {ref && <th className="text-right p-2 w-40">Kế toán</th>}
                 {ref && <th className="text-right p-2 w-32">Lệch</th>}
               </tr>
             </thead>
-            <tbody>
-              {pnl.lines.map((l) => <Row key={l.code} line={l} denom={denom} cmp={cmpByCode.get(l.code)} withRef={!!ref} />)}
-            </tbody>
+            <tbody>{pnl.lines.map((l) => <Row key={l.code} line={l} denom={denom} cmp={cmpByCode.get(l.code)} withRef={!!ref} />)}</tbody>
           </table>
         </div>
-        <div className="text-xs text-slate-500 space-y-1">
-          <p>Doanh thu: đối chiếu doanh thu theo ngày đối chiếu, gồm VAT và thưởng nóng của CĐT.</p>
-          <p>Giá vốn: đối chiếu giá vốn theo loại chi phí, cộng trích trước cuối năm của kế toán, trừ phần hoàn nhập khi kỳ sau chi thật cho căn đã trích.</p>
-          <p>Chi phí cố định: sổ nhật ký chung đã phân loại, sửa phân loại tại <Link href="/finance/nkc-review" className="underline">Sổ NKC</Link>.</p>
-        </div>
-      </Fold>
-
-      <Fold title="Biên và điểm hòa vốn" teaser={<>biên gộp {pctR(ratios.bienGop)}{ratios.hoaVonThuThang != null ? `, cần doanh thu ${fmtM(ratios.hoaVonThuThang)}tr/tháng để hòa vốn` : ""}</>}>
-        <RatioCards r={ratios} thuLabel="Doanh thu không VAT" thu={pnl.revenue.net} gop={pnl.totals.grossProfit} coDinh={pnl.totals.fixed} rong={pnl.totals.profitBeforeTax} rongLabel="Lợi nhuận trước thuế" />
+        <p className="text-xs text-slate-500">Giá vốn gồm trích trước cuối năm của kế toán, trừ phần hoàn nhập khi kỳ sau chi thật. Chi phí cố định sửa phân loại tại <Link href="/finance/nkc-review" className="underline">Sổ NKC</Link>.</p>
       </Fold>
 
       {ref && (
         <Fold title={`Đối chiếu với ${ref.label}`} teaser={<span className={unexplained.length > 0 ? "text-amber-800" : "text-green-700"}>{explained.length + unexplained.length === 0 ? "khớp từng dòng" : `${explained.length} lệch đã rõ, ${unexplained.length} chưa rõ`}</span>}>
-          <p className="text-slate-600 text-sm">Cột Lệch = App trừ Kế toán. Dòng có ghi chú là lệch đã tìm ra nguyên nhân.</p>
+          <p className="text-slate-600 text-sm">Cột Lệch bằng App trừ Kế toán. Dòng có ghi chú là lệch đã tìm ra nguyên nhân.</p>
           {explained.length > 0 && (
             <ul className="space-y-2 text-sm">
               {explained.map((c) => (
@@ -522,9 +539,7 @@ async function AccrualView({ start, end, months }: { start: string; end: string;
               ))}
             </ul>
           )}
-          {unexplained.length > 0 && (
-            <div className="text-amber-800 bg-amber-50 border border-amber-200 rounded p-2 text-sm">Chưa có giải thích: {unexplained.map((c) => `${c.code} (${fmtDelta(c.delta!)})`).join(", ")}</div>
-          )}
+          {unexplained.length > 0 && <Banner tone="warn">Chưa có giải thích: {unexplained.map((c) => `${c.code} (${fmtDelta(c.delta!)})`).join(", ")}</Banner>}
         </Fold>
       )}
     </>
@@ -562,7 +577,7 @@ function AccrualMonthlyTable({ rows, dataThrough }: { rows: AccrualMonth[]; data
           ))}
           <tr className="border-t border-slate-200 text-slate-500">
             <td className="p-2">Biên gộp</td>
-            {rows.map((m) => <td key={m.label} className="p-2 text-right tabular-nums">{!hasData(m) ? "" : m.revenueNet >= 10_000_000 ? pct(m.grossProfit, m.revenueNet) : <span className="text-slate-400" title="Tháng này không ghi nhận doanh thu, không tính biên">không thu</span>}</td>)}
+            {rows.map((m) => <td key={m.label} className="p-2 text-right tabular-nums">{!hasData(m) ? "" : m.revenueNet >= 10_000_000 ? pct(m.grossProfit, m.revenueNet) : <span className="text-slate-400" title="Tháng này không ghi nhận doanh thu">không thu</span>}</td>)}
             <td className="p-2 text-right tabular-nums">{pct(sum("grossProfit"), sum("revenueNet"))}</td>
           </tr>
         </tbody>
