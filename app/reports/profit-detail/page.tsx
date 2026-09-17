@@ -137,6 +137,8 @@ function Waterfall({ title, note, steps }: { title: string; note?: string; steps
       <div className="flex items-baseline gap-3 flex-wrap">
         <span className="text-sm font-semibold">{title}</span>
         {note && <span className="text-xs text-slate-500">{note}</span>}
+        {/* Mỗi biểu đồ co giãn theo thanh dài nhất của chính nó, nên phải ghi mốc ra kẻo so nhầm giữa hai biểu đồ. */}
+        <span className="text-[11px] text-slate-400 ml-auto whitespace-nowrap">thanh dài nhất ứng với {fmtT(max)}</span>
       </div>
       <div className="flex flex-col gap-1.5">
         {steps.map((s) => {
