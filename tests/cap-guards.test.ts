@@ -157,60 +157,85 @@ dbSuite("cap-guards DB-dependent (dùng seed data)", () => {
   });
 
   describe("assertRevenueCapNotExceeded", () => {
-    test("Chưa có recon nào, thêm ≤ trần → cho qua", async () => {
-      await expect(assertRevenueCapNotExceeded(productId, REVENUE_CAP)).resolves.toBeUndefined();
+    // Hoa hồng, thưởng nóng sale, thưởng nóng quản lý là BA trần riêng, không gộp.
+    const hh = (n: number) => assertRevenueCapNotExceeded(productId, n, 0, 0);
+
+    test("Chưa có recon nào, hoa hồng ≤ trần → cho qua", async () => {
+      await expect(hh(REVENUE_CAP)).resolves.toBeUndefined();
     });
 
-    test("Chưa có recon nào, thêm vượt trần → block", async () => {
-      await expect(assertRevenueCapNotExceeded(productId, REVENUE_CAP * 1.5)).rejects.toThrow(
-        /Vượt trần doanh thu/,
-      );
+    test("Chưa có recon nào, hoa hồng vượt trần → block", async () => {
+      await expect(hh(REVENUE_CAP * 1.5)).rejects.toThrow(/Vượt trần hoa hồng/);
     });
 
-    test("Tolerance 1% — thêm 100.5% trần → cho qua", async () => {
-      await expect(
-        assertRevenueCapNotExceeded(productId, REVENUE_CAP * 1.005),
-      ).resolves.toBeUndefined();
+    test("Tolerance 1% — 100.5% trần → cho qua", async () => {
+      await expect(hh(REVENUE_CAP * 1.005)).resolves.toBeUndefined();
     });
 
-    test("Tolerance 1% — thêm 102% trần → block", async () => {
-      await expect(assertRevenueCapNotExceeded(productId, REVENUE_CAP * 1.02)).rejects.toThrow(
-        /Vượt trần doanh thu/,
-      );
+    test("Tolerance 1% — 102% trần → block", async () => {
+      await expect(hh(REVENUE_CAP * 1.02)).rejects.toThrow(/Vượt trần hoa hồng/);
     });
 
-    test("Đã có 40M trước, thêm 15M → tổng 55M vượt 50M → block", async () => {
+    test("Đã có 40M hoa hồng, thêm 15M → tổng 55M vượt 50M → block", async () => {
       const [existing] = await sql`
-        INSERT INTO revenue_reconciliations (product_id, total_receivable_this_time)
-        VALUES (${productId}, 40000000) RETURNING id
+        INSERT INTO revenue_reconciliations (product_id, revenue_this_time, total_receivable_this_time)
+        VALUES (${productId}, 40000000, 40000000) RETURNING id
       `;
-      await expect(assertRevenueCapNotExceeded(productId, 15_000_000)).rejects.toThrow(
-        /Vượt trần doanh thu/,
-      );
+      await expect(hh(15_000_000)).rejects.toThrow(/Vượt trần hoa hồng/);
       await sql`DELETE FROM revenue_reconciliations WHERE id = ${existing.id}`;
+    });
+
+    // Bug 19/09/2026: bản cũ cộng thưởng nóng vào rồi so với trần hoa hồng,
+    // chặn oan 7 căn Emerald Garden. Thưởng nóng phải tính theo trần riêng của nó.
+    test("Thưởng nóng KHÔNG được cộng vào trần hoa hồng", async () => {
+      const [existing] = await sql`
+        INSERT INTO revenue_reconciliations
+          (product_id, revenue_this_time, cdt_bonus_sale, total_receivable_this_time)
+        VALUES (${productId}, 38000000, 22000000, 60000000) RETURNING id
+      `;
+      // Hoa hồng mới đi 38M trên trần 50M, thêm 10M nữa vẫn còn trong trần.
+      await expect(hh(10_000_000)).resolves.toBeUndefined();
+      await sql`DELETE FROM revenue_reconciliations WHERE id = ${existing.id}`;
+    });
+
+    test("Thưởng nóng sale vượt mức CĐT cam kết → block", async () => {
+      const [prod] = await sql`
+        INSERT INTO products (product_code, unit_code, sale_type, project_id, pmg_base_price, pmg_rate, cdt_bonus_sale)
+        VALUES ('TEST_CAP_BONUS', 'TEST_CAP_UNIT_BONUS', 'primary', ${projectId}, 1000000000, 0.05, 22000000)
+        RETURNING id
+      `;
+      await expect(
+        assertRevenueCapNotExceeded(prod.id, 0, 30_000_000, 0),
+      ).rejects.toThrow(/Vượt trần thưởng nóng cho sale/);
+      await expect(
+        assertRevenueCapNotExceeded(prod.id, 0, 22_000_000, 0),
+      ).resolves.toBeUndefined();
+      await sql`DELETE FROM products WHERE id = ${prod.id}`;
     });
 
     test("Update path — loại trừ chính mình khỏi tổng khi tính", async () => {
       const [rec] = await sql`
-        INSERT INTO revenue_reconciliations (product_id, total_receivable_this_time)
-        VALUES (${productId}, 40000000) RETURNING id
+        INSERT INTO revenue_reconciliations (product_id, revenue_this_time, total_receivable_this_time)
+        VALUES (${productId}, 40000000, 40000000) RETURNING id
       `;
       await expect(
-        assertRevenueCapNotExceeded(productId, 45_000_000, rec.id),
+        assertRevenueCapNotExceeded(productId, 45_000_000, 0, 0, rec.id),
       ).resolves.toBeUndefined();
       await expect(
-        assertRevenueCapNotExceeded(productId, 60_000_000, rec.id),
-      ).rejects.toThrow(/Vượt trần doanh thu/);
+        assertRevenueCapNotExceeded(productId, 60_000_000, 0, 0, rec.id),
+      ).rejects.toThrow(/Vượt trần hoa hồng/);
       await sql`DELETE FROM revenue_reconciliations WHERE id = ${rec.id}`;
     });
 
-    test("Product không có PMG target (pmg_base=0) → skip check", async () => {
+    test("Căn chưa nhập PMG target (pmg_base=0) → bỏ qua kiểm", async () => {
       const [prod] = await sql`
         INSERT INTO products (product_code, unit_code, sale_type, project_id, pmg_base_price, pmg_rate)
         VALUES ('TEST_CAP_NO_PMG', 'TEST_CAP_UNIT_NO_PMG', 'primary', ${projectId}, 0, 0)
         RETURNING id
       `;
-      await expect(assertRevenueCapNotExceeded(prod.id, 99_999_999_999)).resolves.toBeUndefined();
+      await expect(
+        assertRevenueCapNotExceeded(prod.id, 99_999_999_999, 0, 0),
+      ).resolves.toBeUndefined();
       await sql`DELETE FROM products WHERE id = ${prod.id}`;
     });
   });

@@ -202,7 +202,11 @@ export async function createRevenue(fd: FormData): Promise<KetQuaLuu> {
   // vẫn để lại một hóa đơn mồ côi trong /invoices (đã xảy ra với HĐ số 40 ngày 17/09/2026).
   const loiTran = await kiemTraTranDoanhThu(
     data.productId,
-    totalReceivable,
+    {
+      hoaHong: Number(data.revenueThisTime ?? 0),
+      thuongSale: Number(data.cdtBonusSale ?? 0) + cdtBonusSale,
+      thuongQuanLy: Number(data.cdtBonusManager ?? 0) + cdtBonusManager,
+    },
     Number(data.pmgCumulativePct ?? 0),
     Number(data.phasePctThisTime ?? 0),
   );
@@ -301,7 +305,11 @@ export async function updateRevenue(id: number, fd: FormData): Promise<KetQuaLuu
   // Guard trần hợp đồng (loại trừ chính dòng đang sửa khỏi tổng cũ), chạy trước khi tạo hóa đơn.
   const loiTran = await kiemTraTranDoanhThu(
     data.productId,
-    totalReceivable,
+    {
+      hoaHong: Number(data.revenueThisTime ?? 0),
+      thuongSale: finalCdtSale,
+      thuongQuanLy: finalCdtMgr,
+    },
     Number(data.pmgCumulativePct ?? 0),
     Number(data.phasePctThisTime ?? 0),
     id,

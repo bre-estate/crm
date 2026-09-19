@@ -22,12 +22,21 @@ function pctStr(actual: number, cap: number): string {
 // ==================== DOANH THU ====================
 
 /**
- * Sau khi thêm/sửa đối chiếu doanh thu, tổng doanh thu không được vượt
- * `pmg_base_price × pmg_rate` (PMG × %PMG_LK) của căn.
+ * Doanh thu một căn gồm BA khoản riêng, mỗi khoản một trần riêng, KHÔNG gộp chung:
+ *   hoa hồng       ≤ pmg_base_price × pmg_rate  (PMG × %PMG_LK)
+ *   thưởng nóng sale    ≤ products.cdt_bonus_sale
+ *   thưởng nóng quản lý ≤ products.cdt_bonus_manager
+ *
+ * Sửa 19/09/2026: bản cũ so TỔNG (hoa hồng cộng cả hai loại thưởng) với trần của
+ * riêng hoa hồng, nên căn nào có thưởng nóng là bị chặn oan. Bảy căn Emerald Garden
+ * hoa hồng mới đi 77% trần mà tổng đã 91-93% chỉ vì cộng thêm 22tr thưởng nóng đúng
+ * bằng target CĐT cam kết.
  */
 export async function assertRevenueCapNotExceeded(
   productId: number,
-  newTotalReceivable: number,
+  newCommission: number,
+  newCdtBonusSale: number,
+  newCdtBonusManager: number,
   excludeReconciliationId?: number,
 ): Promise<void> {
   const [p] = await db
@@ -35,13 +44,12 @@ export async function assertRevenueCapNotExceeded(
       code: products.productCode,
       pmgBase: products.pmgBasePrice,
       pmgRate: products.pmgRate,
+      cdtBonusSale: products.cdtBonusSale,
+      cdtBonusManager: products.cdtBonusManager,
     })
     .from(products)
     .where(eq(products.id, productId));
-
   if (!p) return;
-  const cap = Number(p.pmgBase ?? 0) * Number(p.pmgRate ?? 0);
-  if (cap <= 0) return; // Chưa nhập PMG target — không check được
 
   const conditions = [eq(revenueReconciliations.productId, productId)];
   if (excludeReconciliationId) {
@@ -49,21 +57,49 @@ export async function assertRevenueCapNotExceeded(
   }
   const [row] = await db
     .select({
-      total: sql<string>`COALESCE(SUM(${revenueReconciliations.totalReceivableThisTime}), 0)`,
+      hh: sql<string>`COALESCE(SUM(${revenueReconciliations.revenueThisTime}), 0)`,
+      bs: sql<string>`COALESCE(SUM(${revenueReconciliations.cdtBonusSale}), 0)`,
+      bm: sql<string>`COALESCE(SUM(${revenueReconciliations.cdtBonusManager}), 0)`,
     })
     .from(revenueReconciliations)
     .where(and(...conditions));
 
-  const existingTotal = Number(row?.total ?? 0);
-  const afterTotal = existingTotal + newTotalReceivable;
-  const capWithTolerance = cap * (1 + TOLERANCE);
+  const khoan: { nhan: string; cap: number; moi: number; sau: number; giaiThich: string }[] = [
+    {
+      nhan: "hoa hồng",
+      cap: Number(p.pmgBase ?? 0) * Number(p.pmgRate ?? 0),
+      moi: newCommission,
+      sau: Number(row?.hh ?? 0) + newCommission,
+      giaiThich: "PMG × %PMG_LK",
+    },
+    {
+      nhan: "thưởng nóng cho sale",
+      cap: Number(p.cdtBonusSale ?? 0),
+      moi: newCdtBonusSale,
+      sau: Number(row?.bs ?? 0) + newCdtBonusSale,
+      giaiThich: "mức CĐT cam kết trên căn",
+    },
+    {
+      nhan: "thưởng nóng cho quản lý",
+      cap: Number(p.cdtBonusManager ?? 0),
+      moi: newCdtBonusManager,
+      sau: Number(row?.bm ?? 0) + newCdtBonusManager,
+      giaiThich: "mức CĐT cam kết trên căn",
+    },
+  ];
 
-  if (afterTotal > capWithTolerance) {
-    throw new Error(
-      `Vượt trần doanh thu căn ${p.code}: tổng sau khi lưu = ${fmt(afterTotal)} VND (${pctStr(afterTotal, cap)} trần). ` +
-        `Trần hợp đồng = ${fmt(cap)} VND (PMG × %PMG_LK). ` +
-        `Kiểm tra lại số tiền hoặc căn được chọn.`,
-    );
+  for (const k of khoan) {
+    if (k.cap <= 0) continue; // Chưa nhập mức cam kết thì không kiểm được
+    // Chỉ kiểm khoản mà đợt đang nhập có đụng tới. Đợt hoa hồng thuần không đáng bị
+    // chặn vì số thưởng nóng cũ đã vượt mức, việc đó xử lý riêng chứ không khóa nhập.
+    if (k.moi <= 0) continue;
+    if (k.sau > k.cap * (1 + TOLERANCE)) {
+      throw new Error(
+        `Vượt trần ${k.nhan} căn ${p.code}: sau khi lưu = ${fmt(k.sau)} VND (${pctStr(k.sau, k.cap)} trần). ` +
+          `Trần hợp đồng = ${fmt(k.cap)} VND (${k.giaiThich}). ` +
+          `Kiểm tra lại số tiền hoặc căn được chọn.`,
+      );
+    }
   }
 }
 
@@ -117,14 +153,20 @@ export function assertPmgCumulativePctInRange(pmgCumulativePct: number): void {
  */
 export async function kiemTraTranDoanhThu(
   productId: number,
-  totalReceivable: number,
+  khoan: { hoaHong: number; thuongSale: number; thuongQuanLy: number },
   pmgCumulativePct: number,
   phasePct: number,
   excludeReconciliationId?: number,
 ): Promise<string | null> {
   try {
     assertPmgCumulativePctInRange(pmgCumulativePct);
-    await assertRevenueCapNotExceeded(productId, totalReceivable, excludeReconciliationId);
+    await assertRevenueCapNotExceeded(
+      productId,
+      khoan.hoaHong,
+      khoan.thuongSale,
+      khoan.thuongQuanLy,
+      excludeReconciliationId,
+    );
     await assertPhasePctNotExceeded(productId, phasePct, excludeReconciliationId);
     return null;
   } catch (e) {
