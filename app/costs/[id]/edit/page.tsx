@@ -195,7 +195,7 @@ export default async function EditCostPage({
         productsMinimal={allProductsMinimal as any}
         onSave={async (fd) => {
           "use server";
-          await updateCost(id, fd, returnTo);
+          return await updateCost(id, fd, returnTo);
         }}
         onDelete={async () => {
           "use server";

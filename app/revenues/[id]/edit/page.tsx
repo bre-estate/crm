@@ -157,7 +157,7 @@ export default async function EditRevenuePage({
         returnTo={returnTo}
         onSave={async (fd) => {
           "use server";
-          await updateRevenue(id, fd);
+          return await updateRevenue(id, fd);
         }}
         onDelete={async () => {
           "use server";

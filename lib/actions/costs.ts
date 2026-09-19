@@ -10,10 +10,7 @@ import { redirect } from "next/navigation";
 import { logActivity } from "@/lib/audit";
 import { toNum, toStr, toStrOrNull, toPct } from "@/lib/parse";
 import { costTypeLabel } from "@/lib/format";
-import {
-  assertCostCapNotExceeded,
-  assertPaymentProgressPctInRange,
-} from "@/lib/actions/cap-guards";
+import { kiemTraTranGiaVon, type KetQuaLuu } from "@/lib/actions/cap-guards";
 
 const VALID_COST_TYPES = [
   "sale_commission",
@@ -80,11 +77,11 @@ function buildCostData(fd: FormData) {
   };
 }
 
-export async function createCost(fd: FormData) {
+export async function createCost(fd: FormData): Promise<KetQuaLuu> {
   await requirePermission("costs", "edit");
   const data = buildCostData(fd);
-  if (!data.productId) throw new Error("Chọn căn (sản phẩm)");
-  if (!data.employeeName) throw new Error("Nhập tên người được đối chiếu");
+  if (!data.productId) return { error: "Chọn căn (sản phẩm)" };
+  if (!data.employeeName) return { error: "Nhập tên người được đối chiếu" };
 
   // KPI Admin: chỉ được ĐC 1 lần / căn (chốt với team - vì số nhỏ).
   if (data.costType === "kpi_admin") {
@@ -98,19 +95,20 @@ export async function createCost(fd: FormData) {
         ),
       );
     if (existing.length > 0) {
-      throw new Error(
-        `KPI Admin cho căn này đã có (#${existing[0].id}). Mỗi căn chỉ được ĐC 1 lần cho KPI Admin.`,
-      );
+      return {
+        error: `KPI Admin cho căn này đã có (#${existing[0].id}). Mỗi căn chỉ được đối chiếu 1 lần cho KPI Admin.`,
+      };
     }
   }
 
   // Guard trần hợp đồng theo loại chi phí + N tiến độ ≤ 100%.
-  assertPaymentProgressPctInRange(Number(data.paymentProgressPct ?? 0));
-  await assertCostCapNotExceeded(
+  const loiTran = await kiemTraTranGiaVon(
     data.productId,
     data.costType,
     Number(data.amountPayableThisTime ?? 0),
+    Number(data.paymentProgressPct ?? 0),
   );
+  if (loiTran) return { error: loiTran };
 
   const [rec] = await db
     .insert(costReconciliations)
@@ -147,11 +145,11 @@ function buildReturnUrl(returnTo: string | null | undefined, flag: string, id: n
   return `${safe}${sep}${flag}=${id}`;
 }
 
-export async function updateCost(id: number, fd: FormData, returnTo?: string | null) {
+export async function updateCost(id: number, fd: FormData, returnTo?: string | null): Promise<KetQuaLuu> {
   await requirePermission("costs", "edit");
   const data = buildCostData(fd);
-  if (!data.productId) throw new Error("Chọn căn (sản phẩm)");
-  if (!data.employeeName) throw new Error("Nhập tên người được đối chiếu");
+  if (!data.productId) return { error: "Chọn căn (sản phẩm)" };
+  if (!data.employeeName) return { error: "Nhập tên người được đối chiếu" };
 
   const [before] = await db
     .select()
@@ -159,13 +157,14 @@ export async function updateCost(id: number, fd: FormData, returnTo?: string | n
     .where(eq(costReconciliations.id, id));
 
   // Guard trần hợp đồng (loại trừ chính dòng đang sửa khỏi tổng cũ).
-  assertPaymentProgressPctInRange(Number(data.paymentProgressPct ?? 0));
-  await assertCostCapNotExceeded(
+  const loiTran = await kiemTraTranGiaVon(
     data.productId,
     data.costType,
     Number(data.amountPayableThisTime ?? 0),
+    Number(data.paymentProgressPct ?? 0),
     id,
   );
+  if (loiTran) return { error: loiTran };
 
   await db.update(costReconciliations).set(data).where(eq(costReconciliations.id, id));
   await logActivity({

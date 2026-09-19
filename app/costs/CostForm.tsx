@@ -100,7 +100,7 @@ type Props = {
   /** Snapshot products (id + sellPrice + depositDate + salesPerson + dept) —
    *  compute doanh số cá nhân/phòng trong kỳ để suggest tier rate */
   productsMinimal?: ProductMinimal[];
-  onSave: (fd: FormData) => Promise<void>;
+  onSave: (fd: FormData) => Promise<{ error: string } | void>;
   onDelete?: () => Promise<void>;
 };
 
@@ -633,7 +633,10 @@ export default function CostForm({
             return;
           }
           try {
-            await onSave(fd);
+            // Lỗi kiểm tra được trả về chứ không throw: bản production của Next.js
+            // che mọi lỗi throw từ server action thành một câu chung chung.
+            const kq = await onSave(fd);
+            if (kq?.error) toast.error(kq.error, { duration: 10000 });
           } catch (e) {
             if (
               e &&

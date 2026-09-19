@@ -8,11 +8,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { logActivity } from "@/lib/audit";
 import { toNum, toStr, toStrOrNull, toPct } from "@/lib/parse";
-import {
-  assertRevenueCapNotExceeded,
-  assertPhasePctNotExceeded,
-  assertPmgCumulativePctInRange,
-} from "@/lib/actions/cap-guards";
+import { kiemTraTranDoanhThu, type KetQuaLuu } from "@/lib/actions/cap-guards";
 
 // Suy partner_id từ product → project → partner_id.
 // Mỗi CĐT có sổ HĐ riêng, số HĐ có thể trùng giữa các CĐT → partner_id
@@ -147,14 +143,10 @@ async function applyConfigToProduct(
   await db.update(products).set(cfg).where(eq(products.id, productId));
 }
 
-export async function createRevenue(fd: FormData) {
+export async function createRevenue(fd: FormData): Promise<KetQuaLuu> {
   await requirePermission("revenues", "edit");
   const data = buildRevenueData(fd);
-  if (!data.productId) throw new Error("Chọn căn (sản phẩm)");
-
-  const invoiceNumber = toStr(fd.get("invoiceNumber"));
-  const invoiceDate = toStrOrNull(fd.get("invoiceDate"));
-  const invoiceId = await findOrCreateInvoice(invoiceNumber, invoiceDate, data.productId);
+  if (!data.productId) return { error: "Chọn căn (sản phẩm)" };
 
   // ===== Merge model: 1 record chứa mọi loại cùng invoice =====
   // Đọc từ repeater rows (bonus_count + bonus_${i}_*), MERGE vào 1 record duy
@@ -202,13 +194,22 @@ export async function createRevenue(fd: FormData) {
   // Guard: không tạo recon rỗng (mọi amount = 0 + không có date). Tránh
   // double-submit / form trống lọt vào DB thành "Chưa ĐC" ma.
   if (totalReceivable === 0 && !data.reconciliationDate) {
-    throw new Error("Đợt đối chiếu trống — cần có ngày ĐC hoặc số tiền > 0");
+    return { error: "Đợt đối chiếu trống, cần có ngày đối chiếu hoặc số tiền lớn hơn 0" };
   }
 
-  // Guard: không cho vượt trần hợp đồng.
-  assertPmgCumulativePctInRange(Number(data.pmgCumulativePct ?? 0));
-  await assertRevenueCapNotExceeded(data.productId, totalReceivable);
-  await assertPhasePctNotExceeded(data.productId, Number(data.phasePctThisTime ?? 0));
+  // Guard trần hợp đồng chạy TRƯỚC khi tạo hóa đơn. Làm ngược lại thì lần lưu hỏng
+  // vẫn để lại một hóa đơn mồ côi trong /invoices (đã xảy ra với HĐ số 40 ngày 17/09/2026).
+  const loiTran = await kiemTraTranDoanhThu(
+    data.productId,
+    totalReceivable,
+    Number(data.pmgCumulativePct ?? 0),
+    Number(data.phasePctThisTime ?? 0),
+  );
+  if (loiTran) return { error: loiTran };
+
+  const invoiceNumber = toStr(fd.get("invoiceNumber"));
+  const invoiceDate = toStrOrNull(fd.get("invoiceDate"));
+  const invoiceId = await findOrCreateInvoice(invoiceNumber, invoiceDate, data.productId);
 
   const [rec] = await db
     .insert(revenueReconciliations)
@@ -256,14 +257,10 @@ function safeReturnTo(fd: FormData): string | null {
   return s;
 }
 
-export async function updateRevenue(id: number, fd: FormData) {
+export async function updateRevenue(id: number, fd: FormData): Promise<KetQuaLuu> {
   await requirePermission("revenues", "edit");
   const data = buildRevenueData(fd);
-  if (!data.productId) throw new Error("Chọn căn (sản phẩm)");
-
-  const invoiceNumber = toStr(fd.get("invoiceNumber"));
-  const invoiceDate = toStrOrNull(fd.get("invoiceDate"));
-  const invoiceId = await findOrCreateInvoice(invoiceNumber, invoiceDate, data.productId);
+  if (!data.productId) return { error: "Chọn căn (sản phẩm)" };
 
   const [before] = await db
     .select()
@@ -300,10 +297,19 @@ export async function updateRevenue(id: number, fd: FormData) {
   const totalReceivable =
     Number(data.revenueThisTime ?? 0) + finalCdtSale + finalCdtMgr;
 
-  // Guard trần hợp đồng (loại trừ chính dòng đang sửa khỏi tổng cũ).
-  assertPmgCumulativePctInRange(Number(data.pmgCumulativePct ?? 0));
-  await assertRevenueCapNotExceeded(data.productId, totalReceivable, id);
-  await assertPhasePctNotExceeded(data.productId, Number(data.phasePctThisTime ?? 0), id);
+  // Guard trần hợp đồng (loại trừ chính dòng đang sửa khỏi tổng cũ), chạy trước khi tạo hóa đơn.
+  const loiTran = await kiemTraTranDoanhThu(
+    data.productId,
+    totalReceivable,
+    Number(data.pmgCumulativePct ?? 0),
+    Number(data.phasePctThisTime ?? 0),
+    id,
+  );
+  if (loiTran) return { error: loiTran };
+
+  const invoiceNumber = toStr(fd.get("invoiceNumber"));
+  const invoiceDate = toStrOrNull(fd.get("invoiceDate"));
+  const invoiceId = await findOrCreateInvoice(invoiceNumber, invoiceDate, data.productId);
 
   await db
     .update(revenueReconciliations)

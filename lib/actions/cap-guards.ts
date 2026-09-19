@@ -10,6 +10,9 @@ import { db } from "@/lib/db";
 import { costReconciliations, revenueReconciliations, products } from "@/lib/schema";
 import { and, eq, ne, sql } from "drizzle-orm";
 
+/** Kết quả trả về form. Có error thì form hiện câu đó, không có thì lệnh đã chạy xong. */
+export type KetQuaLuu = { error: string } | void;
+
 const TOLERANCE = 0.01; // Cho qua nếu ≤ 101% target (chống lỗi làm tròn)
 
 const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
@@ -117,6 +120,28 @@ export function assertPmgCumulativePctInRange(pmgCumulativePct: number): void {
   }
   if (pmgCumulativePct < 0) {
     throw new Error(`% PMG lũy kế = ${(pmgCumulativePct * 100).toFixed(1)}% âm. Kiểm tra lại.`);
+  }
+}
+
+/**
+ * Chạy hết guard doanh thu, trả câu báo lỗi để hiện thẳng cho nhân viên, null nếu hợp lệ.
+ * Dùng thay cho việc throw: Next.js che mọi lỗi throw từ server action trong bản production
+ * thành câu "An error occurred in the Server Components render", nhân viên không biết sai gì.
+ */
+export async function kiemTraTranDoanhThu(
+  productId: number,
+  totalReceivable: number,
+  pmgCumulativePct: number,
+  phasePct: number,
+  excludeReconciliationId?: number,
+): Promise<string | null> {
+  try {
+    assertPmgCumulativePctInRange(pmgCumulativePct);
+    await assertRevenueCapNotExceeded(productId, totalReceivable, excludeReconciliationId);
+    await assertPhasePctNotExceeded(productId, phasePct, excludeReconciliationId);
+    return null;
+  } catch (e) {
+    return e instanceof Error ? e.message : "Số liệu vượt trần hợp đồng";
   }
 }
 
@@ -239,6 +264,26 @@ export async function assertCostCapNotExceeded(
         `Trần hợp đồng = ${fmt(capInfo.cap)} VND. ` +
         `Kiểm tra lại số tiền hoặc căn được chọn.`,
     );
+  }
+}
+
+/**
+ * Chạy hết guard giá vốn, trả câu báo lỗi để hiện thẳng cho nhân viên, null nếu hợp lệ.
+ * Lý do không throw: xem ghi chú ở kiemTraTranDoanhThu.
+ */
+export async function kiemTraTranGiaVon(
+  productId: number,
+  costType: string,
+  amount: number,
+  paymentProgressPct: number,
+  excludeCostId?: number,
+): Promise<string | null> {
+  try {
+    assertPaymentProgressPctInRange(paymentProgressPct);
+    await assertCostCapNotExceeded(productId, costType, amount, excludeCostId);
+    return null;
+  } catch (e) {
+    return e instanceof Error ? e.message : "Số liệu vượt trần hợp đồng";
   }
 }
 
