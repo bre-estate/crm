@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import MoneyInput from "@/components/MoneyInput";
 import SearchableSelect from "@/components/SearchableSelect";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Button } from "@/components/ui/button";
 import { EXPENSE_CATEGORIES, PAYMENT_METHODS } from "@/lib/expenses";
+import { baoLoi } from "@/lib/bao-loi";
 
 type Props = {
   mode: "create" | "edit";
@@ -21,7 +22,7 @@ type Props = {
     note?: string | null;
   };
   approverOptions: { value: string; label: string; sublabel?: string }[];
-  onSave: (fd: FormData) => Promise<void>;
+  onSave: (fd: FormData) => Promise<{ error: string } | void>;
   cancelHref: string;
 };
 
@@ -30,9 +31,14 @@ export default function ExpenseForm({ mode, defaults, approverOptions, onSave, c
     defaults?.expenseDate ?? new Date().toISOString().slice(0, 10),
   );
   const [approverEmail, setApproverEmail] = useState(defaults?.approverEmail ?? "");
+  const [dangLuu, start] = useTransition();
 
   return (
-    <form action={onSave} className="space-y-5">
+    <form
+      className="space-y-5"
+      aria-busy={dangLuu}
+      action={(fd) => start(async () => { baoLoi(await onSave(fd)); })}
+    >
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Field label="Tiêu đề" required>
           <input

@@ -1,4 +1,6 @@
 "use server";
+
+import { chay, type KetQuaLuu } from "@/lib/actions/ket-qua";
 import { db } from "@/lib/db";
 import { accountingJournal } from "@/lib/schema";
 import { eq, sql, inArray } from "drizzle-orm";
@@ -6,7 +8,7 @@ import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/lib/auth";
 import type { CategoryKey } from "@/lib/transaction-classifier";
 
-export async function updateNkcCategory(id: number, category: CategoryKey) {
+async function _updateNkcCategory(id: number, category: CategoryKey) {
   await requirePermission("finance", "edit");
   await db.update(accountingJournal)
     .set({ category, categorySource: "manual", categoryConfidence: 100 })
@@ -15,7 +17,7 @@ export async function updateNkcCategory(id: number, category: CategoryKey) {
   revalidatePath("/reports/profit-detail");
 }
 
-export async function bulkAssignNkcCategory(ids: number[], category: CategoryKey) {
+async function _bulkAssignNkcCategory(ids: number[], category: CategoryKey) {
   await requirePermission("finance", "edit");
   if (ids.length === 0) return;
   await db.update(accountingJournal)
@@ -56,12 +58,15 @@ export async function rerunNkcClassifier() {
  * Split 1 row NKC thành 2 phần (VD row 347M "hoa hồng + KPI QL" tách 272M+75M).
  * Insert 1 row mới với category khác, giảm amount row gốc.
  */
-export async function splitNkcRow(id: number, splitAmount: number, newCategory: CategoryKey) {
+async function _splitNkcRow(id: number, splitAmount: number, newCategory: CategoryKey) {
   await requirePermission("finance", "edit");
   const [row] = await db.select().from(accountingJournal).where(eq(accountingJournal.id, id));
-  if (!row) throw new Error("Row not found");
+  if (!row) throw new Error("Không tìm thấy dòng nhật ký chung này. Có thể ai đó vừa xoá, tải lại trang rồi thử lại.");
   const origAmount = Number(row.amount);
-  if (splitAmount <= 0 || splitAmount >= origAmount) throw new Error("Invalid split amount");
+  if (splitAmount <= 0 || splitAmount >= origAmount)
+    throw new Error(
+      `Số tiền tách phải lớn hơn 0 và nhỏ hơn số gốc ${Math.round(origAmount).toLocaleString("vi-VN")} đồng.`,
+    );
 
   // Insert row mới với phần tách
   const { id: _drop, dedupKey, createdAt, ...rest } = row;
@@ -86,4 +91,17 @@ export async function splitNkcRow(id: number, splitAmount: number, newCategory: 
 
   revalidatePath("/finance/nkc-review");
   revalidatePath("/reports/profit-detail");
+}
+
+// ── Vỏ bọc: đổi lỗi throw thành câu chữ trả về cho form ──
+export async function updateNkcCategory(id: number, category: CategoryKey): Promise<KetQuaLuu> {
+  return chay(() => _updateNkcCategory(id, category));
+}
+
+export async function bulkAssignNkcCategory(ids: number[], category: CategoryKey): Promise<KetQuaLuu> {
+  return chay(() => _bulkAssignNkcCategory(ids, category));
+}
+
+export async function splitNkcRow(id: number, splitAmount: number, newCategory: CategoryKey): Promise<KetQuaLuu> {
+  return chay(() => _splitNkcRow(id, splitAmount, newCategory));
 }

@@ -12,7 +12,7 @@ import { buildHhSaleWorkbook, buildKpiTpkdWorkbook, workbookToBase64 } from "@/l
 async function loadSummaryOrThrow(periodKey: string) {
   const ctx = await loadAllContext();
   const s = summarizePeriod(ctx, periodKey);
-  if (!s) throw new Error("Kỳ không hợp lệ");
+  if (!s) throw new Error("Kỳ không hợp lệ, chọn lại kỳ từ danh sách.");
   return { ctx, s };
 }
 

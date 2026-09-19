@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import AutoDismissBanner from "@/components/AutoDismissBanner";
+import FormLenh from "@/components/FormLenh";
 
 export const dynamic = "force-dynamic";
 
@@ -105,35 +106,33 @@ export default async function ExpenseDetailPage({
             </Button>
           )}
           {canSubmit && (
-            <form action={async () => { "use server"; await submitExpense(id); }}>
+            <FormLenh lenh={async () => { "use server"; return await submitExpense(id); }}>
               <Button
                 type="submit"
                 className="bg-blue-500 hover:bg-blue-600 text-white h-[36px]"
               >
                 Gửi duyệt
               </Button>
-            </form>
+            </FormLenh>
           )}
           {canApproveNow && (
-            <form action={async () => { "use server"; await approveExpense(id); }}>
+            <FormLenh lenh={async () => { "use server"; return await approveExpense(id); }}>
               <Button
                 type="submit"
                 className="bg-green-600 hover:bg-green-700 text-white h-[36px]"
               >
                 Duyệt
               </Button>
-            </form>
+            </FormLenh>
           )}
           {canApproveNow && <RejectButton id={id} />}
           {canMarkPaid && <MarkPaidButton id={id} />}
           {canDelete && (
-            <form
-              action={async () => {
+            <FormLenh
+              xacNhan="Xoá yêu cầu chi này?"
+              lenh={async () => {
                 "use server";
-                await deleteExpense(id);
-              }}
-              onSubmit={(e) => {
-                if (!confirm("Xoá yêu cầu chi này?")) e.preventDefault();
+                return await deleteExpense(id);
               }}
             >
               <Button
@@ -143,7 +142,7 @@ export default async function ExpenseDetailPage({
               >
                 Xoá
               </Button>
-            </form>
+            </FormLenh>
           )}
         </div>
       </div>
@@ -244,10 +243,10 @@ function Info({
 
 function RejectButton({ id }: { id: number }) {
   return (
-    <form
-      action={async (fd: FormData) => {
+    <FormLenh
+      lenh={async (fd: FormData) => {
         "use server";
-        await rejectExpense(id, fd);
+        return await rejectExpense(id, fd);
       }}
       className="flex gap-1 items-center"
     >
@@ -265,16 +264,16 @@ function RejectButton({ id }: { id: number }) {
       >
         Từ chối
       </Button>
-    </form>
+    </FormLenh>
   );
 }
 
 function MarkPaidButton({ id }: { id: number }) {
   return (
-    <form
-      action={async (fd: FormData) => {
+    <FormLenh
+      lenh={async (fd: FormData) => {
         "use server";
-        await markPaid(id, fd);
+        return await markPaid(id, fd);
       }}
       className="flex gap-1 items-center"
     >
@@ -290,6 +289,6 @@ function MarkPaidButton({ id }: { id: number }) {
       >
         Đánh dấu đã chi
       </Button>
-    </form>
+    </FormLenh>
   );
 }

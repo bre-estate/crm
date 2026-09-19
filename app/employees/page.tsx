@@ -41,15 +41,15 @@ export default async function EmployeesPage() {
       departments={depts}
       onCreate={async (fd) => {
         "use server";
-        await createEmployeeNoRedirect(fd);
+        return await createEmployeeNoRedirect(fd);
       }}
       onUpdate={async (id, fd) => {
         "use server";
-        await updateEmployeeNoRedirect(id, fd);
+        return await updateEmployeeNoRedirect(id, fd);
       }}
       onDelete={async (id) => {
         "use server";
-        await deleteEmployeeNoRedirect(id);
+        return await deleteEmployeeNoRedirect(id);
       }}
     />
   );

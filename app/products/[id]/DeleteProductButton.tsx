@@ -2,10 +2,12 @@
 
 import { useTransition } from "react";
 import { toast } from "sonner";
+import { baoLoi } from "@/lib/bao-loi";
+import { cauLoi } from "@/lib/actions/ket-qua";
 
 type Props = {
   unitCode: string;
-  onDelete: () => Promise<void>;
+  onDelete: () => Promise<{ error: string } | void>;
 };
 
 export default function DeleteProductButton({ unitCode, onDelete }: Props) {
@@ -21,7 +23,7 @@ export default function DeleteProductButton({ unitCode, onDelete }: Props) {
         if (!confirmed) return;
         start(async () => {
           try {
-            await onDelete();
+            if (baoLoi(await onDelete())) return;
             // Nếu action redirect, dòng dưới không chạy tới
             toast.success(`Đã xóa căn ${unitCode}`);
           } catch (e) {
@@ -34,7 +36,7 @@ export default function DeleteProductButton({ unitCode, onDelete }: Props) {
             ) {
               throw e;
             }
-            toast.error(e instanceof Error ? e.message : "Không xóa được");
+            toast.error(cauLoi(e));
           }
         });
       }}

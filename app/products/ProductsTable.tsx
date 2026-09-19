@@ -13,6 +13,7 @@ import {
 import { shortDeptName } from "@/lib/dept";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { cauLoi } from "@/lib/actions/ket-qua";
 
 // Row shape đã pre-compute stats từ server
 export type ProductRow = {
@@ -117,7 +118,7 @@ export default function ProductsTable({
         setSelected(new Set());
         router.refresh();
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Lỗi");
+        toast.error(cauLoi(e));
       }
     });
   };

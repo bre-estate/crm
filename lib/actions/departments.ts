@@ -1,5 +1,7 @@
 "use server";
 
+import { chay, type KetQuaLuu } from "@/lib/actions/ket-qua";
+
 import { requirePermission } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { departments, products, employees } from "@/lib/schema";
@@ -20,7 +22,7 @@ function formToObject(fd: FormData): Record<string, unknown> {
   return obj;
 }
 
-export async function createDepartmentNoRedirect(fd: FormData) {
+async function _createDepartmentNoRedirect(fd: FormData) {
   await requirePermission("departments", "edit");
   const raw = formToObject(fd);
   const data = DeptSchema.parse(raw);
@@ -33,7 +35,7 @@ export async function createDepartmentNoRedirect(fd: FormData) {
   revalidatePath("/departments");
 }
 
-export async function updateDepartmentNoRedirect(id: number, fd: FormData) {
+async function _updateDepartmentNoRedirect(id: number, fd: FormData) {
   await requirePermission("departments", "edit");
   const raw = formToObject(fd);
   const data = DeptSchema.parse(raw);
@@ -49,7 +51,7 @@ export async function updateDepartmentNoRedirect(id: number, fd: FormData) {
   revalidatePath("/departments");
 }
 
-export async function deleteDepartmentNoRedirect(id: number) {
+async function _deleteDepartmentNoRedirect(id: number) {
   await requirePermission("departments", "delete");
   // Guard: nếu có căn hoặc NV ref → không xoá
   const [{ prodCount }] = await db
@@ -67,4 +69,17 @@ export async function deleteDepartmentNoRedirect(id: number) {
   }
   await db.delete(departments).where(eq(departments.id, id));
   revalidatePath("/departments");
+}
+
+// ── Vỏ bọc: đổi lỗi throw thành câu chữ trả về cho form ──
+export async function createDepartmentNoRedirect(fd: FormData): Promise<KetQuaLuu> {
+  return chay(() => _createDepartmentNoRedirect(fd));
+}
+
+export async function updateDepartmentNoRedirect(id: number, fd: FormData): Promise<KetQuaLuu> {
+  return chay(() => _updateDepartmentNoRedirect(id, fd));
+}
+
+export async function deleteDepartmentNoRedirect(id: number): Promise<KetQuaLuu> {
+  return chay(() => _deleteDepartmentNoRedirect(id));
 }

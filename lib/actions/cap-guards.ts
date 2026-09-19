@@ -10,9 +10,6 @@ import { db } from "@/lib/db";
 import { costReconciliations, revenueReconciliations, products } from "@/lib/schema";
 import { and, eq, ne, sql } from "drizzle-orm";
 
-/** Kết quả trả về form. Có error thì form hiện câu đó, không có thì lệnh đã chạy xong. */
-export type KetQuaLuu = { error: string } | void;
-
 const TOLERANCE = 0.01; // Cho qua nếu ≤ 101% target (chống lỗi làm tròn)
 
 const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");

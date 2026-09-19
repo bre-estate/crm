@@ -6,6 +6,7 @@ import { fmtMoney, fmtPct } from "@/lib/format";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import PercentInput from "@/components/PercentInput";
+import { cauLoi } from "@/lib/actions/ket-qua";
 import {
   Dialog,
   DialogContent,
@@ -108,7 +109,7 @@ export default function AdjustmentDialog({
         setNote("");
         router.refresh();
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Lỗi khi lưu");
+        toast.error(cauLoi(e));
       }
     });
   };

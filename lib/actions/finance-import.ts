@@ -24,7 +24,7 @@ export type ImportPreview = {
 
 async function requireOwner() {
   const email = await getOwnerEmail();
-  if (!email) throw new Error("Chỉ owner được import");
+  if (!email) throw new Error("Chỉ chủ tài khoản mới được nhập dữ liệu tài chính.");
 }
 
 export async function previewImport(

@@ -9,6 +9,7 @@ import { fmtMoney, fmtDate, fmtPct } from "@/lib/format";
 import { exportCommissionsExcel } from "@/lib/actions/payroll";
 import type { PayrollLayout } from "@/lib/payroll";
 import { toast } from "sonner";
+import { cauLoi } from "@/lib/actions/ket-qua";
 
 type Employee = { name: string; position: string; layout: PayrollLayout };
 
@@ -72,7 +73,7 @@ export default function PayrollCommissionsClient({ employees }: { employees: Emp
         setPreviewRows(rows);
         if (rows.length === 0) toast.info("Không có dòng đối chiếu trong kỳ này");
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : String(e));
+        toast.error(cauLoi(e));
       }
     });
   };
@@ -105,7 +106,7 @@ export default function PayrollCommissionsClient({ employees }: { employees: Emp
         URL.revokeObjectURL(url);
         toast.success(`Đã xuất ${filename}`);
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : String(e));
+        toast.error(cauLoi(e));
       }
     });
   };

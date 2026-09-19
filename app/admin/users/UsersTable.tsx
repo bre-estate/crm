@@ -5,6 +5,7 @@ import { createUser, updateUser, toggleActive, deleteUser } from "./actions";
 import { RESOURCE_GROUPS, resolvePermissions, actionsFor, type Action, type Role } from "@/lib/permissions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { baoLoi } from "@/lib/bao-loi";
 import {
   Dialog,
   DialogContent,
@@ -106,7 +107,7 @@ export default function UsersTable({ users, resources, roleLabels }: Props) {
                     onClick={() => {
                       if (!confirm(`${u.active ? "Tắt" : "Bật"} user ${u.email}?`)) return;
                       startTransition(async () => {
-                        await toggleActive(u.email);
+                        if (baoLoi(await toggleActive(u.email))) return;
                       });
                     }}
                     className="text-slate-600 hover:underline text-xs disabled:opacity-50"
@@ -120,7 +121,7 @@ export default function UsersTable({ users, resources, roleLabels }: Props) {
                       onClick={() => {
                         if (!confirm(`XÓA user ${u.email}? Hành động không hoàn tác.`)) return;
                         startTransition(async () => {
-                          await deleteUser(u.email);
+                          if (baoLoi(await deleteUser(u.email))) return;
                         });
                       }}
                       className="text-red-600 hover:underline text-xs disabled:opacity-50"
@@ -186,9 +187,9 @@ function UserFormModal({
     fd.set("role", role);
     startTransition(async () => {
       if (isNew) {
-        await createUser(fd);
+        if (baoLoi(await createUser(fd))) return;
       } else if (user) {
-        await updateUser(user.email, fd);
+        if (baoLoi(await updateUser(user.email, fd))) return;
       }
       onClose();
     });

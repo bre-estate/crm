@@ -12,6 +12,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { fmtMoney } from "@/lib/format";
 import { hasPermission } from "@/lib/auth";
+import FormLenh from "@/components/FormLenh";
 
 export const dynamic = "force-dynamic";
 
@@ -316,11 +317,12 @@ async function OrphanBanner({ invoiceId }: { invoiceId: number }) {
         không có phát sinh doanh thu thật.
       </div>
       {canDelete ? (
-        <form
-          action={async () => {
+        <FormLenh
+          xacNhan="Xóa hóa đơn mồ côi này?"
+          lenh={async () => {
             "use server";
             const { deleteOrphanInvoice } = await import("./actions");
-            await deleteOrphanInvoice(invoiceId);
+            return await deleteOrphanInvoice(invoiceId);
           }}
         >
           <button
@@ -329,7 +331,7 @@ async function OrphanBanner({ invoiceId }: { invoiceId: number }) {
           >
             🗑️ Xóa hóa đơn này
           </button>
-        </form>
+        </FormLenh>
       ) : (
         <div className="text-sm text-slate-600 bg-white rounded p-3 border border-slate-200">
           🔒 Bạn không có quyền xóa hóa đơn. Liên hệ Quản lý để xóa record này.

@@ -7,6 +7,7 @@ import { fmtMoney } from "@/lib/format";
 import SearchableSelect from "@/components/SearchableSelect";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { cauLoi } from "@/lib/actions/ket-qua";
 
 type ProjectOpt = {
   id: number;
@@ -293,7 +294,7 @@ export default function BulkForm({
           router.push(`/revenues${qs}`);
         }
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Lỗi");
+        toast.error(cauLoi(e));
       }
     });
   };

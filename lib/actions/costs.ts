@@ -10,7 +10,8 @@ import { redirect } from "next/navigation";
 import { logActivity } from "@/lib/audit";
 import { toNum, toStr, toStrOrNull, toPct } from "@/lib/parse";
 import { costTypeLabel } from "@/lib/format";
-import { kiemTraTranGiaVon, type KetQuaLuu } from "@/lib/actions/cap-guards";
+import { kiemTraTranGiaVon } from "@/lib/actions/cap-guards";
+import { chay, chayCoKetQua, type KetQuaLuu } from "@/lib/actions/ket-qua";
 
 const VALID_COST_TYPES = [
   "sale_commission",
@@ -182,7 +183,7 @@ export async function updateCost(id: number, fd: FormData, returnTo?: string | n
   redirect(buildReturnUrl(returnTo, "updated", id));
 }
 
-export async function deleteCost(id: number, returnTo?: string | null) {
+async function _deleteCost(id: number, returnTo?: string | null) {
   await requirePermission("costs", "delete");
   const [before] = await db
     .select()
@@ -238,11 +239,11 @@ export async function deleteCostBulk(ids: number[]) {
   return { ok: deletedIds.length, deletedIds, errors };
 }
 
-export async function addPaymentOut(costReconciliationId: number, fd: FormData) {
+async function _addPaymentOut(costReconciliationId: number, fd: FormData) {
   await requirePermission("costs", "edit");
   const paymentDate = toStrOrNull(fd.get("paymentDate"));
   const amount = toNum(fd.get("amount"));
-  if (!amount && !paymentDate) throw new Error("Nhập ngày hoặc số tiền");
+  if (!amount && !paymentDate) throw new Error("Nhập ngày chi hoặc số tiền, ít nhất một trong hai.");
   await db.insert(paymentsOut).values({
     costReconciliationId,
     paymentDate,
@@ -252,7 +253,7 @@ export async function addPaymentOut(costReconciliationId: number, fd: FormData) 
   revalidatePath("/costs");
 }
 
-export async function updatePaymentOut(id: number, fd: FormData) {
+async function _updatePaymentOut(id: number, fd: FormData) {
   await requirePermission("costs", "edit");
   await db
     .update(paymentsOut)
@@ -265,7 +266,7 @@ export async function updatePaymentOut(id: number, fd: FormData) {
   revalidatePath("/costs");
 }
 
-export async function deletePaymentOut(id: number) {
+async function _deletePaymentOut(id: number) {
   await requirePermission("costs", "delete");
   await db.delete(paymentsOut).where(eq(paymentsOut.id, id));
   revalidatePath("/costs");
@@ -289,11 +290,11 @@ export async function createCostBulk(rows: BulkCostRow[]) {
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
     try {
-      if (!r.productId) throw new Error("Thiếu căn");
+      if (!r.productId) throw new Error("Dòng này chưa chọn căn.");
       if (!VALID_COST_TYPES.includes(r.costType as CostType))
-        throw new Error(`Loại chi phí không hợp lệ: ${r.costType}`);
-      if (!r.employeeName) throw new Error("Thiếu tên NVKD/TPKD");
-      if (r.amountPayableThisTime <= 0) throw new Error("Số tiền phải > 0");
+        throw new Error(`Loại chi phí "${r.costType}" không có trong danh mục. Chọn lại từ danh sách.`);
+      if (!r.employeeName) throw new Error("Dòng này chưa điền tên người được đối chiếu.");
+      if (r.amountPayableThisTime <= 0) throw new Error("Số tiền phải lớn hơn 0.");
 
       if (r.costType === "kpi_admin") {
         const existing = await db
@@ -306,7 +307,7 @@ export async function createCostBulk(rows: BulkCostRow[]) {
             ),
           );
         if (existing.length > 0) {
-          throw new Error(`KPI Admin căn đã có (#${existing[0].id}), không cho ĐC 2 lần`);
+          throw new Error(`Căn này đã có đối chiếu KPI Admin (số ${existing[0].id}). Mỗi căn chỉ được 1 lần.`);
         }
       }
 
@@ -336,4 +337,21 @@ export async function createCostBulk(rows: BulkCostRow[]) {
   }
   revalidatePath("/costs");
   return { ok, errors };
+}
+
+// ── Vỏ bọc: đổi lỗi throw thành câu chữ trả về cho form ──
+export async function deleteCost(id: number, returnTo?: string | null): Promise<KetQuaLuu> {
+  return chay(() => _deleteCost(id, returnTo));
+}
+
+export async function addPaymentOut(costReconciliationId: number, fd: FormData): Promise<KetQuaLuu> {
+  return chay(() => _addPaymentOut(costReconciliationId, fd));
+}
+
+export async function updatePaymentOut(id: number, fd: FormData): Promise<KetQuaLuu> {
+  return chay(() => _updatePaymentOut(id, fd));
+}
+
+export async function deletePaymentOut(id: number): Promise<KetQuaLuu> {
+  return chay(() => _deletePaymentOut(id));
 }

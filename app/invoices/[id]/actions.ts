@@ -1,4 +1,6 @@
 "use server";
+
+import { chay, type KetQuaLuu } from "@/lib/actions/ket-qua";
 import { db } from "@/lib/db";
 import { invoices, revenueReconciliations } from "@/lib/schema";
 import { eq, sql } from "drizzle-orm";
@@ -6,7 +8,7 @@ import { requirePermission } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-export async function deleteOrphanInvoice(id: number) {
+async function _deleteOrphanInvoice(id: number) {
   await requirePermission("invoices", "delete");
   // Bảo vệ: chỉ được xóa nếu 0 recon (tránh mất data)
   const [check] = await db
@@ -19,4 +21,9 @@ export async function deleteOrphanInvoice(id: number) {
   await db.delete(invoices).where(eq(invoices.id, id));
   revalidatePath("/invoices");
   redirect("/invoices");
+}
+
+// ── Vỏ bọc: đổi lỗi throw thành câu chữ trả về cho form ──
+export async function deleteOrphanInvoice(id: number): Promise<KetQuaLuu> {
+  return chay(() => _deleteOrphanInvoice(id));
 }

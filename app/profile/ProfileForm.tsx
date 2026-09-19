@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { updateFullName, updatePassword } from "@/lib/actions/profile";
+import { baoLoi } from "@/lib/bao-loi";
+import { cauLoi } from "@/lib/actions/ket-qua";
 
 export default function ProfileForm({ defaultFullName }: { defaultFullName: string }) {
   const router = useRouter();
@@ -20,11 +22,11 @@ export default function ProfileForm({ defaultFullName }: { defaultFullName: stri
     }
     start(async () => {
       try {
-        await updateFullName(fullName);
+        if (baoLoi(await updateFullName(fullName))) return;
         toast.success("Đã cập nhật họ tên");
         router.refresh();
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Lỗi lưu");
+        toast.error(cauLoi(e));
       }
     });
   };
@@ -40,12 +42,12 @@ export default function ProfileForm({ defaultFullName }: { defaultFullName: stri
     }
     start(async () => {
       try {
-        await updatePassword(newPw);
+        if (baoLoi(await updatePassword(newPw))) return;
         toast.success("Đã đổi mật khẩu");
         setNewPw("");
         setConfirmPw("");
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Lỗi đổi mật khẩu");
+        toast.error(cauLoi(e));
       }
     });
   };

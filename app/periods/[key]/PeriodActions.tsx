@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { createRetroRecons, exportPeriodHhSale, exportPeriodKpiTpkd } from "@/lib/actions/periods";
+import { cauLoi } from "@/lib/actions/ket-qua";
 
 function download(filename: string, base64: string) {
   const bin = atob(base64);
@@ -37,7 +38,7 @@ export function PeriodToolbar({
       try {
         await fn();
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Lỗi");
+        toast.error(cauLoi(e));
       }
     });
 
@@ -117,7 +118,7 @@ export function RetroRowButton({
             else toast.info("Đối chiếu này đã có hồi tố");
             router.refresh();
           } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Lỗi");
+            toast.error(cauLoi(e));
           }
         })
       }

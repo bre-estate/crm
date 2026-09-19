@@ -199,7 +199,7 @@ export default async function EditCostPage({
         }}
         onDelete={async () => {
           "use server";
-          await deleteCost(id, returnTo);
+          return await deleteCost(id, returnTo);
         }}
       />
 
@@ -213,15 +213,15 @@ export default async function EditCostPage({
         payableAmount={Number(recon.amountPayableThisTime ?? 0)}
         onUpdate={async (paymentId, fd) => {
           "use server";
-          await updatePaymentOut(paymentId, fd);
+          return await updatePaymentOut(paymentId, fd);
         }}
         onDelete={async (paymentId) => {
           "use server";
-          await deletePaymentOut(paymentId);
+          return await deletePaymentOut(paymentId);
         }}
         onAdd={async (fd) => {
           "use server";
-          await addPaymentOut(id, fd);
+          return await addPaymentOut(id, fd);
         }}
       />
     </div>

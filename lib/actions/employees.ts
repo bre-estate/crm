@@ -1,5 +1,7 @@
 "use server";
 
+import { chay, type KetQuaLuu } from "@/lib/actions/ket-qua";
+
 import { requirePermission } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { employees } from "@/lib/schema";
@@ -31,7 +33,7 @@ function formToObject(fd: FormData): Record<string, unknown> {
   return obj;
 }
 
-export async function createEmployeeNoRedirect(fd: FormData) {
+async function _createEmployeeNoRedirect(fd: FormData) {
   await requirePermission("employees", "edit");
   const raw = formToObject(fd);
   const data = EmployeeSchema.parse(raw);
@@ -46,7 +48,7 @@ export async function createEmployeeNoRedirect(fd: FormData) {
   revalidatePath("/employees");
 }
 
-export async function updateEmployeeNoRedirect(id: number, fd: FormData) {
+async function _updateEmployeeNoRedirect(id: number, fd: FormData) {
   await requirePermission("employees", "edit");
   const raw = formToObject(fd);
   const data = EmployeeSchema.parse(raw);
@@ -65,11 +67,11 @@ export async function updateEmployeeNoRedirect(id: number, fd: FormData) {
   revalidatePath("/employees");
 }
 
-export async function deleteEmployeeNoRedirect(id: number) {
+async function _deleteEmployeeNoRedirect(id: number) {
   await requirePermission("employees", "delete");
   // Guard: có product/cost recon nào đang tham chiếu text name không?
   const [emp] = await db.select().from(employees).where(eq(employees.id, id));
-  if (!emp) throw new Error("Không tìm thấy nhân viên");
+  if (!emp) throw new Error("Không tìm thấy nhân viên này, có thể vừa bị xoá.");
 
   const used = await db.execute(sql`
     SELECT
@@ -89,3 +91,15 @@ export async function deleteEmployeeNoRedirect(id: number) {
   revalidatePath("/employees");
 }
 
+// ── Vỏ bọc: đổi lỗi throw thành câu chữ trả về cho form ──
+export async function createEmployeeNoRedirect(fd: FormData): Promise<KetQuaLuu> {
+  return chay(() => _createEmployeeNoRedirect(fd));
+}
+
+export async function updateEmployeeNoRedirect(id: number, fd: FormData): Promise<KetQuaLuu> {
+  return chay(() => _updateEmployeeNoRedirect(id, fd));
+}
+
+export async function deleteEmployeeNoRedirect(id: number): Promise<KetQuaLuu> {
+  return chay(() => _deleteEmployeeNoRedirect(id));
+}

@@ -8,7 +8,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { logActivity } from "@/lib/audit";
 import { toNum, toStr, toStrOrNull, toPct } from "@/lib/parse";
-import { kiemTraTranDoanhThu, type KetQuaLuu } from "@/lib/actions/cap-guards";
+import { kiemTraTranDoanhThu } from "@/lib/actions/cap-guards";
+import { chay, type KetQuaLuu } from "@/lib/actions/ket-qua";
 
 // Suy partner_id từ product → project → partner_id.
 // Mỗi CĐT có sổ HĐ riêng, số HĐ có thể trùng giữa các CĐT → partner_id
@@ -354,7 +355,7 @@ export async function updateRevenue(id: number, fd: FormData): Promise<KetQuaLuu
   redirect(returnTo ?? "/revenues");
 }
 
-export async function deleteRevenue(id: number) {
+async function _deleteRevenue(id: number) {
   await requirePermission("revenues", "delete");
   const [before] = await db
     .select()
@@ -416,11 +417,11 @@ export async function deleteRevenueBulk(ids: number[]) {
   return { ok: deletedIds.length, deletedIds, errors };
 }
 
-export async function addPaymentIn(reconciliationId: number, fd: FormData) {
+async function _addPaymentIn(reconciliationId: number, fd: FormData) {
   await requirePermission("revenues", "edit");
   const paymentDate = toStrOrNull(fd.get("paymentDate"));
   const amount = toNum(fd.get("amount"));
-  if (!amount && !paymentDate) throw new Error("Nhập ngày hoặc số tiền");
+  if (!amount && !paymentDate) throw new Error("Nhập ngày nhận tiền hoặc số tiền, ít nhất một trong hai.");
   await db.insert(paymentsIn).values({
     reconciliationId,
     paymentDate,
@@ -430,7 +431,7 @@ export async function addPaymentIn(reconciliationId: number, fd: FormData) {
   revalidatePath("/revenues");
 }
 
-export async function deletePaymentIn(id: number) {
+async function _deletePaymentIn(id: number) {
   await requirePermission("revenues", "delete");
   await db.delete(paymentsIn).where(eq(paymentsIn.id, id));
   revalidatePath("/revenues");
@@ -459,8 +460,8 @@ export async function createRevenueBulk(rows: BulkRevenueRow[]) {
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
     try {
-      if (!r.productId) throw new Error("Thiếu căn");
-      if (!r.reconType) throw new Error("Thiếu loại đợt");
+      if (!r.productId) throw new Error("Dòng này chưa chọn căn.");
+      if (!r.reconType) throw new Error("Dòng này chưa chọn loại đợt.");
       const isCommission = r.reconType === "commission";
       const revenueThisTime = isCommission ? r.amount : 0;
       const cdtBonusSale = r.reconType === "bonus_sale" ? r.amount : 0;
@@ -508,7 +509,7 @@ export async function createRevenueBulk(rows: BulkRevenueRow[]) {
   return { ok: createdIds.length, createdIds, errors };
 }
 
-export async function updatePaymentIn(id: number, fd: FormData) {
+async function _updatePaymentIn(id: number, fd: FormData) {
   await requirePermission("revenues", "edit");
   await db
     .update(paymentsIn)
@@ -519,4 +520,21 @@ export async function updatePaymentIn(id: number, fd: FormData) {
     })
     .where(eq(paymentsIn.id, id));
   revalidatePath("/revenues");
+}
+
+// ── Vỏ bọc: đổi lỗi throw thành câu chữ trả về cho form ──
+export async function deleteRevenue(id: number): Promise<KetQuaLuu> {
+  return chay(() => _deleteRevenue(id));
+}
+
+export async function addPaymentIn(reconciliationId: number, fd: FormData): Promise<KetQuaLuu> {
+  return chay(() => _addPaymentIn(reconciliationId, fd));
+}
+
+export async function updatePaymentIn(id: number, fd: FormData): Promise<KetQuaLuu> {
+  return chay(() => _updatePaymentIn(id, fd));
+}
+
+export async function deletePaymentIn(id: number): Promise<KetQuaLuu> {
+  return chay(() => _deletePaymentIn(id));
 }

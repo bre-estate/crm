@@ -8,6 +8,7 @@ import { costTypeLabel, fmtMoney, fmtPctTight } from "@/lib/format";
 import { computeLuyKe, computeTargetFull, type ProductConfig, type CostType } from "@/lib/costCalc";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { cauLoi } from "@/lib/actions/ket-qua";
 
 type ProductOpt = {
   id: number;
@@ -184,7 +185,7 @@ export default function BulkCostForm({
           router.push("/costs");
         }
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Lỗi");
+        toast.error(cauLoi(e));
       }
     });
   };

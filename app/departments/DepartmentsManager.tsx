@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import SearchableSelect from "@/components/SearchableSelect";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { baoLoi } from "@/lib/bao-loi";
+import { cauLoi } from "@/lib/actions/ket-qua";
 import {
   Dialog,
   DialogContent,
@@ -28,9 +30,9 @@ type TpkdCandidate = { id: number; name: string; position: string };
 type Props = {
   departments: Department[];
   tpkdCandidates: TpkdCandidate[];
-  onCreate: (fd: FormData) => Promise<void>;
-  onUpdate: (id: number, fd: FormData) => Promise<void>;
-  onDelete: (id: number) => Promise<void>;
+  onCreate: (fd: FormData) => Promise<{ error: string } | void>;
+  onUpdate: (id: number, fd: FormData) => Promise<{ error: string } | void>;
+  onDelete: (id: number) => Promise<{ error: string } | void>;
 };
 
 export default function DepartmentsManager({
@@ -54,13 +56,13 @@ export default function DepartmentsManager({
   const submit = (fd: FormData) => {
     start(async () => {
       try {
-        if (editing) await onUpdate(editing.id, fd);
-        else await onCreate(fd);
+        if (editing) { if (baoLoi(await onUpdate(editing.id, fd))) return; }
+        else if (baoLoi(await onCreate(fd))) return;
         close();
         router.refresh();
         toast.success(editing ? "Đã cập nhật" : "Đã thêm phòng KD");
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Lỗi lưu");
+        toast.error(cauLoi(e));
       }
     });
   };
@@ -69,11 +71,11 @@ export default function DepartmentsManager({
     if (!confirm(`Xóa phòng "${d.name}"? Hành động không hoàn tác được.`)) return;
     start(async () => {
       try {
-        await onDelete(d.id);
+        if (baoLoi(await onDelete(d.id))) return;
         router.refresh();
         toast.success("Đã xoá");
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Lỗi xoá");
+        toast.error(cauLoi(err));
       }
     });
   };

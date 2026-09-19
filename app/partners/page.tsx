@@ -18,15 +18,15 @@ export default async function PartnersPage() {
       partners={rows}
       onCreate={async (fd) => {
         "use server";
-        await createPartnerNoRedirect(fd);
+        return await createPartnerNoRedirect(fd);
       }}
       onUpdate={async (id, fd) => {
         "use server";
-        await updatePartnerNoRedirect(id, fd);
+        return await updatePartnerNoRedirect(id, fd);
       }}
       onDelete={async (id) => {
         "use server";
-        await deletePartnerNoRedirect(id);
+        return await deletePartnerNoRedirect(id);
       }}
     />
   );

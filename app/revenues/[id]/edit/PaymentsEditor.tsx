@@ -5,6 +5,8 @@ import MoneyInput from "@/components/MoneyInput";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { baoLoi } from "@/lib/bao-loi";
+import { cauLoi } from "@/lib/actions/ket-qua";
 
 type Payment = {
   id: number;
@@ -15,9 +17,9 @@ type Payment = {
 
 type Props = {
   payments: Payment[];
-  onUpdate: (id: number, fd: FormData) => Promise<void>;
-  onDelete: (id: number) => Promise<void>;
-  onAdd: (fd: FormData) => Promise<void>;
+  onUpdate: (id: number, fd: FormData) => Promise<{ error: string } | void>;
+  onDelete: (id: number) => Promise<{ error: string } | void>;
+  onAdd: (fd: FormData) => Promise<{ error: string } | void>;
 };
 
 const isRedirect = (e: unknown): boolean =>
@@ -30,13 +32,13 @@ export default function PaymentsEditor({ payments, onUpdate, onDelete, onAdd }: 
   const [pending, start] = useTransition();
   const [showAdd, setShowAdd] = useState(false);
 
-  const safeRun = (fn: () => Promise<void>) =>
+  const safeRun = (fn: () => Promise<{ error: string } | void>) =>
     start(async () => {
       try {
-        await fn();
+        baoLoi(await fn());
       } catch (e) {
         if (isRedirect(e)) throw e;
-        toast.error(e instanceof Error ? e.message : "Lỗi");
+        toast.error(cauLoi(e));
       }
     });
 
@@ -124,7 +126,7 @@ export default function PaymentsEditor({ payments, onUpdate, onDelete, onAdd }: 
         <form
           action={(fd) =>
             safeRun(async () => {
-              await onAdd(fd);
+              baoLoi(await onAdd(fd));
               setShowAdd(false);
             })
           }

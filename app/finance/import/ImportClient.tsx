@@ -10,6 +10,7 @@ import {
   type ImportPreview,
 } from "@/lib/actions/finance-import";
 import { Button } from "@/components/ui/button";
+import { cauLoi } from "@/lib/actions/ket-qua";
 
 type SourceType = "thanh-toan" | "merged" | "tam-ung";
 
@@ -59,7 +60,7 @@ export default function ImportClient() {
         setPreview(p);
         toast.success(`Đọc ${p.total} rows, ${p.dupCount} trùng (sẽ skip)`);
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Lỗi preview");
+        toast.error(cauLoi(e));
       }
     });
   };
@@ -81,7 +82,7 @@ export default function ImportClient() {
         setPreview(null);
         router.refresh();
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Lỗi nạp");
+        toast.error(cauLoi(e));
       }
     });
   };
@@ -99,7 +100,7 @@ export default function ImportClient() {
         toast.success(`Đã xóa ${r.deleted} dòng`);
         router.refresh();
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Lỗi xóa");
+        toast.error(cauLoi(e));
       }
     });
   };

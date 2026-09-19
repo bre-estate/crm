@@ -49,15 +49,15 @@ export default async function DepartmentsPage() {
       tpkdCandidates={tpkds}
       onCreate={async (fd) => {
         "use server";
-        await createDepartmentNoRedirect(fd);
+        return await createDepartmentNoRedirect(fd);
       }}
       onUpdate={async (id, fd) => {
         "use server";
-        await updateDepartmentNoRedirect(id, fd);
+        return await updateDepartmentNoRedirect(id, fd);
       }}
       onDelete={async (id) => {
         "use server";
-        await deleteDepartmentNoRedirect(id);
+        return await deleteDepartmentNoRedirect(id);
       }}
     />
   );

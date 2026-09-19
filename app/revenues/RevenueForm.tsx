@@ -10,6 +10,8 @@ import SearchableSelect from "@/components/SearchableSelect";
 import { fmtMoney, fmtPctTight } from "@/lib/format";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { baoLoi } from "@/lib/bao-loi";
+import { cauLoi } from "@/lib/actions/ket-qua";
 
 type InvoiceReconRef = {
   id: number;
@@ -63,7 +65,7 @@ type Props = {
   prevRecons?: PrevRecon[];
   invoiceRecons?: InvoiceReconRef[];
   onSave: (fd: FormData) => Promise<{ error: string } | void>;
-  onDelete?: () => Promise<void>;
+  onDelete?: () => Promise<{ error: string } | void>;
   returnTo?: string | null;
 };
 
@@ -309,11 +311,10 @@ export default function RevenueForm({
           try {
             // Lỗi kiểm tra được trả về chứ không throw: bản production của Next.js
             // che mọi lỗi throw từ server action thành một câu chung chung.
-            const kq = await onSave(fd);
-            if (kq?.error) toast.error(kq.error, { duration: 10000 });
+            baoLoi(await onSave(fd));
           } catch (e) {
             if (isRedirect(e)) throw e;
-            toast.error(e instanceof Error ? e.message : "Lỗi khi lưu");
+            toast.error(cauLoi(e));
           }
         })
       }
@@ -757,7 +758,7 @@ export default function RevenueForm({
                     await onDelete();
                   } catch (e) {
                     if (isRedirect(e)) throw e;
-                    toast.error(e instanceof Error ? e.message : "Không xóa được");
+                    toast.error(cauLoi(e));
                   }
                 });
               }

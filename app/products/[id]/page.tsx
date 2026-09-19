@@ -393,7 +393,7 @@ export default async function ProductDetailPage({
               unitCode={p.unitCode}
               onDelete={async () => {
                 "use server";
-                await deleteProduct(id);
+                return await deleteProduct(id);
               }}
             />
           )}

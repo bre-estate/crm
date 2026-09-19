@@ -21,6 +21,8 @@ import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { baoLoi } from "@/lib/bao-loi";
+import { cauLoi } from "@/lib/actions/ket-qua";
 
 type ProductOption = {
   id: number;
@@ -101,7 +103,7 @@ type Props = {
    *  compute doanh số cá nhân/phòng trong kỳ để suggest tier rate */
   productsMinimal?: ProductMinimal[];
   onSave: (fd: FormData) => Promise<{ error: string } | void>;
-  onDelete?: () => Promise<void>;
+  onDelete?: () => Promise<{ error: string } | void>;
 };
 
 const COST_TYPES = [
@@ -635,8 +637,7 @@ export default function CostForm({
           try {
             // Lỗi kiểm tra được trả về chứ không throw: bản production của Next.js
             // che mọi lỗi throw từ server action thành một câu chung chung.
-            const kq = await onSave(fd);
-            if (kq?.error) toast.error(kq.error, { duration: 10000 });
+            baoLoi(await onSave(fd));
           } catch (e) {
             if (
               e &&
@@ -645,7 +646,7 @@ export default function CostForm({
               String((e as { digest?: unknown }).digest ?? "").startsWith("NEXT_REDIRECT")
             )
               throw e;
-            toast.error(e instanceof Error ? e.message : "Lỗi khi lưu");
+            toast.error(cauLoi(e));
           }
         })
       }
@@ -1436,7 +1437,7 @@ export default function CostForm({
               if (confirm("Xóa dòng đối chiếu giá vốn này? (Các thanh toán cũng sẽ bị xóa)")) {
                 start(async () => {
                   try {
-                    await onDelete();
+                    baoLoi(await onDelete());
                   } catch (e) {
                     if (
                       e &&
@@ -1445,7 +1446,7 @@ export default function CostForm({
                       String((e as { digest?: unknown }).digest ?? "").startsWith("NEXT_REDIRECT")
                     )
                       throw e;
-                    toast.error(e instanceof Error ? e.message : "Không xóa được");
+                    toast.error(cauLoi(e));
                   }
                 });
               }

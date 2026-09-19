@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { cauLoi } from "@/lib/actions/ket-qua";
 
 /**
  * Bulk delete bar cho các list page (revenues, costs).
@@ -91,7 +92,7 @@ export default function BulkDeleteBar({
         clearSelection();
         router.refresh();
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Lỗi");
+        toast.error(cauLoi(e));
       }
     });
   };

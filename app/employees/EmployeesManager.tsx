@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import SearchableSelect from "@/components/SearchableSelect";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { baoLoi } from "@/lib/bao-loi";
+import { cauLoi } from "@/lib/actions/ket-qua";
 import {
   Dialog,
   DialogContent,
@@ -31,9 +33,9 @@ type Department = { id: number; name: string; code: string };
 type Props = {
   employees: Employee[];
   departments: Department[];
-  onCreate: (fd: FormData) => Promise<void>;
-  onUpdate: (id: number, fd: FormData) => Promise<void>;
-  onDelete: (id: number) => Promise<void>;
+  onCreate: (fd: FormData) => Promise<{ error: string } | void>;
+  onUpdate: (id: number, fd: FormData) => Promise<{ error: string } | void>;
+  onDelete: (id: number) => Promise<{ error: string } | void>;
 };
 
 // Preset cứng — thêm mới thì sửa 3 chỗ (schema enum + zod enum + đây).
@@ -117,13 +119,13 @@ export default function EmployeesManager({
   const submit = (fd: FormData) => {
     start(async () => {
       try {
-        if (editing) await onUpdate(editing.id, fd);
-        else await onCreate(fd);
+        if (editing) { if (baoLoi(await onUpdate(editing.id, fd))) return; }
+        else if (baoLoi(await onCreate(fd))) return;
         close();
         router.refresh();
         toast.success(editing ? "Đã cập nhật" : "Đã thêm nhân viên");
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Lỗi lưu");
+        toast.error(cauLoi(e));
       }
     });
   };
@@ -133,11 +135,11 @@ export default function EmployeesManager({
       return;
     start(async () => {
       try {
-        await onDelete(e.id);
+        if (baoLoi(await onDelete(e.id))) return;
         router.refresh();
         toast.success("Đã xóa");
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Lỗi xóa");
+        toast.error(cauLoi(err));
       }
     });
   };

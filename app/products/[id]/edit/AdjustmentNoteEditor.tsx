@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { cauLoi } from "@/lib/actions/ket-qua";
 
 type Props = {
   adjId: number;
@@ -60,7 +61,7 @@ export default function AdjustmentNoteEditor({ adjId: _adjId, initialNote, onSav
               setEditing(false);
               router.refresh();
             } catch (e) {
-              toast.error(e instanceof Error ? e.message : "Lỗi lưu");
+              toast.error(cauLoi(e));
             }
           });
         }}

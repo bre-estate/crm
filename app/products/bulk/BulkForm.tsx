@@ -6,6 +6,7 @@ import type { BulkProductRow } from "@/lib/actions/products";
 import SearchableSelect from "@/components/SearchableSelect";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { cauLoi } from "@/lib/actions/ket-qua";
 
 type ProjectOpt = {
   id: number;
@@ -234,7 +235,7 @@ export default function BulkProductForm({
           router.push(`/products${qs}`);
         }
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Lỗi");
+        toast.error(cauLoi(e));
       }
     });
   };

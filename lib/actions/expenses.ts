@@ -1,5 +1,7 @@
 "use server";
 
+import { chay, type KetQuaLuu } from "@/lib/actions/ket-qua";
+
 import { db } from "@/lib/db";
 import { expenseRequests } from "@/lib/schema";
 import { and, desc, eq, sql } from "drizzle-orm";
@@ -66,11 +68,11 @@ function buildBaseData(fd: FormData) {
   };
 }
 
-export async function createExpense(fd: FormData) {
+async function _createExpense(fd: FormData) {
   const user = await requirePermission("expenses", "edit");
   const data = buildBaseData(fd);
   if (!Number.isFinite(data.amount) || data.amount <= 0) {
-    throw new Error("Số tiền phải > 0");
+    throw new Error("Số tiền phải lớn hơn 0.");
   }
 
   const expenseCode = await nextExpenseCode();
@@ -103,10 +105,10 @@ export async function createExpense(fd: FormData) {
   redirect(`/expenses/${rec.id}?created=1`);
 }
 
-export async function updateExpense(id: number, fd: FormData) {
+async function _updateExpense(id: number, fd: FormData) {
   const user = await requirePermission("expenses", "edit");
   const [before] = await db.select().from(expenseRequests).where(eq(expenseRequests.id, id));
-  if (!before) throw new Error("Không tìm thấy yêu cầu");
+  if (!before) throw new Error("Không tìm thấy yêu cầu chi này, có thể vừa bị xoá.");
   if (before.status !== "draft") {
     throw new Error("Chỉ sửa được yêu cầu ở trạng thái Nháp (draft)");
   }
@@ -136,10 +138,10 @@ export async function updateExpense(id: number, fd: FormData) {
 }
 
 /** draft → pending — người tạo submit lên approver. */
-export async function submitExpense(id: number) {
+async function _submitExpense(id: number) {
   const user = await requirePermission("expenses", "edit");
   const [before] = await db.select().from(expenseRequests).where(eq(expenseRequests.id, id));
-  if (!before) throw new Error("Không tìm thấy yêu cầu");
+  if (!before) throw new Error("Không tìm thấy yêu cầu chi này, có thể vừa bị xoá.");
   if (before.status !== "draft") throw new Error("Chỉ submit được yêu cầu ở trạng thái Nháp");
   if (before.requesterEmail !== user.email && user.role !== "owner") {
     throw new Error("Chỉ người tạo mới submit được");
@@ -162,10 +164,10 @@ export async function submitExpense(id: number) {
 }
 
 /** pending → approved */
-export async function approveExpense(id: number) {
+async function _approveExpense(id: number) {
   const user = await requirePermission("expenses.approve", "edit");
   const [before] = await db.select().from(expenseRequests).where(eq(expenseRequests.id, id));
-  if (!before) throw new Error("Không tìm thấy yêu cầu");
+  if (!before) throw new Error("Không tìm thấy yêu cầu chi này, có thể vừa bị xoá.");
   if (before.status !== "pending") throw new Error("Chỉ duyệt được yêu cầu ở trạng thái Chờ duyệt");
 
   await db
@@ -190,10 +192,10 @@ export async function approveExpense(id: number) {
 }
 
 /** pending → rejected */
-export async function rejectExpense(id: number, fd: FormData) {
+async function _rejectExpense(id: number, fd: FormData) {
   const user = await requirePermission("expenses.approve", "edit");
   const [before] = await db.select().from(expenseRequests).where(eq(expenseRequests.id, id));
-  if (!before) throw new Error("Không tìm thấy yêu cầu");
+  if (!before) throw new Error("Không tìm thấy yêu cầu chi này, có thể vừa bị xoá.");
   if (before.status !== "pending") throw new Error("Chỉ từ chối được yêu cầu ở trạng thái Chờ duyệt");
 
   const reason = toStr(fd.get("rejectionReason")).trim();
@@ -221,10 +223,10 @@ export async function rejectExpense(id: number, fd: FormData) {
 }
 
 /** approved → paid — người chi tiền đánh dấu đã chi. */
-export async function markPaid(id: number, fd: FormData) {
+async function _markPaid(id: number, fd: FormData) {
   const user = await requirePermission("expenses", "edit");
   const [before] = await db.select().from(expenseRequests).where(eq(expenseRequests.id, id));
-  if (!before) throw new Error("Không tìm thấy yêu cầu");
+  if (!before) throw new Error("Không tìm thấy yêu cầu chi này, có thể vừa bị xoá.");
   if (before.status !== "approved") throw new Error("Chỉ đánh dấu đã chi cho yêu cầu đã duyệt");
 
   const accountCode = toStrOrNull(fd.get("accountCode"));
@@ -251,10 +253,10 @@ export async function markPaid(id: number, fd: FormData) {
 }
 
 /** Draft only — người tạo xoá yêu cầu chưa gửi. */
-export async function deleteExpense(id: number) {
+async function _deleteExpense(id: number) {
   const user = await requirePermission("expenses", "delete");
   const [before] = await db.select().from(expenseRequests).where(eq(expenseRequests.id, id));
-  if (!before) throw new Error("Không tìm thấy yêu cầu");
+  if (!before) throw new Error("Không tìm thấy yêu cầu chi này, có thể vừa bị xoá.");
   if (before.status !== "draft" && user.role !== "owner") {
     throw new Error("Chỉ xoá được yêu cầu ở trạng thái Nháp (owner có thể xoá bất kỳ)");
   }
@@ -283,4 +285,33 @@ export async function countPendingApprovals(): Promise<number> {
     .from(expenseRequests)
     .where(eq(expenseRequests.status, "pending"));
   return Number(row?.c ?? 0);
+}
+
+// ── Vỏ bọc: đổi lỗi throw thành câu chữ trả về cho form ──
+export async function createExpense(fd: FormData): Promise<KetQuaLuu> {
+  return chay(() => _createExpense(fd));
+}
+
+export async function updateExpense(id: number, fd: FormData): Promise<KetQuaLuu> {
+  return chay(() => _updateExpense(id, fd));
+}
+
+export async function submitExpense(id: number): Promise<KetQuaLuu> {
+  return chay(() => _submitExpense(id));
+}
+
+export async function approveExpense(id: number): Promise<KetQuaLuu> {
+  return chay(() => _approveExpense(id));
+}
+
+export async function rejectExpense(id: number, fd: FormData): Promise<KetQuaLuu> {
+  return chay(() => _rejectExpense(id, fd));
+}
+
+export async function markPaid(id: number, fd: FormData): Promise<KetQuaLuu> {
+  return chay(() => _markPaid(id, fd));
+}
+
+export async function deleteExpense(id: number): Promise<KetQuaLuu> {
+  return chay(() => _deleteExpense(id));
 }

@@ -161,7 +161,7 @@ export default async function EditRevenuePage({
         }}
         onDelete={async () => {
           "use server";
-          await deleteRevenue(id);
+          return await deleteRevenue(id);
         }}
       />
 
@@ -169,15 +169,15 @@ export default async function EditRevenuePage({
         payments={payments}
         onUpdate={async (paymentId, fd) => {
           "use server";
-          await updatePaymentIn(paymentId, fd);
+          return await updatePaymentIn(paymentId, fd);
         }}
         onDelete={async (paymentId) => {
           "use server";
-          await deletePaymentIn(paymentId);
+          return await deletePaymentIn(paymentId);
         }}
         onAdd={async (fd) => {
           "use server";
-          await addPaymentIn(id, fd);
+          return await addPaymentIn(id, fd);
         }}
       />
     </div>

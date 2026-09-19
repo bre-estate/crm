@@ -182,11 +182,11 @@ export default async function EditProductPage({
         existingAdjustments={adjustments}
         onSave={async (fd) => {
           "use server";
-          await updateProduct(id, fd);
+          return await updateProduct(id, fd);
         }}
         onDelete={async () => {
           "use server";
-          await deleteProduct(id);
+          return await deleteProduct(id);
         }}
       />
     </div>

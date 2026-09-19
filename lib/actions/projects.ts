@@ -1,5 +1,7 @@
 "use server";
 
+import { chay, type KetQuaLuu } from "@/lib/actions/ket-qua";
+
 import { requirePermission } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { projects, products } from "@/lib/schema";
@@ -73,14 +75,17 @@ async function uniqueFullCode(base: string, excludeId?: number): Promise<string>
     }
     candidate = `${base}${n}`;
     n++;
-    if (n > 20) throw new Error("Quá nhiều dự án cùng mã, không sinh được full_code duy nhất");
+    if (n > 20)
+      throw new Error(
+        `Đã có hơn 20 dự án trùng mã "${base}". Đổi mã dự án cho khác đi rồi lưu lại.`,
+      );
   }
 }
 
-export async function createProject(fd: FormData) {
+async function _createProject(fd: FormData) {
   await requirePermission("products", "edit");
   const data = buildProjectData(fd);
-  if (!data.code || !data.name) throw new Error("Thiếu mã hoặc tên dự án");
+  if (!data.code || !data.name) throw new Error("Nhập đủ mã và tên dự án.");
   if (data.defaultSaleType === "primary" && !data.partnerId) {
     throw new Error("Dự án sơ cấp cần chọn đối tác (CĐT/F1)");
   }
@@ -90,10 +95,10 @@ export async function createProject(fd: FormData) {
   redirect("/projects");
 }
 
-export async function updateProject(id: number, fd: FormData) {
+async function _updateProject(id: number, fd: FormData) {
   await requirePermission("products", "edit");
   const data = buildProjectData(fd);
-  if (!data.code || !data.name) throw new Error("Thiếu mã hoặc tên dự án");
+  if (!data.code || !data.name) throw new Error("Nhập đủ mã và tên dự án.");
   if (data.defaultSaleType === "primary" && !data.partnerId) {
     throw new Error("Dự án sơ cấp cần chọn đối tác (CĐT/F1)");
   }
@@ -104,7 +109,7 @@ export async function updateProject(id: number, fd: FormData) {
   redirect("/projects");
 }
 
-export async function deleteProject(id: number) {
+async function _deleteProject(id: number) {
   await requirePermission("products", "delete");
   const used = await db.select({ id: products.id }).from(products).where(eq(products.projectId, id));
   if (used.length > 0) {
@@ -157,4 +162,17 @@ export async function refreshProjectFromBatdongsan(id: number): Promise<{
     updated,
     message: `Đã cập nhật ${Object.keys(updated).length - 2} field từ Batdongsan.`,
   };
+}
+
+// ── Vỏ bọc: đổi lỗi throw thành câu chữ trả về cho form ──
+export async function createProject(fd: FormData): Promise<KetQuaLuu> {
+  return chay(() => _createProject(fd));
+}
+
+export async function updateProject(id: number, fd: FormData): Promise<KetQuaLuu> {
+  return chay(() => _updateProject(id, fd));
+}
+
+export async function deleteProject(id: number): Promise<KetQuaLuu> {
+  return chay(() => _deleteProject(id));
 }

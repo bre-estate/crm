@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import PercentInput from "@/components/PercentInput";
+import { cauLoi } from "@/lib/actions/ket-qua";
 
 type Settings = {
   taxRate: number;
@@ -30,7 +31,7 @@ export default function SettingsForm({ settings, onSave }: Props) {
             toast.success("Đã lưu cấu hình");
             router.refresh();
           } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Lỗi");
+            toast.error(cauLoi(e));
           }
         })
       }

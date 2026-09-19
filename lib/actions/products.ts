@@ -1,5 +1,7 @@
 "use server";
 
+import { chay, type KetQuaLuu } from "@/lib/actions/ket-qua";
+
 import { db } from "@/lib/db";
 import {
   products,
@@ -24,7 +26,7 @@ async function buildProductCode(projectId: number, unitCode: string): Promise<st
     .from(projects)
     .leftJoin(partners, eq(projects.partnerId, partners.id))
     .where(eq(projects.id, projectId));
-  if (!pj) throw new Error("Dự án không tồn tại");
+  if (!pj) throw new Error("Dự án đã chọn không còn tồn tại, chọn lại dự án khác.");
   return `${pj.projectCode}_${pj.partnerCode ?? "XXXX"}_${unitCode}`;
 }
 
@@ -113,10 +115,10 @@ function buildProductData(fd: FormData) {
   };
 }
 
-export async function createProduct(fd: FormData) {
+async function _createProduct(fd: FormData) {
   await requirePermission("products", "edit");
   const data = buildProductData(fd);
-  if (!data.projectId || !data.unitCode) throw new Error("Chọn dự án và nhập mã căn");
+  if (!data.projectId || !data.unitCode) throw new Error("Chọn dự án và nhập mã căn trước khi lưu.");
   const productCode = await buildProductCode(data.projectId, data.unitCode);
   const [rec] = await db
     .insert(products)
@@ -137,10 +139,10 @@ export async function createProduct(fd: FormData) {
   redirect("/products");
 }
 
-export async function updateProduct(id: number, fd: FormData) {
+async function _updateProduct(id: number, fd: FormData) {
   await requirePermission("products", "edit");
   const data = buildProductData(fd);
-  if (!data.projectId || !data.unitCode) throw new Error("Chọn dự án và nhập mã căn");
+  if (!data.projectId || !data.unitCode) throw new Error("Chọn dự án và nhập mã căn trước khi lưu.");
   const productCode = await buildProductCode(data.projectId, data.unitCode);
   const [before] = await db.select().from(products).where(eq(products.id, id));
 
@@ -248,8 +250,8 @@ export async function createProductBulk(rows: BulkProductRow[]) {
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
     try {
-      if (!r.projectId) throw new Error("Thiếu dự án");
-      if (!r.unitCode) throw new Error("Thiếu mã căn");
+      if (!r.projectId) throw new Error("Dòng này chưa chọn dự án.");
+      if (!r.unitCode) throw new Error("Dòng này chưa điền mã căn.");
       const productCode = await buildProductCode(r.projectId, r.unitCode);
       const [ins] = await db
         .insert(products)
@@ -303,7 +305,7 @@ export async function updateProductBulk(rows: BulkProductEditRow[]) {
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
     try {
-      if (!r.id) throw new Error("Thiếu id căn");
+      if (!r.id) throw new Error("Dòng này chưa xác định được căn nào, thiếu mã căn.");
       const patch: Record<string, unknown> = {};
       if (r.pmgRate !== undefined) patch.pmgRate = r.pmgRate;
       if (r.adminFee !== undefined) patch.adminFee = r.adminFee;
@@ -311,7 +313,7 @@ export async function updateProductBulk(rows: BulkProductEditRow[]) {
       if (r.cdtBonusManager !== undefined) patch.cdtBonusManager = r.cdtBonusManager;
       if (r.salesPerson !== undefined && r.salesPerson) patch.salesPerson = toTitleCase(r.salesPerson);
       if (r.customerName !== undefined && r.customerName) patch.customerName = toTitleCase(r.customerName);
-      if (Object.keys(patch).length === 0) throw new Error("Không có field nào để update");
+      if (Object.keys(patch).length === 0) throw new Error("Dòng này không có ô nào được sửa, bỏ qua hoặc điền thêm.");
       await db.update(products).set(patch).where(eq(products.id, r.id));
       ok++;
     } catch (e) {
@@ -322,7 +324,7 @@ export async function updateProductBulk(rows: BulkProductEditRow[]) {
   return { ok, errors };
 }
 
-export async function deleteProduct(id: number) {
+async function _deleteProduct(id: number) {
   await requirePermission("products", "delete");
   const usedRev = await db
     .select({ id: revenueReconciliations.id })
@@ -448,7 +450,7 @@ async function insertAdjustmentAndApply(
  * Tạo product adjustment: điều chỉnh 1 hoặc nhiều field trên product config.
  * Insert vào product_adjustments (giữ history) + update product với value mới.
  */
-export async function createProductAdjustment(productId: number, fd: FormData) {
+async function _createProductAdjustment(productId: number, fd: FormData) {
   await requirePermission("products", "edit");
   const effectiveDate = toStr(fd.get("effectiveDate"));
   if (!effectiveDate) throw new Error("Nhập ngày điều chỉnh");
@@ -563,7 +565,7 @@ export async function createProductAdjustment(productId: number, fd: FormData) {
  * Formula khớp Excel col P (revenue) + col R (cost) — dùng cho auto-sync
  * sau adjustment hoặc backfill batch.
  */
-export async function recomputeDerived(productId: number) {
+async function _recomputeDerived(productId: number) {
   const [p] = await db.select().from(products).where(eq(products.id, productId));
   if (!p || p.saleType === "secondary") return;
 
@@ -601,7 +603,7 @@ export async function recomputeDerived(productId: number) {
     .where(eq(products.id, productId));
 }
 
-export async function deleteProductAdjustment(productId: number, adjId: number) {
+async function _deleteProductAdjustment(productId: number, adjId: number) {
   await requirePermission("products", "delete");
   const [before] = await db
     .select()
@@ -623,7 +625,7 @@ export async function deleteProductAdjustment(productId: number, adjId: number) 
  * Cho phép sửa CHỈ ghi chú của 1 adjustment.
  * Các field data khác (%HH, phí admin...) không sửa được — nếu nhầm số, tạo adjustment mới đè.
  */
-export async function updateProductAdjustmentNote(
+async function _updateProductAdjustmentNote(
   productId: number,
   adjId: number,
   note: string,
@@ -635,4 +637,35 @@ export async function updateProductAdjustmentNote(
     .where(eq(productAdjustments.id, adjId));
   revalidatePath(`/products/${productId}/edit`);
   revalidatePath(`/products/${productId}`);
+}
+
+// ── Vỏ bọc: đổi lỗi throw thành câu chữ trả về cho form ──
+export async function createProduct(fd: FormData): Promise<KetQuaLuu> {
+  return chay(() => _createProduct(fd));
+}
+
+export async function updateProduct(id: number, fd: FormData): Promise<KetQuaLuu> {
+  return chay(() => _updateProduct(id, fd));
+}
+
+export async function deleteProduct(id: number): Promise<KetQuaLuu> {
+  return chay(() => _deleteProduct(id));
+}
+
+export async function createProductAdjustment(productId: number, fd: FormData): Promise<KetQuaLuu> {
+  return chay(() => _createProductAdjustment(productId, fd));
+}
+
+export async function deleteProductAdjustment(productId: number, adjId: number): Promise<KetQuaLuu> {
+  return chay(() => _deleteProductAdjustment(productId, adjId));
+}
+
+export async function updateProductAdjustmentNote(productId: number,
+  adjId: number,
+  note: string,): Promise<KetQuaLuu> {
+  return chay(() => _updateProductAdjustmentNote(productId, adjId, note));
+}
+
+export async function recomputeDerived(productId: number): Promise<KetQuaLuu> {
+  return chay(() => _recomputeDerived(productId));
 }

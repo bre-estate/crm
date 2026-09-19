@@ -50,11 +50,11 @@ export default async function EditProjectPage({
         partners={allPartners}
         onSave={async (fd) => {
           "use server";
-          await updateProject(id, fd);
+          return await updateProject(id, fd);
         }}
         onDelete={async () => {
           "use server";
-          await deleteProject(id);
+          return await deleteProject(id);
         }}
         onRefreshBatdongsan={async () => {
           "use server";

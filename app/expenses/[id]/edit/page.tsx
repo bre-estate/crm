@@ -87,7 +87,7 @@ export default async function EditExpensePage({
         approverOptions={approverOptions}
         onSave={async (fd) => {
           "use server";
-          await updateExpense(id, fd);
+          return await updateExpense(id, fd);
         }}
         cancelHref={`/expenses/${id}`}
       />
