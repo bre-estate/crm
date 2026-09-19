@@ -293,28 +293,29 @@ dbSuite("cap-guards DB-dependent (dùng seed data)", () => {
       await expect(assertPhasePctNotExceeded(productId, 0.5)).resolves.toBeUndefined();
     });
 
-    test("Đã có 60% + 30% = 90%, thêm 5% → tổng 95% → cho qua", async () => {
+    // Ô này là tiến độ LŨY KẾ tới đợt đang nhập, nên KHÔNG cộng dồn các đợt lại.
+    // Bug 19/09/2026: bản cũ cộng dồn, làm 60 trên 85 căn không thêm được đợt mới.
+    test("Đã có 2 đợt lũy kế 60% và 90%, thêm đợt 95% → cho qua vì không cộng dồn", async () => {
       const rec1 = await sql`
         INSERT INTO revenue_reconciliations (product_id, phase_pct_this_time, total_receivable_this_time)
         VALUES (${productId}, 0.6, 1) RETURNING id
       `;
       const rec2 = await sql`
         INSERT INTO revenue_reconciliations (product_id, phase_pct_this_time, total_receivable_this_time)
-        VALUES (${productId}, 0.3, 1) RETURNING id
+        VALUES (${productId}, 0.9, 1) RETURNING id
       `;
-      await expect(assertPhasePctNotExceeded(productId, 0.05)).resolves.toBeUndefined();
+      await expect(assertPhasePctNotExceeded(productId, 0.95)).resolves.toBeUndefined();
       await sql`DELETE FROM revenue_reconciliations WHERE id IN (${rec1[0].id}, ${rec2[0].id})`;
     });
 
-    test("Đã có 90%, thêm 15% → tổng 105% → block", async () => {
-      const [rec] = await sql`
-        INSERT INTO revenue_reconciliations (product_id, phase_pct_this_time, total_receivable_this_time)
-        VALUES (${productId}, 0.9, 1) RETURNING id
-      `;
-      await expect(assertPhasePctNotExceeded(productId, 0.15)).rejects.toThrow(
-        /Vượt trần tiến độ/,
+    test("Một dòng 105% → block", async () => {
+      await expect(assertPhasePctNotExceeded(productId, 1.05)).rejects.toThrow(
+        /vượt quá 100%/,
       );
-      await sql`DELETE FROM revenue_reconciliations WHERE id = ${rec.id}`;
+    });
+
+    test("Đúng 100% → cho qua", async () => {
+      await expect(assertPhasePctNotExceeded(productId, 1)).resolves.toBeUndefined();
     });
   });
 });

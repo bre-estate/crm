@@ -71,41 +71,31 @@ export async function assertRevenueCapNotExceeded(
 }
 
 /**
- * Tổng phase_pct_this_time (% tiến độ đối chiếu đợt này) của căn ≤ 100%.
- * Chỉ check khi user có nhập > 0.
+ * phase_pct_this_time là % tiến độ LŨY KẾ tại đợt đó, không phải phần tăng thêm của đợt.
+ * Nên chỉ kiểm từng dòng ≤ 100%, KHÔNG cộng dồn các đợt lại.
+ *
+ * Sửa 19/09/2026: bản cũ cộng tổng mọi đợt rồi chặn khi vượt 100%, làm 60 trên 85 căn
+ * không thêm được đợt mới (một căn 5 đợt lũy kế 70/70/80/90% cộng lại đã 310%).
+ * Ba bằng chứng field này là lũy kế: dữ liệu tăng dần theo ngày đối chiếu, RevenueForm
+ * lấy Math.max chứ không cộng, và tên cột đi kèm pmg_cumulative_pct cũng là lũy kế.
  */
 export async function assertPhasePctNotExceeded(
   productId: number,
   newPhasePct: number,
-  excludeReconciliationId?: number,
+  _excludeReconciliationId?: number,
 ): Promise<void> {
   if (!newPhasePct || newPhasePct <= 0) return;
+  if (newPhasePct <= 1 + TOLERANCE) return;
 
   const [p] = await db
     .select({ code: products.productCode })
     .from(products)
     .where(eq(products.id, productId));
-  if (!p) return;
 
-  const conditions = [eq(revenueReconciliations.productId, productId)];
-  if (excludeReconciliationId) {
-    conditions.push(ne(revenueReconciliations.id, excludeReconciliationId));
-  }
-  const [row] = await db
-    .select({
-      total: sql<string>`COALESCE(SUM(${revenueReconciliations.phasePctThisTime}), 0)`,
-    })
-    .from(revenueReconciliations)
-    .where(and(...conditions));
-
-  const existing = Number(row?.total ?? 0);
-  const after = existing + newPhasePct;
-  if (after > 1 + TOLERANCE) {
-    throw new Error(
-      `Vượt trần tiến độ căn ${p.code}: tổng % tiến độ sau khi lưu = ${(after * 100).toFixed(1)}%. ` +
-        `Tổng tiến độ đối chiếu không được vượt 100%.`,
-    );
-  }
+  throw new Error(
+    `% tiến độ đợt này của căn ${p?.code ?? productId} = ${(newPhasePct * 100).toFixed(1)}%, vượt quá 100%. ` +
+      `Ô này là tiến độ lũy kế tới đợt đang nhập, không phải phần tăng thêm.`,
+  );
 }
 
 /**
