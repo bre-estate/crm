@@ -1,5 +1,6 @@
 import { describe, test, expect, beforeAll, afterAll } from "vitest";
 import postgres from "postgres";
+import { probeDb } from "./db-probe";
 
 import {
   assertRevenueCapNotExceeded,
@@ -66,23 +67,7 @@ describe("cap-guards pure functions (không cần DB)", () => {
 // ==================== GROUP B: DB-DEPENDENT ====================
 
 const testDbUrl = process.env.TEST_DATABASE_URL;
-
-// Probe connection trước khi register suite. Nếu fail → suite skip.
-let dbAlive = false;
-if (testDbUrl) {
-  try {
-    const probe = postgres(testDbUrl, { prepare: false, connect_timeout: 5, max: 1 });
-    await probe`SELECT 1`;
-    await probe.end();
-    dbAlive = true;
-  } catch {
-    console.warn(
-      "\n[cap-guards test] ⚠️  TEST_DATABASE_URL không connect được. DB-dependent tests skip. Kiểm tra .env.test.local.\n",
-    );
-  }
-}
-
-const dbSuite = dbAlive ? describe : describe.skip;
+const dbSuite = (await probeDb("cap-guards")) ? describe : describe.skip;
 
 const PMG_BASE = 1_000_000_000;
 const PMG_RATE = 0.05;

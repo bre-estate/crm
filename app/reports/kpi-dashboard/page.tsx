@@ -9,6 +9,8 @@ import {
 } from "@/lib/schema";
 import { sql, and, gte, lte, eq, ne, desc } from "drizzle-orm";
 import { requirePermission } from "@/lib/auth";
+import { loadCashPnl } from "@/lib/cash-pnl";
+import { monthsWithData } from "@/lib/cash-pnl-core";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -74,17 +76,37 @@ export default async function KpiDashboardPage({ searchParams }: { searchParams:
   const bienGop = dtNet > 0 ? (laiGop / dtNet) * 100 : 0;
   const bienRong = dtNet > 0 ? (laiThuan / dtNet) * 100 : 0;
 
-  // 4) Tiền mặt (từ trial_balance)
+  // 4) Tiền mặt. Bảng cân đối chỉ có ở năm ĐÃ KHÓA SỔ (hiện mới tới 31/12/2025),
+  // nên năm đang chạy phải lấy số dư thật từ sao kê, không thì hiện 0 đồng.
   const [cash] = await db.execute(sql`
     SELECT COALESCE(SUM(closing_debit - closing_credit), 0)::float8 as s
     FROM trial_balance
     WHERE period_end = ${year + '-12-31'} AND (account_code = '111' OR account_code = '112')
   `) as any[];
-  const cashBalance = Number(cash?.s ?? 0);
+  const tbCash = Number(cash?.s ?? 0);
 
-  // 5) Runway = cashBalance / avg monthly opex
-  const monthlyOpex = opex / 12;
-  const runway = monthlyOpex > 0 ? cashBalance / monthlyOpex : 0;
+  let cashBalance = tbCash;
+  let nguonTien = "TK 111 + 112 trên bảng cân đối";
+  let chiCoDinhThang = opex / 12;
+  let nguonRunway = `chi phí ghi nhận bình quân ${fmtM(chiCoDinhThang)}/tháng`;
+
+  if (tbCash === 0) {
+    // Chưa khóa sổ năm này: dùng đúng con số của trang Lãi/lỗ và dòng tiền để hai trang khớp nhau.
+    const { pnl: tienMat, dataThrough, bankBalance: bb } = await loadCashPnl({ start, end });
+    const giuHo = tienMat.byLine.giu_cho + tienMat.byLine.hoan_khach;
+    if (bb) {
+      cashBalance = bb.close + bb.tietKiemRong - Math.max(giuHo, 0);
+      const ngay = `${bb.closeDate.slice(8, 10)}/${bb.closeDate.slice(5, 7)}`;
+      nguonTien = `số dư ngày ${ngay}${bb.tietKiemRong > 0 ? `, gồm ${fmtM(bb.tietKiemRong)} gửi tiết kiệm` : ""}`;
+    }
+    const soThang = Math.max(1, monthsWithData({ start, end }, dataThrough));
+    chiCoDinhThang = tienMat.totals.chiCoDinh / soThang;
+    nguonRunway = `tiền đã chi bình quân ${fmtM(chiCoDinhThang)}/tháng`;
+  }
+
+  // 5) Runway = tiền đang có chia cho chi phí cố định mỗi tháng
+  const runway = chiCoDinhThang > 0 ? cashBalance / chiCoDinhThang : 0;
+  const coRunway = chiCoDinhThang > 0 && cashBalance > 0;
 
   // 6) Còn thu / Còn nợ
   const [pin] = await db.select({ s: sql<number>`coalesce(sum(amount),0)::float8` }).from(paymentsIn);
@@ -130,12 +152,18 @@ export default async function KpiDashboardPage({ searchParams }: { searchParams:
 
       {/* Row 1: Cash + Runway + Revenue this month */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-        <BigCard label="💰 Tiền mặt cuối kỳ" value={fmt(cashBalance)} sub="TK 111 + 112" color="green" link="/reports/balance-sheet" />
         <BigCard
-          label="⏱️ Runway"
-          value={`${runway.toFixed(1)} tháng`}
-          sub={`OPEX TB ${fmtM(monthlyOpex)}/tháng`}
-          color={runway > 6 ? "green" : runway > 3 ? "amber" : "red"}
+          label="💰 Tiền công ty đang có"
+          value={cashBalance > 0 ? fmt(cashBalance) : "Chưa có số liệu"}
+          sub={nguonTien}
+          color="green"
+          link={tbCash > 0 ? "/reports/balance-sheet" : "/reports/profit-detail"}
+        />
+        <BigCard
+          label="⏱️ Tiền đủ trụ bao lâu"
+          value={coRunway ? `${runway.toFixed(1)} tháng` : "Chưa tính được"}
+          sub={coRunway ? nguonRunway : "chưa đủ dữ liệu chi phí"}
+          color={!coRunway ? "blue" : runway > 6 ? "green" : runway > 3 ? "amber" : "red"}
         />
         <BigCard label={`📈 DT ${currentMonth}`} value={fmt(Number(revMonth?.total ?? 0))} sub={`${revMonth?.units ?? 0} căn`} color="blue" link="/reports/sales" />
         <BigCard label={`📈 DT YTD ${year}`} value={fmt(dtGross)} sub={`${units} căn`} color="blue" link="/reports/sales" />

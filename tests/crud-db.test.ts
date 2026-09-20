@@ -1,9 +1,11 @@
 import { describe, test, expect, beforeAll, afterAll } from "vitest";
 import postgres from "postgres";
+import { probeDb } from "./db-probe";
 
-// CRUD tests đụng DB thật — CHỈ chạy khi có TEST_DATABASE_URL trong .env.test.local
+// CRUD tests đụng DB thật — chỉ chạy khi TEST_DATABASE_URL kết nối được.
+// Chỉ kiểm biến có tồn tại là chưa đủ: URL có thể trỏ tới tenant đã xoá.
 const testDbUrl = process.env.TEST_DATABASE_URL;
-const suite = testDbUrl ? describe : describe.skip;
+const suite = (await probeDb("crud-db")) ? describe : describe.skip;
 
 suite("CRUD DB tests — chạy trên TEST_DATABASE_URL", () => {
   let sql: ReturnType<typeof postgres>;
