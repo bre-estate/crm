@@ -90,6 +90,7 @@ const NAV: NavEntry[] = [
       { href: "/finance/nkc-review", label: "Sổ NKC", resource: "finance" },
       { href: "/finance/transactions", label: "Giao dịch tài chính", resource: "finance" },
       { href: "/finance", label: "Vốn góp và tài sản", resource: "finance", exact: true },
+      { href: "/documents", label: "Kho tài liệu", resource: "documents" },
     ],
   },
   {
@@ -105,6 +106,7 @@ const NAV: NavEntry[] = [
     label: "Hệ thống",
     children: [
       { href: "/admin/users", label: "Người dùng", ownerOnly: true },
+      { href: "/settings/integrations", label: "Tích hợp", resource: "settings.integrations" },
       { href: "/admin/data-checks", label: "Kiểm tra dữ liệu", ownerOnly: true },
       { href: "/admin/activity", label: "Lịch sử hoạt động", resource: "admin.activity" },
       { href: "/admin/import-logs", label: "Nhật ký import", resource: "admin.activity" },

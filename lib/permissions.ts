@@ -28,12 +28,16 @@ export const RESOURCE_ACTIONS: Record<string, Action[]> = {
   employees: ["view", "edit", "delete"],
   expenses: ["view", "edit", "delete"],
   "admin.users": ["view", "edit", "delete"],
+  // Tài liệu: view = xem và tải về, edit = tải lên, delete = xóa khỏi kho
+  documents: ["view", "edit", "delete"],
   // View + Edit (không xóa)
   finance: ["view", "edit"],
   "finance.bank-review": ["view", "edit"],
   "costs-report": ["view", "edit"],
   // Duyệt chi — view = thấy queue duyệt, edit = approve/reject
   "expenses.approve": ["view", "edit"],
+  // Tích hợp dịch vụ ngoài — view = xem trạng thái, edit = nối và ngắt kết nối
+  "settings.integrations": ["view", "edit"],
   // Payroll HH generator — view chỉ preview, edit = xuất Excel
   "payroll.commissions": ["view", "edit"],
   // Kỳ HH & thưởng — view = xem, edit = tạo hồi tố + xuất Excel
@@ -84,6 +88,8 @@ export const RESOURCES = {
   "admin.activity": "Nhật ký hoạt động",
   "admin.import-logs": "Nhật ký import",
   "help": "Trang trợ giúp / hướng dẫn nhập liệu",
+  "documents": "Kho tài liệu (sao kê, hợp đồng, hóa đơn)",
+  "settings.integrations": "Tích hợp dịch vụ ngoài (Google Drive)",
 } as const;
 
 export type Resource = keyof typeof RESOURCES;
@@ -131,7 +137,7 @@ export const RESOURCE_GROUPS: { label: string; keys: Resource[] }[] = [
   },
   {
     label: "Hệ thống",
-    keys: ["alerts", "admin.users", "admin.activity", "help"],
+    keys: ["alerts", "documents", "settings.integrations", "admin.users", "admin.activity", "help"],
   },
 ];
 
@@ -188,6 +194,7 @@ const PRESETS: Record<Exclude<Role, "owner" | "custom">, Partial<Record<Resource
     employees: ["view", "edit", "delete"],
     finance: ["view"],
     periods: ["view", "edit"],
+    documents: ["view", "edit"],
     ...reportsView,
     help: ["view"],
   },
@@ -200,6 +207,7 @@ const PRESETS: Record<Exclude<Role, "owner" | "custom">, Partial<Record<Resource
     invoices: ["view", "edit"],
     partners: ["view", "edit"],
     periods: ["view", "edit"],
+    documents: ["view", "edit"],
     help: ["view"],
   },
   // HR: xem giao dịch để đối chiếu; edit riêng giá vốn (nhập HH sale).
@@ -212,9 +220,11 @@ const PRESETS: Record<Exclude<Role, "owner" | "custom">, Partial<Record<Resource
     partners: ["view"],
     periods: ["view", "edit"],
     "payroll.commissions": ["view", "edit"],
+    documents: ["view"],
     help: ["view"],
   },
 };
+// settings.integrations cố ý không có trong preset nào: chỉ chủ tài khoản nối dịch vụ ngoài.
 
 /**
  * Trả về effective permissions cho 1 role.
@@ -284,6 +294,9 @@ export function resourceOfPath(path: string): Resource | "reports.*" | null {
   // /reports landing — allow nếu user có any reports.*
   if (p === "/reports") return "reports.*";
 
+  // Cài đặt
+  if (p.startsWith("/settings/integrations")) return "settings.integrations";
+
   // Admin
   if (p.startsWith("/admin/users")) return "admin.users";
   if (p.startsWith("/admin/activity")) return "admin.activity";
@@ -304,6 +317,7 @@ export function resourceOfPath(path: string): Resource | "reports.*" | null {
   if (p.startsWith("/employees")) return "employees";
   // /finance/bank-review là tool riêng, nhưng vẫn dùng permission "finance"
   if (p.startsWith("/finance")) return "finance";
+  if (p.startsWith("/documents")) return "documents";
   if (p.startsWith("/alerts")) return "alerts";
   if (p.startsWith("/help")) return "help";
   if (p.startsWith("/secondary-sales")) return "secondary-sales";

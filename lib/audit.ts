@@ -12,7 +12,8 @@ export type EntityType =
   | "cost_reconciliation"
   | "project"
   | "partner"
-  | "expense_request";
+  | "expense_request"
+  | "document";
 
 export type ActionType = "create" | "update" | "delete" | "submit" | "approve" | "reject" | "pay";
 

@@ -9,6 +9,7 @@ import {
   boolean,
   uuid,
   jsonb,
+  bigint,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
@@ -969,6 +970,47 @@ export const chatLogs = pgTable("chat_logs", {
   latencyMs: integer("latency_ms"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// ── Kho tài liệu: sao kê, hợp đồng, hóa đơn, chính sách ──
+// Bản chính ở Supabase Storage (bucket tai-lieu). Ảnh scan nén ngay trên trình duyệt
+// trước khi tải lên. Google Drive là bản sao, bật ở phần Tích hợp.
+export const documents = pgTable("documents", {
+  id: serial("id").primaryKey(),
+  docType: text("doc_type").notNull(),        // sao_ke | hop_dong | hoa_don | chinh_sach | khac
+  title: text("title").notNull(),
+  note: text("note"),
+  period: text("period"),                     // 2026 | 2026-Q3 | 2026-08
+  storagePath: text("storage_path").notNull().unique(),
+  mimeType: text("mime_type").notNull(),
+  sizeBytes: bigint("size_bytes", { mode: "number" }).notNull(),
+  originalSizeBytes: bigint("original_size_bytes", { mode: "number" }),
+  compressed: boolean("compressed").notNull().default(false),
+  productId: integer("product_id").references(() => products.id, { onDelete: "set null" }),
+  partnerId: integer("partner_id").references(() => partners.id, { onDelete: "set null" }),
+  invoiceId: integer("invoice_id").references(() => invoices.id, { onDelete: "set null" }),
+  employeeId: integer("employee_id").references(() => employees.id, { onDelete: "set null" }),
+  driveFileId: text("drive_file_id"),
+  driveUrl: text("drive_url"),
+  driveSyncedAt: timestamp("drive_synced_at", { withTimezone: true }),
+  uploadedBy: text("uploaded_by").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type Document = typeof documents.$inferSelect;
+export type NewDocument = typeof documents.$inferInsert;
+
+// Dịch vụ ngoài nối vào CRM. secrets để riêng vì sau sẽ mã hóa cột này.
+export const integrations = pgTable("integrations", {
+  provider: text("provider").primaryKey(),    // google_drive
+  enabled: boolean("enabled").notNull().default(false),
+  config: jsonb("config").$type<Record<string, unknown>>().notNull().default({}),
+  secrets: jsonb("secrets").$type<Record<string, unknown>>(),
+  connectedBy: text("connected_by"),
+  connectedAt: timestamp("connected_at", { withTimezone: true }),
+  lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
+  lastError: text("last_error"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type Integration = typeof integrations.$inferSelect;
 
 // Used in raw SQL for profile auto-create trigger
 export const _sql = sql;
