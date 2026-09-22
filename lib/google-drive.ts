@@ -108,7 +108,7 @@ export async function emailNguoiCapQuyen(accessToken: string): Promise<string | 
 
 /** Tạo thư mục gốc của app trên Drive. Chỉ gọi lúc kết nối lần đầu. */
 export async function taoThuMuc(accessToken: string, ten = TEN_THU_MUC): Promise<{ id: string; name: string }> {
-  const res = await fetch(`${API}/files?fields=id,name`, {
+  const res = await fetch(`${API}/files?fields=id,name&supportsAllDrives=true`, {
     method: "POST",
     headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
     body: JSON.stringify({ name: ten, mimeType: "application/vnd.google-apps.folder" }),
@@ -139,14 +139,17 @@ export async function taiFileLenDrive(
     Buffer.from(`\r\n--${ranh}--\r\n`),
   ]);
 
-  const res = await fetch(`${UPLOAD_API}/files?uploadType=multipart&fields=id,webViewLink`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": `multipart/related; boundary=${ranh}`,
+  const res = await fetch(
+    `${UPLOAD_API}/files?uploadType=multipart&fields=id,webViewLink&supportsAllDrives=true`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": `multipart/related; boundary=${ranh}`,
+      },
+      body: new Uint8Array(than),
     },
-    body: new Uint8Array(than),
-  });
+  );
   if (!res.ok) throw new Error(`Không tải được file lên Drive: ${await res.text()}`);
   const data = (await res.json()) as { id: string; webViewLink?: string };
   return { id: data.id, webViewLink: data.webViewLink ?? null };
