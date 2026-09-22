@@ -6,6 +6,9 @@ import Link from "next/link";
 import { CATEGORIES } from "@/lib/transaction-classifier";
 import { CategorySelect } from "./CategorySelect";
 import { rerunClassifier } from "./actions";
+import NapSaoKe from "./NapSaoKe";
+import { getCurrentUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +18,8 @@ const fmt = (n: number | null) => n == null ? "" : Math.round(Math.abs(n)).toLoc
 
 export default async function BankReviewPage({ searchParams }: { searchParams: SP }) {
   await requirePermission("finance");
+  const user = await getCurrentUser();
+  const napDuoc = !!user && hasPermission(user.role, user.customPermissions, "finance", "edit");
   const sp = await searchParams;
   const filterCat = sp.category?.trim() || null;
   const filterQ = sp.q?.trim() || null;
@@ -88,6 +93,8 @@ export default async function BankReviewPage({ searchParams }: { searchParams: S
           Phân loại 32 bucket khớp báo cáo Kế toán. Chọn bucket sai → dropdown chỉnh tay (auto lưu). Filter chua_phan_loai / opex_khac / khac_thu để dò dần.
         </p>
       </div>
+
+      {napDuoc && <NapSaoKe />}
 
       {/* Filter */}
       <form className="bg-card rounded-xl ring-1 ring-foreground/10 p-3 flex flex-wrap gap-3 items-end text-xs">
