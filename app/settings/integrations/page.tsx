@@ -7,11 +7,17 @@ import { db } from "@/lib/db";
 import { integrations, documents } from "@/lib/schema";
 import { eq, sql } from "drizzle-orm";
 import { requirePermission } from "@/lib/auth";
+import { daKhaiBaoUngDung } from "@/lib/google-drive";
+import DriveActions from "./DriveActions";
 
 export const dynamic = "force-dynamic";
 
-export default async function IntegrationsPage() {
+type SP = Promise<{ ok?: string; loi?: string }>;
+
+export default async function IntegrationsPage({ searchParams }: { searchParams: SP }) {
   await requirePermission("settings.integrations", "view");
+  const sp = await searchParams;
+  const khaiBaoDu = daKhaiBaoUngDung();
 
   const [drive] = await db
     .select()
@@ -37,6 +43,13 @@ export default async function IntegrationsPage() {
         </p>
       </div>
 
+      {sp.ok && (
+        <p className="text-sm text-green-800 bg-green-50 border border-green-200 rounded-lg p-3">{sp.ok}</p>
+      )}
+      {sp.loi && (
+        <p className="text-sm text-red-800 bg-red-50 border border-red-200 rounded-lg p-3">{sp.loi}</p>
+      )}
+
       <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-5 space-y-4">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
@@ -59,19 +72,24 @@ export default async function IntegrationsPage() {
               là nơi để người khác xem bằng mắt và để phòng khi cần bản gốc đầy đủ.
             </p>
           </div>
-          <button
-            disabled
-            className="rounded-md bg-slate-100 text-slate-400 text-sm px-4 py-2 cursor-not-allowed"
-            title="Cần khai báo mã ứng dụng Google trước"
-          >
-            Kết nối
-          </button>
+          <DriveActions
+            daNoi={!!drive?.connectedAt}
+            dangBat={!!drive?.enabled}
+            khaiBaoDu={khaiBaoDu}
+          />
         </div>
 
         <dl className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
           <Dong nhan="Tài liệu trong kho" giaTri={String(dem?.tong ?? 0)} />
+          <Dong
+            nhan="Tài khoản đang nối"
+            giaTri={(drive?.config as { accountEmail?: string })?.accountEmail ?? "chưa nối"}
+          />
           <Dong nhan="Đã có bản sao" giaTri={String(dem?.coBanSao ?? 0)} />
-          <Dong nhan="Thư mục đích" giaTri={(drive?.config as { folderName?: string })?.folderName ?? "chưa chọn"} />
+          <Dong
+            nhan="Thư mục trên Drive"
+            giaTri={(drive?.config as { folderName?: string })?.folderName ?? "chưa có"}
+          />
           <Dong
             nhan="Lần đồng bộ cuối"
             giaTri={drive?.lastSyncAt ? drive.lastSyncAt.toISOString().slice(0, 10) : "chưa lần nào"}
@@ -84,6 +102,7 @@ export default async function IntegrationsPage() {
           </p>
         )}
 
+        {!khaiBaoDu && (
         <div className="text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-2">
           <p className="font-medium text-slate-800">Còn thiếu gì để bật được</p>
           <p>
@@ -100,6 +119,15 @@ export default async function IntegrationsPage() {
             tránh chuyện đổi tên hay xóa file bên Drive làm hỏng dữ liệu trong app.
           </p>
         </div>
+        )}
+
+        {khaiBaoDu && drive?.connectedAt && (
+          <p className="text-sm text-slate-600">
+            App chỉ đụng được file do chính nó tạo ra, không đọc được phần còn lại trong Drive công ty.
+            Đẩy một chiều: tài liệu mới tải lên app sẽ có bản sao trên Drive, còn sửa hay xóa bên Drive
+            thì app không biết.
+          </p>
+        )}
       </div>
 
       <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-5 opacity-60">

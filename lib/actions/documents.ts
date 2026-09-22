@@ -9,6 +9,10 @@ import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/audit";
 import { chay, chayCoKetQua, type KetQuaLuu } from "@/lib/actions/ket-qua";
 import { isDocType, MAX_UPLOAD_BYTES, fmtDungLuong } from "@/lib/documents-core";
+import { cookies, headers } from "next/headers";
+import { randomBytes } from "crypto";
+import { daKhaiBaoUngDung, duongDanDangNhap } from "@/lib/google-drive";
+import { dayBanSaoLenDrive } from "@/lib/day-len-drive";
 
 const BUCKET = "tai-lieu";
 
@@ -46,6 +50,7 @@ async function _ghiNhanTaiLieu(input: {
   }
 
   const supabase = await createClient();
+  let idVuaTao: number | null = null;
   try {
     const [row] = await db
       .insert(documents)
@@ -66,6 +71,7 @@ async function _ghiNhanTaiLieu(input: {
         uploadedBy: user.email,
       })
       .returning({ id: documents.id });
+    idVuaTao = row.id;
 
     await logActivity({
       entityType: "document",
@@ -79,6 +85,9 @@ async function _ghiNhanTaiLieu(input: {
     await supabase.storage.from(BUCKET).remove([input.storagePath]);
     throw e;
   }
+
+  // Drive là bản sao nên hỏng cũng không chặn việc lưu. Hàm này tự nuốt lỗi.
+  if (idVuaTao) await dayBanSaoLenDrive(idVuaTao);
 
   revalidatePath("/documents");
 }
@@ -151,4 +160,53 @@ export async function xoaTaiLieu(id: number): Promise<KetQuaLuu> {
 
 export async function datTrangThaiTichHop(provider: string, enabled: boolean): Promise<KetQuaLuu> {
   return chay(() => _datTrangThaiTichHop(provider, enabled));
+}
+
+// ── Nối Google Drive ────────────────────────────────────────────────────────
+
+/** Dựng đường dẫn sang Google và đặt cookie state để chống giả mạo lượt quay về. */
+async function _batDauNoiDrive(): Promise<string> {
+  await requirePermission("settings.integrations", "edit");
+  if (!daKhaiBaoUngDung()) {
+    throw new Error(
+      "Chưa khai báo ứng dụng Google. Cần đặt GOOGLE_CLIENT_ID và GOOGLE_CLIENT_SECRET trên Vercel rồi deploy lại.",
+    );
+  }
+  const h = await headers();
+  const goc = `${h.get("x-forwarded-proto") ?? "http"}://${h.get("x-forwarded-host") ?? h.get("host")}`;
+  const state = randomBytes(24).toString("base64url");
+  const store = await cookies();
+  store.set("gd_state", state, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: goc.startsWith("https"),
+    maxAge: 600,
+    path: "/",
+  });
+  return duongDanDangNhap(goc, state);
+}
+
+async function _ngatDrive() {
+  await requirePermission("settings.integrations", "edit");
+  await db
+    .update(integrations)
+    .set({
+      enabled: false,
+      secrets: null,
+      config: {},
+      connectedAt: null,
+      connectedBy: null,
+      lastError: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(integrations.provider, "google_drive"));
+  revalidatePath("/settings/integrations");
+}
+
+export async function batDauNoiDrive() {
+  return chayCoKetQua(() => _batDauNoiDrive());
+}
+
+export async function ngatDrive(): Promise<KetQuaLuu> {
+  return chay(() => _ngatDrive());
 }
