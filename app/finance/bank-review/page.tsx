@@ -18,7 +18,7 @@ export default async function BankReviewPage({ searchParams }: { searchParams: S
   const sp = await searchParams;
   const filterCat = sp.category?.trim() || null;
   const filterQ = sp.q?.trim() || null;
-  const filterYear = sp.year?.trim() || "2025";
+  const filterYear = sp.year?.trim() || String(new Date().getFullYear());
   const filterSource = sp.source?.trim() || null; // 'auto' | 'manual' | null
 
   const where: SQL[] = [];

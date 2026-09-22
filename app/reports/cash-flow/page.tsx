@@ -77,7 +77,7 @@ export default async function CashFlowPage({ searchParams }: { searchParams: SP 
   await requirePermission("reports.cash-flow");
 
   const sp = await searchParams;
-  const year = sp.year ?? "2025";
+  const year = sp.year ?? String(new Date().getFullYear());
 
   // ===== 1) Số dư hiện tại (running_balance của giao dịch mới nhất) =====
   const [latest] = await db.execute(sql`
