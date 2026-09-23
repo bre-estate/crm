@@ -155,10 +155,14 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
                 <tr className="bg-slate-50">
                   <td className="px-4 py-2 font-medium">Mặc định</td>
                   <td className="px-4 py-2 text-slate-600">
-                    {cauHinh.folderName ?? <span className="text-amber-700">chưa chọn</span>}
+                    {cauHinh.folderName ?? (
+                      <span className="text-slate-400">
+                        không có, loại nào chưa gán riêng sẽ không đẩy lên Drive
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-2 text-right">
-                    <ChonThuMuc tenHienTai={cauHinh.folderName ?? null} />
+                    <ChonThuMuc tenHienTai={cauHinh.folderName ?? null} coTheBo />
                   </td>
                 </tr>
               </tbody>

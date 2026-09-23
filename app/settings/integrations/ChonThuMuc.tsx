@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { baoLoi } from "@/lib/bao-loi";
 import { cauLoi } from "@/lib/actions/ket-qua";
-import { boThuMucRieng, datThuMucDrive, veChoCuaSoChon } from "@/lib/actions/documents";
+import { boThuMuc, datThuMucDrive, veChoCuaSoChon } from "@/lib/actions/documents";
 
 /**
  * Mở cửa sổ chọn thư mục của Google, kiểu các app SaaS vẫn làm.
@@ -147,9 +147,12 @@ export default function ChonThuMuc({
 
   const bo = () =>
     start(async () => {
-      if (!docType) return;
-      if (baoLoi(await boThuMucRieng(docType))) return;
-      toast.success("Đã bỏ, loại này quay về dùng thư mục mặc định");
+      if (baoLoi(await boThuMuc(docType ?? null))) return;
+      toast.success(
+        docType
+          ? "Đã bỏ, loại này quay về dùng thư mục mặc định"
+          : "Đã bỏ thư mục mặc định. Loại nào chưa gán riêng sẽ không đẩy lên Drive.",
+      );
       router.refresh();
     });
 

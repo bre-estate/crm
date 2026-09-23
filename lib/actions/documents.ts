@@ -259,17 +259,31 @@ async function _datThuMucDrive(folderId: string, folderName: string, docType?: s
   revalidatePath("/settings/integrations");
 }
 
-/** Bỏ thư mục riêng của một loại, để loại đó quay về dùng thư mục mặc định. */
-async function _boThuMucRieng(docType: string) {
+/**
+ * Bỏ thư mục đã gán.
+ * Có docType thì bỏ thư mục riêng của loại đó, loại đó quay về dùng mặc định.
+ * Không có docType thì bỏ luôn thư mục mặc định, lúc đó loại nào chưa gán riêng
+ * sẽ không được đẩy lên Drive nữa.
+ */
+async function _boThuMuc(docType?: string | null) {
   await requirePermission("settings.integrations", "edit");
   const [th] = await db.select().from(integrations).where(eq(integrations.provider, "google_drive"));
   if (!th) return;
   const cu = (th.config ?? {}) as CauHinhDrive;
-  const folders = { ...(cu.folders ?? {}) };
-  delete folders[docType as keyof typeof folders];
+
+  let moi: CauHinhDrive;
+  if (docType) {
+    const folders = { ...(cu.folders ?? {}) };
+    delete folders[docType as keyof typeof folders];
+    moi = { ...cu, folders };
+  } else {
+    const { folderId: _bo, folderName: _bo2, ...conLai } = cu;
+    moi = conLai;
+  }
+
   await db
     .update(integrations)
-    .set({ config: { ...cu, folders } as Record<string, unknown>, updatedAt: new Date() })
+    .set({ config: moi as Record<string, unknown>, updatedAt: new Date() })
     .where(eq(integrations.provider, "google_drive"));
   revalidatePath("/settings/integrations");
 }
@@ -286,6 +300,6 @@ export async function datThuMucDrive(
   return chay(() => _datThuMucDrive(folderId, folderName, docType));
 }
 
-export async function boThuMucRieng(docType: string): Promise<KetQuaLuu> {
-  return chay(() => _boThuMucRieng(docType));
+export async function boThuMuc(docType?: string | null): Promise<KetQuaLuu> {
+  return chay(() => _boThuMuc(docType));
 }
