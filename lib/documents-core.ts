@@ -75,3 +75,26 @@ export function tyLeNen(goc: number, sau: number): number | null {
   if (!goc || !sau || sau >= goc) return null;
   return goc / sau;
 }
+
+/** Cấu hình thư mục Drive: một thư mục mặc định, và thư mục riêng cho từng loại tài liệu. */
+export interface CauHinhDrive {
+  accountEmail?: string | null;
+  folderId?: string;
+  folderName?: string;
+  folders?: Partial<Record<DocType, { id: string; name: string }>>;
+}
+
+/**
+ * Thư mục để lưu một loại tài liệu. Ưu tiên thư mục riêng của loại đó,
+ * không có thì rơi về thư mục mặc định, không có nữa thì trả null và bỏ qua việc đẩy lên Drive.
+ */
+export function thuMucCho(
+  cauHinh: CauHinhDrive | null | undefined,
+  docType: string,
+): { id: string; name: string } | null {
+  if (!cauHinh) return null;
+  const rieng = cauHinh.folders?.[docType as DocType];
+  if (rieng?.id) return rieng;
+  if (cauHinh.folderId) return { id: cauHinh.folderId, name: cauHinh.folderName ?? "" };
+  return null;
+}

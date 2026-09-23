@@ -8,7 +8,7 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/audit";
 import { chay, chayCoKetQua, type KetQuaLuu } from "@/lib/actions/ket-qua";
-import { isDocType, MAX_UPLOAD_BYTES, fmtDungLuong } from "@/lib/documents-core";
+import { isDocType, MAX_UPLOAD_BYTES, fmtDungLuong, type CauHinhDrive } from "@/lib/documents-core";
 import { cookies, headers } from "next/headers";
 import { randomBytes } from "crypto";
 import { daKhaiBaoUngDung, duongDanDangNhap, giaiMa, lamMoiVe } from "@/lib/google-drive";
@@ -234,21 +234,42 @@ async function _veChoCuaSoChon(): Promise<{ token: string; apiKey: string }> {
   return { token: ve.access_token, apiKey };
 }
 
-/** Ghi lại thư mục người dùng vừa chọn. Tài liệu tải lên sau đó sẽ nằm trong thư mục này. */
-async function _datThuMucDrive(folderId: string, folderName: string) {
+/**
+ * Ghi lại thư mục người dùng vừa chọn.
+ * Có docType thì đặt thư mục riêng cho loại đó, không có thì đặt thư mục mặc định
+ * dùng chung cho những loại chưa chỉ định.
+ */
+async function _datThuMucDrive(folderId: string, folderName: string, docType?: string | null) {
   await requirePermission("settings.integrations", "edit");
   if (!folderId.trim()) throw new Error("Chưa chọn thư mục nào.");
+  if (docType && !isDocType(docType)) throw new Error("Loại tài liệu không hợp lệ.");
 
   const [th] = await db.select().from(integrations).where(eq(integrations.provider, "google_drive"));
   if (!th?.connectedAt) throw new Error("Chưa nối Google Drive. Bấm Kết nối trước đã.");
 
+  const cu = (th.config ?? {}) as CauHinhDrive;
+  const moi: CauHinhDrive = docType
+    ? { ...cu, folders: { ...(cu.folders ?? {}), [docType]: { id: folderId, name: folderName } } }
+    : { ...cu, folderId, folderName };
+
   await db
     .update(integrations)
-    .set({
-      config: { ...(th.config as Record<string, unknown>), folderId, folderName },
-      lastError: null,
-      updatedAt: new Date(),
-    })
+    .set({ config: moi as Record<string, unknown>, lastError: null, updatedAt: new Date() })
+    .where(eq(integrations.provider, "google_drive"));
+  revalidatePath("/settings/integrations");
+}
+
+/** Bỏ thư mục riêng của một loại, để loại đó quay về dùng thư mục mặc định. */
+async function _boThuMucRieng(docType: string) {
+  await requirePermission("settings.integrations", "edit");
+  const [th] = await db.select().from(integrations).where(eq(integrations.provider, "google_drive"));
+  if (!th) return;
+  const cu = (th.config ?? {}) as CauHinhDrive;
+  const folders = { ...(cu.folders ?? {}) };
+  delete folders[docType as keyof typeof folders];
+  await db
+    .update(integrations)
+    .set({ config: { ...cu, folders } as Record<string, unknown>, updatedAt: new Date() })
     .where(eq(integrations.provider, "google_drive"));
   revalidatePath("/settings/integrations");
 }
@@ -257,6 +278,14 @@ export async function veChoCuaSoChon() {
   return chayCoKetQua(() => _veChoCuaSoChon());
 }
 
-export async function datThuMucDrive(folderId: string, folderName: string): Promise<KetQuaLuu> {
-  return chay(() => _datThuMucDrive(folderId, folderName));
+export async function datThuMucDrive(
+  folderId: string,
+  folderName: string,
+  docType?: string | null,
+): Promise<KetQuaLuu> {
+  return chay(() => _datThuMucDrive(folderId, folderName, docType));
+}
+
+export async function boThuMucRieng(docType: string): Promise<KetQuaLuu> {
+  return chay(() => _boThuMucRieng(docType));
 }

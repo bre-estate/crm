@@ -4,6 +4,7 @@ import { documents, integrations } from "@/lib/schema";
 import { eq } from "drizzle-orm";
 import { createClient } from "@/lib/supabase/server";
 import { giaiMa, lamMoiVe, taiFileLenDrive } from "@/lib/google-drive";
+import { thuMucCho, type CauHinhDrive } from "@/lib/documents-core";
 
 const BUCKET = "tai-lieu";
 
@@ -22,11 +23,15 @@ export async function dayBanSaoLenDrive(documentId: number): Promise<boolean> {
     if (!th?.enabled || !th.secrets || !th.config) return false;
 
     const refreshToken = (th.secrets as { refreshToken?: string }).refreshToken;
-    const folderId = (th.config as { folderId?: string }).folderId;
-    if (!refreshToken || !folderId) return false;
+    if (!refreshToken) return false;
 
     const [doc] = await db.select().from(documents).where(eq(documents.id, documentId));
     if (!doc || doc.driveFileId) return false;
+
+    // Mỗi loại tài liệu có thể có thư mục riêng, không thì rơi về thư mục mặc định.
+    const thuMuc = thuMucCho(th.config as CauHinhDrive, doc.docType);
+    if (!thuMuc) return false;
+    const folderId = thuMuc.id;
 
     const supabase = await createClient();
     const { data, error } = await supabase.storage.from(BUCKET).download(doc.storagePath);

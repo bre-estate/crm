@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { baoLoi } from "@/lib/bao-loi";
 import { cauLoi } from "@/lib/actions/ket-qua";
-import { datThuMucDrive, veChoCuaSoChon } from "@/lib/actions/documents";
+import { boThuMucRieng, datThuMucDrive, veChoCuaSoChon } from "@/lib/actions/documents";
 
 /**
  * Mở cửa sổ chọn thư mục của Google, kiểu các app SaaS vẫn làm.
@@ -64,7 +64,18 @@ function napScript(src: string): Promise<void> {
   });
 }
 
-export default function ChonThuMuc({ tenHienTai }: { tenHienTai: string | null }) {
+export default function ChonThuMuc({
+  tenHienTai,
+  docType,
+  nhan,
+  coTheBo,
+}: {
+  tenHienTai: string | null;
+  /** Bỏ trống thì đặt thư mục mặc định, có thì đặt riêng cho loại tài liệu đó. */
+  docType?: string;
+  nhan?: string;
+  coTheBo?: boolean;
+}) {
   const router = useRouter();
   const [dangChay, start] = useTransition();
 
@@ -103,8 +114,12 @@ export default function ChonThuMuc({ tenHienTai }: { tenHienTai: string | null }
             const f = d.docs?.[0];
             if (!f) return;
             start(async () => {
-              if (baoLoi(await datThuMucDrive(f.id, f.name))) return;
-              toast.success(`Tài liệu mới sẽ lưu vào thư mục "${f.name}"`);
+              if (baoLoi(await datThuMucDrive(f.id, f.name, docType ?? null))) return;
+              toast.success(
+                docType
+                  ? `${nhan ?? "Loại này"} sẽ lưu vào thư mục "${f.name}"`
+                  : `Tài liệu chưa chỉ định thư mục riêng sẽ lưu vào "${f.name}"`,
+              );
               router.refresh();
             });
           })
@@ -115,9 +130,24 @@ export default function ChonThuMuc({ tenHienTai }: { tenHienTai: string | null }
       }
     });
 
+  const bo = () =>
+    start(async () => {
+      if (!docType) return;
+      if (baoLoi(await boThuMucRieng(docType))) return;
+      toast.success("Đã bỏ, loại này quay về dùng thư mục mặc định");
+      router.refresh();
+    });
+
   return (
-    <Button variant="outline" onClick={mo} disabled={dangChay}>
-      {dangChay ? "Đang mở" : tenHienTai ? "Đổi thư mục" : "Chọn thư mục"}
-    </Button>
+    <span className="inline-flex items-center gap-2">
+      <Button variant="outline" size={docType ? "sm" : undefined} onClick={mo} disabled={dangChay}>
+        {dangChay ? "Đang mở" : tenHienTai ? "Đổi thư mục" : "Chọn thư mục"}
+      </Button>
+      {coTheBo && tenHienTai && (
+        <Button variant="ghost" size="sm" onClick={bo} disabled={dangChay} className="text-slate-500">
+          Bỏ
+        </Button>
+      )}
+    </span>
   );
 }

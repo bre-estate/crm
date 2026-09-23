@@ -10,6 +10,7 @@ import { requirePermission } from "@/lib/auth";
 import { daKhaiBaoUngDung } from "@/lib/google-drive";
 import DriveActions from "./DriveActions";
 import ChonThuMuc from "./ChonThuMuc";
+import { DOC_TYPES, thuMucCho, type CauHinhDrive, type DocType } from "@/lib/documents-core";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,8 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
       coBanSao: sql<number>`count(*) FILTER (WHERE drive_file_id IS NOT NULL)::int`,
     })
     .from(documents);
+
+  const cauHinh = (drive?.config ?? {}) as CauHinhDrive;
 
   return (
     <div className="max-w-4xl space-y-4">
@@ -75,9 +78,6 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {drive?.connectedAt && (
-              <ChonThuMuc tenHienTai={(drive.config as { folderName?: string })?.folderName ?? null} />
-            )}
             <DriveActions
               daNoi={!!drive?.connectedAt}
               dangBat={!!drive?.enabled}
@@ -93,10 +93,6 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
             giaTri={(drive?.config as { accountEmail?: string })?.accountEmail ?? "chưa nối"}
           />
           <Dong nhan="Đã có bản sao" giaTri={String(dem?.coBanSao ?? 0)} />
-          <Dong
-            nhan="Thư mục trên Drive"
-            giaTri={(drive?.config as { folderName?: string })?.folderName ?? "chưa có"}
-          />
           <Dong
             nhan="Lần đồng bộ cuối"
             giaTri={drive?.lastSyncAt ? drive.lastSyncAt.toISOString().slice(0, 10) : "chưa lần nào"}
@@ -126,6 +122,48 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
             tránh chuyện đổi tên hay xóa file bên Drive làm hỏng dữ liệu trong app.
           </p>
         </div>
+        )}
+
+        {drive?.connectedAt && (
+          <div className="rounded-lg border border-slate-200 overflow-hidden">
+            <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 text-xs text-slate-600">
+              Thư mục trên Drive theo từng loại tài liệu. Loại nào chưa chọn riêng thì dùng thư mục mặc định.
+            </div>
+            <table className="w-full text-sm">
+              <tbody>
+                {(Object.entries(DOC_TYPES) as [DocType, string][]).map(([k, ten]) => {
+                  const rieng = cauHinh.folders?.[k];
+                  const dung = thuMucCho(cauHinh, k);
+                  return (
+                    <tr key={k} className="border-b border-slate-100 last:border-0">
+                      <td className="px-4 py-2 font-medium w-56">{ten}</td>
+                      <td className="px-4 py-2 text-slate-600">
+                        {rieng?.name ? (
+                          rieng.name
+                        ) : dung ? (
+                          <span className="text-slate-400">theo mặc định: {dung.name}</span>
+                        ) : (
+                          <span className="text-amber-700">chưa có thư mục, sẽ không đẩy lên Drive</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2 text-right w-56">
+                        <ChonThuMuc tenHienTai={rieng?.name ?? null} docType={k} nhan={ten} coTheBo />
+                      </td>
+                    </tr>
+                  );
+                })}
+                <tr className="bg-slate-50">
+                  <td className="px-4 py-2 font-medium">Mặc định</td>
+                  <td className="px-4 py-2 text-slate-600">
+                    {cauHinh.folderName ?? <span className="text-amber-700">chưa chọn</span>}
+                  </td>
+                  <td className="px-4 py-2 text-right">
+                    <ChonThuMuc tenHienTai={cauHinh.folderName ?? null} />
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         )}
 
         {drive?.connectedAt && !coKhoaPicker && (
