@@ -14,7 +14,10 @@ const BUCKET = "tai-lieu";
  * Cố ý KHÔNG ném lỗi ra ngoài: Drive hỏng thì tài liệu vẫn phải lưu được trong app.
  * Trả về true nếu đẩy xong, false nếu bỏ qua hoặc hỏng, và ghi lý do vào integrations.last_error.
  */
-export async function dayBanSaoLenDrive(documentId: number): Promise<boolean> {
+export async function dayBanSaoLenDrive(
+  documentId: number,
+  folderIdChiDinh?: string | null,
+): Promise<boolean> {
   try {
     const [th] = await db
       .select()
@@ -28,10 +31,10 @@ export async function dayBanSaoLenDrive(documentId: number): Promise<boolean> {
     const [doc] = await db.select().from(documents).where(eq(documents.id, documentId));
     if (!doc || doc.driveFileId) return false;
 
-    // Mỗi loại tài liệu có thể có thư mục riêng, không thì rơi về thư mục mặc định.
-    const thuMuc = thuMucCho(th.config as CauHinhDrive, doc.docType);
-    if (!thuMuc) return false;
-    const folderId = thuMuc.id;
+    // Ưu tiên thư mục người dùng chọn ngay lúc tải. Không có thì theo cấu hình của loại,
+    // rồi mới tới thư mục mặc định.
+    const folderId = folderIdChiDinh ?? thuMucCho(th.config as CauHinhDrive, doc.docType)?.id;
+    if (!folderId) return false;
 
     const supabase = await createClient();
     const { data, error } = await supabase.storage.from(BUCKET).download(doc.storagePath);

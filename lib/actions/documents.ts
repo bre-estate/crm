@@ -37,6 +37,8 @@ async function _ghiNhanTaiLieu(input: {
   partnerId?: number | null;
   invoiceId?: number | null;
   employeeId?: number | null;
+  /** Ghi đè thư mục Drive chỉ cho lần tải này, không đụng cấu hình chung. */
+  driveFolderId?: string | null;
 }) {
   await requirePermission("documents", "edit");
   const user = await getCurrentUser();
@@ -87,7 +89,7 @@ async function _ghiNhanTaiLieu(input: {
   }
 
   // Drive là bản sao nên hỏng cũng không chặn việc lưu. Hàm này tự nuốt lỗi.
-  if (idVuaTao) await dayBanSaoLenDrive(idVuaTao);
+  if (idVuaTao) await dayBanSaoLenDrive(idVuaTao, input.driveFolderId ?? null);
 
   revalidatePath("/documents");
 }

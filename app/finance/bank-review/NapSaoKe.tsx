@@ -10,19 +10,28 @@ import { baoLoi } from "@/lib/bao-loi";
 import { ghiNhanTaiLieu } from "@/lib/actions/documents";
 import { napSaoKe, soatSaoKe } from "@/lib/actions/sao-ke";
 import { duongDanKho, fmtDungLuong } from "@/lib/documents-core";
+import { moCuaSoChonThuMuc } from "@/lib/mo-cua-so-chon";
 import type { KetQuaSoat } from "@/lib/sao-ke-core";
 
 const BUCKET = "tai-lieu";
 const fmtTien = (n: number | null) => (n == null ? "—" : Math.round(n).toLocaleString("vi-VN"));
 const fmtNgay = (d: string | null) => (d ? d.split("-").reverse().join("/") : "—");
 
-export default function NapSaoKe() {
+export default function NapSaoKe({
+  thuMucGoc,
+  driveDangBat,
+}: {
+  /** Thư mục đã gán cho loại Sao kê ở trang Tích hợp. Cửa sổ chọn sẽ mở sẵn bên trong nó. */
+  thuMucGoc: { id: string; name: string } | null;
+  driveDangBat: boolean;
+}) {
   const router = useRouter();
   const [dangChay, start] = useTransition();
   const [buoc, setBuoc] = useState<string | null>(null);
   const [soat, setSoat] = useState<KetQuaSoat | null>(null);
   const [duongDan, setDuongDan] = useState<string | null>(null);
   const [tenFile, setTenFile] = useState<string>("");
+  const [thuMuc, setThuMuc] = useState<{ id: string; name: string } | null>(thuMucGoc);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const datLai = () => {
@@ -30,8 +39,24 @@ export default function NapSaoKe() {
     setDuongDan(null);
     setTenFile("");
     setBuoc(null);
+    setThuMuc(thuMucGoc);
     if (inputRef.current) inputRef.current.value = "";
   };
+
+  const doiThuMuc = () =>
+    start(async () => {
+      try {
+        const f = await moCuaSoChonThuMuc({
+          moTrong: thuMucGoc?.id ?? null,
+          tieuDe: thuMucGoc
+            ? `Chọn thư mục con trong "${thuMucGoc.name}"`
+            : "Chọn thư mục để lưu sao kê",
+        });
+        if (f) setThuMuc(f);
+      } catch (e) {
+        toast.error(cauLoi(e), { duration: 12000 });
+      }
+    });
 
   const chonFile = (f: File | null) => {
     if (!f) return;
@@ -52,6 +77,7 @@ export default function NapSaoKe() {
           title: f.name.replace(/\.[^.]+$/, ""),
           mimeType: f.type || "application/octet-stream",
           sizeBytes: f.size,
+          driveFolderId: thuMuc?.id ?? null,
         });
         if (baoLoi(ghi)) return;
 
@@ -102,6 +128,29 @@ export default function NapSaoKe() {
           File Techcombank xuất ra, dạng .xlsx hoặc .csv. Dòng đã có sẽ tự bỏ qua.
         </span>
       </div>
+
+      {!soat && driveDangBat && (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-slate-500">Thư mục trên Drive:</span>
+          <span className="font-medium">
+            {thuMuc ? thuMuc.name : <span className="text-amber-700">chưa gán, sẽ không đẩy lên Drive</span>}
+          </span>
+          <Button variant="outline" size="sm" onClick={doiThuMuc} disabled={dangChay}>
+            {thuMuc ? "Đổi" : "Chọn"}
+          </Button>
+          {thuMuc && thuMucGoc && thuMuc.id !== thuMucGoc.id && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setThuMuc(thuMucGoc)}
+              disabled={dangChay}
+              className="text-slate-500"
+            >
+              Về mặc định
+            </Button>
+          )}
+        </div>
+      )}
 
       {!soat && (
         <div className="flex flex-wrap items-center gap-3">
