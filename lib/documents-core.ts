@@ -5,8 +5,11 @@
 
 export const DOC_TYPES = {
   sao_ke: "Sao kê ngân hàng",
+  // Tách hai chiều vì kế toán để hai chỗ khác nhau và ý nghĩa thuế ngược nhau:
+  // bán ra là thuế phải nộp, mua vào là thuế được khấu trừ.
+  hoa_don_ban: "Hóa đơn bán ra",
+  hoa_don_mua: "Hóa đơn mua vào",
   hop_dong: "Hợp đồng",
-  hoa_don: "Hóa đơn",
   chinh_sach: "Chính sách, quyết định",
   khac: "Khác",
 } as const;
@@ -18,8 +21,9 @@ export const isDocType = (v: string): v is DocType => v in DOC_TYPES;
 /** Đuôi file chấp nhận, theo từng loại tài liệu. */
 export const ACCEPT_BY_TYPE: Record<DocType, string> = {
   sao_ke: ".xlsx,.xls,.csv",
+  hoa_don_ban: ".pdf,.xml,.jpg,.jpeg,.png",
+  hoa_don_mua: ".pdf,.xml,.jpg,.jpeg,.png",
   hop_dong: ".pdf,.jpg,.jpeg,.png,.docx",
-  hoa_don: ".pdf,.xml,.jpg,.jpeg,.png",
   chinh_sach: ".pdf,.docx,.xlsx",
   khac: "",
 };
