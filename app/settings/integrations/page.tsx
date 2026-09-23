@@ -75,7 +75,7 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {drive?.connectedAt && coKhoaPicker && (
+            {drive?.connectedAt && (
               <ChonThuMuc tenHienTai={(drive.config as { folderName?: string })?.folderName ?? null} />
             )}
             <DriveActions
@@ -132,17 +132,20 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
           <div className="text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-2">
             <p className="font-medium text-slate-800">Muốn trỏ vào thư mục có sẵn trên Shared Drive</p>
             <p>
-              Hiện tài liệu đang vào thư mục riêng do app tạo. Muốn chọn một thư mục có sẵn thì cần bật
-              thêm trên Google Cloud Console:
+              Nút Chọn thư mục cần khóa API cho cửa sổ chọn của Google. Máy chủ đang chưa thấy khóa đó,
+              nên bấm vào sẽ báo lỗi. Ba việc cần làm:
             </p>
             <ol className="list-decimal list-inside space-y-1">
               <li>Vào Library, bật <b>Google Picker API</b></li>
               <li>Vào Credentials, tạo <b>API key</b>, giới hạn theo tên miền crm.bre.vn</li>
-              <li>Đặt khóa đó lên Vercel với tên <b>NEXT_PUBLIC_GOOGLE_API_KEY</b> rồi deploy lại</li>
+              <li>
+                Đặt khóa đó lên Vercel với tên <b>NEXT_PUBLIC_GOOGLE_API_KEY</b>, rồi deploy lại và
+                <b> bỏ tích Use existing Build Cache</b>
+              </li>
             </ol>
             <p>
-              Khóa này chạy trên trình duyệt nên không phải bí mật, nhưng vẫn nên giới hạn tên miền để
-              người ngoài không mượn được.
+              Biến có tiền tố NEXT_PUBLIC_ được chốt vào lúc build. Deploy lại mà dùng bộ nhớ đệm cũ thì
+              vẫn là giá trị cũ, nên phải bỏ tích ô đó.
             </p>
           </div>
         )}
