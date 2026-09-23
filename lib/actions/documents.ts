@@ -11,7 +11,7 @@ import { chay, chayCoKetQua, type KetQuaLuu } from "@/lib/actions/ket-qua";
 import { isDocType, MAX_UPLOAD_BYTES, fmtDungLuong } from "@/lib/documents-core";
 import { cookies, headers } from "next/headers";
 import { randomBytes } from "crypto";
-import { daKhaiBaoUngDung, duongDanDangNhap } from "@/lib/google-drive";
+import { daKhaiBaoUngDung, duongDanDangNhap, giaiMa, lamMoiVe } from "@/lib/google-drive";
 import { dayBanSaoLenDrive } from "@/lib/day-len-drive";
 
 const BUCKET = "tai-lieu";
@@ -209,4 +209,54 @@ export async function batDauNoiDrive() {
 
 export async function ngatDrive(): Promise<KetQuaLuu> {
   return chay(() => _ngatDrive());
+}
+
+/**
+ * Cấp một vé truy cập ngắn hạn cho cửa sổ chọn thư mục của Google chạy trên trình duyệt.
+ *
+ * Cửa sổ đó là của Google, chạy phía người dùng, nên bắt buộc phải có vé ở trình duyệt.
+ * Vé này sống một tiếng và chỉ mang quyền drive.file, tức chỉ đụng được file của app.
+ * Mã làm mới thì vẫn nằm nguyên trên máy chủ, không bao giờ gửi ra ngoài.
+ */
+async function _veChoCuaSoChon(): Promise<{ token: string; apiKey: string }> {
+  await requirePermission("settings.integrations", "edit");
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      "Chưa có khóa API cho cửa sổ chọn thư mục. Cần đặt NEXT_PUBLIC_GOOGLE_API_KEY trên Vercel rồi deploy lại.",
+    );
+  }
+  const [th] = await db.select().from(integrations).where(eq(integrations.provider, "google_drive"));
+  const refreshToken = (th?.secrets as { refreshToken?: string } | null)?.refreshToken;
+  if (!refreshToken) throw new Error("Chưa nối Google Drive. Bấm Kết nối trước đã.");
+
+  const ve = await lamMoiVe(giaiMa(refreshToken));
+  return { token: ve.access_token, apiKey };
+}
+
+/** Ghi lại thư mục người dùng vừa chọn. Tài liệu tải lên sau đó sẽ nằm trong thư mục này. */
+async function _datThuMucDrive(folderId: string, folderName: string) {
+  await requirePermission("settings.integrations", "edit");
+  if (!folderId.trim()) throw new Error("Chưa chọn thư mục nào.");
+
+  const [th] = await db.select().from(integrations).where(eq(integrations.provider, "google_drive"));
+  if (!th?.connectedAt) throw new Error("Chưa nối Google Drive. Bấm Kết nối trước đã.");
+
+  await db
+    .update(integrations)
+    .set({
+      config: { ...(th.config as Record<string, unknown>), folderId, folderName },
+      lastError: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(integrations.provider, "google_drive"));
+  revalidatePath("/settings/integrations");
+}
+
+export async function veChoCuaSoChon() {
+  return chayCoKetQua(() => _veChoCuaSoChon());
+}
+
+export async function datThuMucDrive(folderId: string, folderName: string): Promise<KetQuaLuu> {
+  return chay(() => _datThuMucDrive(folderId, folderName));
 }
