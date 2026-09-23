@@ -25,7 +25,7 @@ interface GoogleApi {
     // Kiểu của thư viện Google, khai tối thiểu phần mình dùng.
     PickerBuilder: new () => PickerBuilder;
     DocsView: new (viewId?: string) => DocsView;
-    ViewId: { FOLDERS: string };
+    ViewId: { FOLDERS: string; DOCS: string };
     Action: { PICKED: string; CANCEL: string };
     Feature: { SUPPORT_DRIVES: string };
     Response: { ACTION: string; DOCUMENTS: string };
@@ -35,6 +35,8 @@ interface DocsView {
   setIncludeFolders: (v: boolean) => DocsView;
   setSelectFolderEnabled: (v: boolean) => DocsView;
   setMimeTypes: (v: string) => DocsView;
+  setLabel: (v: string) => DocsView;
+  setEnableDrives: (v: boolean) => DocsView;
 }
 interface PickerBuilder {
   addView: (v: DocsView) => PickerBuilder;
@@ -97,13 +99,26 @@ export default function ChonThuMuc({
         const picker = window.google?.picker;
         if (!picker) throw new Error("Không mở được cửa sổ chọn thư mục của Google.");
 
-        const view = new picker.DocsView(picker.ViewId.FOLDERS)
+        const chiThuMuc = "application/vnd.google-apps.folder";
+        // Tab duyệt cây thư mục. Ở đây bấm một lần là chọn, hai lần là đi vào.
+        const duyet = new picker.DocsView(picker.ViewId.FOLDERS)
           .setIncludeFolders(true)
           .setSelectFolderEnabled(true)
-          .setMimeTypes("application/vnd.google-apps.folder");
+          .setMimeTypes(chiThuMuc)
+          .setEnableDrives(true)
+          .setLabel("Duyệt thư mục");
+        // Tab tìm theo tên. Trong tab duyệt, kết quả tìm kiếm bấm vào là chui vào trong
+        // chứ không chọn được, nên cần thêm tab này để chọn thẳng từ kết quả.
+        const timKiem = new picker.DocsView(picker.ViewId.DOCS)
+          .setIncludeFolders(true)
+          .setSelectFolderEnabled(true)
+          .setMimeTypes(chiThuMuc)
+          .setEnableDrives(true)
+          .setLabel("Tìm theo tên");
 
         new picker.PickerBuilder()
-          .addView(view)
+          .addView(duyet)
+          .addView(timKiem)
           .setOAuthToken(token)
           .setDeveloperKey(apiKey)
           // Không bật cái này thì cửa sổ chỉ thấy My Drive, không thấy Shared Drive của công ty.
