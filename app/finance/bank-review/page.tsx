@@ -99,7 +99,8 @@ export default async function BankReviewPage({ searchParams }: { searchParams: S
       <div>
         <h1 className="text-2xl font-bold">Đối chiếu sao kê bank</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Phân loại 32 bucket khớp báo cáo Kế toán. Chọn bucket sai → dropdown chỉnh tay (auto lưu). Filter chua_phan_loai / opex_khac / khac_thu để dò dần.
+          Xếp từng giao dịch trong sao kê vào đúng nhóm thu chi. Máy tự xếp trước, chỗ nào sai thì
+          chọn lại ở ô Phân loại, chọn xong lưu ngay. Lọc nhóm Chưa phân loại để dò dần.
         </p>
       </div>
 
@@ -117,7 +118,7 @@ export default async function BankReviewPage({ searchParams }: { searchParams: S
           </select>
         </div>
         <div>
-          <label className="block text-slate-500 mb-1">Bucket</label>
+          <label className="block text-slate-500 mb-1">Phân loại</label>
           <select name="category" defaultValue={filterCat ?? ""} className="input min-w-48">
             <option value="">Tất cả</option>
             {Object.values(CATEGORIES).map(c => (
@@ -146,7 +147,9 @@ export default async function BankReviewPage({ searchParams }: { searchParams: S
 
       {/* Breakdown per bucket */}
       <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-3">
-        <div className="text-xs text-slate-500 mb-2">Tổng theo bucket ({filterYear === "all" ? "tất cả" : filterYear}):</div>
+        <div className="text-xs text-slate-500 mb-2">
+          Tổng theo phân loại ({filterYear === "all" ? "tất cả" : filterYear}), bấm vào một nhóm để lọc:
+        </div>
         <div className="flex flex-wrap gap-1.5 text-[11px]">
           {breakdown
             .sort((a, b) => Number(b.total) - Number(a.total))
@@ -186,8 +189,8 @@ export default async function BankReviewPage({ searchParams }: { searchParams: S
               <th className="text-right p-2">Ra</th>
               <th className="text-left p-2">Mô tả</th>
               <th className="text-left p-2">Đối tác</th>
-              <th className="text-left p-2 w-56">Bucket</th>
-              <th className="text-center p-2 w-16">Auto?</th>
+              <th className="text-left p-2 w-56">Phân loại</th>
+              <th className="text-center p-2 w-24">Độ chắc</th>
             </tr>
           </thead>
           <tbody>
@@ -199,10 +202,20 @@ export default async function BankReviewPage({ searchParams }: { searchParams: S
                 <td className="p-2 max-w-md truncate" title={r.description ?? ""}>{r.description}</td>
                 <td className="p-2 text-slate-500 truncate max-w-32" title={r.partnerName ?? ""}>{r.partnerName}</td>
                 <td className="p-2"><CategorySelect id={r.id} value={r.category} source={r.categorySource} /></td>
-                <td className="p-2 text-center text-[10px]">
-                  {r.categorySource === "manual"
-                    ? <span title="Đã chỉnh tay">✋</span>
-                    : <span className="text-slate-400" title={`Auto ${r.categoryConfidence ?? 0}%`}>{r.categoryConfidence ?? 0}</span>}
+                <td className="p-2 text-center text-[11px] whitespace-nowrap">
+                  {r.categorySource === "manual" ? (
+                    <span className="text-slate-700" title="Người dùng tự chọn, máy không đụng tới">
+                      Sửa tay
+                    </span>
+                  ) : (
+                    // Điểm máy tự chấm 0 tới 100. Thấp nghĩa là luật khớp mờ, nên soát lại.
+                    <span
+                      className={(r.categoryConfidence ?? 0) < 50 ? "text-amber-700" : "text-slate-400"}
+                      title={`Máy tự xếp, độ chắc ${r.categoryConfidence ?? 0} trên 100`}
+                    >
+                      {r.categoryConfidence ?? 0}
+                    </span>
+                  )}
                 </td>
               </tr>
             ))}
