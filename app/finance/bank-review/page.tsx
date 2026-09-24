@@ -1,227 +1,253 @@
+/**
+ * Sao kê ngân hàng: bản sao trung thực của file Techcombank xuất ra.
+ *
+ * Mục đích là TRA CỨU và ĐỐI CHIẾU, nên hiện đúng những gì ngân hàng ghi: ngày,
+ * nội dung chuyển khoản, số tiền, số dư. Không phân loại gì ở đây.
+ *
+ * Việc bóc tách một lệnh gộp thành hoa hồng, lương, thưởng là việc của báo cáo.
+ * Báo cáo tự làm điều đó mỗi lần chạy, bằng bộ luật trong lib/bank-cash-core.ts
+ * vốn biết bảng lương và kho thưởng nên tách được, chứ không chỉ dò từ khóa.
+ */
 import { db } from "@/lib/db";
-import { bankTransactions, integrations } from "@/lib/schema";
-import { thuMucCho, type CauHinhDrive } from "@/lib/documents-core";
-import { requirePermission } from "@/lib/auth";
-import { and, sql, ilike, gte, lte, eq, desc, type SQL } from "drizzle-orm";
-import Link from "next/link";
-import { CATEGORIES } from "@/lib/transaction-classifier";
-import { CategorySelect } from "./CategorySelect";
-import { rerunClassifier } from "./actions";
-import NapSaoKe from "./NapSaoKe";
-import { getCurrentUser } from "@/lib/auth";
+import { bankTransactions } from "@/lib/schema";
+import { requirePermission, getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
+import { thuMucCho, type CauHinhDrive } from "@/lib/documents-core";
+import { integrations } from "@/lib/schema";
+import { and, sql, ilike, gte, lte, desc, or, eq, type SQL } from "drizzle-orm";
+import Link from "next/link";
+import NapSaoKe from "./NapSaoKe";
 
 export const dynamic = "force-dynamic";
 
-type SP = Promise<{ category?: string; q?: string; year?: string; source?: string }>;
+const GIOI_HAN = 500;
+const fmt = (n: number | null) => (n == null || n === 0 ? "" : Math.round(Math.abs(n)).toLocaleString("vi-VN"));
+const fmtNgay = (d: string | null) => (d ? d.slice(0, 10).split("-").reverse().join("/") : "");
 
-const fmt = (n: number | null) => n == null ? "" : Math.round(Math.abs(n)).toLocaleString("vi-VN");
+type SP = Promise<{ q?: string; year?: string; chieu?: string; tu?: string; den?: string }>;
 
-export default async function BankReviewPage({ searchParams }: { searchParams: SP }) {
+export default async function BankStatementPage({ searchParams }: { searchParams: SP }) {
   await requirePermission("finance");
   const user = await getCurrentUser();
   const napDuoc = !!user && hasPermission(user.role, user.customPermissions, "finance", "edit");
+  const sp = await searchParams;
 
-  // Thư mục Drive đã gán cho loại Sao kê, dùng làm điểm mở của cửa sổ chọn.
+  const q = sp.q?.trim() || null;
+  const nam = sp.year?.trim() || String(new Date().getFullYear());
+  const chieu = sp.chieu === "vao" || sp.chieu === "ra" ? sp.chieu : null;
+  const tu = sp.tu?.trim() || null;
+  const den = sp.den?.trim() || null;
+
+  const dieuKien: SQL[] = [];
+  if (q) {
+    // Tìm trong nội dung chuyển khoản, tên đối tác và số bút toán.
+    const nhu = `%${q}%`;
+    dieuKien.push(
+      or(
+        ilike(bankTransactions.description, nhu),
+        ilike(bankTransactions.partnerName, nhu),
+        ilike(bankTransactions.referenceNumber, nhu),
+      )!,
+    );
+  }
+  if (tu) dieuKien.push(gte(bankTransactions.transactionDate, tu));
+  if (den) dieuKien.push(lte(bankTransactions.transactionDate, den));
+  if (!tu && !den && nam !== "all") {
+    dieuKien.push(gte(bankTransactions.transactionDate, `${nam}-01-01`));
+    dieuKien.push(lte(bankTransactions.transactionDate, `${nam}-12-31`));
+  }
+  if (chieu === "vao") dieuKien.push(sql`coalesce(credit_amount,0) > 0`);
+  if (chieu === "ra") dieuKien.push(sql`coalesce(debit_amount,0) < 0 OR coalesce(fee_interest,0) < 0`);
+  const loc = dieuKien.length ? and(...dieuKien) : undefined;
+
+  const [tong] = await db
+    .select({
+      soDong: sql<number>`count(*)::int`,
+      vao: sql<number>`coalesce(sum(coalesce(credit_amount,0)),0)::float8`,
+      ra: sql<number>`coalesce(sum(coalesce(debit_amount,0) + coalesce(fee_interest,0) + coalesce(vat,0)),0)::float8`,
+    })
+    .from(bankTransactions)
+    .where(loc);
+
+  const rows = await db
+    .select({
+      id: bankTransactions.id,
+      ngay: bankTransactions.transactionDate,
+      soButToan: bankTransactions.referenceNumber,
+      doiTac: bankTransactions.partnerName,
+      noiDung: bankTransactions.description,
+      no: bankTransactions.debitAmount,
+      co: bankTransactions.creditAmount,
+      phi: bankTransactions.feeInterest,
+      vat: bankTransactions.vat,
+      soDu: bankTransactions.runningBalance,
+    })
+    .from(bankTransactions)
+    .where(loc)
+    .orderBy(desc(bankTransactions.statementSeq))
+    .limit(GIOI_HAN);
+
   const [driveTh] = await db
     .select()
     .from(integrations)
     .where(eq(integrations.provider, "google_drive"));
   const thuMucSaoKe = driveTh?.enabled ? thuMucCho(driveTh.config as CauHinhDrive, "sao_ke") : null;
 
-  const sp = await searchParams;
-  const filterCat = sp.category?.trim() || null;
-  const filterQ = sp.q?.trim() || null;
-  const filterYear = sp.year?.trim() || String(new Date().getFullYear());
-  const filterSource = sp.source?.trim() || null; // 'auto' | 'manual' | null
-
-  const where: SQL[] = [];
-  if (filterCat) where.push(eq(bankTransactions.category, filterCat));
-  if (filterQ) where.push(ilike(bankTransactions.description, `%${filterQ}%`));
-  if (filterYear && filterYear !== "all") {
-    where.push(gte(bankTransactions.transactionDate, `${filterYear}-01-01`));
-    where.push(lte(bankTransactions.transactionDate, `${filterYear}-12-31`));
-  }
-  if (filterSource) where.push(eq(bankTransactions.categorySource, filterSource));
-
-  const whereSql = where.length ? and(...where) : undefined;
-
-  // Breakdown per category (respecting current filters except category itself)
-  const breakdownWhere: SQL[] = [];
-  if (filterQ) breakdownWhere.push(ilike(bankTransactions.description, `%${filterQ}%`));
-  if (filterYear && filterYear !== "all") {
-    breakdownWhere.push(gte(bankTransactions.transactionDate, `${filterYear}-01-01`));
-    breakdownWhere.push(lte(bankTransactions.transactionDate, `${filterYear}-12-31`));
-  }
-  const breakdown = await db
-    .select({
-      category: bankTransactions.category,
-      cnt: sql<number>`count(*)::int`,
-      total: sql<number>`(coalesce(sum(abs(debit_amount)), 0) + coalesce(sum(credit_amount), 0))::float8`,
-    })
-    .from(bankTransactions)
-    .where(breakdownWhere.length ? and(...breakdownWhere) : undefined)
-    .groupBy(bankTransactions.category);
-
-  const rows = await db.select({
-      id: bankTransactions.id,
-      transactionDate: bankTransactions.transactionDate,
-      debitAmount: bankTransactions.debitAmount,
-      creditAmount: bankTransactions.creditAmount,
-      description: bankTransactions.description,
-      partnerName: bankTransactions.partnerName,
-      category: bankTransactions.category,
-      categorySource: bankTransactions.categorySource,
-      categoryConfidence: bankTransactions.categoryConfidence,
-    })
-    .from(bankTransactions)
-    .where(whereSql)
-    .orderBy(desc(bankTransactions.transactionDate))
-    .limit(500);
-
-  const totalRows = (await db.select({ n: sql<number>`count(*)::int` })
-    .from(bankTransactions).where(whereSql))[0]?.n ?? 0;
-
-  const linkParams = (patch: Record<string, string | null>) => {
-    const q = new URLSearchParams();
-    if (filterYear) q.set("year", filterYear);
-    if (filterCat) q.set("category", filterCat);
-    if (filterQ) q.set("q", filterQ);
-    if (filterSource) q.set("source", filterSource);
-    for (const [k, v] of Object.entries(patch)) {
-      if (v == null) q.delete(k); else q.set(k, v);
-    }
-    return `/finance/bank-review?${q}`;
+  const pill = (on: boolean) =>
+    `inline-block px-2.5 py-1 rounded-md text-xs ${on ? "bg-slate-800 text-white" : "bg-slate-100 hover:bg-slate-200 text-slate-700"}`;
+  const link = (patch: Record<string, string | null>) => {
+    const u = new URLSearchParams();
+    if (q) u.set("q", q);
+    if (nam) u.set("year", nam);
+    if (chieu) u.set("chieu", chieu);
+    if (tu) u.set("tu", tu);
+    if (den) u.set("den", den);
+    for (const [k, v] of Object.entries(patch)) v == null ? u.delete(k) : u.set(k, v);
+    return `/finance/bank-review?${u}`;
   };
 
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold">Đối chiếu sao kê bank</h1>
+        <h1 className="text-2xl font-bold">Sao kê ngân hàng</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Xếp từng giao dịch trong sao kê vào đúng nhóm thu chi. Máy tự xếp trước, chỗ nào sai thì
-          chọn lại ở ô Phân loại, chọn xong lưu ngay. Lọc nhóm Chưa phân loại để dò dần.
+          Đúng những gì Techcombank xuất ra, không sửa gì. Dùng để tra nội dung chuyển khoản và số
+          tiền. Việc xếp nhóm thu chi nằm ở{" "}
+          <Link href="/reports/profit-detail" className="underline">
+            báo cáo Lãi lỗ và dòng tiền
+          </Link>
+          .
         </p>
       </div>
 
       {napDuoc && <NapSaoKe thuMucGoc={thuMucSaoKe} driveDangBat={!!driveTh?.enabled} />}
 
-      {/* Filter */}
-      <form className="bg-card rounded-xl ring-1 ring-foreground/10 p-3 flex flex-wrap gap-3 items-end text-xs">
-        <div>
-          <label className="block text-slate-500 mb-1">Năm</label>
-          <select name="year" defaultValue={filterYear} className="input min-w-24">
-            <option value="all">Tất cả</option>
-            <option value="2024">2024</option>
-            <option value="2025">2025</option>
-            <option value="2026">2026</option>
-          </select>
+      <form className="bg-card rounded-xl ring-1 ring-foreground/10 p-4 flex flex-wrap gap-3 items-end text-sm">
+        <div className="flex-1 min-w-64">
+          <label className="block text-xs text-slate-500 mb-1">
+            Tìm trong nội dung, tên đối tác, số bút toán
+          </label>
+          <input
+            name="q"
+            defaultValue={q ?? ""}
+            placeholder="vd: hoa hong, Dataloca, thue van phong"
+            className="input w-full"
+          />
         </div>
         <div>
-          <label className="block text-slate-500 mb-1">Phân loại</label>
-          <select name="category" defaultValue={filterCat ?? ""} className="input min-w-48">
-            <option value="">Tất cả</option>
-            {Object.values(CATEGORIES).map(c => (
-              <option key={c.key} value={c.key}>{c.kimBc ? c.kimBc + " " : ""}{c.label}</option>
-            ))}
-          </select>
+          <label className="block text-xs text-slate-500 mb-1">Từ ngày</label>
+          <input type="date" name="tu" defaultValue={tu ?? ""} className="input" />
         </div>
         <div>
-          <label className="block text-slate-500 mb-1">Nguồn</label>
-          <select name="source" defaultValue={filterSource ?? ""} className="input">
-            <option value="">Tất cả</option>
-            <option value="auto">Auto</option>
-            <option value="manual">Chỉnh tay</option>
-          </select>
+          <label className="block text-xs text-slate-500 mb-1">Đến ngày</label>
+          <input type="date" name="den" defaultValue={den ?? ""} className="input" />
         </div>
-        <div className="flex-1 min-w-48">
-          <label className="block text-slate-500 mb-1">Tìm mô tả</label>
-          <input name="q" defaultValue={filterQ ?? ""} placeholder="VD: hoa hong, quang cao, YCTV..." className="input w-full" />
-        </div>
-        <button type="submit" className="bg-orange-500 text-white px-3 py-1.5 rounded hover:bg-orange-600">Lọc</button>
-        <Link href="/finance/bank-review" className="border px-3 py-1.5 rounded hover:bg-slate-50">Reset</Link>
-        <form action={async () => { "use server"; await rerunClassifier(); }} className="ml-auto">
-          <button type="submit" className="text-xs border px-2 py-1.5 rounded hover:bg-slate-50">↻ Chạy lại auto-classify (không đụng manual)</button>
-        </form>
+        <input type="hidden" name="year" value={nam} />
+        <button type="submit" className="bg-orange-500 text-white px-4 py-2 rounded-md hover:bg-orange-600">
+          Tìm
+        </button>
+        <Link href="/finance/bank-review" className="border px-4 py-2 rounded-md hover:bg-slate-50">
+          Xóa lọc
+        </Link>
       </form>
 
-      {/* Breakdown per bucket */}
-      <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-3">
-        <div className="text-xs text-slate-500 mb-2">
-          Tổng theo phân loại ({filterYear === "all" ? "tất cả" : filterYear}), bấm vào một nhóm để lọc:
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex gap-1">
+          {["2024", "2025", "2026", "all"].map((y) => (
+            <Link key={y} href={link({ year: y, tu: null, den: null })} className={pill(nam === y)}>
+              {y === "all" ? "Tất cả" : y}
+            </Link>
+          ))}
         </div>
-        <div className="flex flex-wrap gap-1.5 text-[11px]">
-          {breakdown
-            .sort((a, b) => Number(b.total) - Number(a.total))
-            .map(b => {
-              const meta = CATEGORIES[(b.category ?? "chua_phan_loai") as keyof typeof CATEGORIES];
-              const active = filterCat === b.category;
-              const cls = active
-                ? "bg-orange-500 text-white"
-                : meta?.group === "unknown" ? "bg-red-100 text-red-800 hover:bg-red-200"
-                : meta?.group === "inflow" ? "bg-green-50 hover:bg-green-100"
-                : meta?.group === "non_pnl" ? "bg-slate-100 hover:bg-slate-200"
-                : "bg-slate-50 hover:bg-slate-100";
-              return (
-                <Link
-                  key={b.category ?? "null"}
-                  href={linkParams({ category: active ? null : (b.category ?? null) })}
-                  className={`px-2 py-1 rounded ${cls}`}
-                >
-                  {meta?.label ?? b.category ?? "(null)"}
-                  <span className="ml-1 opacity-60">{b.cnt} · {fmt(Number(b.total))}</span>
-                </Link>
-              );
-            })}
+        <div className="flex gap-1">
+          <Link href={link({ chieu: null })} className={pill(!chieu)}>
+            Cả hai chiều
+          </Link>
+          <Link href={link({ chieu: "vao" })} className={pill(chieu === "vao")}>
+            Tiền vào
+          </Link>
+          <Link href={link({ chieu: "ra" })} className={pill(chieu === "ra")}>
+            Tiền ra
+          </Link>
         </div>
       </div>
 
-      {/* Rows */}
+      <div className="grid grid-cols-3 gap-3">
+        <O nhan="Số giao dịch" giaTri={String(tong?.soDong ?? 0)} />
+        <O nhan="Tổng tiền vào" giaTri={fmt(tong?.vao ?? 0) || "0"} mau="text-green-700" />
+        <O nhan="Tổng tiền ra" giaTri={fmt(tong?.ra ?? 0) || "0"} mau="text-red-700" />
+      </div>
+
       <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-x-auto">
-        <div className="p-3 text-xs text-slate-500 border-b">
-          Hiển thị {rows.length} / {totalRows.toLocaleString("vi-VN")} rows
-        </div>
-        <table className="w-full text-xs">
+        <table className="w-full text-sm">
           <thead className="text-xs text-slate-500">
             <tr>
-              <th className="text-left p-2">Ngày</th>
-              <th className="text-right p-2">Vào</th>
-              <th className="text-right p-2">Ra</th>
-              <th className="text-left p-2">Mô tả</th>
-              <th className="text-left p-2">Đối tác</th>
-              <th className="text-left p-2 w-56">Phân loại</th>
-              <th className="text-center p-2 w-24">Độ chắc</th>
+              <th className="text-left p-2 w-24">Ngày</th>
+              <th className="text-left p-2">Nội dung chuyển khoản</th>
+              <th className="text-left p-2 w-44">Đối tác</th>
+              <th className="text-right p-2 w-32">Tiền vào</th>
+              <th className="text-right p-2 w-32">Tiền ra</th>
+              <th className="text-right p-2 w-36">Số dư</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map(r => (
-              <tr key={r.id} className="border-t hover:bg-slate-50">
-                <td className="p-2 whitespace-nowrap">{r.transactionDate?.slice(0, 10)}</td>
-                <td className="p-2 text-right tabular-nums text-green-700">{r.creditAmount ? fmt(r.creditAmount) : ""}</td>
-                <td className="p-2 text-right tabular-nums text-red-700">{r.debitAmount ? fmt(r.debitAmount) : ""}</td>
-                <td className="p-2 max-w-md truncate" title={r.description ?? ""}>{r.description}</td>
-                <td className="p-2 text-slate-500 truncate max-w-32" title={r.partnerName ?? ""}>{r.partnerName}</td>
-                <td className="p-2"><CategorySelect id={r.id} value={r.category} source={r.categorySource} /></td>
-                <td className="p-2 text-center text-[11px] whitespace-nowrap">
-                  {r.categorySource === "manual" ? (
-                    <span className="text-slate-700" title="Người dùng tự chọn, máy không đụng tới">
-                      Sửa tay
-                    </span>
-                  ) : (
-                    // Điểm máy tự chấm 0 tới 100. Thấp nghĩa là luật khớp mờ, nên soát lại.
-                    <span
-                      className={(r.categoryConfidence ?? 0) < 50 ? "text-amber-700" : "text-slate-400"}
-                      title={`Máy tự xếp, độ chắc ${r.categoryConfidence ?? 0} trên 100`}
-                    >
-                      {r.categoryConfidence ?? 0}
-                    </span>
-                  )}
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={6} className="p-10 text-center text-slate-500">
+                  Không có giao dịch nào khớp. Thử bỏ bớt điều kiện lọc.
                 </td>
               </tr>
-            ))}
+            )}
+            {rows.map((r) => {
+              const raTong = Number(r.no ?? 0) + Number(r.phi ?? 0) + Number(r.vat ?? 0);
+              return (
+                <tr key={r.id} className="border-t hover:bg-slate-50 align-top">
+                  <td className="p-2 whitespace-nowrap tabular-nums">{fmtNgay(r.ngay)}</td>
+                  <td className="p-2">
+                    {r.noiDung}
+                    <div className="text-[11px] text-slate-400">số bút toán {r.soButToan}</div>
+                  </td>
+                  <td className="p-2 text-slate-600">{r.doiTac}</td>
+                  <td className="p-2 text-right tabular-nums text-green-700">{fmt(r.co)}</td>
+                  <td className="p-2 text-right tabular-nums text-red-700">
+                    {fmt(raTong)}
+                    {Number(r.phi ?? 0) !== 0 && (
+                      <div className="text-[11px] text-slate-400">gồm phí {fmt(r.phi)}</div>
+                    )}
+                  </td>
+                  <td className="p-2 text-right tabular-nums text-slate-600">{fmt(r.soDu)}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
+
+      {napDuoc && (
+        <p className="text-xs text-slate-500">
+          Báo cáo không xếp được nhóm cho vài giao dịch?{" "}
+          <Link href="/finance/bank-review/can-phan-loai" className="underline">
+            Xem và xếp giúp tại đây
+          </Link>
+          .
+        </p>
+      )}
+
+      {(tong?.soDong ?? 0) > GIOI_HAN && (
+        <p className="text-xs text-slate-500">
+          Đang hiện {GIOI_HAN} giao dịch mới nhất trong tổng số {tong?.soDong}. Thu hẹp khoảng ngày hoặc
+          gõ thêm từ khóa để thấy phần còn lại.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function O({ nhan, giaTri, mau }: { nhan: string; giaTri: string; mau?: string }) {
+  return (
+    <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-4">
+      <div className="text-xs uppercase tracking-wide text-slate-500">{nhan}</div>
+      <div className={`text-xl font-semibold tabular-nums mt-1 ${mau ?? ""}`}>{giaTri}</div>
     </div>
   );
 }

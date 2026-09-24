@@ -86,7 +86,7 @@ const NAV: NavEntry[] = [
       { href: "/periods", label: "Kỳ HH và thưởng", resource: "periods" },
       { href: "/payroll/commissions", label: "Xuất bảng HH", resource: "payroll.commissions" },
       { href: "/expenses", label: "Yêu cầu chi", ownerOnly: true },
-      { href: "/finance/bank-review", label: "Sao kê bank", resource: "finance" },
+      { href: "/finance/bank-review", label: "Sao kê ngân hàng", resource: "finance" },
       { href: "/finance/nkc-review", label: "Sổ NKC", resource: "finance" },
       { href: "/finance/transactions", label: "Giao dịch tài chính", resource: "finance" },
       { href: "/finance", label: "Vốn góp và tài sản", resource: "finance", exact: true },

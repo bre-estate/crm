@@ -318,7 +318,7 @@ async function CashView({ start, end, months }: { start: string; end: string; mo
         {source === "nkc"
           ? "Nguồn: từng lần tiền vào ra trên sổ nhật ký chung của kế toán, cộng sổ chi cá nhân của hai người sáng lập."
           : "Nguồn: sao kê Techcombank phân loại theo luật, cộng sổ chi cá nhân của hai người sáng lập. Kỳ này chưa có sổ kế toán."}
-        {r.unclassified.length > 0 && <> Còn <b>{r.unclassified.length}</b> khoản chưa phân loại, sửa tại <Link href="/finance/bank-review" className="underline">Sao kê bank</Link>.</>}
+        {r.unclassified.length > 0 && <> Còn <b>{r.unclassified.length}</b> khoản chưa phân loại, sửa tại <Link href="/finance/bank-review/can-phan-loai" className="underline">xếp nhóm giúp</Link>.</>}
         {giuHo !== 0 && <> Trong số dư có {fmtT(giuHo)} tiền khách giữ chỗ chưa hoàn, không phải tiền của công ty.</>}
       </div>
 
