@@ -101,6 +101,46 @@ export function khoaDong(d: {
   return `${d.referenceNumber}|${d.debitAmount ?? 0}|${d.creditAmount ?? 0}`;
 }
 
+/** Phần tiền một dòng làm số dư thay đổi. Cột Nợ vốn đã âm nên cộng hết. */
+const bienDong = (r: DongSaoKe) =>
+  (r.debitAmount ?? 0) + (r.creditAmount ?? 0) + (r.feeInterest ?? 0) + (r.vat ?? 0);
+
+/**
+ * Xếp lại các dòng trong CÙNG MỘT NGÀY cho chuỗi số dư nối liền.
+ *
+ * Techcombank xuất các lệnh cùng ngày theo thứ tự khác với thứ tự nó tính số dư.
+ * Ví dụ ngày 05/08/2026 có ba lệnh lương, đọc tuần tự thì số dư nhảy cóc dù không
+ * thiếu dòng nào. Hàm này lần theo số dư để dựng lại đúng thứ tự ngân hàng đã ghi sổ.
+ *
+ * Chỉ hoán vị trong phạm vi một ngày. Không tìm được dòng nối tiếp thì giữ nguyên
+ * thứ tự cũ, để phần soát còn báo đứt chuỗi nếu thật sự mất dòng.
+ */
+export function sapLaiTheoChuoi(rows: DongSaoKe[], soDuTruoc?: number | null): DongSaoKe[] {
+  const ra: DongSaoKe[] = [];
+  const conLai = [...rows];
+  let truoc = soDuTruoc ?? null;
+
+  while (conLai.length > 0) {
+    let chon = 0;
+    if (truoc !== null) {
+      const ngay = conLai[0].transactionDate;
+      let het = 0;
+      while (het < conLai.length && conLai[het].transactionDate === ngay) het++;
+      const hop = conLai.findIndex(
+        (r, i) =>
+          i < het &&
+          r.runningBalance != null &&
+          Math.abs(r.runningBalance - (truoc! + bienDong(r))) <= 1,
+      );
+      if (hop >= 0) chon = hop;
+    }
+    const r = conLai.splice(chon, 1)[0];
+    ra.push(r);
+    if (r.runningBalance != null) truoc = r.runningBalance;
+  }
+  return ra;
+}
+
 export interface ChoDut {
   viTri: number; // thứ tự dòng trong file, tính từ 1
   ngay: string;
@@ -133,9 +173,7 @@ export function soatChuoiSoDu(rows: DongSaoKe[], soDuTruoc?: number | null): Soa
     }
     if (truoc != null) {
       soMoiNoi++;
-      const tinh =
-        truoc + (r.debitAmount ?? 0) + (r.creditAmount ?? 0) + (r.feeInterest ?? 0) + (r.vat ?? 0);
-      const lech = r.runningBalance - tinh;
+      const lech = r.runningBalance - (truoc + bienDong(r));
       if (Math.abs(lech) > 1) {
         choDut.push({
           viTri: i + 1,
@@ -163,6 +201,8 @@ export function soatChuoiSoDu(rows: DongSaoKe[], soDuTruoc?: number | null): Soa
 
 export interface KetQuaSoat {
   accountNumber: string;
+  /** Các dòng đã xếp lại theo chuỗi số dư, dùng luôn thứ tự này khi nạp. */
+  rows: DongSaoKe[];
   tongDong: number;
   dongMoi: number;
   dongTrung: number;
@@ -187,7 +227,11 @@ export function soatFile(
   soDuCuoiDaCo: number | null,
   ngayCuoiDaCo: string | null,
 ): KetQuaSoat {
-  const { rows } = doc;
+  const noiTiepDuocVoiPhanCu =
+    soDuCuoiDaCo != null &&
+    ngayCuoiDaCo != null &&
+    (doc.rows[0]?.transactionDate ?? "") > ngayCuoiDaCo;
+  const rows = sapLaiTheoChuoi(doc.rows, noiTiepDuocVoiPhanCu ? soDuCuoiDaCo : null);
   let dongTrung = 0;
   for (const r of rows) if (khoaDaCo.has(khoaDong(r))) dongTrung++;
 
@@ -195,22 +239,16 @@ export function soatFile(
   const denNgay = rows[rows.length - 1]?.transactionDate ?? null;
 
   // Chỉ nối tiếp khi file bắt đầu sau phần đã có. File nằm đè lên phần cũ thì không so được.
-  const noiTiep =
-    soDuCuoiDaCo != null && ngayCuoiDaCo != null && tuNgay != null && tuNgay > ngayCuoiDaCo;
+  const noiTiep = noiTiepDuocVoiPhanCu;
   const dongDau = rows[0];
   let chenhNoiTiep: number | null = null;
   if (noiTiep && dongDau?.runningBalance != null) {
-    const tinh =
-      soDuCuoiDaCo! +
-      (dongDau.debitAmount ?? 0) +
-      (dongDau.creditAmount ?? 0) +
-      (dongDau.feeInterest ?? 0) +
-      (dongDau.vat ?? 0);
-    chenhNoiTiep = dongDau.runningBalance - tinh;
+    chenhNoiTiep = dongDau.runningBalance - (soDuCuoiDaCo! + bienDong(dongDau));
   }
 
   return {
     accountNumber: doc.accountNumber,
+    rows,
     tongDong: rows.length,
     dongMoi: rows.length - dongTrung,
     dongTrung,

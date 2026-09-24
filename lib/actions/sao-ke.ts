@@ -108,14 +108,16 @@ async function _napSaoKe(storagePath: string): Promise<KetQuaNap> {
   if (!user) throw new Error("Phiên đăng nhập đã hết hạn, tải lại trang rồi đăng nhập lại.");
 
   const doc = await docTuKho(storagePath);
-  const { tap } = await trangThaiDaCo();
+  const { tap, soDuCuoi, ngayCuoi } = await trangThaiDaCo();
+  // Lấy thứ tự đã xếp lại theo chuỗi số dư, không dùng thứ tự thô của file.
+  const daXep = soatFile(doc, tap, soDuCuoi, ngayCuoi).rows;
 
   // statement_seq tạm, chuẩn hóa lại theo ngày ở cuối. Lấy mốc sau số lớn nhất đang có.
   const [{ toiDa }] = await db
     .select({ toiDa: sql<number>`COALESCE(MAX(statement_seq), 0)::int` })
     .from(bankTransactions);
 
-  const moi: DongSaoKe[] = doc.rows.filter((r) => !tap.has(khoaDong(r)));
+  const moi: DongSaoKe[] = daXep.filter((r) => !tap.has(khoaDong(r)));
   let daGhi = 0;
 
   for (let i = 0; i < moi.length; i += 200) {
@@ -166,9 +168,9 @@ async function _napSaoKe(storagePath: string): Promise<KetQuaNap> {
 
   return {
     daGhi,
-    boQua: doc.rows.length - moi.length,
-    tuNgay: doc.rows[0]?.transactionDate ?? null,
-    denNgay: doc.rows[doc.rows.length - 1]?.transactionDate ?? null,
+    boQua: daXep.length - moi.length,
+    tuNgay: daXep[0]?.transactionDate ?? null,
+    denNgay: daXep[daXep.length - 1]?.transactionDate ?? null,
   };
 }
 

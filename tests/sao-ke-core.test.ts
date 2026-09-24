@@ -3,6 +3,7 @@ import {
   bocDongTuLuoi,
   khoaDong,
   parseNum,
+  sapLaiTheoChuoi,
   soatChuoiSoDu,
   soatFile,
   type DongSaoKe,
@@ -107,6 +108,51 @@ describe("soatChuoiSoDu", () => {
     const rows = [dong({ transactionDate: "2026-03-01", creditAmount: 1_000_000, runningBalance: 6_000_000 })];
     expect(soatChuoiSoDu(rows, 5_000_000).choDut).toHaveLength(0);
     expect(soatChuoiSoDu(rows, 4_000_000).choDut).toHaveLength(1);
+  });
+});
+
+describe("sapLaiTheoChuoi", () => {
+  // Số thật: sao kê Q3-2026 có ba lệnh lương cùng ngày 05/08/2026, Techcombank xuất
+  // theo thứ tự khác với thứ tự nó ghi sổ nên đọc tuần tự là số dư nhảy cóc.
+  const cum = [
+    dong({ transactionDate: "2026-02-06", debitAmount: -13_000_000, runningBalance: 1_343_820_742 }),
+    dong({ transactionDate: "2026-02-09", debitAmount: -33_672_759, runningBalance: 1_301_147_983 }),
+    dong({ transactionDate: "2026-02-09", debitAmount: -9_000_000, runningBalance: 1_334_820_742 }),
+    dong({ transactionDate: "2026-02-09", debitAmount: -25_318_926, runningBalance: 1_275_829_057 }),
+  ];
+
+  test("xếp lại xong thì chuỗi số dư liền mạch", () => {
+    const kq = soatChuoiSoDu(sapLaiTheoChuoi(cum));
+    expect(kq.choDut).toHaveLength(0);
+  });
+
+  test("đúng thứ tự ngân hàng ghi sổ, không thêm bớt dòng nào", () => {
+    const xep = sapLaiTheoChuoi(cum);
+    expect(xep.map((r) => r.runningBalance)).toEqual([
+      1_343_820_742, 1_334_820_742, 1_301_147_983, 1_275_829_057,
+    ]);
+    expect(xep).toHaveLength(cum.length);
+  });
+
+  test("không hoán vị sang ngày khác", () => {
+    const rows = [
+      dong({ transactionDate: "2026-01-05", creditAmount: 10_000_000, runningBalance: 10_000_000 }),
+      dong({ transactionDate: "2026-01-06", debitAmount: -1_000_000, runningBalance: 9_000_000 }),
+      dong({ transactionDate: "2026-01-07", debitAmount: -2_000_000, runningBalance: 7_000_000 }),
+    ];
+    expect(sapLaiTheoChuoi(rows).map((r) => r.transactionDate)).toEqual([
+      "2026-01-05", "2026-01-06", "2026-01-07",
+    ]);
+  });
+
+  test("thiếu dòng thật thì xếp kiểu gì cũng vẫn đứt", () => {
+    const rows = [
+      dong({ transactionDate: "2026-01-05", creditAmount: 30_000_000, runningBalance: 30_000_000 }),
+      dong({ transactionDate: "2026-01-05", debitAmount: -1_000_000, runningBalance: 22_000_000 }),
+    ];
+    const kq = soatChuoiSoDu(sapLaiTheoChuoi(rows));
+    expect(kq.choDut).toHaveLength(1);
+    expect(kq.chiSaiThuTu).toBe(false);
   });
 });
 
