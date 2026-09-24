@@ -6,8 +6,8 @@
 import XLSX from "xlsx";
 import { writeFileSync } from "fs";
 
-const excelPath = "/Users/trietnguyen/Documents/Company/BRE/App/CRM/data-excel/BAO CAO DOANH THU.xlsx";
-const outPath = "/Users/trietnguyen/Documents/Company/BRE/App/CRM/lib/reports/cost-audit-snapshot.json";
+const excelPath = "data-excel/Bao Cao Doanh Thu.xlsx";
+const outPath = "lib/reports/cost-audit-snapshot.json";
 
 const wb = XLSX.readFile(excelPath, { cellDates: true, cellNF: false });
 const rows = XLSX.utils.sheet_to_json(wb.Sheets["2.3_Gia von"], { header: 1, raw: true, defval: null });
