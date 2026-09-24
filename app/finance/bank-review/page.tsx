@@ -1,6 +1,5 @@
 import { db } from "@/lib/db";
-import { bankTransactions, integrations } from "@/lib/schema";
-import { thuMucCho, type CauHinhDrive } from "@/lib/documents-core";
+import { bankTransactions } from "@/lib/schema";
 import { requirePermission } from "@/lib/auth";
 import { and, sql, ilike, gte, lte, eq, desc, type SQL } from "drizzle-orm";
 import Link from "next/link";
@@ -22,14 +21,6 @@ export default async function BankReviewPage({ searchParams }: { searchParams: S
   const user = await getCurrentUser();
   const napDuoc = !!user && hasPermission(user.role, user.customPermissions, "finance", "edit");
 
-  // Thư mục Drive đã gán cho loại Sao kê, để khung nạp mở sẵn cửa sổ chọn bên trong nó.
-  const [driveTh] = await db
-    .select()
-    .from(integrations)
-    .where(eq(integrations.provider, "google_drive"));
-  const thuMucSaoKe = driveTh?.enabled
-    ? thuMucCho(driveTh.config as CauHinhDrive, "sao_ke")
-    : null;
   const sp = await searchParams;
   const filterCat = sp.category?.trim() || null;
   const filterQ = sp.q?.trim() || null;
@@ -104,7 +95,7 @@ export default async function BankReviewPage({ searchParams }: { searchParams: S
         </p>
       </div>
 
-      {napDuoc && <NapSaoKe thuMucGoc={thuMucSaoKe} driveDangBat={!!driveTh?.enabled} />}
+      {napDuoc && <NapSaoKe />}
 
       {/* Filter */}
       <form className="bg-card rounded-xl ring-1 ring-foreground/10 p-3 flex flex-wrap gap-3 items-end text-xs">

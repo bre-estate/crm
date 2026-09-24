@@ -41,7 +41,10 @@ export async function dayBanSaoLenDrive(
     if (error || !data) throw new Error("Không đọc được file trong kho để đẩy lên Drive.");
 
     const ve = await lamMoiVe(giaiMa(refreshToken));
-    const ten = doc.storagePath.split("/").pop() ?? doc.title;
+    // Tên trên Drive lấy theo tên người dùng đặt, không lấy khóa trong kho.
+    // Khóa đó có thời điểm ở đầu và đã bỏ dấu nên nhìn không ra file gì.
+    const duoi = doc.storagePath.match(/\.[^./]+$/)?.[0] ?? "";
+    const ten = doc.title.endsWith(duoi) ? doc.title : doc.title + duoi;
     const f = await taiFileLenDrive(
       ve.access_token,
       folderId,

@@ -10,6 +10,7 @@ import { requirePermission } from "@/lib/auth";
 import { daKhaiBaoUngDung } from "@/lib/google-drive";
 import DriveActions from "./DriveActions";
 import ChonThuMuc from "./ChonThuMuc";
+import ThongBao from "./ThongBao";
 import { DOC_TYPES, thuMucCho, type CauHinhDrive, type DocType } from "@/lib/documents-core";
 
 export const dynamic = "force-dynamic";
@@ -48,12 +49,8 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
         </p>
       </div>
 
-      {sp.ok && (
-        <p className="text-sm text-green-800 bg-green-50 border border-green-200 rounded-lg p-3">{sp.ok}</p>
-      )}
-      {sp.loi && (
-        <p className="text-sm text-red-800 bg-red-50 border border-red-200 rounded-lg p-3">{sp.loi}</p>
-      )}
+      {sp.ok && <ThongBao noiDung={sp.ok} />}
+      {sp.loi && <ThongBao noiDung={sp.loi} loi />}
 
       <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-5 space-y-4">
         <div className="flex items-start justify-between gap-4 flex-wrap">
