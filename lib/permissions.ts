@@ -45,7 +45,6 @@ export const RESOURCE_ACTIONS: Record<string, Action[]> = {
   // View only (report / log / help)
   alerts: ["view"],
   "admin.activity": ["view"],
-  "admin.import-logs": ["view"],
   help: ["view"],
   // reports.* — view only (mặc định phía dưới)
 };
@@ -86,7 +85,6 @@ export const RESOURCES = {
   "alerts": "Cảnh báo",
   "admin.users": "Quản lý user",
   "admin.activity": "Nhật ký hoạt động",
-  "admin.import-logs": "Nhật ký import",
   "help": "Trang trợ giúp / hướng dẫn nhập liệu",
   "documents": "Kho tài liệu (sao kê, hợp đồng, hóa đơn)",
   "settings.integrations": "Tích hợp dịch vụ ngoài (Google Drive)",
@@ -300,7 +298,6 @@ export function resourceOfPath(path: string): Resource | "reports.*" | null {
   // Admin
   if (p.startsWith("/admin/users")) return "admin.users";
   if (p.startsWith("/admin/activity")) return "admin.activity";
-  if (p.startsWith("/admin/import-logs")) return "admin.activity";
   if (p.startsWith("/admin/data-checks")) return "admin.activity";
 
   // Top-level

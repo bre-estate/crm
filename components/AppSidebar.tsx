@@ -110,7 +110,6 @@ const NAV: NavEntry[] = [
       { href: "/settings/integrations", label: "Tích hợp", resource: "settings.integrations" },
       { href: "/admin/data-checks", label: "Kiểm tra dữ liệu", ownerOnly: true },
       { href: "/admin/activity", label: "Lịch sử hoạt động", resource: "admin.activity" },
-      { href: "/admin/import-logs", label: "Nhật ký import", resource: "admin.activity" },
       { href: "/admin/chat-analytics", label: "Phân tích chatbot", ownerOnly: true },
       { href: "/admin/audit/missing-cost", label: "Đối chiếu Excel và app", ownerOnly: true },
     ],
