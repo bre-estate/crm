@@ -11,18 +11,27 @@ import { ghiNhanTaiLieu } from "@/lib/actions/documents";
 import { napSaoKe, soatSaoKe } from "@/lib/actions/sao-ke";
 import { duongDanKho, fmtDungLuong } from "@/lib/documents-core";
 import type { KetQuaSoat } from "@/lib/sao-ke-core";
+import ChonThuMucTaiLen, { type ThuMuc } from "@/components/ChonThuMucTaiLen";
 
 const BUCKET = "tai-lieu";
 const fmtTien = (n: number | null) => (n == null ? "—" : Math.round(n).toLocaleString("vi-VN"));
 const fmtNgay = (d: string | null) => (d ? d.split("-").reverse().join("/") : "—");
 
-export default function NapSaoKe() {
+export default function NapSaoKe({
+  thuMucGoc,
+  driveDangBat,
+}: {
+  /** Thư mục đã gán cho loại Sao kê ở trang Tích hợp. */
+  thuMucGoc: ThuMuc | null;
+  driveDangBat: boolean;
+}) {
   const router = useRouter();
   const [dangChay, start] = useTransition();
   const [buoc, setBuoc] = useState<string | null>(null);
   const [soat, setSoat] = useState<KetQuaSoat | null>(null);
   const [duongDan, setDuongDan] = useState<string | null>(null);
   const [tenFile, setTenFile] = useState<string>("");
+  const [thuMuc, setThuMuc] = useState<ThuMuc | null>(thuMucGoc);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const datLai = () => {
@@ -30,6 +39,7 @@ export default function NapSaoKe() {
     setDuongDan(null);
     setTenFile("");
     setBuoc(null);
+    setThuMuc(thuMucGoc);
     if (inputRef.current) inputRef.current.value = "";
   };
 
@@ -52,6 +62,7 @@ export default function NapSaoKe() {
           title: f.name.replace(/\.[^.]+$/, ""),
           mimeType: f.type || "application/octet-stream",
           sizeBytes: f.size,
+          driveFolderId: thuMuc?.id ?? null,
         });
         if (baoLoi(ghi)) return;
 
@@ -105,6 +116,10 @@ export default function NapSaoKe() {
         className="hidden"
         onChange={(e) => chonFile(e.target.files?.[0] ?? null)}
       />
+
+      {!soat && driveDangBat && (
+        <ChonThuMucTaiLen giaTri={thuMuc} goc={thuMucGoc} onChon={setThuMuc} disabled={dangChay} />
+      )}
 
       {!soat && (
         <div className="flex items-center gap-3 flex-wrap">

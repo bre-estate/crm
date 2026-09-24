@@ -16,13 +16,23 @@ import {
   NGUONG_NEN_BYTES,
   duongDanKho,
   fmtDungLuong,
+  thuMucCho,
   tyLeNen,
+  type CauHinhDrive,
   type DocType,
 } from "@/lib/documents-core";
+import ChonThuMucTaiLen, { type ThuMuc } from "@/components/ChonThuMucTaiLen";
 
 const BUCKET = "tai-lieu";
 
-export default function UploadPanel({ driveDangBat }: { driveDangBat: boolean }) {
+export default function UploadPanel({
+  driveDangBat,
+  cauHinhDrive,
+}: {
+  driveDangBat: boolean;
+  /** Bản đồ thư mục theo loại, lấy từ trang Tích hợp. */
+  cauHinhDrive: CauHinhDrive;
+}) {
   const router = useRouter();
   const [dangChay, start] = useTransition();
   const [docType, setDocType] = useState<DocType>("sao_ke");
@@ -32,6 +42,15 @@ export default function UploadPanel({ driveDangBat }: { driveDangBat: boolean })
   const [note, setNote] = useState("");
   const [tienTrinh, setTienTrinh] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Đổi loại tài liệu thì thư mục nhảy theo thư mục đã gán cho loại đó.
+  const thuMucGoc = thuMucCho(cauHinhDrive, docType);
+  const [thuMuc, setThuMuc] = useState<ThuMuc | null>(thuMucGoc);
+  const [loaiDaXem, setLoaiDaXem] = useState<DocType>(docType);
+  if (loaiDaXem !== docType) {
+    setLoaiDaXem(docType);
+    setThuMuc(thuMucGoc);
+  }
 
   const chonFile = (f: File | null) => {
     setFile(f);
@@ -48,6 +67,7 @@ export default function UploadPanel({ driveDangBat }: { driveDangBat: boolean })
     setPeriod("");
     setNote("");
     setTienTrinh(null);
+    setThuMuc(thuMucCho(cauHinhDrive, docType));
     if (inputRef.current) inputRef.current.value = "";
   };
 
@@ -91,6 +111,7 @@ export default function UploadPanel({ driveDangBat }: { driveDangBat: boolean })
           sizeBytes: fileGui.size,
           originalSizeBytes: daNen ? dungLuongGoc : null,
           compressed: daNen,
+          driveFolderId: thuMuc?.id ?? null,
         });
         if (baoLoi(kq)) return;
 
@@ -162,6 +183,10 @@ export default function UploadPanel({ driveDangBat }: { driveDangBat: boolean })
           placeholder="vd: bản Admin xuất lại ngày 20/09, đã gồm phần đầu tháng 9"
         />
       </label>
+
+      {driveDangBat && (
+        <ChonThuMucTaiLen giaTri={thuMuc} goc={thuMucGoc} onChon={setThuMuc} disabled={dangChay} />
+      )}
 
       <div className="flex flex-wrap items-center gap-3">
         <input

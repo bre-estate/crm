@@ -11,7 +11,7 @@ import { requirePermission, getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import UploadPanel from "./UploadPanel";
 import DocumentRow, { type DocRow } from "./DocumentRow";
-import { DOC_TYPES, fmtDungLuong, type DocType } from "@/lib/documents-core";
+import { DOC_TYPES, fmtDungLuong, type CauHinhDrive, type DocType } from "@/lib/documents-core";
 
 export const dynamic = "force-dynamic";
 
@@ -99,7 +99,12 @@ export default async function DocumentsPage({ searchParams }: { searchParams: SP
         />
       </div>
 
-      {taiLenDuoc && <UploadPanel driveDangBat={!!drive?.enabled} />}
+      {taiLenDuoc && (
+        <UploadPanel
+          driveDangBat={!!drive?.enabled}
+          cauHinhDrive={(drive?.config ?? {}) as CauHinhDrive}
+        />
+      )}
 
       <div className="flex flex-wrap gap-1">
         <Link href="/documents" className={pill(!loc)}>
