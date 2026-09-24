@@ -17,6 +17,7 @@ import { integrations } from "@/lib/schema";
 import { and, sql, ilike, gte, lte, desc, or, eq, type SQL } from "drizzle-orm";
 import Link from "next/link";
 import NapSaoKe from "./NapSaoKe";
+import { tenNganHangGon } from "@/lib/ten-ngan-hang";
 
 export const dynamic = "force-dynamic";
 
@@ -215,7 +216,7 @@ export default async function BankStatementPage({ searchParams }: { searchParams
                     {r.stkDoiTac && (
                       <div className="text-[11px] text-slate-400">
                         {r.stkDoiTac}
-                        {r.nhDoiTac ? ` · ${r.nhDoiTac}` : ""}
+                        {tenNganHangGon(r.nhDoiTac) ? ` · ${tenNganHangGon(r.nhDoiTac)}` : ""}
                       </div>
                     )}
                   </td>

@@ -118,10 +118,23 @@ const NAV: NavEntry[] = [
   { href: "/help", label: "Hướng dẫn", resource: "help" },
 ];
 
-function isActive(pathname: string, href: string, exact = false): boolean {
+/** Mọi đường dẫn có trong menu, để biết đường nào là khớp sâu nhất. */
+const MOI_HREF: string[] = NAV.flatMap((n) => (isGroup(n) ? n.children.map((c) => c.href) : [n.href]));
+
+function khopDuoc(pathname: string, href: string, exact = false): boolean {
   if (href === "/") return pathname === "/";
   if (exact) return pathname === href;
   return pathname === href || pathname.startsWith(href + "/");
+}
+
+/**
+ * Chỉ mục khớp SÂU NHẤT mới sáng.
+ * Không có luật này thì vào /finance/bank-review/can-phan-loai sẽ sáng cả
+ * Sao kê ngân hàng lẫn Giao dịch chưa xếp nhóm, vì cái trên là tiền tố của cái dưới.
+ */
+function isActive(pathname: string, href: string, exact = false): boolean {
+  if (!khopDuoc(pathname, href, exact)) return false;
+  return !MOI_HREF.some((k) => k !== href && k.length > href.length && khopDuoc(pathname, k));
 }
 
 // ============================================================================
