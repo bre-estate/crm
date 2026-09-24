@@ -1,17 +1,21 @@
 /**
- * So sánh cost_reconciliations (App DB) vs snapshot Excel 2.3_Gia von.
+ * So giá vốn giữa file Báo cáo Doanh Thu của kế toán và cost_reconciliations trong app.
  *
- * Snapshot được precompute local qua `scripts/snapshot_cost_excel.mjs` và
- * commit vào repo (lib/reports/cost-audit-snapshot.json). Mỗi lần Excel BC DT
- * cập nhật, chạy script lại + commit lại JSON.
+ * Nguồn Excel lấy theo thứ tự ưu tiên:
+ *   1. File mới nhất trong Kho tài liệu, loại "Báo cáo Doanh Thu (kế toán)"
+ *   2. Bản chụp lưu trong code (lib/reports/cost-audit-snapshot.json), dùng khi chưa ai tải file lên
  *
- * Lý do dùng snapshot thay vì read Excel live: file gitignored, không lên
- * Vercel. User không muốn upload lại mỗi lần. Snapshot cân bằng: Excel data
- * stable trong repo, DB data query live → diff luôn cập nhật khi có recon mới.
+ * Trước đây chỉ có cách 2, nên file kế toán đổi mà quên chạy lại lệnh chụp là trang
+ * so với số cũ. Chuyện đó đã xảy ra: bản chụp 27/08 làm trang báo chênh 289,6 triệu
+ * trong khi thực tế chỉ chênh 46,5 triệu.
  */
+import * as XLSX from "xlsx";
 import { db } from "@/lib/db";
-import { sql } from "drizzle-orm";
+import { sql, desc, eq, and } from "drizzle-orm";
+import { documents } from "@/lib/schema";
+import { createClient } from "@/lib/supabase/server";
 import snapshot from "./cost-audit-snapshot.json";
+import { bocGiaVon, COST_TYPE_LABEL, SHEET_GIA_VON, type BangGiaVon } from "./bcdt-gia-von";
 
 export type MissingItem = {
   loai: string;
@@ -41,33 +45,7 @@ export type DotDuTinh = {
   items: { loai: string; amt: number }[];
 };
 
-type ExcelEntry = {
-  excelRow: number;
-  employee: string | null;
-  /** Cột "Ngày đối chiếu" trong Excel có điền hay không. */
-  coNgayDoiChieu?: boolean;
-  items: { loai: string; amt: number }[];
-  total: number;
-};
-type Snapshot = {
-  snapshotAt: string;
-  sourceFile: string;
-  sheet: string;
-  totalRows: number;
-  perProduct: Record<string, ExcelEntry[]>;
-};
 
-// Label ↔ cost_type mapping. Cột Excel → xem scripts/snapshot_cost_excel.mjs.
-const COST_TYPE_LABEL: Record<string, string> = {
-  sale_commission: "HH sale",
-  customer_support: "Hỗ trợ khách",
-  cdt_bonus_sale: "CĐT thưởng NVKD",
-  cdt_bonus_manager: "CĐT thưởng QL",
-  bonus_manager: "CTY thưởng QL",
-  kpi_ceo: "KPI CEO",
-  kpi_tpkd: "KPI TPKD",
-  kpi_admin: "KPI Admin",
-};
 
 function excelLoaiToCostType(loai: string): string | undefined {
   return Object.entries(COST_TYPE_LABEL).find(([, v]) => v === loai)?.[0];
@@ -81,6 +59,42 @@ function excelLoaiToCostType(loai: string): string | undefined {
  * phải thiếu. Trước đây gộp chung nên trang báo chênh 289,6 triệu toàn đợt chưa
  * phát sinh, làm tưởng HR quên nhập.
  */
+/**
+ * Lấy bảng giá vốn của kế toán.
+ * Ưu tiên file mới nhất trong Kho tài liệu loại "Báo cáo Doanh Thu (kế toán)".
+ * Chưa ai tải lên thì dùng bản chụp cũ trong code, và nói rõ là đang dùng bản nào.
+ */
+async function layBangGiaVon(): Promise<{ bang: BangGiaVon; nguon: string; moc: string }> {
+  try {
+    const [doc] = await db
+      .select()
+      .from(documents)
+      .where(and(eq(documents.docType, "bao_cao_ke_toan")))
+      .orderBy(desc(documents.createdAt))
+      .limit(1);
+    if (doc) {
+      const supabase = await createClient();
+      const { data, error } = await supabase.storage.from("tai-lieu").download(doc.storagePath);
+      if (!error && data) {
+        const wb = XLSX.read(Buffer.from(await data.arrayBuffer()), { cellDates: false });
+        const ws = wb.Sheets[SHEET_GIA_VON];
+        if (ws) {
+          const grid = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: null, raw: false });
+          return {
+            bang: bocGiaVon(grid),
+            nguon: doc.title,
+            moc: doc.createdAt.toISOString(),
+          };
+        }
+      }
+    }
+  } catch {
+    // Đọc file hỏng thì rơi về bản chụp, đừng làm sập cả trang.
+  }
+  const s = snapshot as unknown as BangGiaVon & { snapshotAt: string };
+  return { bang: s, nguon: "bản chụp lưu trong code", moc: s.snapshotAt };
+}
+
 export async function getMissingCostReport(): Promise<{
   rows: MissingCostRow[];
   duTinh: DotDuTinh[];
@@ -88,8 +102,9 @@ export async function getMissingCostReport(): Promise<{
   dbTotal: number;
   totalDiff: number;
   snapshotAt: string;
+  nguon: string;
 }> {
-  const snap = snapshot as Snapshot;
+  const { bang: snap, nguon, moc } = await layBangGiaVon();
 
   const dbRows = (await db.execute(sql`
     SELECT p.id AS product_id, p.product_code, cr.id, cr.cost_type,
@@ -181,6 +196,7 @@ export async function getMissingCostReport(): Promise<{
     excelTotal,
     dbTotal,
     totalDiff: excelTotal - dbTotal,
-    snapshotAt: snap.snapshotAt,
+    snapshotAt: moc,
+    nguon,
   };
 }

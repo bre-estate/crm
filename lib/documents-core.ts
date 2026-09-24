@@ -10,6 +10,7 @@ export const DOC_TYPES = {
   hoa_don_ban: "Hóa đơn bán ra",
   hoa_don_mua: "Hóa đơn mua vào",
   hop_dong: "Hợp đồng",
+  bao_cao_ke_toan: "Báo cáo Doanh Thu (kế toán)",
   chinh_sach: "Chính sách, quyết định",
   khac: "Khác",
 } as const;
@@ -24,6 +25,7 @@ export const ACCEPT_BY_TYPE: Record<DocType, string> = {
   hoa_don_ban: ".pdf,.xml,.jpg,.jpeg,.png",
   hoa_don_mua: ".pdf,.xml,.jpg,.jpeg,.png",
   hop_dong: ".pdf,.jpg,.jpeg,.png,.docx",
+  bao_cao_ke_toan: ".xlsx,.xls",
   chinh_sach: ".pdf,.docx,.xlsx",
   khac: "",
 };

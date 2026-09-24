@@ -8,7 +8,7 @@ const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
 
 export default async function MissingCostAuditPage() {
   await requireOwner();
-  const { rows, duTinh, excelTotal, dbTotal, totalDiff, snapshotAt } = await getMissingCostReport();
+  const { rows, duTinh, excelTotal, dbTotal, totalDiff, snapshotAt, nguon } = await getMissingCostReport();
   const tienDuTinh = duTinh.reduce((s, d) => s + d.total, 0);
 
   return (
@@ -23,8 +23,10 @@ export default async function MissingCostAuditPage() {
           mã căn, loại phí và số tiền. Chỉ so những đợt <b>đã có ngày đối chiếu</b>.
         </p>
         <p className="text-xs text-slate-400 mt-1">
-          Bản chụp Excel ngày {new Date(snapshotAt).toLocaleDateString("vi-VN")}. Số của app lấy trực tiếp.
-          File Excel đổi thì chạy lại <code>node scripts/snapshot_cost_excel.mjs</code> rồi đẩy lên.
+          Nguồn: {nguon}, mốc {new Date(snapshotAt).toLocaleDateString("vi-VN")}. Số của app lấy trực tiếp.
+          Kế toán ra file mới thì chỉ cần tải lên{" "}
+          <Link href="/documents" className="underline">Kho tài liệu</Link> với loại
+          {" "}<b>Báo cáo Doanh Thu (kế toán)</b>, trang này tự lấy bản mới nhất.
         </p>
       </div>
 
