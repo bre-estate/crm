@@ -47,6 +47,7 @@ export default async function BankStatementPage({ searchParams }: { searchParams
         ilike(bankTransactions.description, nhu),
         ilike(bankTransactions.partnerName, nhu),
         ilike(bankTransactions.referenceNumber, nhu),
+        ilike(bankTransactions.partnerAccount, nhu),
       )!,
     );
   }
@@ -75,6 +76,8 @@ export default async function BankStatementPage({ searchParams }: { searchParams
       ngay: bankTransactions.transactionDate,
       soButToan: bankTransactions.referenceNumber,
       doiTac: bankTransactions.partnerName,
+      stkDoiTac: bankTransactions.partnerAccount,
+      nhDoiTac: bankTransactions.partnerBank,
       noiDung: bankTransactions.description,
       no: bankTransactions.debitAmount,
       co: bankTransactions.creditAmount,
@@ -112,7 +115,7 @@ export default async function BankStatementPage({ searchParams }: { searchParams
         <h1 className="text-2xl font-bold">Sao kê ngân hàng</h1>
         <p className="text-sm text-slate-500 mt-1">
           Đúng những gì Techcombank xuất ra, không sửa gì. Dùng để tra nội dung chuyển khoản và số
-          tiền. Việc xếp nhóm thu chi nằm ở{" "}
+          tiền. Tài khoản công ty: 39676789. Việc xếp nhóm thu chi nằm ở{" "}
           <Link href="/reports/profit-detail" className="underline">
             báo cáo Lãi lỗ và dòng tiền
           </Link>
@@ -125,12 +128,12 @@ export default async function BankStatementPage({ searchParams }: { searchParams
       <form className="bg-card rounded-xl ring-1 ring-foreground/10 p-4 flex flex-wrap gap-3 items-end text-sm">
         <div className="flex-1 min-w-64">
           <label className="block text-xs text-slate-500 mb-1">
-            Tìm trong nội dung, tên đối tác, số bút toán
+            Tìm trong nội dung, tên đối tác, số tài khoản, số bút toán
           </label>
           <input
             name="q"
             defaultValue={q ?? ""}
-            placeholder="vd: hoa hong, Dataloca, thue van phong"
+            placeholder="vd: hoa hong, Dataloca, 6236238"
             className="input w-full"
           />
         </div>
@@ -184,7 +187,7 @@ export default async function BankStatementPage({ searchParams }: { searchParams
             <tr>
               <th className="text-left p-2 w-24">Ngày</th>
               <th className="text-left p-2">Nội dung chuyển khoản</th>
-              <th className="text-left p-2 w-44">Đối tác</th>
+              <th className="text-left p-2 w-52">Đối tác</th>
               <th className="text-right p-2 w-32">Tiền vào</th>
               <th className="text-right p-2 w-32">Tiền ra</th>
               <th className="text-right p-2 w-36">Số dư</th>
@@ -207,7 +210,15 @@ export default async function BankStatementPage({ searchParams }: { searchParams
                     {r.noiDung}
                     <div className="text-[11px] text-slate-400">số bút toán {r.soButToan}</div>
                   </td>
-                  <td className="p-2 text-slate-600">{r.doiTac}</td>
+                  <td className="p-2 text-slate-600">
+                    {r.doiTac}
+                    {r.stkDoiTac && (
+                      <div className="text-[11px] text-slate-400">
+                        {r.stkDoiTac}
+                        {r.nhDoiTac ? ` · ${r.nhDoiTac}` : ""}
+                      </div>
+                    )}
+                  </td>
                   <td className="p-2 text-right tabular-nums text-green-700">{fmt(r.co)}</td>
                   <td className="p-2 text-right tabular-nums text-red-700">
                     {fmt(raTong)}
