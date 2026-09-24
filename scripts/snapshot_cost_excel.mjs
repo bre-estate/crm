@@ -41,6 +41,9 @@ for (let i = 4; i < rows.length; i++) {
   perProduct[key].push({
     excelRow: i + 1,
     employee: r[2] ? String(r[2]).trim() : null,
+    // Cột B trống nghĩa là kế toán mới tính trước, CHƯA lập biên bản đối chiếu.
+    // Đợt đó chưa phát sinh nên app không có là đúng, đừng đếm thành thiếu.
+    coNgayDoiChieu: !!(r[1] && String(r[1]).trim()),
     items: parseExcelRow(r),
     total,
   });
@@ -48,7 +51,7 @@ for (let i = 4; i < rows.length; i++) {
 
 const snapshot = {
   snapshotAt: new Date().toISOString(),
-  sourceFile: "BAO CAO DOANH THU.xlsx",
+  sourceFile: "Bao Cao Doanh Thu.xlsx",
   sheet: "2.3_Gia von",
   totalRows: rows.length,
   perProduct,
@@ -56,4 +59,7 @@ const snapshot = {
 
 writeFileSync(outPath, JSON.stringify(snapshot, null, 2), "utf-8");
 console.log(`✓ Snapshot saved to ${outPath}`);
-console.log(`  ${Object.keys(perProduct).length} products, ${Object.values(perProduct).reduce((s, v) => s + v.length, 0)} rows`);
+const tatCa = Object.values(perProduct).flat();
+const chuaDC = tatCa.filter((e) => !e.coNgayDoiChieu);
+console.log(`  ${Object.keys(perProduct).length} căn, ${tatCa.length} đợt`);
+console.log(`  trong đó ${chuaDC.length} đợt CHƯA có ngày đối chiếu, tổng ${Math.round(chuaDC.reduce((s, e) => s + e.total, 0)).toLocaleString("vi-VN")}`);

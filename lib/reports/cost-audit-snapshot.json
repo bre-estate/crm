@@ -1,6 +1,6 @@
 {
-  "snapshotAt": "2026-09-24T17:08:50.405Z",
-  "sourceFile": "BAO CAO DOANH THU.xlsx",
+  "snapshotAt": "2026-09-24T17:27:50.372Z",
+  "sourceFile": "Bao Cao Doanh Thu.xlsx",
   "sheet": "2.3_Gia von",
   "totalRows": 1405,
   "perProduct": {
@@ -8,6 +8,7 @@
       {
         "excelRow": 5,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -19,6 +20,7 @@
       {
         "excelRow": 141,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -32,6 +34,7 @@
       {
         "excelRow": 6,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -43,6 +46,7 @@
       {
         "excelRow": 157,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -54,6 +58,7 @@
       {
         "excelRow": 177,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -65,6 +70,7 @@
       {
         "excelRow": 232,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -76,6 +82,7 @@
       {
         "excelRow": 309,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -87,6 +94,7 @@
       {
         "excelRow": 382,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -100,6 +108,7 @@
       {
         "excelRow": 7,
         "employee": "Trần Minh Nhật",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -115,6 +124,7 @@
       {
         "excelRow": 39,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -126,6 +136,7 @@
       {
         "excelRow": 69,
         "employee": "ĐOÀN LÊ BÁCH",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CTY thưởng QL",
@@ -137,6 +148,7 @@
       {
         "excelRow": 149,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -148,6 +160,7 @@
       {
         "excelRow": 185,
         "employee": "Trần Minh Nhật",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -159,6 +172,7 @@
       {
         "excelRow": 247,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -172,6 +186,7 @@
       {
         "excelRow": 8,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -183,6 +198,7 @@
       {
         "excelRow": 12,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -194,6 +210,7 @@
       {
         "excelRow": 13,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -205,6 +222,7 @@
       {
         "excelRow": 14,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -216,6 +234,7 @@
       {
         "excelRow": 15,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "Hỗ trợ khách",
@@ -227,6 +246,7 @@
       {
         "excelRow": 142,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -240,6 +260,7 @@
       {
         "excelRow": 9,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -255,6 +276,7 @@
       {
         "excelRow": 40,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -266,6 +288,7 @@
       {
         "excelRow": 70,
         "employee": "ĐOÀN LÊ BÁCH",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CTY thưởng QL",
@@ -277,6 +300,7 @@
       {
         "excelRow": 150,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -288,6 +312,7 @@
       {
         "excelRow": 191,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -299,6 +324,7 @@
       {
         "excelRow": 248,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -312,6 +338,7 @@
       {
         "excelRow": 10,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -327,6 +354,7 @@
       {
         "excelRow": 45,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -338,6 +366,7 @@
       {
         "excelRow": 74,
         "employee": "ĐOÀN LÊ BÁCH",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CTY thưởng QL",
@@ -349,6 +378,7 @@
       {
         "excelRow": 151,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -360,6 +390,7 @@
       {
         "excelRow": 192,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -371,6 +402,7 @@
       {
         "excelRow": 249,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -384,6 +416,7 @@
       {
         "excelRow": 11,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -399,6 +432,7 @@
       {
         "excelRow": 29,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -410,6 +444,7 @@
       {
         "excelRow": 41,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -421,6 +456,7 @@
       {
         "excelRow": 75,
         "employee": "ĐOÀN LÊ BÁCH",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CTY thưởng QL",
@@ -432,6 +468,7 @@
       {
         "excelRow": 152,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -443,6 +480,7 @@
       {
         "excelRow": 193,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -454,6 +492,7 @@
       {
         "excelRow": 251,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -465,6 +504,7 @@
       {
         "excelRow": 293,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -478,6 +518,7 @@
       {
         "excelRow": 16,
         "employee": "Võ Thị Thu Thảo",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -489,6 +530,7 @@
       {
         "excelRow": 145,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -502,6 +544,7 @@
       {
         "excelRow": 18,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -513,6 +556,7 @@
       {
         "excelRow": 60,
         "employee": "TỐNG THỊ HỒNG THẮM",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "Hỗ trợ khách",
@@ -524,6 +568,7 @@
       {
         "excelRow": 144,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -537,6 +582,7 @@
       {
         "excelRow": 19,
         "employee": "Võ Thị Thu Thảo",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -548,6 +594,7 @@
       {
         "excelRow": 20,
         "employee": "TỐNG THỊ NHUNG",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "Hỗ trợ khách",
@@ -559,6 +606,7 @@
       {
         "excelRow": 21,
         "employee": "Võ Thị Thu Thảo",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -570,6 +618,7 @@
       {
         "excelRow": 143,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -583,6 +632,7 @@
       {
         "excelRow": 22,
         "employee": "ĐOÀN LÊ BÁCH",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CĐT thưởng QL",
@@ -594,6 +644,7 @@
       {
         "excelRow": 23,
         "employee": "Trần Minh Nhật",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CĐT thưởng NVKD",
@@ -605,6 +656,7 @@
       {
         "excelRow": 24,
         "employee": "Trần Minh Nhật",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -616,6 +668,7 @@
       {
         "excelRow": 25,
         "employee": "Trần Minh Nhật",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -627,6 +680,7 @@
       {
         "excelRow": 26,
         "employee": "Trần Minh Nhật",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -638,6 +692,7 @@
       {
         "excelRow": 146,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -651,6 +706,7 @@
       {
         "excelRow": 27,
         "employee": "Đoàn Ngọc Hạ Sang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -666,6 +722,7 @@
       {
         "excelRow": 28,
         "employee": "ĐOÀN LÊ BÁCH",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CĐT thưởng QL",
@@ -677,6 +734,7 @@
       {
         "excelRow": 148,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -688,6 +746,7 @@
       {
         "excelRow": 227,
         "employee": "Đoàn Ngọc Hạ Sang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -701,6 +760,7 @@
       {
         "excelRow": 30,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -712,6 +772,7 @@
       {
         "excelRow": 42,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -723,6 +784,7 @@
       {
         "excelRow": 71,
         "employee": "ĐOÀN LÊ BÁCH",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CTY thưởng QL",
@@ -734,6 +796,7 @@
       {
         "excelRow": 99,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -749,6 +812,7 @@
       {
         "excelRow": 101,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -760,6 +824,7 @@
       {
         "excelRow": 104,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -771,6 +836,7 @@
       {
         "excelRow": 166,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -782,6 +848,7 @@
       {
         "excelRow": 250,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -795,6 +862,7 @@
       {
         "excelRow": 31,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -806,6 +874,7 @@
       {
         "excelRow": 44,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -817,6 +886,7 @@
       {
         "excelRow": 73,
         "employee": "ĐOÀN LÊ BÁCH",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CTY thưởng QL",
@@ -828,6 +898,7 @@
       {
         "excelRow": 96,
         "employee": "Trần Thị Khánh Linh",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -843,6 +914,7 @@
       {
         "excelRow": 106,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -854,6 +926,7 @@
       {
         "excelRow": 127,
         "employee": "Trần Thị Khánh Linh",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -865,6 +938,7 @@
       {
         "excelRow": 168,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -876,6 +950,7 @@
       {
         "excelRow": 252,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -889,6 +964,7 @@
       {
         "excelRow": 32,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -900,6 +976,7 @@
       {
         "excelRow": 43,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -911,6 +988,7 @@
       {
         "excelRow": 72,
         "employee": "ĐOÀN LÊ BÁCH",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CTY thưởng QL",
@@ -922,6 +1000,7 @@
       {
         "excelRow": 97,
         "employee": "Lê Trịnh Thanh Thúy",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -937,6 +1016,7 @@
       {
         "excelRow": 105,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -948,6 +1028,7 @@
       {
         "excelRow": 125,
         "employee": "Lê Trịnh Thanh Thúy",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -959,6 +1040,7 @@
       {
         "excelRow": 167,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -970,6 +1052,7 @@
       {
         "excelRow": 253,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -983,6 +1066,7 @@
       {
         "excelRow": 33,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -994,6 +1078,7 @@
       {
         "excelRow": 46,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -1005,6 +1090,7 @@
       {
         "excelRow": 63,
         "employee": "ĐOÀN LÊ BÁCH",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CTY thưởng QL",
@@ -1016,6 +1102,7 @@
       {
         "excelRow": 98,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -1031,6 +1118,7 @@
       {
         "excelRow": 102,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -1042,6 +1130,7 @@
       {
         "excelRow": 107,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -1053,6 +1142,7 @@
       {
         "excelRow": 169,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -1064,6 +1154,7 @@
       {
         "excelRow": 254,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -1077,6 +1168,7 @@
       {
         "excelRow": 34,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -1088,6 +1180,7 @@
       {
         "excelRow": 47,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -1099,6 +1192,7 @@
       {
         "excelRow": 64,
         "employee": "ĐOÀN LÊ BÁCH",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CTY thưởng QL",
@@ -1110,6 +1204,7 @@
       {
         "excelRow": 95,
         "employee": "Trần Minh Nhật",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -1125,6 +1220,7 @@
       {
         "excelRow": 108,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -1136,6 +1232,7 @@
       {
         "excelRow": 129,
         "employee": "Trần Minh Nhật",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -1147,6 +1244,7 @@
       {
         "excelRow": 170,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -1158,6 +1256,7 @@
       {
         "excelRow": 255,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -1171,6 +1270,7 @@
       {
         "excelRow": 35,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -1182,6 +1282,7 @@
       {
         "excelRow": 50,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -1193,6 +1294,7 @@
       {
         "excelRow": 67,
         "employee": "ĐOÀN LÊ BÁCH",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CTY thưởng QL",
@@ -1204,6 +1306,7 @@
       {
         "excelRow": 93,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -1219,6 +1322,7 @@
       {
         "excelRow": 109,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -1230,6 +1334,7 @@
       {
         "excelRow": 133,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -1241,6 +1346,7 @@
       {
         "excelRow": 171,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -1252,6 +1358,7 @@
       {
         "excelRow": 256,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -1265,6 +1372,7 @@
       {
         "excelRow": 36,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -1276,6 +1384,7 @@
       {
         "excelRow": 91,
         "employee": "Trần Thị Khánh Linh",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -1287,6 +1396,7 @@
       {
         "excelRow": 153,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -1298,6 +1408,7 @@
       {
         "excelRow": 231,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -1311,6 +1422,7 @@
       {
         "excelRow": 37,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -1322,6 +1434,7 @@
       {
         "excelRow": 51,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -1333,6 +1446,7 @@
       {
         "excelRow": 68,
         "employee": "ĐOÀN LÊ BÁCH",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CTY thưởng QL",
@@ -1344,6 +1458,7 @@
       {
         "excelRow": 94,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -1359,6 +1474,7 @@
       {
         "excelRow": 110,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -1370,6 +1486,7 @@
       {
         "excelRow": 134,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -1381,6 +1498,7 @@
       {
         "excelRow": 172,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -1392,6 +1510,7 @@
       {
         "excelRow": 257,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -1405,6 +1524,7 @@
       {
         "excelRow": 48,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -1416,6 +1536,7 @@
       {
         "excelRow": 61,
         "employee": "ĐOÀN LÊ BÁCH",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -1431,6 +1552,7 @@
       {
         "excelRow": 65,
         "employee": "ĐOÀN LÊ BÁCH",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CTY thưởng QL",
@@ -1442,6 +1564,7 @@
       {
         "excelRow": 154,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -1453,6 +1576,7 @@
       {
         "excelRow": 220,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -1464,6 +1588,7 @@
       {
         "excelRow": 258,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -1477,6 +1602,7 @@
       {
         "excelRow": 49,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -1488,6 +1614,7 @@
       {
         "excelRow": 62,
         "employee": "ĐOÀN LÊ BÁCH",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -1503,6 +1630,7 @@
       {
         "excelRow": 66,
         "employee": "ĐOÀN LÊ BÁCH",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CTY thưởng QL",
@@ -1514,6 +1642,7 @@
       {
         "excelRow": 155,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -1525,6 +1654,7 @@
       {
         "excelRow": 221,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -1536,6 +1666,7 @@
       {
         "excelRow": 259,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -1549,6 +1680,7 @@
       {
         "excelRow": 52,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -1560,6 +1692,7 @@
       {
         "excelRow": 82,
         "employee": "ĐOÀN LÊ BÁCH",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CĐT thưởng NVKD",
@@ -1571,6 +1704,7 @@
       {
         "excelRow": 139,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -1590,6 +1724,7 @@
       {
         "excelRow": 156,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -1601,6 +1736,7 @@
       {
         "excelRow": 226,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CĐT thưởng NVKD",
@@ -1612,6 +1748,7 @@
       {
         "excelRow": 260,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -1625,6 +1762,7 @@
       {
         "excelRow": 53,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -1636,6 +1774,7 @@
       {
         "excelRow": 76,
         "employee": "VŨ ĐỨC THỊNH",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "Hỗ trợ khách",
@@ -1647,6 +1786,7 @@
       {
         "excelRow": 79,
         "employee": "TRẦN MINH NHẬT",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -1662,6 +1802,7 @@
       {
         "excelRow": 87,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -1673,6 +1814,7 @@
       {
         "excelRow": 111,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -1684,6 +1826,7 @@
       {
         "excelRow": 130,
         "employee": "Trần Minh Nhật",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -1695,6 +1838,7 @@
       {
         "excelRow": 173,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -1706,6 +1850,7 @@
       {
         "excelRow": 222,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CTY thưởng QL",
@@ -1717,6 +1862,7 @@
       {
         "excelRow": 261,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -1728,6 +1874,7 @@
       {
         "excelRow": 444,
         "employee": "Trần Minh Nhật",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -1741,6 +1888,7 @@
       {
         "excelRow": 54,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -1752,6 +1900,7 @@
       {
         "excelRow": 80,
         "employee": "ĐOÀN LÊ BÁCH",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -1767,6 +1916,7 @@
       {
         "excelRow": 159,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -1780,6 +1930,7 @@
       {
         "excelRow": 55,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -1791,6 +1942,7 @@
       {
         "excelRow": 78,
         "employee": "TRẦN MINH NHẬT",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -1806,6 +1958,7 @@
       {
         "excelRow": 86,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -1817,6 +1970,7 @@
       {
         "excelRow": 165,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -1830,6 +1984,7 @@
       {
         "excelRow": 56,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -1841,6 +1996,7 @@
       {
         "excelRow": 83,
         "employee": "LÊ TRỊNH THANH THÚY",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -1856,6 +2012,7 @@
       {
         "excelRow": 84,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -1867,6 +2024,7 @@
       {
         "excelRow": 161,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -1880,6 +2038,7 @@
       {
         "excelRow": 57,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -1891,6 +2050,7 @@
       {
         "excelRow": 162,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -1902,6 +2062,7 @@
       {
         "excelRow": 178,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -1919,6 +2080,7 @@
       {
         "excelRow": 58,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -1930,6 +2092,7 @@
       {
         "excelRow": 81,
         "employee": "ĐOÀN LÊ BÁCH",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -1945,6 +2108,7 @@
       {
         "excelRow": 160,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -1958,6 +2122,7 @@
       {
         "excelRow": 59,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -1969,6 +2134,7 @@
       {
         "excelRow": 77,
         "employee": "TRẦN MINH NHẬT",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -1984,6 +2150,7 @@
       {
         "excelRow": 85,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -1995,6 +2162,7 @@
       {
         "excelRow": 164,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -2008,6 +2176,7 @@
       {
         "excelRow": 88,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -2019,6 +2188,7 @@
       {
         "excelRow": 92,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -2030,6 +2200,7 @@
       {
         "excelRow": 158,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -2041,6 +2212,7 @@
       {
         "excelRow": 233,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -2054,6 +2226,7 @@
       {
         "excelRow": 89,
         "employee": "Trần Thị Khánh Linh",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -2065,6 +2238,7 @@
       {
         "excelRow": 90,
         "employee": "Trần Thị Khánh Linh",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -2076,6 +2250,7 @@
       {
         "excelRow": 147,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -2089,6 +2264,7 @@
       {
         "excelRow": 100,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -2104,6 +2280,7 @@
       {
         "excelRow": 114,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -2115,6 +2292,7 @@
       {
         "excelRow": 175,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -2126,6 +2304,7 @@
       {
         "excelRow": 225,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CTY thưởng QL",
@@ -2137,6 +2316,7 @@
       {
         "excelRow": 246,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -2150,6 +2330,7 @@
       {
         "excelRow": 103,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -2165,6 +2346,7 @@
       {
         "excelRow": 124,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -2176,6 +2358,7 @@
       {
         "excelRow": 188,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -2187,6 +2370,7 @@
       {
         "excelRow": 206,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -2198,6 +2382,7 @@
       {
         "excelRow": 244,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -2209,6 +2394,7 @@
       {
         "excelRow": 282,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -2220,6 +2406,7 @@
       {
         "excelRow": 387,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -2231,6 +2418,7 @@
       {
         "excelRow": 438,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -2244,6 +2432,7 @@
       {
         "excelRow": 112,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -2255,6 +2444,7 @@
       {
         "excelRow": 183,
         "employee": "Trần Minh Nhật",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -2270,6 +2460,7 @@
       {
         "excelRow": 212,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -2281,6 +2472,7 @@
       {
         "excelRow": 217,
         "employee": "PHAN THỊ HUYỀN",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "Hỗ trợ khách",
@@ -2292,6 +2484,7 @@
       {
         "excelRow": 218,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -2303,6 +2496,7 @@
       {
         "excelRow": 223,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CTY thưởng QL",
@@ -2314,6 +2508,7 @@
       {
         "excelRow": 228,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -2325,6 +2520,7 @@
       {
         "excelRow": 443,
         "employee": "Trần Minh Nhật",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -2336,6 +2532,7 @@
       {
         "excelRow": 445,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [],
         "total": -400000
       }
@@ -2344,6 +2541,7 @@
       {
         "excelRow": 113,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -2355,6 +2553,7 @@
       {
         "excelRow": 184,
         "employee": "Trần Minh Nhật",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -2370,6 +2569,7 @@
       {
         "excelRow": 213,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -2381,6 +2581,7 @@
       {
         "excelRow": 219,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -2392,6 +2593,7 @@
       {
         "excelRow": 224,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CTY thưởng QL",
@@ -2403,6 +2605,7 @@
       {
         "excelRow": 229,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -2416,6 +2619,7 @@
       {
         "excelRow": 115,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -2427,6 +2631,7 @@
       {
         "excelRow": 189,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -2442,6 +2647,7 @@
       {
         "excelRow": 204,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -2453,6 +2659,7 @@
       {
         "excelRow": 234,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -2464,6 +2671,7 @@
       {
         "excelRow": 283,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -2475,6 +2683,7 @@
       {
         "excelRow": 389,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -2486,6 +2695,7 @@
       {
         "excelRow": 439,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -2499,6 +2709,7 @@
       {
         "excelRow": 116,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -2510,6 +2721,7 @@
       {
         "excelRow": 131,
         "employee": "Trần Minh Nhật",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -2525,6 +2737,7 @@
       {
         "excelRow": 186,
         "employee": "Trần Minh Nhật",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -2536,6 +2749,7 @@
       {
         "excelRow": 199,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -2547,6 +2761,7 @@
       {
         "excelRow": 235,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -2558,6 +2773,7 @@
       {
         "excelRow": 279,
         "employee": "Trần Minh Nhật",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -2569,6 +2785,7 @@
       {
         "excelRow": 359,
         "employee": "Trần Minh Nhật",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -2580,6 +2797,7 @@
       {
         "excelRow": 392,
         "employee": "Trần Minh Nhật",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -2593,6 +2811,7 @@
       {
         "excelRow": 117,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -2604,6 +2823,7 @@
       {
         "excelRow": 135,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -2619,6 +2839,7 @@
       {
         "excelRow": 195,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -2630,6 +2851,7 @@
       {
         "excelRow": 207,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -2641,6 +2863,7 @@
       {
         "excelRow": 236,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -2652,6 +2875,7 @@
       {
         "excelRow": 262,
         "employee": "NGUYỄN ĐỨC CƯỜNG",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "Hỗ trợ khách",
@@ -2663,6 +2887,7 @@
       {
         "excelRow": 288,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -2674,6 +2899,7 @@
       {
         "excelRow": 369,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -2685,6 +2911,7 @@
       {
         "excelRow": 395,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -2698,6 +2925,7 @@
       {
         "excelRow": 118,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -2709,6 +2937,7 @@
       {
         "excelRow": 137,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -2724,6 +2953,7 @@
       {
         "excelRow": 197,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -2735,6 +2965,7 @@
       {
         "excelRow": 209,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -2746,6 +2977,7 @@
       {
         "excelRow": 237,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -2757,6 +2989,7 @@
       {
         "excelRow": 263,
         "employee": "TRIỆU TẤN ĐẠT",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "Hỗ trợ khách",
@@ -2768,6 +3001,7 @@
       {
         "excelRow": 290,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -2779,6 +3013,7 @@
       {
         "excelRow": 367,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -2790,6 +3025,7 @@
       {
         "excelRow": 388,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -2803,6 +3039,7 @@
       {
         "excelRow": 119,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -2814,6 +3051,7 @@
       {
         "excelRow": 190,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -2829,6 +3067,7 @@
       {
         "excelRow": 205,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -2840,6 +3079,7 @@
       {
         "excelRow": 238,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -2851,6 +3091,7 @@
       {
         "excelRow": 265,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "Hỗ trợ khách",
@@ -2862,6 +3103,7 @@
       {
         "excelRow": 325,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CĐT thưởng NVKD",
@@ -2873,6 +3115,7 @@
       {
         "excelRow": 346,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -2884,6 +3127,7 @@
       {
         "excelRow": 373,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -2895,6 +3139,7 @@
       {
         "excelRow": 381,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CĐT thưởng NVKD",
@@ -2906,6 +3151,7 @@
       {
         "excelRow": 391,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -2917,6 +3163,7 @@
       {
         "excelRow": 433,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -2930,6 +3177,7 @@
       {
         "excelRow": 120,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -2941,6 +3189,7 @@
       {
         "excelRow": 128,
         "employee": "Trần Thị Khánh Linh",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -2956,6 +3205,7 @@
       {
         "excelRow": 182,
         "employee": "Trần Thị Khánh Linh",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -2967,6 +3217,7 @@
       {
         "excelRow": 202,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -2978,6 +3229,7 @@
       {
         "excelRow": 240,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -2989,6 +3241,7 @@
       {
         "excelRow": 266,
         "employee": "Trần Sỹ Phú",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "Hỗ trợ khách",
@@ -3000,6 +3253,7 @@
       {
         "excelRow": 276,
         "employee": "Trần Thị Khánh Linh",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3011,6 +3265,7 @@
       {
         "excelRow": 355,
         "employee": "Trần Thị Khánh Linh",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3022,6 +3277,7 @@
       {
         "excelRow": 396,
         "employee": "Trần Thị Khánh Linh",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3035,6 +3291,7 @@
       {
         "excelRow": 121,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -3046,6 +3303,7 @@
       {
         "excelRow": 132,
         "employee": "Trần Minh Nhật",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3061,6 +3319,7 @@
       {
         "excelRow": 187,
         "employee": "Trần Minh Nhật",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3072,6 +3331,7 @@
       {
         "excelRow": 200,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -3083,6 +3343,7 @@
       {
         "excelRow": 241,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -3094,6 +3355,7 @@
       {
         "excelRow": 280,
         "employee": "Trần Minh Nhật",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3105,6 +3367,7 @@
       {
         "excelRow": 358,
         "employee": "Trần Minh Nhật",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3116,6 +3379,7 @@
       {
         "excelRow": 394,
         "employee": "Trần Minh Nhật",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3129,6 +3393,7 @@
       {
         "excelRow": 122,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -3140,6 +3405,7 @@
       {
         "excelRow": 136,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3155,6 +3421,7 @@
       {
         "excelRow": 196,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3166,6 +3433,7 @@
       {
         "excelRow": 211,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -3177,6 +3445,7 @@
       {
         "excelRow": 242,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -3188,6 +3457,7 @@
       {
         "excelRow": 289,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3199,6 +3469,7 @@
       {
         "excelRow": 368,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3210,6 +3481,7 @@
       {
         "excelRow": 390,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3223,6 +3495,7 @@
       {
         "excelRow": 123,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -3234,6 +3507,7 @@
       {
         "excelRow": 138,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3249,6 +3523,7 @@
       {
         "excelRow": 198,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3260,6 +3535,7 @@
       {
         "excelRow": 210,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -3271,6 +3547,7 @@
       {
         "excelRow": 243,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -3282,6 +3559,7 @@
       {
         "excelRow": 264,
         "employee": "ĐẶNG PHÚC LỘC",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "Hỗ trợ khách",
@@ -3293,6 +3571,7 @@
       {
         "excelRow": 291,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3306,6 +3585,7 @@
       {
         "excelRow": 126,
         "employee": "Lê Trịnh Thanh Thúy",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CĐT thưởng NVKD",
@@ -3317,6 +3597,7 @@
       {
         "excelRow": 180,
         "employee": "Lê Trịnh Thanh Thúy",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3328,6 +3609,7 @@
       {
         "excelRow": 203,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -3339,6 +3621,7 @@
       {
         "excelRow": 215,
         "employee": "TRẦN THỊ THẢO",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "Hỗ trợ khách",
@@ -3350,6 +3633,7 @@
       {
         "excelRow": 278,
         "employee": "Lê Trịnh Thanh Thúy",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3361,6 +3645,7 @@
       {
         "excelRow": 311,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -3372,6 +3657,7 @@
       {
         "excelRow": 351,
         "employee": "Lê Trịnh Thanh Thúy",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3385,6 +3671,7 @@
       {
         "excelRow": 140,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3404,6 +3691,7 @@
       {
         "excelRow": 174,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -3415,6 +3703,7 @@
       {
         "excelRow": 245,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -3428,6 +3717,7 @@
       {
         "excelRow": 163,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI CEO",
@@ -3439,6 +3729,7 @@
       {
         "excelRow": 179,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3454,6 +3745,7 @@
       {
         "excelRow": 230,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -3467,6 +3759,7 @@
       {
         "excelRow": 176,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3482,6 +3775,7 @@
       {
         "excelRow": 239,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -3493,6 +3787,7 @@
       {
         "excelRow": 267,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3504,6 +3799,7 @@
       {
         "excelRow": 364,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3515,6 +3811,7 @@
       {
         "excelRow": 398,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3528,6 +3825,7 @@
       {
         "excelRow": 181,
         "employee": "Trần Thị Khánh Linh",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3543,6 +3841,7 @@
       {
         "excelRow": 201,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -3554,6 +3853,7 @@
       {
         "excelRow": 216,
         "employee": "LƯU HỒNG VÂN",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "Hỗ trợ khách",
@@ -3565,6 +3865,7 @@
       {
         "excelRow": 275,
         "employee": "Trần Thị Khánh Linh",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3576,6 +3877,7 @@
       {
         "excelRow": 310,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -3587,6 +3889,7 @@
       {
         "excelRow": 354,
         "employee": "Trần Thị Khánh Linh",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3598,6 +3901,7 @@
       {
         "excelRow": 399,
         "employee": "Trần Thị Khánh Linh",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3611,6 +3915,7 @@
       {
         "excelRow": 194,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3626,6 +3931,7 @@
       {
         "excelRow": 208,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -3637,6 +3943,7 @@
       {
         "excelRow": 214,
         "employee": "NGUYỄN ĐỨC CƯỜNG",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "Hỗ trợ khách",
@@ -3648,6 +3955,7 @@
       {
         "excelRow": 287,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3659,6 +3967,7 @@
       {
         "excelRow": 370,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3670,6 +3979,7 @@
       {
         "excelRow": 397,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3683,6 +3993,7 @@
       {
         "excelRow": 268,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3698,6 +4009,7 @@
       {
         "excelRow": 313,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3709,6 +4021,7 @@
       {
         "excelRow": 332,
         "employee": "Trần Thị Hoa",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "Hỗ trợ khách",
@@ -3720,6 +4033,7 @@
       {
         "excelRow": 337,
         "employee": "Hồ Thị Lan Viên",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -3731,6 +4045,7 @@
       {
         "excelRow": 361,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3742,6 +4057,7 @@
       {
         "excelRow": 411,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3755,6 +4071,7 @@
       {
         "excelRow": 269,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CĐT thưởng NVKD",
@@ -3766,6 +4083,7 @@
       {
         "excelRow": 302,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -3777,6 +4095,7 @@
       {
         "excelRow": 314,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3792,6 +4111,7 @@
       {
         "excelRow": 362,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3803,6 +4123,7 @@
       {
         "excelRow": 407,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3816,6 +4137,7 @@
       {
         "excelRow": 270,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CĐT thưởng NVKD",
@@ -3827,6 +4149,7 @@
       {
         "excelRow": 299,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -3838,6 +4161,7 @@
       {
         "excelRow": 315,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3853,6 +4177,7 @@
       {
         "excelRow": 363,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3864,6 +4189,7 @@
       {
         "excelRow": 404,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3877,6 +4203,7 @@
       {
         "excelRow": 271,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CĐT thưởng NVKD",
@@ -3888,6 +4215,7 @@
       {
         "excelRow": 307,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -3899,6 +4227,7 @@
       {
         "excelRow": 316,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3914,6 +4243,7 @@
       {
         "excelRow": 365,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3925,6 +4255,7 @@
       {
         "excelRow": 410,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3938,6 +4269,7 @@
       {
         "excelRow": 272,
         "employee": "Bùi Thị Hạ Uyên",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CĐT thưởng NVKD",
@@ -3949,6 +4281,7 @@
       {
         "excelRow": 301,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -3960,6 +4293,7 @@
       {
         "excelRow": 317,
         "employee": "BÙI THỊ HẠ UYÊN",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3975,6 +4309,7 @@
       {
         "excelRow": 340,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -3986,6 +4321,7 @@
       {
         "excelRow": 349,
         "employee": "Bùi THỊ HẠ UYÊN",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -3997,6 +4333,7 @@
       {
         "excelRow": 406,
         "employee": "Bùi Thị Hạ Uyên",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -4008,6 +4345,7 @@
       {
         "excelRow": 441,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -4021,6 +4359,7 @@
       {
         "excelRow": 273,
         "employee": "Bùi Thị Hạ Uyên",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CĐT thưởng NVKD",
@@ -4032,6 +4371,7 @@
       {
         "excelRow": 297,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -4043,6 +4383,7 @@
       {
         "excelRow": 318,
         "employee": "BÙI THỊ HẠ UYÊN",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -4058,6 +4399,7 @@
       {
         "excelRow": 339,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -4069,6 +4411,7 @@
       {
         "excelRow": 350,
         "employee": "Bùi THỊ HẠ UYÊN",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -4080,6 +4423,7 @@
       {
         "excelRow": 402,
         "employee": "Bùi Thị Hạ Uyên",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -4091,6 +4435,7 @@
       {
         "excelRow": 440,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -4104,6 +4449,7 @@
       {
         "excelRow": 274,
         "employee": "Tô Rô Ly Na",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CĐT thưởng NVKD",
@@ -4115,6 +4461,7 @@
       {
         "excelRow": 446,
         "employee": "Tô Rô Ly Na",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -4128,6 +4475,7 @@
       {
         "excelRow": 277,
         "employee": "Trần Thị Khánh Linh",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CĐT thưởng NVKD",
@@ -4139,6 +4487,7 @@
       {
         "excelRow": 298,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -4150,6 +4499,7 @@
       {
         "excelRow": 327,
         "employee": "Trần Thị Khánh Linh",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -4165,6 +4515,7 @@
       {
         "excelRow": 343,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -4176,6 +4527,7 @@
       {
         "excelRow": 353,
         "employee": "Trần Thị Khánh Linh",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -4187,6 +4539,7 @@
       {
         "excelRow": 403,
         "employee": "Trần Thị Khánh Linh",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -4198,6 +4551,7 @@
       {
         "excelRow": 430,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -4211,6 +4565,7 @@
       {
         "excelRow": 281,
         "employee": "Trần Minh Nhật",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CĐT thưởng NVKD",
@@ -4222,6 +4577,7 @@
       {
         "excelRow": 304,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -4233,6 +4589,7 @@
       {
         "excelRow": 329,
         "employee": "Trần Minh Nhật",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -4248,6 +4605,7 @@
       {
         "excelRow": 347,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -4259,6 +4617,7 @@
       {
         "excelRow": 357,
         "employee": "Trần Minh Nhật",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -4270,6 +4629,7 @@
       {
         "excelRow": 408,
         "employee": "Trần Minh Nhật",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -4281,6 +4641,7 @@
       {
         "excelRow": 434,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -4294,6 +4655,7 @@
       {
         "excelRow": 284,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CĐT thưởng NVKD",
@@ -4305,6 +4667,7 @@
       {
         "excelRow": 300,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -4316,6 +4679,7 @@
       {
         "excelRow": 321,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -4331,6 +4695,7 @@
       {
         "excelRow": 331,
         "employee": "Ngô Mai Thùy",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "Hỗ trợ khách",
@@ -4342,6 +4707,7 @@
       {
         "excelRow": 344,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -4353,6 +4719,7 @@
       {
         "excelRow": 405,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -4366,6 +4733,7 @@
       {
         "excelRow": 285,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CĐT thưởng NVKD",
@@ -4377,6 +4745,7 @@
       {
         "excelRow": 303,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -4388,6 +4757,7 @@
       {
         "excelRow": 322,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -4403,6 +4773,7 @@
       {
         "excelRow": 330,
         "employee": "Nguyễn Hải Đăng",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "Hỗ trợ khách",
@@ -4414,6 +4785,7 @@
       {
         "excelRow": 345,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -4425,6 +4797,7 @@
       {
         "excelRow": 393,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -4440,6 +4813,7 @@
       {
         "excelRow": 432,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -4453,6 +4827,7 @@
       {
         "excelRow": 286,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CĐT thưởng NVKD",
@@ -4464,6 +4839,7 @@
       {
         "excelRow": 305,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -4475,6 +4851,7 @@
       {
         "excelRow": 324,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CĐT thưởng NVKD",
@@ -4486,6 +4863,7 @@
       {
         "excelRow": 348,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -4497,6 +4875,7 @@
       {
         "excelRow": 372,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -4508,6 +4887,7 @@
       {
         "excelRow": 413,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -4523,6 +4903,7 @@
       {
         "excelRow": 435,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -4536,6 +4917,7 @@
       {
         "excelRow": 292,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CĐT thưởng NVKD",
@@ -4547,6 +4929,7 @@
       {
         "excelRow": 306,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -4558,6 +4941,7 @@
       {
         "excelRow": 320,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -4573,6 +4957,7 @@
       {
         "excelRow": 341,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -4584,6 +4969,7 @@
       {
         "excelRow": 366,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -4595,6 +4981,7 @@
       {
         "excelRow": 409,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -4606,6 +4993,7 @@
       {
         "excelRow": 442,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -4617,6 +5005,7 @@
       {
         "excelRow": 449,
         "employee": null,
+        "coNgayDoiChieu": false,
         "items": [
           {
             "loai": "HH sale",
@@ -4630,6 +5019,7 @@
       {
         "excelRow": 294,
         "employee": "Bùi Thị Hạ Uyên",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CĐT thưởng NVKD",
@@ -4641,6 +5031,7 @@
       {
         "excelRow": 308,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -4652,6 +5043,7 @@
       {
         "excelRow": 319,
         "employee": "BÙI THỊ HẠ UYÊN",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -4667,6 +5059,7 @@
       {
         "excelRow": 338,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -4678,6 +5071,7 @@
       {
         "excelRow": 380,
         "employee": "Bùi Thị Hạ Uyên",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -4689,6 +5083,7 @@
       {
         "excelRow": 436,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -4700,6 +5095,7 @@
       {
         "excelRow": 448,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -4713,6 +5109,7 @@
       {
         "excelRow": 295,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -4724,6 +5121,7 @@
       {
         "excelRow": 328,
         "employee": "Trần Minh Nhật",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -4739,6 +5137,7 @@
       {
         "excelRow": 342,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -4750,6 +5149,7 @@
       {
         "excelRow": 356,
         "employee": "Trần Minh Nhật",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -4761,6 +5161,7 @@
       {
         "excelRow": 400,
         "employee": "Trần Minh Nhật",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -4772,6 +5173,7 @@
       {
         "excelRow": 429,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -4785,6 +5187,7 @@
       {
         "excelRow": 296,
         "employee": "Danh Hoàng Thị Tường Vi",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -4796,6 +5199,7 @@
       {
         "excelRow": 323,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CĐT thưởng NVKD",
@@ -4807,6 +5211,7 @@
       {
         "excelRow": 371,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -4818,6 +5223,7 @@
       {
         "excelRow": 401,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -4831,6 +5237,7 @@
       {
         "excelRow": 312,
         "employee": "Hồ Đắc Thạch",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CĐT thưởng NVKD",
@@ -4844,6 +5251,7 @@
       {
         "excelRow": 326,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CĐT thưởng NVKD",
@@ -4855,6 +5263,7 @@
       {
         "excelRow": 334,
         "employee": "Hồ Thị Lan Viên",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -4866,6 +5275,7 @@
       {
         "excelRow": 384,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -4877,6 +5287,7 @@
       {
         "excelRow": 437,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI TPKD",
@@ -4890,6 +5301,7 @@
       {
         "excelRow": 333,
         "employee": "Hồ Thị Lan Viên",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -4901,6 +5313,7 @@
       {
         "excelRow": 352,
         "employee": "Nguyễn Hồng Diễm",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -4912,6 +5325,7 @@
       {
         "excelRow": 383,
         "employee": "Nguyễn Hồng Diễm",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -4927,6 +5341,7 @@
       {
         "excelRow": 450,
         "employee": null,
+        "coNgayDoiChieu": false,
         "items": [
           {
             "loai": "HH sale",
@@ -4940,6 +5355,7 @@
       {
         "excelRow": 335,
         "employee": "Hồ Thị Lan Viên",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -4951,6 +5367,7 @@
       {
         "excelRow": 360,
         "employee": "Trần Minh Nhật",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -4962,6 +5379,7 @@
       {
         "excelRow": 385,
         "employee": "Trần Minh Nhật",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -4979,6 +5397,7 @@
       {
         "excelRow": 336,
         "employee": "Hồ Thị Lan Viên",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -4990,6 +5409,7 @@
       {
         "excelRow": 386,
         "employee": "Hồ Nguyễn Công Thành",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "CĐT thưởng NVKD",
@@ -5003,6 +5423,7 @@
       {
         "excelRow": 374,
         "employee": "Trần Minh Thông",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -5018,6 +5439,7 @@
       {
         "excelRow": 423,
         "employee": "Hồ Thị Lan Viên",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -5029,6 +5451,7 @@
       {
         "excelRow": 454,
         "employee": null,
+        "coNgayDoiChieu": false,
         "items": [
           {
             "loai": "HH sale",
@@ -5042,6 +5465,7 @@
       {
         "excelRow": 375,
         "employee": "Trần Minh Thông",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -5057,6 +5481,7 @@
       {
         "excelRow": 424,
         "employee": "Hồ Thị Lan Viên",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -5068,6 +5493,7 @@
       {
         "excelRow": 452,
         "employee": null,
+        "coNgayDoiChieu": false,
         "items": [
           {
             "loai": "HH sale",
@@ -5081,6 +5507,7 @@
       {
         "excelRow": 376,
         "employee": "Trần Minh Nhật",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -5096,6 +5523,7 @@
       {
         "excelRow": 425,
         "employee": "Hồ Thị Lan Viên",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -5107,6 +5535,7 @@
       {
         "excelRow": 451,
         "employee": null,
+        "coNgayDoiChieu": false,
         "items": [
           {
             "loai": "HH sale",
@@ -5120,6 +5549,7 @@
       {
         "excelRow": 377,
         "employee": "Lê Thị Cẩm Giang",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -5135,6 +5565,7 @@
       {
         "excelRow": 426,
         "employee": "Hồ Thị Lan Viên",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -5148,6 +5579,7 @@
       {
         "excelRow": 378,
         "employee": "ĐOÀN LÊ BÁCH",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -5163,6 +5595,7 @@
       {
         "excelRow": 427,
         "employee": "Hồ Thị Lan Viên",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -5174,6 +5607,7 @@
       {
         "excelRow": 453,
         "employee": null,
+        "coNgayDoiChieu": false,
         "items": [
           {
             "loai": "HH sale",
@@ -5187,6 +5621,7 @@
       {
         "excelRow": 379,
         "employee": "ĐOÀN LÊ BÁCH",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -5202,6 +5637,7 @@
       {
         "excelRow": 428,
         "employee": "Hồ Thị Lan Viên",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -5213,6 +5649,7 @@
       {
         "excelRow": 455,
         "employee": null,
+        "coNgayDoiChieu": false,
         "items": [
           {
             "loai": "HH sale",
@@ -5226,6 +5663,7 @@
       {
         "excelRow": 412,
         "employee": "Đoàn Lê Bách",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -5243,6 +5681,7 @@
       {
         "excelRow": 414,
         "employee": "Hồ Thị Lan Viên",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -5254,6 +5693,7 @@
       {
         "excelRow": 416,
         "employee": "Trần Bình Trọng",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -5267,6 +5707,7 @@
       {
         "excelRow": 417,
         "employee": "Trần Bình Trọng",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -5278,6 +5719,7 @@
       {
         "excelRow": 420,
         "employee": "Hồ Thị Lan Viên",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -5289,6 +5731,7 @@
       {
         "excelRow": 457,
         "employee": null,
+        "coNgayDoiChieu": false,
         "items": [
           {
             "loai": "CĐT thưởng NVKD",
@@ -5302,6 +5745,7 @@
       {
         "excelRow": 418,
         "employee": "Trần Bình Trọng",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -5317,6 +5761,7 @@
       {
         "excelRow": 421,
         "employee": "Hồ Thị Lan Viên",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -5330,6 +5775,7 @@
       {
         "excelRow": 419,
         "employee": "Trần Bình Trọng",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "HH sale",
@@ -5345,6 +5791,7 @@
       {
         "excelRow": 422,
         "employee": "Hồ Thị Lan Viên",
+        "coNgayDoiChieu": true,
         "items": [
           {
             "loai": "KPI Admin",
@@ -5358,6 +5805,7 @@
       {
         "excelRow": 456,
         "employee": null,
+        "coNgayDoiChieu": false,
         "items": [
           {
             "loai": "HH sale",

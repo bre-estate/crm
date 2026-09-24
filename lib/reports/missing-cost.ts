@@ -32,9 +32,20 @@ export type MissingCostRow = {
   actors: string[];
 };
 
+/** Đợt kế toán tính trước nhưng chưa lập biên bản đối chiếu, app chưa có là đúng. */
+export type DotDuTinh = {
+  productCode: string;
+  excelRow: number;
+  employee: string | null;
+  total: number;
+  items: { loai: string; amt: number }[];
+};
+
 type ExcelEntry = {
   excelRow: number;
   employee: string | null;
+  /** Cột "Ngày đối chiếu" trong Excel có điền hay không. */
+  coNgayDoiChieu?: boolean;
   items: { loai: string; amt: number }[];
   total: number;
 };
@@ -62,8 +73,17 @@ function excelLoaiToCostType(loai: string): string | undefined {
   return Object.entries(COST_TYPE_LABEL).find(([, v]) => v === loai)?.[0];
 }
 
+/**
+ * So giá vốn giữa Excel và app.
+ *
+ * Chỉ so những đợt ĐÃ CÓ NGÀY ĐỐI CHIẾU. Dòng trong Excel để trống cột ngày là
+ * kế toán mới tính trước, chưa lập biên bản, nên app chưa có là đúng chứ không
+ * phải thiếu. Trước đây gộp chung nên trang báo chênh 289,6 triệu toàn đợt chưa
+ * phát sinh, làm tưởng HR quên nhập.
+ */
 export async function getMissingCostReport(): Promise<{
   rows: MissingCostRow[];
+  duTinh: DotDuTinh[];
   excelTotal: number;
   dbTotal: number;
   totalDiff: number;
@@ -98,10 +118,15 @@ export async function getMissingCostReport(): Promise<{
   }
 
   const report: MissingCostRow[] = [];
+  const duTinh: DotDuTinh[] = [];
   let excelTotal = 0;
   let dbTotal = 0;
 
-  for (const [code, excelRows] of Object.entries(snap.perProduct)) {
+  for (const [code, tatCaDot] of Object.entries(snap.perProduct)) {
+    // Tách đợt chưa có ngày đối chiếu ra khỏi phép so.
+    const excelRows = tatCaDot.filter((e) => e.coNgayDoiChieu !== false);
+    for (const e of tatCaDot.filter((e) => e.coNgayDoiChieu === false))
+      duTinh.push({ productCode: code, excelRow: e.excelRow, employee: e.employee, total: e.total, items: e.items });
     const dbList = dbPerProduct.get(code) || [];
     const dbUsed = new Set<number>();
     const missingItems: MissingItem[] = [];
@@ -148,8 +173,11 @@ export async function getMissingCostReport(): Promise<{
   }
   report.sort((a, b) => b.diff - a.diff);
 
+  duTinh.sort((a, b) => b.total - a.total);
+
   return {
     rows: report,
+    duTinh,
     excelTotal,
     dbTotal,
     totalDiff: excelTotal - dbTotal,

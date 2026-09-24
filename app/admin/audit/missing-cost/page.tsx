@@ -8,7 +8,8 @@ const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
 
 export default async function MissingCostAuditPage() {
   await requireOwner();
-  const { rows, excelTotal, dbTotal, totalDiff, snapshotAt } = await getMissingCostReport();
+  const { rows, duTinh, excelTotal, dbTotal, totalDiff, snapshotAt } = await getMissingCostReport();
+  const tienDuTinh = duTinh.reduce((s, d) => s + d.total, 0);
 
   return (
     <div className="space-y-4">
@@ -18,12 +19,12 @@ export default async function MissingCostAuditPage() {
         </div>
         <h1 className="text-2xl font-bold mt-1">Kiểm tra giá vốn: Excel vs App</h1>
         <p className="text-sm text-slate-500 mt-1">
-          So sánh sheet <code>2.3_Gia von</code> của <code>BAO CAO DOANH THU.xlsx</code> với
-          <code>cost_reconciliations</code>. Match theo mã căn + loại phí + số tiền (chênh &lt; 1.000 VND).
+          So giá vốn trong file Báo cáo Doanh Thu của kế toán với giá vốn đã nhập trong app, khớp theo
+          mã căn, loại phí và số tiền. Chỉ so những đợt <b>đã có ngày đối chiếu</b>.
         </p>
         <p className="text-xs text-slate-400 mt-1">
-          Snapshot Excel: {new Date(snapshotAt).toLocaleString("vi-VN")}. DB query live.
-          Cập nhật snapshot: chạy <code>node scripts/snapshot_cost_excel.mjs</code> local + commit lại JSON.
+          Bản chụp Excel ngày {new Date(snapshotAt).toLocaleDateString("vi-VN")}. Số của app lấy trực tiếp.
+          File Excel đổi thì chạy lại <code>node scripts/snapshot_cost_excel.mjs</code> rồi đẩy lên.
         </p>
       </div>
 
@@ -37,6 +38,40 @@ export default async function MissingCostAuditPage() {
         />
         <Card label="Số căn lệch" value={String(rows.length)} color={rows.length > 0 ? "amber" : "green"} />
       </div>
+
+      {duTinh.length > 0 && (
+        <div className="bg-card rounded-xl ring-1 ring-foreground/10 p-4 space-y-2">
+          <div className="text-sm font-semibold">
+            {duTinh.length} đợt kế toán tính trước, chưa lập biên bản đối chiếu · {fmt(tienDuTinh)}
+          </div>
+          <p className="text-xs text-slate-500">
+            Những dòng này trong Excel để trống cột Ngày đối chiếu, nghĩa là chưa phát sinh. App chưa có
+            là đúng, không phải thiếu, nên không tính vào phần chênh lệch ở trên.
+          </p>
+          <table className="w-full text-sm">
+            <thead className="text-xs text-slate-500">
+              <tr>
+                <th className="text-left p-2">Căn</th>
+                <th className="text-left p-2">Gồm</th>
+                <th className="text-left p-2 w-40">Người được đối chiếu</th>
+                <th className="text-right p-2 w-36">Số tiền</th>
+              </tr>
+            </thead>
+            <tbody>
+              {duTinh.map((d) => (
+                <tr key={`${d.productCode}-${d.excelRow}`} className="border-t">
+                  <td className="p-2 font-medium">{d.productCode}</td>
+                  <td className="p-2 text-slate-600 text-xs">
+                    {d.items.map((i) => `${i.loai} ${fmt(i.amt)}`).join(" · ")}
+                  </td>
+                  <td className="p-2 text-slate-600">{d.employee ?? ""}</td>
+                  <td className="p-2 text-right tabular-nums">{fmt(d.total)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {rows.length === 0 ? (
         <div className="rounded-lg border border-green-300 bg-green-50 p-4 text-sm text-green-800">
