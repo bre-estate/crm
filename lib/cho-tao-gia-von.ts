@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { db } from "@/lib/db";
 import { sql } from "drizzle-orm";
 
@@ -57,6 +58,22 @@ export interface CanChoGiaVon {
   /** Mọi loại có cấu hình, để hiện bảng kiểm đầy đủ. */
   tatCaLoai: LoaiGiaVon[];
 }
+
+/**
+ * Loại tạm không nhắc nữa.
+ *
+ * KPI CEO còn cấu hình tỷ lệ trên 85 căn nhưng chỉ 37 căn từng được đối chiếu, và lần
+ * cuối là 09/03/2026. Chưa rõ chính sách còn hay đã bỏ, nên cứ nhắc thì gần như căn nào
+ * cũng đỏ một dòng và danh sách mất hết ý nghĩa. Giữ nguyên cấu hình trên căn, chỉ thôi
+ * nhắc. Xác nhận lại với kế toán rồi thì bỏ mã ra khỏi đây là nhắc lại ngay.
+ */
+export const LOAI_TAM_AN = ["kpi_ceo"];
+
+/**
+ * Bản dùng cho giao diện: đã bỏ loại tạm ẩn, và nhớ kết quả trong một lần dựng trang
+ * để tab đếm số và bảng bên dưới không chạy truy vấn hai lần.
+ */
+export const layCanChoTao = cache(() => layCanChoGiaVon(LOAI_TAM_AN));
 
 export async function layCanChoGiaVon(boQuaLoai: string[] = []): Promise<CanChoGiaVon[]> {
   const cotTran = LOAI.map((l) => `${l.tran} AS tran_${l.ma}`).join(",\n      ");

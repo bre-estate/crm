@@ -17,7 +17,8 @@ import BulkDeleteBar from "../BulkDeleteBar";
 import { deleteCostBulk } from "@/lib/actions/costs";
 import { hasPermission } from "@/lib/auth";
 import CostReconRow, { type CostReconPayment } from "./CostReconRow";
-import ChoTaoGiaVon from "./ChoTaoGiaVon";
+import ChoTaoGiaVon, { SoCanChoTao } from "./ChoTaoGiaVon";
+import { layCanChoTao } from "@/lib/cho-tao-gia-von";
 import CostsFilterForm from "./CostsFilterForm";
 import Pagination from "@/components/Pagination";
 import { Card } from "@/components/ui/card";
@@ -101,8 +102,16 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
     await searchParams;
   const PAGE_SIZE = 70;
   // Default view = byUnit ("Theo căn × loại") — theo user, view thường dùng nhất
-  const viewMode: "recon" | "byUnit" | "byTime" =
-    view === "recon" ? "recon" : view === "byTime" ? "byTime" : "byUnit";
+  const viewMode: ViewMode =
+    view === "recon"
+      ? "recon"
+      : view === "byTime"
+        ? "byTime"
+        : view === "choTao"
+          ? "choTao"
+          : "byUnit";
+
+  if (viewMode === "choTao") return <ChoTaoView />;
 
   if (viewMode === "byUnit") {
     return (
@@ -1173,7 +1182,7 @@ async function AggregatedCostsView(props: AggregatedProps) {
 // PageChrome — header + toggle + action buttons + filter bar + stats.
 // Cả 2 view (recon + byUnit) đều render qua đây → switch view KHÔNG nhảy UI.
 // ============================================================================
-type ViewMode = "recon" | "byUnit" | "byTime";
+type ViewMode = "recon" | "byUnit" | "byTime" | "choTao";
 type PageChromeProps = {
   viewMode: ViewMode;
   allProjects: { id: number; name: string; fullCode: string }[];
@@ -1229,7 +1238,12 @@ function PageChrome(props: PageChromeProps) {
       ? "/costs"
       : viewMode === "byTime"
         ? "/costs?view=byTime"
-        : "/costs?view=recon";
+        : viewMode === "choTao"
+          ? "/costs?view=choTao"
+          : "/costs?view=recon";
+
+  // Tab "Cần tạo" là một danh sách việc còn tồn, lọc theo dự án hay NVKD không giúp gì.
+  const showFilter = viewMode !== "choTao";
 
   const showFilterPills = viewMode === "recon" || viewMode === "byTime";
 
@@ -1257,12 +1271,6 @@ function PageChrome(props: PageChromeProps) {
         </div>
       </div>
 
-      {/* Nhắc HR những căn đã nhận tiền mà chưa lập giá vốn. Bọc Suspense để
-          phần còn lại của trang không phải chờ truy vấn này. */}
-      <Suspense fallback={<div className="h-20 rounded-xl bg-slate-50 animate-pulse" />}>
-        <ChoTaoGiaVon />
-      </Suspense>
-
       {/* View mode tabs (row riêng, không dính actions) */}
       <div className="flex items-center gap-3 flex-wrap">
         <Tabs value={viewMode}>
@@ -1284,6 +1292,15 @@ function PageChrome(props: PageChromeProps) {
               render={viewMode === "byTime" ? <span /> : <Link href={buildViewUrl("byTime")} />}
             >
               Theo thời gian
+            </TabsTrigger>
+            <TabsTrigger
+              value="choTao"
+              render={viewMode === "choTao" ? <span /> : <Link href={buildViewUrl("choTao")} />}
+            >
+              Cần tạo
+              <Suspense fallback={null}>
+                <SoCanChoTao />
+              </Suspense>
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -1318,6 +1335,7 @@ function PageChrome(props: PageChromeProps) {
       {statusPills}
 
       {/* Filter bar: 3 field (mã căn / dự án / NVKD). Cost type dùng sub-tabs pill trên. */}
+      {showFilter && (
       <Card className="[--card-spacing:1rem] px-4 py-3 gap-4">
         <CostsFilterForm
           viewMode={viewMode}
@@ -1332,6 +1350,7 @@ function PageChrome(props: PageChromeProps) {
           resetUrl={resetUrl}
         />
       </Card>
+      )}
 
       {/* Stats — nhỏ gọn, ngay dưới filter (KPI summary theo scope sau filter) */}
       <div className="flex gap-6 text-sm flex-wrap px-1">
@@ -1360,3 +1379,55 @@ function PageChrome(props: PageChromeProps) {
   );
 }
 
+
+// ============================================================================
+// ChoTaoView — tab "Cần tạo": căn chủ đầu tư đã chuyển tiền mà giá vốn còn dở.
+// Dùng chung PageChrome nên tab, tiêu đề và hàng thống kê giống hệt ba view kia.
+// ============================================================================
+async function ChoTaoView() {
+  const ds = await layCanChoTao();
+  const moiVe = ds.filter((x) => x.tienMoiVe).length;
+  const thieuLoai = ds.filter((x) => x.chuaTao.length > 0).length;
+  const tongThu = ds.reduce((s, x) => s + x.tienDaThu, 0);
+
+  return (
+    <div className="space-y-4">
+      <PageChrome
+        viewMode="choTao"
+        allProjects={[]}
+        nvkdOptions={[]}
+        stats={[
+          { label: "Căn cần tạo", value: String(ds.length) },
+          {
+            label: "Vừa nhận tiền",
+            value: String(moiVe),
+            color: moiVe > 0 ? "text-orange-600" : undefined,
+            tooltip:
+              "Chủ đầu tư chuyển tiền sau lần lập giá vốn gần nhất của căn, nên còn một đợt giá vốn phải đối chiếu.",
+          },
+          {
+            label: "Thiếu loại",
+            value: String(thieuLoai),
+            tooltip:
+              "Căn có loại giá vốn đang cấu hình nhưng chưa lập đợt nào, ví dụ đã có hoa hồng sale mà chưa có KPI trưởng phòng.",
+          },
+          {
+            label: "Tổng đã thu",
+            value: fmtMoney(tongThu),
+            tooltip: "Tổng tiền chủ đầu tư đã chuyển cho các căn trong danh sách này.",
+          },
+        ]}
+      />
+
+      <p className="text-sm text-slate-500 px-1">
+        Chủ đầu tư chi trả theo từng đợt. Tiền về đợt nào thì tới lượt lập đối chiếu giá vốn cho căn
+        đó, gồm hoa hồng sale và KPI cho trưởng phòng, admin. KPI CEO tạm không nhắc vì chưa rõ chính
+        sách còn áp dụng hay không.
+      </p>
+
+      <Suspense fallback={<div className="h-64 rounded-xl bg-slate-50 animate-pulse" />}>
+        <ChoTaoGiaVon />
+      </Suspense>
+    </div>
+  );
+}

@@ -10,7 +10,7 @@ import {
 } from "@/lib/schema";
 import { sql, inArray, eq, and, lt, gte, isNotNull } from "drizzle-orm";
 import { OPEX_MGMT_CATEGORIES, FIXED_COST_CATEGORIES } from "@/lib/accounting/categories";
-import { layCanChoGiaVon } from "@/lib/cho-tao-gia-von";
+import { layCanChoTao } from "@/lib/cho-tao-gia-von";
 
 /**
  * Alerts — logic tách khỏi UI để reuse:
@@ -341,7 +341,7 @@ export async function computeAlerts(): Promise<Alert[]> {
   // ── Căn đã nhận tiền nhưng chưa lập đối chiếu giá vốn ──
   // Nhắc kế toán và nhân sự: tiền chủ đầu tư đã về, tới lượt chi hoa hồng cho sale
   // và KPI cho quản lý. Mốc là ngày nhận tiền, không phải ngày đối chiếu doanh thu.
-  const choGiaVon = await layCanChoGiaVon();
+  const choGiaVon = await layCanChoTao();
   if (choGiaVon.length > 0) {
     const moiVe = choGiaVon.filter((x) => x.tienMoiVe).length;
     const tenCan = choGiaVon.slice(0, 3).map((x) => x.maCan).join(", ");
@@ -355,7 +355,7 @@ export async function computeAlerts(): Promise<Alert[]> {
         `${choGiaVon.length > 3 ? ` và ${choGiaVon.length - 3} căn khác` : ""}` +
         `${moiVe > 0 ? `, trong đó ${moiVe} căn vừa nhận tiền` : ""}. ` +
         `Tạo đủ các loại giá vốn để chi hoa hồng cho sale và KPI cho trưởng phòng, admin.`,
-      url: "/costs",
+      url: "/costs?view=choTao",
       units: choGiaVon.map((x) => ({
         productId: x.productId,
         unitCode: x.maCan,
