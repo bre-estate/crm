@@ -63,8 +63,12 @@ export default async function ChoTaoGiaVon() {
               <td className="p-2 whitespace-nowrap tabular-nums">
                 {fmtNgay(x.ngayThuCuoi)}
                 {x.tienMoiVe && (
-                  <div className="mt-0.5 inline-block rounded px-1.5 py-0.5 bg-orange-50 text-orange-700 text-[11px] font-medium ring-1 ring-orange-200">
-                    tiền mới về
+                  // Ô có whitespace-nowrap nên phải có khối riêng, không thì nhãn
+                  // nằm dính ngay sau ngày.
+                  <div className="mt-1">
+                    <span className="inline-block rounded px-1.5 py-0.5 bg-orange-50 text-orange-700 text-[11px] font-medium ring-1 ring-orange-200">
+                      tiền mới về
+                    </span>
                   </div>
                 )}
               </td>

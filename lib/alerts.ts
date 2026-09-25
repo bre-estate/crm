@@ -355,7 +355,7 @@ export async function computeAlerts(): Promise<Alert[]> {
         `${choGiaVon.length > 3 ? ` và ${choGiaVon.length - 3} căn khác` : ""}` +
         `${moiVe > 0 ? `, trong đó ${moiVe} căn vừa nhận tiền` : ""}. ` +
         `Tạo đủ các loại giá vốn để chi hoa hồng cho sale và KPI cho trưởng phòng, admin.`,
-      url: "/costs?view=choTao",
+      url: "/costs?view=pending",
       units: choGiaVon.map((x) => ({
         productId: x.productId,
         unitCode: x.maCan,

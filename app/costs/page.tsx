@@ -107,11 +107,11 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
       ? "recon"
       : view === "byTime"
         ? "byTime"
-        : view === "choTao"
-          ? "choTao"
+        : view === "pending"
+          ? "pending"
           : "byUnit";
 
-  if (viewMode === "choTao") return <ChoTaoView />;
+  if (viewMode === "pending") return <ChoTaoView />;
 
   if (viewMode === "byUnit") {
     return (
@@ -1182,7 +1182,7 @@ async function AggregatedCostsView(props: AggregatedProps) {
 // PageChrome — header + toggle + action buttons + filter bar + stats.
 // Cả 2 view (recon + byUnit) đều render qua đây → switch view KHÔNG nhảy UI.
 // ============================================================================
-type ViewMode = "recon" | "byUnit" | "byTime" | "choTao";
+type ViewMode = "recon" | "byUnit" | "byTime" | "pending";
 type PageChromeProps = {
   viewMode: ViewMode;
   allProjects: { id: number; name: string; fullCode: string }[];
@@ -1238,12 +1238,12 @@ function PageChrome(props: PageChromeProps) {
       ? "/costs"
       : viewMode === "byTime"
         ? "/costs?view=byTime"
-        : viewMode === "choTao"
-          ? "/costs?view=choTao"
+        : viewMode === "pending"
+          ? "/costs?view=pending"
           : "/costs?view=recon";
 
   // Tab "Cần tạo" là một danh sách việc còn tồn, lọc theo dự án hay NVKD không giúp gì.
-  const showFilter = viewMode !== "choTao";
+  const showFilter = viewMode !== "pending";
 
   const showFilterPills = viewMode === "recon" || viewMode === "byTime";
 
@@ -1294,8 +1294,8 @@ function PageChrome(props: PageChromeProps) {
               Theo thời gian
             </TabsTrigger>
             <TabsTrigger
-              value="choTao"
-              render={viewMode === "choTao" ? <span /> : <Link href={buildViewUrl("choTao")} />}
+              value="pending"
+              render={viewMode === "pending" ? <span /> : <Link href={buildViewUrl("pending")} />}
             >
               Cần tạo
               <Suspense fallback={null}>
@@ -1393,7 +1393,7 @@ async function ChoTaoView() {
   return (
     <div className="space-y-4">
       <PageChrome
-        viewMode="choTao"
+        viewMode="pending"
         allProjects={[]}
         nvkdOptions={[]}
         stats={[
