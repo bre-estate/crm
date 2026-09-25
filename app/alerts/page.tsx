@@ -206,6 +206,7 @@ function AlertDetail({ alert }: { alert: Alert }) {
             <th className="text-left p-1">Căn</th>
             <th className="text-left p-1">Nhận tiền ngày</th>
             <th className="text-right p-1">Đã thu</th>
+            <th className="text-left p-1">Chưa tạo loại</th>
             <th className="p-1 w-28" />
           </tr>
         </thead>
@@ -219,6 +220,7 @@ function AlertDetail({ alert }: { alert: Alert }) {
               </td>
               <td className="p-1 font-mono">{x.ngayThuCuoi.split("-").reverse().join("/")}</td>
               <td className="p-1 text-right tabular-nums">{fmt(x.tienDaThu)}</td>
+              <td className="p-1 text-red-700">{x.chuaTao.join(", ")}</td>
               <td className="p-1 text-right">
                 <Link href={`/costs/new?productId=${x.productId}`} className="text-blue-600 hover:underline">
                   Tạo giá vốn
