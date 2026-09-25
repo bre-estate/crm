@@ -15,16 +15,22 @@ import { sql } from "drizzle-orm";
  *   2. Loại giá vốn nào đang cấu hình trên căn mà chưa có đợt nào?
  */
 
+/**
+ * Trần PMG viết thẳng ra biểu thức, KHÔNG dùng bí danh cột.
+ * Postgres không cho tham chiếu bí danh của cột này ở cột khác trong cùng một SELECT.
+ */
+const PMG = "(COALESCE(p.pmg_base_price,0) * COALESCE(p.pmg_rate,0))";
+
 /** Các loại giá vốn của một căn, kèm mức trần lấy từ cấu hình trên căn. */
 const LOAI = [
-  { ma: "sale_commission", ten: "Hoa hồng sale", tran: "pmg * COALESCE(p.sale_commission_rate,0)" },
+  { ma: "sale_commission", ten: "Hoa hồng sale", tran: `${PMG} * COALESCE(p.sale_commission_rate,0)` },
   { ma: "cdt_bonus_sale", ten: "CĐT thưởng sale", tran: "COALESCE(p.cdt_bonus_sale,0)" },
   { ma: "cdt_bonus_manager", ten: "CĐT thưởng quản lý", tran: "COALESCE(p.cdt_bonus_manager,0)" },
   { ma: "bonus_sale", ten: "Công ty thưởng sale", tran: "COALESCE(p.bonus_sale,0)" },
   { ma: "bonus_manager", ten: "Công ty thưởng quản lý", tran: "COALESCE(p.bonus_manager,0)" },
-  { ma: "kpi_ceo", ten: "KPI CEO", tran: "pmg * COALESCE(p.kpi_ceo_rate,0)" },
-  { ma: "kpi_tpkd", ten: "KPI trưởng phòng", tran: "pmg * COALESCE(p.kpi_tpkd_rate,0)" },
-  { ma: "kpi_admin", ten: "KPI admin", tran: "pmg * COALESCE(p.kpi_admin_rate,0)" },
+  { ma: "kpi_ceo", ten: "KPI CEO", tran: `${PMG} * COALESCE(p.kpi_ceo_rate,0)` },
+  { ma: "kpi_tpkd", ten: "KPI trưởng phòng", tran: `${PMG} * COALESCE(p.kpi_tpkd_rate,0)` },
+  { ma: "kpi_admin", ten: "KPI admin", tran: `${PMG} * COALESCE(p.kpi_admin_rate,0)` },
   { ma: "customer_support", ten: "Hỗ trợ khách", tran: "COALESCE(p.customer_support,0)" },
 ] as const;
 
@@ -79,7 +85,6 @@ export async function layCanChoGiaVon(boQuaLoai: string[] = []): Promise<CanChoG
     SELECT p.id, p.unit_code, pj.name AS du_an, p.sales_person,
       t.ngay_thu_cuoi, t.tien_thu,
       (SELECT max(reconciliation_date) FROM cost_reconciliations c WHERE c.product_id = p.id) AS ngay_gv_cuoi,
-      (COALESCE(p.pmg_base_price,0) * COALESCE(p.pmg_rate,0)) AS pmg,
       ${cotTran},
       ${cotDaDc},
       ${cotSoDot}
