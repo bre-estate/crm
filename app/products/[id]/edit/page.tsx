@@ -9,7 +9,7 @@ import {
   revenueReconciliations,
   costReconciliations,
 } from "@/lib/schema";
-import { asc, desc, eq, sql } from "drizzle-orm";
+import { asc, desc, eq, isNull, sql } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import ProductForm from "../../ProductForm";
@@ -87,16 +87,21 @@ export default async function EditProductPage({
 
   const allPartners = await db.select().from(partners).orderBy(asc(partners.name));
   const allDepts = await db.select().from(departments).orderBy(asc(departments.name));
-  const allEmployees = await db
-    .select({
-      id: employees.id,
-      name: employees.name,
-      position: employees.position,
-      departmentId: employees.departmentId,
-    })
-    .from(employees)
-    .where(eq(employees.active, true))
-    .orderBy(asc(employees.name));
+  // Lấy cả người đã nghỉ. Căn cũ do người đã nghỉ bán thì mở ra sửa vẫn phải
+  // thấy tên họ, không thì lưu lại là mất luôn NVKD của căn đó.
+  const allEmployees = (
+    await db
+      .select({
+        id: employees.id,
+        name: employees.name,
+        position: employees.position,
+        departmentId: employees.departmentId,
+        active: employees.active,
+      })
+      .from(employees)
+      .where(isNull(employees.aliasOfId))
+      .orderBy(asc(employees.name))
+  ).map((e) => ({ ...e, name: e.active ? e.name : `${e.name} (đã nghỉ)` }));
 
   const adjustments = await db
     .select()

@@ -110,9 +110,9 @@ export default async function EditCostPage({
       position: employees.position,
       departmentId: employees.departmentId,
       aliasOfId: employees.aliasOfId,
+      active: employees.active,
     })
     .from(employees)
-    .where(eq(employees.active, true))
     .orderBy(asc(employees.name));
 
   const policies = await db.select().from(commissionPolicies);

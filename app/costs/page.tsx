@@ -88,7 +88,8 @@ async function loadNvkdOptions(): Promise<{ value: string; label: string; sublab
   const rows = await db
     .select({ name: employees.name, position: employees.position })
     .from(employees)
-    .where(and(eq(employees.active, true), eq(employees.position, "nvkd")))
+    // Giữ cả người đã nghỉ, không thì không lọc được giao dịch cũ của họ.
+    .where(eq(employees.position, "nvkd"))
     .orderBy(employees.name);
   return rows.map((r) => ({ value: r.name, label: r.name, sublabel: "NVKD" }));
 }
