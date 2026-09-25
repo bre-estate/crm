@@ -10,6 +10,7 @@ import {
 } from "@/lib/schema";
 import { sql, inArray, eq, and, lt, gte, isNotNull } from "drizzle-orm";
 import { OPEX_MGMT_CATEGORIES, FIXED_COST_CATEGORIES } from "@/lib/accounting/categories";
+import { layCanChoGiaVon } from "@/lib/cho-tao-gia-von";
 
 /**
  * Alerts — logic tách khỏi UI để reuse:
@@ -60,7 +61,12 @@ export type AlertOverdue = Base & {
   }[];
 };
 
-export type Alert = AlertBelowBe | AlertIdle | AlertOpexSpike | AlertOverdue;
+export type AlertChoGiaVon = Base & {
+  id: "cho-tao-gia-von";
+  units: { productId: number; unitCode: string; ngayThuCuoi: string; tienDaThu: number }[];
+};
+
+export type Alert = AlertBelowBe | AlertIdle | AlertOpexSpike | AlertOverdue | AlertChoGiaVon;
 
 function daysAgo(n: number): string {
   const d = new Date();
@@ -329,6 +335,32 @@ export async function computeAlerts(): Promise<Alert[]> {
       url: "/reports/cash-flow",
       totalAmount: overdueTotalAmount,
       products: sortedOverdue,
+    });
+  }
+
+  // ── Căn đã nhận tiền nhưng chưa lập đối chiếu giá vốn ──
+  // Nhắc kế toán và nhân sự: tiền chủ đầu tư đã về, tới lượt chi hoa hồng cho sale
+  // và KPI cho quản lý. Mốc là ngày nhận tiền, không phải ngày đối chiếu doanh thu.
+  const choGiaVon = await layCanChoGiaVon();
+  if (choGiaVon.length > 0) {
+    const tongThu = choGiaVon.reduce((s, x) => s + x.tienDaThu, 0);
+    const tenCan = choGiaVon.slice(0, 3).map((x) => x.maCan).join(", ");
+    alerts.push({
+      id: "cho-tao-gia-von",
+      key: `cho-tao-gia-von::${todayISO}`,
+      severity: "warning",
+      title: `${choGiaVon.length} căn đã nhận tiền, chờ tạo đối chiếu giá vốn`,
+      description:
+        `Đã nhận ${Math.round(tongThu).toLocaleString("vi-VN")} VND cho ${tenCan}` +
+        `${choGiaVon.length > 3 ? ` và ${choGiaVon.length - 3} căn khác` : ""}. ` +
+        `Tạo đối chiếu giá vốn để chi hoa hồng cho sale và KPI cho quản lý.`,
+      url: "/costs",
+      units: choGiaVon.map((x) => ({
+        productId: x.productId,
+        unitCode: x.maCan,
+        ngayThuCuoi: x.ngayThuCuoi,
+        tienDaThu: x.tienDaThu,
+      })),
     });
   }
 

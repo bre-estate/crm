@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense } from "react";
 import { db } from "@/lib/db";
 import {
   costReconciliations,
@@ -17,6 +17,7 @@ import BulkDeleteBar from "../BulkDeleteBar";
 import { deleteCostBulk } from "@/lib/actions/costs";
 import { hasPermission } from "@/lib/auth";
 import CostReconRow, { type CostReconPayment } from "./CostReconRow";
+import ChoTaoGiaVon from "./ChoTaoGiaVon";
 import CostsFilterForm from "./CostsFilterForm";
 import Pagination from "@/components/Pagination";
 import { Card } from "@/components/ui/card";
@@ -1255,6 +1256,12 @@ function PageChrome(props: PageChromeProps) {
           </Button>
         </div>
       </div>
+
+      {/* Nhắc HR những căn đã nhận tiền mà chưa lập giá vốn. Bọc Suspense để
+          phần còn lại của trang không phải chờ truy vấn này. */}
+      <Suspense fallback={<div className="h-20 rounded-xl bg-slate-50 animate-pulse" />}>
+        <ChoTaoGiaVon />
+      </Suspense>
 
       {/* View mode tabs (row riêng, không dính actions) */}
       <div className="flex items-center gap-3 flex-wrap">

@@ -198,5 +198,37 @@ function AlertDetail({ alert }: { alert: Alert }) {
       </table>
     );
   }
+  if (alert.id === "cho-tao-gia-von") {
+    return (
+      <table className="w-full text-xs mt-2">
+        <thead className="bg-slate-100">
+          <tr>
+            <th className="text-left p-1">Căn</th>
+            <th className="text-left p-1">Nhận tiền ngày</th>
+            <th className="text-right p-1">Đã thu</th>
+            <th className="p-1 w-28" />
+          </tr>
+        </thead>
+        <tbody>
+          {alert.units.slice(0, 10).map((x) => (
+            <tr key={x.productId} className="border-t border-slate-200">
+              <td className="p-1">
+                <Link href={`/products/${x.productId}`} className="text-blue-600 hover:underline font-mono">
+                  {x.unitCode}
+                </Link>
+              </td>
+              <td className="p-1 font-mono">{x.ngayThuCuoi.split("-").reverse().join("/")}</td>
+              <td className="p-1 text-right tabular-nums">{fmt(x.tienDaThu)}</td>
+              <td className="p-1 text-right">
+                <Link href={`/costs/new?productId=${x.productId}`} className="text-blue-600 hover:underline">
+                  Tạo giá vốn
+                </Link>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  }
   return null;
 }
