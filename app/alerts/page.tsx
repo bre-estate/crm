@@ -1,7 +1,7 @@
-import { getOwnerEmail } from "@/lib/auth";
+import { requirePermission, getCurrentUser } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { computeAlerts, type Alert } from "@/lib/alerts";
+import { computeAlerts, locTheoVaiTro, type Alert } from "@/lib/alerts";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
@@ -10,10 +10,14 @@ export const dynamic = "force-dynamic";
 const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
 
 export default async function AlertsPage() {
-  const owner = await getOwnerEmail();
-  if (!owner) notFound();
+  // Trước đây khóa cứng theo chủ tài khoản, nên Sale Admin và nhân sự bấm vào
+  // thông báo là ra trang không tồn tại. Giờ theo đúng bảng phân quyền.
+  await requirePermission("alerts");
+  const user = await getCurrentUser();
+  if (!user) notFound();
 
-  const alerts = await computeAlerts();
+  // Mỗi vị trí chỉ thấy cảnh báo thuộc phần việc của mình.
+  const alerts = locTheoVaiTro(await computeAlerts(), user.role, user.customPermissions);
   const critical = alerts.filter((a) => a.severity === "critical");
   const warning = alerts.filter((a) => a.severity === "warning");
   const info = alerts.filter((a) => a.severity === "info");
@@ -24,8 +28,8 @@ export default async function AlertsPage() {
         <h1 className="text-2xl font-bold">🔔 Thông báo</h1>
         <p className="text-sm text-slate-500 mt-1">
           {alerts.length === 0
-            ? "✅ Không có cảnh báo nào — công ty đang chạy ổn."
-            : `${alerts.length} cảnh báo cần chú ý. Nguy cấp trước, cảnh báo sau.`}
+            ? "Không có thông báo nào cần bạn xử lý."
+            : `${alerts.length} thông báo cần chú ý. Nguy cấp trước, cảnh báo sau.`}
         </p>
       </div>
 

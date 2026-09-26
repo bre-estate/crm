@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useCallback, useTransition } from "react";
 import type { Action, Resource } from "@/lib/permissions";
 import {
   Sidebar,
@@ -256,16 +256,29 @@ export default function AppSidebar({
   const [notifData, setNotifData] = useState<NotificationData>(notifications);
   const [notifPending, startNotif] = useTransition();
 
-  // Fetch notifications lần đầu client-side (server không fetch để tránh 504
-  // — computeAlertSummaries chạy 20+ queries). Sau đó auto-refresh 5 min.
-  useEffect(() => {
+  // Nạp thông báo lần đầu ở phía trình duyệt (máy chủ không nạp để tránh lỗi 504,
+  // computeAlertSummaries chạy hơn 20 truy vấn). Sau đó tự làm mới mỗi 5 phút.
+  //
+  // Lỗi thì nuốt và giữ nguyên số cũ, vì hàm ở máy chủ ném lỗi khi tính quá lâu.
+  // Thà hiện số của nhịp trước còn hơn tụt về 0 như thể đã hết việc.
+  const lamMoi = useCallback(() => {
     if (!canSeeAlerts) return;
     fetchNotifications().then(setNotifData).catch(() => {});
-    const int = setInterval(() => {
-      fetchNotifications().then(setNotifData).catch(() => {});
-    }, 5 * 60 * 1000);
-    return () => clearInterval(int);
   }, [canSeeAlerts]);
+
+  useEffect(() => {
+    lamMoi();
+    const int = setInterval(lamMoi, 5 * 60 * 1000);
+    // Quay lại tab sau khi làm việc ở chỗ khác thì lấy số mới ngay, không chờ hết 5 phút.
+    const khiHien = () => {
+      if (document.visibilityState === "visible") lamMoi();
+    };
+    document.addEventListener("visibilitychange", khiHien);
+    return () => {
+      clearInterval(int);
+      document.removeEventListener("visibilitychange", khiHien);
+    };
+  }, [lamMoi]);
 
   const canSee = (entry: NavLeaf | NavGroup): boolean => {
     if (entry.ownerOnly) return isOwner;
@@ -331,7 +344,14 @@ export default function AppSidebar({
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <Popover open={notifOpen} onOpenChange={setNotifOpen}>
+                  <Popover
+                    open={notifOpen}
+                    onOpenChange={(o) => {
+                      setNotifOpen(o);
+                      // Mở ra xem thì lấy số mới ngay, đây là lúc người dùng thật sự đọc.
+                      if (o) lamMoi();
+                    }}
+                  >
                     <PopoverTrigger
                       render={
                         <SidebarMenuButton isActive={pathname.startsWith("/alerts")}>

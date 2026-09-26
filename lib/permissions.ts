@@ -194,6 +194,7 @@ const PRESETS: Record<Exclude<Role, "owner" | "custom">, Partial<Record<Resource
     periods: ["view", "edit"],
     documents: ["view", "edit"],
     ...reportsView,
+    alerts: ["view"],
     help: ["view"],
   },
   // Sale Admin: chỉnh sửa giao dịch sơ cấp + đối tác, không xoá; không đụng thứ cấp / nhân sự / báo cáo.
@@ -206,6 +207,9 @@ const PRESETS: Record<Exclude<Role, "owner" | "custom">, Partial<Record<Resource
     partners: ["view", "edit"],
     periods: ["view", "edit"],
     documents: ["view", "edit"],
+    // Người đi hối chủ đầu tư trả tiền, nên cần thấy tuổi nợ và nhận cảnh báo quá hạn.
+    "reports.ar-aging": ["view"],
+    alerts: ["view"],
     help: ["view"],
   },
   // HR: xem giao dịch để đối chiếu; edit riêng giá vốn (nhập HH sale).
@@ -219,6 +223,7 @@ const PRESETS: Record<Exclude<Role, "owner" | "custom">, Partial<Record<Resource
     periods: ["view", "edit"],
     "payroll.commissions": ["view", "edit"],
     documents: ["view"],
+    alerts: ["view"],
     help: ["view"],
   },
 };

@@ -3,7 +3,7 @@
 import { db } from "@/lib/db";
 import { notificationReads } from "@/lib/schema";
 import { getCurrentUser } from "@/lib/auth";
-import { computeAlertSummaries, type AlertSummary, type Severity } from "@/lib/alerts";
+import { computeAlertSummaries, locTheoVaiTro, type AlertSummary, type Severity } from "@/lib/alerts";
 import { eq, and, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
@@ -18,20 +18,28 @@ export async function fetchNotifications(): Promise<NotificationData> {
   const user = await getCurrentUser();
   if (!user) return { items: [], unreadCount: 0 };
 
-  // Timebox 3s — computeAlertSummaries chạy 20+ queries, có thể timeout
-  // trên Vercel serverless (10s limit). Fallback empty để trang load được.
+  // Timebox — computeAlertSummaries chạy 20+ queries. Đo trên dữ liệu thật ngày
+  // 26/09/2026 là 2,1 giây, nên mốc 3 giây cũ quá sát: chỉ cần mạng chậm một chút
+  // là quá giờ. Giới hạn hàm trên Vercel là 10 giây nên để 8 giây vẫn an toàn.
+  //
+  // Quá giờ thì NÉM LỖI chứ không trả danh sách rỗng. Trả rỗng khiến chuông tụt
+  // về 0 như thể mọi việc đã xong, còn ném lỗi thì phía trình duyệt giữ nguyên
+  // số cũ, thà cũ một nhịp còn hơn sai.
   let alerts: Awaited<ReturnType<typeof computeAlertSummaries>>;
   try {
     alerts = await Promise.race([
       computeAlertSummaries(),
       new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("alerts timeout 3s")), 3000),
+        setTimeout(() => reject(new Error("quá 8 giây khi tính cảnh báo")), 8000),
       ),
     ]);
   } catch (e) {
     console.warn("[fetchNotifications]", e);
-    return { items: [], unreadCount: 0 };
+    throw e;
   }
+
+  // Mỗi vị trí chỉ nhận cảnh báo thuộc phần việc của mình.
+  alerts = locTheoVaiTro(alerts, user.role, user.customPermissions);
   if (alerts.length === 0) return { items: [], unreadCount: 0 };
 
   // Query read state — graceful fallback nếu table notification_reads chưa
@@ -84,7 +92,11 @@ export async function markNotificationRead(key: string): Promise<void> {
 export async function markAllNotificationsRead(): Promise<void> {
   const user = await getCurrentUser();
   if (!user) return;
-  const alerts = await computeAlertSummaries();
+  const alerts = locTheoVaiTro(
+    await computeAlertSummaries(),
+    user.role,
+    user.customPermissions,
+  );
   if (alerts.length === 0) return;
   try {
     await db.execute(sql`

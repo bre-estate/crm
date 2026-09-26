@@ -11,6 +11,7 @@ import {
 import { sql, inArray, eq, and, lt, gte, isNotNull } from "drizzle-orm";
 import { OPEX_MGMT_CATEGORIES, FIXED_COST_CATEGORIES } from "@/lib/accounting/categories";
 import { layCanChoTao } from "@/lib/cho-tao-gia-von";
+import { hasPermission, type Action, type Resource, type Role } from "@/lib/permissions";
 
 /**
  * Alerts — logic tách khỏi UI để reuse:
@@ -67,6 +68,51 @@ export type AlertChoGiaVon = Base & {
 };
 
 export type Alert = AlertBelowBe | AlertIdle | AlertOpexSpike | AlertOverdue | AlertChoGiaVon;
+
+/**
+ * Ai cần biết cảnh báo nào.
+ *
+ * Mỗi vị trí chỉ nhận phần việc của mình, không thì ai cũng thấy đủ thứ rồi thôi
+ * không đọc nữa. Sale Admin nhận công nợ quá hạn vì đó là người đi hối chủ đầu tư.
+ * Nhân sự nhận nhắc tạo giá vốn vì đó là người lập đối chiếu.
+ *
+ * Vai trò "custom" không có trong bảng này, nên chỉ xét theo bảng quyền bên dưới.
+ */
+const VAI_TRO_NHAN: Record<Alert["id"], Role[]> = {
+  "below-be-3m": ["owner", "manager"],
+  "idle-sale": ["owner", "manager"],
+  "opex-spike": ["owner"],
+  "overdue-receivables": ["owner", "manager", "admin"],
+  "cho-tao-gia-von": ["owner", "hr"],
+};
+
+/**
+ * Quyền tối thiểu để nhận cảnh báo, lấy theo trang mà cảnh báo dẫn tới.
+ * Không mở được trang thì báo cũng vô ích, bấm vào chỉ ra trang báo lỗi.
+ */
+const QUYEN_CAN: Record<Alert["id"], { res: Resource; act: Action }> = {
+  "below-be-3m": { res: "reports.management", act: "view" },
+  "idle-sale": { res: "reports.people", act: "view" },
+  "opex-spike": { res: "reports.expenses", act: "view" },
+  "overdue-receivables": { res: "reports.ar-aging", act: "view" },
+  // Cần quyền sửa vì việc phải làm là tạo đối chiếu, chỉ xem thì nhắc cũng không làm được.
+  "cho-tao-gia-von": { res: "costs", act: "edit" },
+};
+
+/** Giữ lại những cảnh báo thuộc phần việc của người đang đăng nhập. */
+export function locTheoVaiTro<T extends { id: string }>(
+  ds: T[],
+  role: Role,
+  customPerms?: Record<string, Action[]>,
+): T[] {
+  return ds.filter((a) => {
+    const q = QUYEN_CAN[a.id as Alert["id"]];
+    if (q && !hasPermission(role, customPerms, q.res, q.act)) return false;
+    const vt = VAI_TRO_NHAN[a.id as Alert["id"]];
+    if (role !== "custom" && vt && !vt.includes(role)) return false;
+    return true;
+  });
+}
 
 function daysAgo(n: number): string {
   const d = new Date();
@@ -254,6 +300,7 @@ export async function computeAlerts(): Promise<Alert[]> {
       description:
         "Chi phí hoạt động cao hơn 1,5 lần trung bình 6 tháng gần đây. Cần rà soát lý do (thưởng lớn, thuế, mua sắm bất thường).",
       months: spikeMonths,
+      url: "/reports/expenses",
     });
   }
 
@@ -332,7 +379,7 @@ export async function computeAlerts(): Promise<Alert[]> {
       severity: "warning",
       title: `${overdueByProduct.size} căn có công nợ phải thu > 60 ngày`,
       description: `Tổng công nợ quá hạn: ${Math.round(overdueTotalAmount).toLocaleString("vi-VN")} VND.`,
-      url: "/reports/cash-flow",
+      url: "/reports/ar-aging",
       totalAmount: overdueTotalAmount,
       products: sortedOverdue,
     });
