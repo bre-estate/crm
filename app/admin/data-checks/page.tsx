@@ -415,8 +415,11 @@ export default async function DataChecksPage() {
   const warnCount = checks.filter((c) => c.status === "warn").length;
   const passCount = checks.filter((c) => c.status === "pass").length;
 
+  // Chỉ liệt kê check có vấn đề. Check đạt thì không có gì để đọc, liệt kê ra
+  // chỉ làm loãng mấy dòng thật sự cần xem.
   const byCategory = new Map<string, CheckResult[]>();
   for (const c of checks) {
+    if (c.status === "pass") continue;
     if (!byCategory.has(c.category)) byCategory.set(c.category, []);
     byCategory.get(c.category)!.push(c);
   }
@@ -429,21 +432,24 @@ export default async function DataChecksPage() {
         </div>
         <h1 className="text-2xl font-bold mt-1">🩺 Kiểm tra dữ liệu</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Chạy tự động các invariant check để bắt bug + data lỗi trước khi ra báo cáo.
-          Trang này chạy lại mỗi lần load — refresh để cập nhật.
+          Dò các chỗ dữ liệu không nhất quán trước khi ra báo cáo. Chỉ liệt kê những
+          check chưa đạt, còn {passCount} check đạt thì không hiện. Trang chạy lại mỗi
+          lần mở, tải lại để cập nhật.
         </p>
       </div>
 
       <div className="grid grid-cols-3 gap-3">
-        <StatBox label="✅ PASS" count={passCount} color="green" />
-        <StatBox label="⚠️ WARN" count={warnCount} color="amber" />
-        <StatBox label="❌ FAIL" count={failCount} color="red" />
+        <StatBox label="❌ Sai" count={failCount} color="red" />
+        <StatBox label="⚠️ Cần xem" count={warnCount} color="amber" />
+        <StatBox label="✅ Đạt" count={passCount} color="green" />
       </div>
 
       {failCount === 0 && warnCount === 0 && (
         <Card className="bg-green-50 ring-green-200 [--card-spacing:1.5rem] px-6 text-center items-center">
           <div className="text-4xl mb-2">✅</div>
-          <div className="text-green-800 font-semibold">Tất cả check PASS — data OK</div>
+          <div className="text-green-800 font-semibold">
+            Cả {passCount} check đều đạt, dữ liệu không có chỗ nào bất thường.
+          </div>
         </Card>
       )}
 
