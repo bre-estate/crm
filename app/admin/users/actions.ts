@@ -8,8 +8,15 @@ import { requirePermission } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import type { Action, Role } from "@/lib/permissions";
+import { layQuyenVaiTro } from "@/lib/vai-tro";
 
-const ALLOWED_ROLES: Role[] = ["owner", "manager", "admin", "hr", "custom"];
+/**
+ * Vai trò hợp lệ: hai vai trò đặc biệt cộng với những vai trò có trong database.
+ * Đọc từ database chứ không ghi cứng, vì tạo thêm vai trò được ở trang Vai trò và quyền.
+ */
+async function vaiTroHopLe(): Promise<Set<string>> {
+  return new Set(["owner", "custom", ...Object.keys(await layQuyenVaiTro())]);
+}
 
 function parsePermissions(formData: FormData): Record<string, Action[]> {
   const raw = formData.get("permissions_json");
@@ -29,7 +36,9 @@ async function _createUser(formData: FormData) {
   const permissions = role === "custom" ? parsePermissions(formData) : {};
 
   if (!email || !email.includes("@")) throw new Error("Email không hợp lệ, phải có dấu @.");
-  if (!ALLOWED_ROLES.includes(role)) throw new Error("Vai trò không hợp lệ, chọn lại từ danh sách.");
+  if (!(await vaiTroHopLe()).has(role)) {
+    throw new Error("Vai trò không hợp lệ, chọn lại từ danh sách.");
+  }
 
   await db
     .insert(userPermissions)
@@ -60,7 +69,9 @@ async function _updateUser(email: string, formData: FormData) {
   const role = String(formData.get("role") ?? "viewer") as Role;
   const permissions = role === "custom" ? parsePermissions(formData) : {};
 
-  if (!ALLOWED_ROLES.includes(role)) throw new Error("Vai trò không hợp lệ, chọn lại từ danh sách.");
+  if (!(await vaiTroHopLe()).has(role)) {
+    throw new Error("Vai trò không hợp lệ, chọn lại từ danh sách.");
+  }
 
   await db
     .update(userPermissions)

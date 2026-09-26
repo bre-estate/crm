@@ -10,13 +10,17 @@ import {
   type Action,
   type Resource,
   type Role,
+  type QuyenVaiTro,
 } from "@/lib/permissions";
+import { layQuyenVaiTro } from "@/lib/vai-tro";
 
 export type CurrentUser = {
   email: string;
   fullName: string | null;
   role: Role;
   customPermissions: Record<string, Action[]>;
+  /** Quyền của mọi vai trò, đọc từ database. Dùng để giải quyền cho vai trò dựng sẵn. */
+  quyenVaiTro: QuyenVaiTro;
   active: boolean;
 };
 
@@ -53,6 +57,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       fullName: row.fullName,
       role: row.role as Role,
       customPermissions: (row.permissions as Record<string, Action[]>) ?? {},
+      quyenVaiTro: await layQuyenVaiTro(),
       active: row.active,
     };
   } catch {
@@ -69,7 +74,7 @@ export async function hasPermission(
 ): Promise<boolean> {
   const user = await getCurrentUser();
   if (!user) return false;
-  return check(user.role, user.customPermissions, resource, action);
+  return check(user.role, user.customPermissions, resource, action, user.quyenVaiTro);
 }
 
 /**
@@ -81,7 +86,7 @@ export async function requirePermission(
 ): Promise<CurrentUser> {
   const user = await getCurrentUser();
   if (!user) throw new Error("Chưa đăng nhập.");
-  if (!check(user.role, user.customPermissions, resource, action)) {
+  if (!check(user.role, user.customPermissions, resource, action, user.quyenVaiTro)) {
     throw new Error(`Bạn không có quyền ${action} ${resource}.`);
   }
   return user;
@@ -118,7 +123,7 @@ export async function hasReportsAccess(): Promise<boolean> {
   const user = await getCurrentUser();
   if (!user) return false;
   if (user.role === "owner" || user.role === "manager") return true;
-  const perms = resolvePermissions(user.role, user.customPermissions);
+  const perms = resolvePermissions(user.role, user.customPermissions, user.quyenVaiTro);
   return Object.keys(perms).some((r) => r.startsWith("reports."));
 }
 

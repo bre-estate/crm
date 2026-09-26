@@ -9,7 +9,19 @@
  */
 
 export type Action = "view" | "edit" | "delete";
-export type Role = "owner" | "manager" | "admin" | "hr" | "custom";
+
+/**
+ * Vai trò là chuỗi tự do vì tạo thêm được trong trang Vai trò.
+ * Hai giá trị đặc biệt: "owner" luôn toàn quyền, "custom" dùng quyền riêng của
+ * từng người. Còn lại tra quyền ở bảng role_permissions.
+ */
+export type Role = string;
+
+export const VAI_TRO_OWNER = "owner";
+export const VAI_TRO_RIENG = "custom";
+
+/** Quyền của các vai trò, đọc từ database. Xem lib/vai-tro.ts. */
+export type QuyenVaiTro = Record<string, Record<string, Action[]>>;
 
 /**
  * Actions mà mỗi resource thực sự HỖ TRỢ.
@@ -28,6 +40,7 @@ export const RESOURCE_ACTIONS: Record<string, Action[]> = {
   employees: ["view", "edit", "delete"],
   expenses: ["view", "edit", "delete"],
   "admin.users": ["view", "edit", "delete"],
+  "admin.roles": ["view", "edit"],
   // Tài liệu: view = xem và tải về, edit = tải lên, delete = xóa khỏi kho
   documents: ["view", "edit", "delete"],
   // View + Edit (không xóa)
@@ -82,6 +95,7 @@ export const RESOURCES = {
   "costs-report": "Đối chiếu giá vốn",
   "alerts": "Cảnh báo",
   "admin.users": "Quản lý user",
+  "admin.roles": "Vai trò và quyền",
   "admin.activity": "Nhật ký hoạt động",
   "help": "Trang trợ giúp / hướng dẫn nhập liệu",
   "documents": "Kho tài liệu (sao kê, hợp đồng, hóa đơn)",
@@ -131,7 +145,7 @@ export const RESOURCE_GROUPS: { label: string; keys: Resource[] }[] = [
   },
   {
     label: "Hệ thống",
-    keys: ["alerts", "documents", "settings.integrations", "admin.users", "admin.activity", "help"],
+    keys: ["alerts", "documents", "settings.integrations", "admin.users", "admin.roles", "admin.activity", "help"],
   },
 ];
 
@@ -141,7 +155,8 @@ export const ACTION_LABELS: Record<Action, string> = {
   delete: "Xóa",
 };
 
-export const ROLE_LABELS: Record<Role, string> = {
+/** Nhãn của hai vai trò đặc biệt. Nhãn vai trò khác lấy từ database. */
+export const ROLE_LABELS: Record<string, string> = {
   owner: "Owner",
   manager: "Manager",
   admin: "Sale Admin",
@@ -171,7 +186,7 @@ const reportsView = Object.fromEntries(ALL_REPORTS.map((r) => [r, ["view"] as Ac
 
 // Permission maps: resource → allowed actions.
 // Owner tự động có tất cả — không cần khai báo.
-const PRESETS: Record<Exclude<Role, "owner" | "custom">, Partial<Record<Resource, Action[]>>> = {
+const PRESETS: Record<string, Partial<Record<Resource, Action[]>>> = {
   // Manager: toàn quyền giao dịch + đối tác/nhân sự; báo cáo + tài chính chỉ xem;
   // hệ thống chỉ có Trang trợ giúp.
   manager: {
@@ -237,6 +252,7 @@ export function actionsFor(resource: string): Action[] {
 export function resolvePermissions(
   role: Role,
   customPerms?: Record<string, Action[]>,
+  quyenVaiTro?: QuyenVaiTro,
 ): Record<string, Action[]> {
   if (role === "owner") {
     const all: Record<string, Action[]> = {};
@@ -248,7 +264,10 @@ export function resolvePermissions(
   if (role === "custom") {
     return customPerms ?? {};
   }
-  const preset = PRESETS[role];
+  // Ưu tiên quyền lưu trong database, chưa có thì dùng preset trong code.
+  // Preset chỉ còn là lưới an toàn cho lần đầu chạy trước khi migration kịp chạy.
+  const preset = quyenVaiTro?.[role] ?? PRESETS[role as keyof typeof PRESETS];
+  if (!preset) return {};
   const out: Record<string, Action[]> = {};
   for (const [r, actions] of Object.entries(preset)) {
     if (actions) {
@@ -268,8 +287,9 @@ export function hasPermission(
   customPerms: Record<string, Action[]> | undefined,
   resource: Resource,
   action: Action = "view",
+  quyenVaiTro?: QuyenVaiTro,
 ): boolean {
-  const perms = resolvePermissions(role, customPerms);
+  const perms = resolvePermissions(role, customPerms, quyenVaiTro);
   const allowed = perms[resource];
   return allowed?.includes(action) ?? false;
 }
@@ -298,6 +318,7 @@ export function resourceOfPath(path: string): Resource | "reports.*" | null {
 
   // Admin
   if (p.startsWith("/admin/users")) return "admin.users";
+  if (p.startsWith("/admin/roles")) return "admin.roles";
   if (p.startsWith("/admin/activity")) return "admin.activity";
   if (p.startsWith("/admin/data-checks")) return "admin.activity";
 

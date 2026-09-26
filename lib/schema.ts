@@ -445,14 +445,26 @@ export const financialTransactions = pgTable("financial_transactions", {
 });
 
 // ===================== USER PERMISSIONS =====================
+/**
+ * Quyền của từng vai trò. Trước đây nằm cứng trong lib/permissions.ts, giờ ở đây
+ * để chủ tài khoản tự sửa trong app. "owner" luôn toàn quyền nên không có hàng,
+ * "custom" là quyền riêng từng người nên nằm ở user_permissions.
+ */
+export const rolePermissions = pgTable("role_permissions", {
+  role: text("role").primaryKey(),
+  label: text("label").notNull(),
+  permissions: jsonb("permissions").notNull().default({}),
+  /** Vai trò dựng sẵn: sửa được quyền nhưng không xóa được. */
+  builtin: boolean("builtin").notNull().default(false),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const userPermissions = pgTable("user_permissions", {
   email: text("email").primaryKey(),
   fullName: text("full_name"),
-  role: text("role", {
-    enum: ["owner", "manager", "admin", "hr", "custom"],
-  })
-    .notNull()
-    .default("custom"),
+  // Không dùng enum cố định vì vai trò tạo thêm được trong trang Vai trò.
+  // "owner" và "custom" là hai giá trị đặc biệt, còn lại tra ở role_permissions.
+  role: text("role").notNull().default("custom"),
   // JSONB: { "resource_key": ["view", "edit", "delete"] }
   permissions: jsonb("permissions").notNull().default({}),
   active: boolean("active").notNull().default(true),

@@ -181,7 +181,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
   const sp = await searchParams;
   const user = await getCurrentUser();
   const isOwner = user?.role === "owner";
-  const perms = user ? resolvePermissions(user.role, user.customPermissions) : {};
+  const perms = user
+    ? resolvePermissions(user.role, user.customPermissions, user.quyenVaiTro)
+    : {};
   const canView = (r: Resource) => isOwner || (perms[r]?.includes("view") ?? false);
   const canRevenue = canView("revenues");
   const canFinance = canView("finance");

@@ -2,7 +2,14 @@
 
 import { useState, useTransition } from "react";
 import { createUser, updateUser, toggleActive, deleteUser } from "./actions";
-import { RESOURCE_GROUPS, resolvePermissions, actionsFor, type Action, type Role } from "@/lib/permissions";
+import {
+  RESOURCE_GROUPS,
+  resolvePermissions,
+  actionsFor,
+  type Action,
+  type Role,
+  type QuyenVaiTro,
+} from "@/lib/permissions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { baoLoi } from "@/lib/bao-loi";
@@ -27,6 +34,8 @@ type Props = {
   users: User[];
   resources: Record<string, string>;
   roleLabels: Record<Role, string>;
+  /** Quyền của từng vai trò, đọc từ database ở trang Vai trò và quyền. */
+  quyenVaiTro: QuyenVaiTro;
 };
 
 const ACTIONS: Action[] = ["view", "edit", "delete"];
@@ -36,7 +45,7 @@ const ACTION_LABELS: Record<Action, string> = {
   delete: "Xóa",
 };
 
-export default function UsersTable({ users, resources, roleLabels }: Props) {
+export default function UsersTable({ users, resources, roleLabels, quyenVaiTro }: Props) {
   const [editing, setEditing] = useState<string | null>(null); // email of user being edited (or "new")
   const [pending, startTransition] = useTransition();
 
@@ -141,6 +150,7 @@ export default function UsersTable({ users, resources, roleLabels }: Props) {
           user={editing === "new" ? null : users.find((u) => u.email === editing) ?? null}
           resources={resources}
           roleLabels={roleLabels}
+          quyenVaiTro={quyenVaiTro}
           onClose={() => setEditing(null)}
         />
       )}
@@ -152,11 +162,13 @@ function UserFormModal({
   user,
   resources,
   roleLabels,
+  quyenVaiTro,
   onClose,
 }: {
   user: User | null;
   resources: Record<string, string>;
   roleLabels: Record<Role, string>;
+  quyenVaiTro: QuyenVaiTro;
   onClose: () => void;
 }) {
   const [role, setRole] = useState<Role>(user?.role ?? "custom");
@@ -189,7 +201,7 @@ function UserFormModal({
     // Trước đây phải tự chọn "Tùy chỉnh" rồi tick lại từ đầu vài chục ô chỉ để
     // thêm một quyền, nên ai cũng ngại đụng vào.
     if (role !== "custom") {
-      const goc = resolvePermissions(role);
+      const goc = resolvePermissions(role, undefined, quyenVaiTro);
       setNenTang(role);
       setRole("custom");
       setPerms(doiQuyen(goc, resource, action));
@@ -271,7 +283,7 @@ function UserFormModal({
             // Tùy chỉnh thì dùng bộ quyền tự tick, vai trò dựng sẵn thì lấy bộ mặc định.
             // Chủ tài khoản luôn toàn quyền nên khóa lại.
             const isCustom = role === "custom";
-            const effective = isCustom ? perms : resolvePermissions(role);
+            const effective = isCustom ? perms : resolvePermissions(role, undefined, quyenVaiTro);
             const isDisabled = role === "owner";
             return (
               <div>
