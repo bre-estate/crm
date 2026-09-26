@@ -14,6 +14,18 @@
  *
  *   Các loại còn lại chỉ có một cột số tiền mỗi đợt, nên cộng các đợt.
  *
+ * ĐÃ GIẢI THÍCH, KHÔNG PHẢI LỖI (nhân sự xác nhận 27/09/2026):
+ *
+ *   Năm căn FENICA B.07-13, A.08-06, A.17-11, B.07-12, B.08-04 lệch đúng
+ *   1.627.273 mỗi căn ở CĐT thưởng NVKD. Trong Excel mỗi căn có hai dòng:
+ *   dòng 04/08 ghi 16.272.727, dòng 24/09 ghi -1.627.273. Cộng lại ra
+ *   14.645.454 nên script báo lệch.
+ *
+ *   Số đối chiếu thật là 16.272.727 (chưa VAT), app ghi đúng. Dòng âm kia là
+ *   thu hồi phần VAT mà nhân sự cũ đã chi dư: lúc chi đã trả khoảng 17,9 triệu
+ *   gồm VAT, đợt sau trừ lại 1.627.273. Đó là điều chỉnh phía CHI TIỀN, không
+ *   phải điều chỉnh nghĩa vụ, nên không được trừ vào số đối chiếu.
+ *
  * Chỉ đọc, không ghi gì.
  *   npx tsx --env-file=.env.local scripts/doi-chieu-gia-von.ts
  */
