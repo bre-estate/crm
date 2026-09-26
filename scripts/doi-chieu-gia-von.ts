@@ -10,10 +10,12 @@
  *   Đếm trên toàn bộ dữ liệu 27/09/2026 thì app khớp cách này ở 37/37 mã KPI
  *   CEO và 40/41 mã KPI TPKD, trong khi không mã KPI CEO nào chỉ khớp lũy kế.
  *
- *   Ngoại lệ duy nhất: AVIO_BAML_B.16.11 KPI TPKD. Ở mã này cộng đợt ra
- *   3.369.452 còn lũy kế là 2.969.452, chênh đúng 400.000 của dòng 445, mà
- *   khoản đó chỉ ghi vào cột tổng AM chứ không vào cột từng đợt. App đang theo
- *   lũy kế ở mã này. Script vẫn in ra để thấy, chưa chốt bên nào đúng.
+ *   Ngoại lệ duy nhất: AVIO_BAML_B.16.11 KPI TPKD, và lỗi nằm ở Excel.
+ *   Excel có hai dòng điều chỉnh cùng ngày 29/08 nhưng ghi khác kiểu nhau:
+ *   dòng 443 ghi -5.500.000 vào cả cột V lẫn cột AM, còn dòng 445 ghi
+ *   -400.000 CHỈ vào cột AM và để trống cột AJ. App có đủ cả hai dòng điều
+ *   chỉnh, nên tính ra 2.527.089 + 842.363 - 400.000 = 2.969.452, khớp đúng
+ *   cột lũy kế AH. Tức app đúng, Excel thiếu số ở cột AJ dòng 445.
  *
  *   Các loại còn lại chỉ có một cột số tiền mỗi đợt, nên cộng các đợt.
  *
