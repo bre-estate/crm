@@ -202,6 +202,46 @@ function AlertDetail({ alert }: { alert: Alert }) {
       </table>
     );
   }
+  if (alert.id === "doanh-thu-ve") {
+    return (
+      <table className="w-full text-xs mt-2">
+        <thead className="bg-slate-100">
+          <tr>
+            <th className="text-left p-1">Căn</th>
+            <th className="text-left p-1">Dự án</th>
+            <th className="text-left p-1">Ngày thu</th>
+            <th className="text-right p-1">Số tiền</th>
+          </tr>
+        </thead>
+        <tbody>
+          {alert.dot.slice(0, 10).map((x) => (
+            <tr key={x.paymentId} className="border-t border-slate-200">
+              <td className="p-1">
+                <Link
+                  href={`/products/${x.productId}`}
+                  className="text-blue-600 hover:underline font-mono"
+                >
+                  {x.unitCode}
+                </Link>
+              </td>
+              <td className="p-1 text-slate-600">{x.duAn}</td>
+              <td className="p-1 font-mono">
+                {x.ngayThu ? x.ngayThu.split("-").reverse().join("/") : ""}
+              </td>
+              <td className="p-1 text-right tabular-nums text-green-700">{fmt(x.soTien)}</td>
+            </tr>
+          ))}
+          {alert.dot.length > 10 && (
+            <tr className="border-t border-slate-200">
+              <td colSpan={4} className="p-1 text-slate-500">
+                và {alert.dot.length - 10} đợt nữa
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    );
+  }
   if (alert.id === "cho-tao-gia-von") {
     return (
       <table className="w-full text-xs mt-2">

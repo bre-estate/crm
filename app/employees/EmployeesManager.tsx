@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type Employee = {
   id: number;
@@ -31,6 +32,21 @@ type Employee = {
 };
 
 type Department = { id: number; name: string; code: string };
+
+type Nhom = "all" | "nv" | "ctv";
+
+/**
+ * Khóa sắp xếp theo mã: nhân viên trước cộng tác viên, trong mỗi nhóm thì theo số.
+ * So theo số chứ không so theo chữ, để sau này có NV-100 thì không rơi xuống dưới NV-99.
+ * Ai chưa có mã thì xếp cuối.
+ */
+function khoaMa(code: string | null): [number, number] {
+  const m = /^([A-Za-z]+)-?(\d+)/.exec(code ?? "");
+  if (!m) return [2, Number.MAX_SAFE_INTEGER];
+  return [m[1].toUpperCase() === "CTV" ? 1 : 0, Number(m[2])];
+}
+
+const laCtv = (code: string | null) => (code ?? "").toUpperCase().startsWith("CTV");
 
 type Props = {
   employees: Employee[];
@@ -95,8 +111,10 @@ export default function EmployeesManager({
   const [q, setQ] = useState("");
   const [deptFilter, setDeptFilter] = useState<string>("");
   const [showInactive, setShowInactive] = useState(false);
+  const [nhom, setNhom] = useState<Nhom>("all");
 
-  const filtered = useMemo(() => {
+  // Lọc mọi thứ trừ tab, để số trên tab vẫn đúng theo phòng ban và ô tìm đang chọn.
+  const truocNhom = useMemo(() => {
     const s = q.trim().toLowerCase();
     return employees.filter((e) => {
       if (!showInactive && !e.active) return false;
@@ -111,6 +129,19 @@ export default function EmployeesManager({
       return hay.includes(s);
     });
   }, [employees, q, deptFilter, showInactive]);
+
+  const soNv = truocNhom.filter((e) => !laCtv(e.code)).length;
+  const soCtv = truocNhom.filter((e) => laCtv(e.code)).length;
+
+  const filtered = useMemo(() => {
+    const ds =
+      nhom === "all" ? truocNhom : truocNhom.filter((e) => laCtv(e.code) === (nhom === "ctv"));
+    return [...ds].sort((a, b) => {
+      const [na, sa] = khoaMa(a.code);
+      const [nb, sb] = khoaMa(b.code);
+      return na - nb || sa - sb || a.name.localeCompare(b.name, "vi");
+    });
+  }, [truocNhom, nhom]);
 
   const isOpen = editing !== null || creating;
   const close = () => {
@@ -163,6 +194,14 @@ export default function EmployeesManager({
           + Thêm nhân viên
         </Button>
       </div>
+
+      <Tabs value={nhom} onValueChange={(v) => setNhom(v as Nhom)}>
+        <TabsList>
+          <TabsTrigger value="all">Tất cả ({soNv + soCtv})</TabsTrigger>
+          <TabsTrigger value="nv">Nhân viên ({soNv})</TabsTrigger>
+          <TabsTrigger value="ctv">CTV ({soCtv})</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       <div className="flex items-end gap-3 flex-wrap">
         <div>

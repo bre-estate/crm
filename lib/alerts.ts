@@ -67,7 +67,29 @@ export type AlertChoGiaVon = Base & {
   units: { productId: number; unitCode: string; ngayThuCuoi: string; tienDaThu: number; chuaTao: string[] }[];
 };
 
-export type Alert = AlertBelowBe | AlertIdle | AlertOpexSpike | AlertOverdue | AlertChoGiaVon;
+export type AlertDoanhThuVe = Base & {
+  id: "doanh-thu-ve";
+  tongTien: number;
+  dot: {
+    paymentId: number;
+    productId: number;
+    unitCode: string;
+    duAn: string | null;
+    soTien: number;
+    ngayThu: string | null;
+  }[];
+};
+
+export type Alert =
+  | AlertBelowBe
+  | AlertIdle
+  | AlertOpexSpike
+  | AlertOverdue
+  | AlertChoGiaVon
+  | AlertDoanhThuVe;
+
+/** Số ngày coi là "vừa mới" cho thông báo tiền về. */
+const SO_NGAY_TIEN_MOI = 7;
 
 /**
  * Ai cần biết cảnh báo nào.
@@ -80,6 +102,7 @@ export type Alert = AlertBelowBe | AlertIdle | AlertOpexSpike | AlertOverdue | A
  */
 const VAI_TRO_NHAN: Record<Alert["id"], Role[]> = {
   "below-be-3m": ["owner", "manager"],
+  "doanh-thu-ve": ["owner", "manager"],
   "idle-sale": ["owner", "manager"],
   "opex-spike": ["owner"],
   "overdue-receivables": ["owner", "manager", "admin"],
@@ -92,6 +115,7 @@ const VAI_TRO_NHAN: Record<Alert["id"], Role[]> = {
  */
 const QUYEN_CAN: Record<Alert["id"], { res: Resource; act: Action }> = {
   "below-be-3m": { res: "reports.management", act: "view" },
+  "doanh-thu-ve": { res: "revenues", act: "view" },
   "idle-sale": { res: "reports.people", act: "view" },
   "opex-spike": { res: "reports.expenses", act: "view" },
   "overdue-receivables": { res: "reports.ar-aging", act: "view" },
@@ -410,6 +434,51 @@ export async function computeAlerts(): Promise<Alert[]> {
         tienDaThu: x.tienDaThu,
         chuaTao: x.chuaTao.map((l) => l.ten),
       })),
+    });
+  }
+
+  // ============================================================
+  // ALERT 10: Tiền chủ đầu tư vừa về, do Sale Admin nhập vào
+  // ============================================================
+  //
+  // Mốc là lúc NHẬP (created_at), không phải ngày thu trên chứng từ. Ngày thu hay
+  // được ghi lùi lại theo ngày ngân hàng báo có, nên lấy ngày thu thì một đợt nhập
+  // hôm nay mà ghi ngày tháng trước sẽ không báo cho ai biết.
+  const tienVe = (await db.execute(sql`
+    SELECT pi.id, pi.amount, pi.payment_date, p.id AS product_id, p.unit_code, pj.name AS du_an
+    FROM payments_in pi
+    JOIN revenue_reconciliations r ON r.id = pi.reconciliation_id
+    JOIN products p ON p.id = r.product_id
+    LEFT JOIN projects pj ON pj.id = p.project_id
+    WHERE pi.created_at >= now() - (${SO_NGAY_TIEN_MOI} || ' days')::interval
+      AND COALESCE(pi.amount, 0) > 0
+    ORDER BY pi.id DESC
+  `)) as unknown as Array<Record<string, unknown>>;
+
+  if (tienVe.length > 0) {
+    const dot = tienVe.map((r) => ({
+      paymentId: Number(r.id),
+      productId: Number(r.product_id),
+      unitCode: String(r.unit_code ?? ""),
+      duAn: r.du_an == null ? null : String(r.du_an),
+      soTien: Number(r.amount ?? 0),
+      ngayThu: r.payment_date == null ? null : String(r.payment_date).slice(0, 10),
+    }));
+    const tongTien = dot.reduce((a, b) => a + b.soTien, 0);
+    const soCan = new Set(dot.map((d) => d.productId)).size;
+    const tien = Math.round(tongTien).toLocaleString("vi-VN");
+    alerts.push({
+      id: "doanh-thu-ve",
+      // Khóa gắn với đợt mới nhất, nên đọc rồi là im cho tới khi có tiền về tiếp.
+      key: `doanh-thu-ve::${dot[0].paymentId}`,
+      severity: "info",
+      title: `Tiền về ${tien} từ ${soCan} căn`,
+      description:
+        `${dot.length} đợt thu được nhập trong ${SO_NGAY_TIEN_MOI} ngày qua, tổng ${tien} đồng ` +
+        `từ ${soCan} căn. Tới lượt nhân sự lập đối chiếu giá vốn để chi hoa hồng và KPI.`,
+      url: "/revenues",
+      tongTien,
+      dot,
     });
   }
 
