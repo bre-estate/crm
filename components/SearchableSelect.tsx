@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Popover,
   PopoverContent,
@@ -21,6 +21,14 @@ export type SearchableOption = {
   value: string | number;
   label: string;
   sublabel?: string;
+  /**
+   * Tiêu đề nhóm. Cùng một chữ thì gom chung một khối, thứ tự nhóm theo thứ tự
+   * xuất hiện đầu tiên trong mảng. Bỏ trống thì không chia nhóm.
+   *
+   * Dùng để đưa lựa chọn thường gặp lên trước mà vẫn chọn được cái khác, ví dụ
+   * phòng bán hàng lên trên còn phòng khác xuống dưới.
+   */
+  nhom?: string;
 };
 
 type Props = {
@@ -68,6 +76,16 @@ export default function SearchableSelect({
     setOpen(false);
   };
 
+  // Gom theo nhóm, giữ nguyên thứ tự nhóm xuất hiện lần đầu trong mảng.
+  const nhomOptions = useMemo(() => {
+    const m = new Map<string, SearchableOption[]>();
+    for (const o of options) {
+      const k = o.nhom ?? "";
+      (m.get(k) ?? m.set(k, []).get(k)!).push(o);
+    }
+    return [...m.entries()];
+  }, [options]);
+
   return (
     <>
       {name && (
@@ -113,8 +131,8 @@ export default function SearchableSelect({
             <CommandInput placeholder={placeholder} />
             <CommandList>
               <CommandEmpty>Không có kết quả</CommandEmpty>
-              <CommandGroup>
-                {emptyOption !== undefined && (
+              {emptyOption !== undefined && (
+                <CommandGroup>
                   <CommandItem
                     value="__empty__"
                     onSelect={() => select("")}
@@ -123,33 +141,37 @@ export default function SearchableSelect({
                     <span className="w-4 mr-2" />
                     {emptyOption}
                   </CommandItem>
-                )}
-                {options.map((o) => {
-                  const isSelected = String(o.value) === currentValue;
-                  return (
-                    <CommandItem
-                      key={o.value}
-                      value={`${o.label} ${o.sublabel ?? ""}`}
-                      onSelect={() => select(String(o.value))}
-                    >
-                      <Check
-                        className={cn(
-                          "mr-2 h-4 w-4 shrink-0",
-                          isSelected ? "opacity-100" : "opacity-0",
-                        )}
-                      />
-                      <div className="min-w-0">
-                        <div className="truncate">{o.label}</div>
-                        {o.sublabel && (
-                          <div className="text-xs text-muted-foreground truncate">
-                            {o.sublabel}
-                          </div>
-                        )}
-                      </div>
-                    </CommandItem>
-                  );
-                })}
-              </CommandGroup>
+                </CommandGroup>
+              )}
+              {nhomOptions.map(([tenNhom, ds]) => (
+                <CommandGroup key={tenNhom || "__khong__"} heading={tenNhom || undefined}>
+                  {ds.map((o) => {
+                    const isSelected = String(o.value) === currentValue;
+                    return (
+                      <CommandItem
+                        key={o.value}
+                        value={`${o.label} ${o.sublabel ?? ""}`}
+                        onSelect={() => select(String(o.value))}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4 shrink-0",
+                            isSelected ? "opacity-100" : "opacity-0",
+                          )}
+                        />
+                        <div className="min-w-0">
+                          <div className="truncate">{o.label}</div>
+                          {o.sublabel && (
+                            <div className="text-xs text-muted-foreground truncate">
+                              {o.sublabel}
+                            </div>
+                          )}
+                        </div>
+                      </CommandItem>
+                    );
+                  })}
+                </CommandGroup>
+              ))}
             </CommandList>
           </Command>
         </PopoverContent>

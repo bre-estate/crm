@@ -6,6 +6,7 @@ import type { Product, Project, Partner, Department, ProductAdjustment } from "@
 import MoneyInput from "@/components/MoneyInput";
 import PercentInput from "@/components/PercentInput";
 import SearchableSelect from "@/components/SearchableSelect";
+import { nhanhDuoi, xepCay } from "@/lib/to-chuc";
 import { fmtMoney, fmtDate, fmtPctTight, toTitleCase } from "@/lib/format";
 import AdjustmentDialog from "./[id]/AdjustmentDialog";
 import { toast } from "sonner";
@@ -171,16 +172,57 @@ export default function ProductForm({
   const [departmentIdState, setDepartmentIdState] = useState<string>(
     String(product?.departmentId ?? ""),
   );
-  const employeeOptions = useMemo(
-    () =>
-      employees.map((e) => ({
+  /**
+   * Phòng nào bán hàng thì lên trên.
+   *
+   * Không chặn hẳn các phòng còn lại: nhân viên nội dung hay hành chính vẫn có
+   * thể giới thiệu khách và chốt được căn, lúc đó doanh số ghi về phòng của họ
+   * chứ không nhét sang một đội kinh doanh nào cả.
+   */
+  const phongBanHang = useMemo(() => {
+    const goc = departments.find((d) => d.code === "KD");
+    return goc ? nhanhDuoi(goc.id, departments) : new Set<number>();
+  }, [departments]);
+
+  const departmentOptions = useMemo(() => {
+    const laBanHang = (d: Department) => phongBanHang.has(d.id) || d.code === "BLD";
+    const xep = (ds: Department[], nhom: string) =>
+      xepCay(ds).map(({ node, sau }) => ({
+        value: node.id,
+        label: `${sau > 0 ? "└ " : ""}${node.name}`,
+        sublabel: node.leaderName ? `Trưởng phòng: ${node.leaderName}` : undefined,
+        nhom,
+      }));
+    return [
+      ...xep(departments.filter(laBanHang), "Phòng bán hàng"),
+      ...xep(departments.filter((d) => !laBanHang(d)), "Phòng khác"),
+    ];
+  }, [departments, phongBanHang]);
+
+  /**
+   * NVKD của phòng đang chọn lên trên, phần còn lại vẫn chọn được.
+   *
+   * Không lọc cứng vì hiện còn nhiều người chưa phân phòng, lọc cứng là không
+   * chọn được họ nữa.
+   */
+  const employeeOptions = useMemo(() => {
+    const idPhong = departmentIdState ? Number(departmentIdState) : null;
+    const trongPhong = idPhong ? nhanhDuoi(idPhong, departments) : new Set<number>();
+    const tenPhongCua = (e: EmployeeOption) =>
+      e.departmentId ? (departments.find((d) => d.id === e.departmentId)?.name ?? "") : "";
+    const lam = (ds: EmployeeOption[], nhom?: string) =>
+      ds.map((e) => ({
         value: e.name,
         label: e.name,
-        sublabel:
-          `${e.position.toUpperCase()}${e.departmentId ? " · " + (departments.find((d) => d.id === e.departmentId)?.name ?? "") : ""}`.trim(),
-      })),
-    [employees, departments],
-  );
+        sublabel: `${e.position.toUpperCase()}${tenPhongCua(e) ? " · " + tenPhongCua(e) : ""}`.trim(),
+        nhom,
+      }));
+    if (!idPhong) return lam(employees);
+    const thuoc = employees.filter((e) => e.departmentId != null && trongPhong.has(e.departmentId));
+    const conLai = employees.filter((e) => !(e.departmentId != null && trongPhong.has(e.departmentId)));
+    const tenPhong = departments.find((d) => d.id === idPhong)?.name ?? "phòng này";
+    return [...lam(thuoc, `Nhân viên ${tenPhong}`), ...lam(conLai, "Người khác")];
+  }, [employees, departments, departmentIdState]);
   const handleSalesPersonChange = (v: string) => {
     setSalesPersonName(v);
     const emp = employees.find((e) => e.name === v);
@@ -506,11 +548,7 @@ export default function ProductForm({
               onChange={setDepartmentIdState}
               emptyOption="— Chưa phân phòng —"
               placeholder="Gõ tên phòng..."
-              options={departments.map((d) => ({
-                value: d.id,
-                label: d.name,
-                sublabel: d.leaderName ? `Leader: ${d.leaderName}` : undefined,
-              }))}
+              options={departmentOptions}
             />
             <input type="hidden" name="departmentId" value={departmentIdState} />
             <input type="hidden" name="deptName" defaultValue={product?.deptName ?? ""} />
