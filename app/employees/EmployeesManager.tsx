@@ -18,6 +18,8 @@ import {
 type Employee = {
   id: number;
   name: string;
+  /** Mã NV-xxx / CTV-xxx theo file Danh Sách Nhân Viên bên nhân sự. */
+  code: string | null;
   email: string | null;
   phone: string | null;
   position: string;
@@ -105,7 +107,7 @@ export default function EmployeesManager({
       }
       if (!s) return true;
       const hay =
-        `${e.name} ${e.email ?? ""} ${e.phone ?? ""} ${POSITION_LABEL[e.position] ?? e.position}`.toLowerCase();
+        `${e.code ?? ""} ${e.name} ${e.email ?? ""} ${e.phone ?? ""} ${POSITION_LABEL[e.position] ?? e.position}`.toLowerCase();
       return hay.includes(s);
     });
   }, [employees, q, deptFilter, showInactive]);
@@ -169,7 +171,7 @@ export default function EmployeesManager({
             type="search"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Tên / email / SĐT..."
+            placeholder="Mã NV / tên / email / SĐT..."
             className="input w-64"
           />
         </div>
@@ -206,6 +208,7 @@ export default function EmployeesManager({
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-xs text-slate-600">
             <tr>
+              <th className="text-left p-3 w-24">Mã NV</th>
               <th className="text-left p-3">Tên</th>
               <th className="text-left p-3">Vị trí</th>
               <th className="text-left p-3">Phòng</th>
@@ -225,6 +228,9 @@ export default function EmployeesManager({
                 key={e.id}
                 className={`border-t border-slate-100 hover:bg-slate-50 ${e.active ? "" : "opacity-50"}`}
               >
+                <td className="p-3 text-xs tabular-nums text-slate-600 whitespace-nowrap">
+                  {e.code ?? "—"}
+                </td>
                 <td className="p-3 font-medium">
                   {e.name}
                   {ownerOfAlias && (
@@ -280,7 +286,7 @@ export default function EmployeesManager({
             })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={7} className="p-6 text-center text-slate-500 text-sm">
+                <td colSpan={8} className="p-6 text-center text-slate-500 text-sm">
                   Chưa có nhân viên nào khớp.
                 </td>
               </tr>

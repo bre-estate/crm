@@ -20,6 +20,7 @@ export default async function EmployeesPage() {
       .select({
         id: employees.id,
         name: employees.name,
+        code: employees.code,
         email: employees.email,
         phone: employees.phone,
         position: employees.position,
