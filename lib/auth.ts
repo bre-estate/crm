@@ -68,6 +68,21 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
 /**
  * Check user hiện tại có quyền `action` trên `resource` không.
  */
+/**
+ * Kiểm quyền khi đã có sẵn đối tượng người dùng, khỏi hỏi lại database.
+ *
+ * Luôn dùng hàm này thay cho hasPermission() đồng bộ của lib/permissions.ts. Hàm
+ * kia cần truyền thêm bảng quyền vị trí ở tham số cuối, quên là nó lặng lẽ rơi về
+ * preset cũ trong code và trả kết quả sai.
+ */
+export function quyenCua(
+  user: CurrentUser,
+  resource: Resource,
+  action: Action = "view",
+): boolean {
+  return check(user.role, user.customPermissions, resource, action, user.quyenVaiTro);
+}
+
 export async function hasPermission(
   resource: Resource,
   action: Action = "view",

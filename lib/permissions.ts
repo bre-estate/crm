@@ -45,7 +45,6 @@ export const RESOURCE_ACTIONS: Record<string, Action[]> = {
   documents: ["view", "edit", "delete"],
   // View + Edit (không xóa)
   finance: ["view", "edit"],
-  "finance.bank-review": ["view", "edit"],
   "costs-report": ["view", "edit"],
   // Duyệt chi — view = thấy queue duyệt, edit = approve/reject
   "expenses.approve": ["view", "edit"],
@@ -91,7 +90,6 @@ export const RESOURCES = {
   "reports.obligations": "Nghĩa vụ tài chính (còn thu/nợ)",
   "reports.unit-profitability": "Lãi/lỗ per căn",
   "reports.segments": "Phân khúc căn",
-  "finance.bank-review": "Đối chiếu sao kê bank",
   "costs-report": "Đối chiếu giá vốn",
   "alerts": "Cảnh báo",
   "admin.users": "Quản lý user",

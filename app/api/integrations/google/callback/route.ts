@@ -3,8 +3,7 @@ import { cookies, headers } from "next/headers";
 import { db } from "@/lib/db";
 import { integrations } from "@/lib/schema";
 import { eq } from "drizzle-orm";
-import { getCurrentUser } from "@/lib/auth";
-import { hasPermission } from "@/lib/permissions";
+import { getCurrentUser, quyenCua } from "@/lib/auth";
 import {
   doiMaLayVe,
   emailNguoiCapQuyen,
@@ -32,7 +31,7 @@ export async function GET(req: NextRequest) {
   const goc = `${h.get("x-forwarded-proto") ?? "https"}://${h.get("x-forwarded-host") ?? h.get("host")}`;
 
   const user = await getCurrentUser();
-  if (!user || !hasPermission(user.role, user.customPermissions, "settings.integrations", "edit")) {
+  if (!user || !quyenCua(user, "settings.integrations", "edit")) {
     return ve(goc, "Bạn không có quyền nối dịch vụ ngoài.", true);
   }
 

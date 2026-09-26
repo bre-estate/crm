@@ -10,8 +10,8 @@ import {
   rejectExpense,
   submitExpense,
 } from "@/lib/actions/expenses";
-import { getCurrentUser, requirePermission } from "@/lib/auth";
-import { hasPermission, type Action } from "@/lib/permissions";
+import { getCurrentUser, requirePermission, quyenCua } from "@/lib/auth";
+import type { Action } from "@/lib/permissions";
 import { fmtDate, fmtMoney } from "@/lib/format";
 import {
   categoryLabel,
@@ -51,7 +51,7 @@ export default async function ExpenseDetailPage({
 
   const canApprove =
     user != null &&
-    hasPermission(user.role, user.customPermissions, "expenses.approve", "edit");
+    quyenCua(user, "expenses.approve", "edit");
   const isRequester = user?.email === expense.requesterEmail;
   const isOwner = user?.role === "owner";
 
@@ -62,7 +62,7 @@ export default async function ExpenseDetailPage({
   const canMarkPaid =
     expense.status === "approved" &&
     user != null &&
-    hasPermission(user.role, user.customPermissions, "expenses", "edit");
+    quyenCua(user, "expenses", "edit");
 
   return (
     <div className="space-y-4 max-w-5xl">

@@ -10,8 +10,7 @@
  */
 import { db } from "@/lib/db";
 import { bankTransactions } from "@/lib/schema";
-import { requirePermission, getCurrentUser } from "@/lib/auth";
-import { hasPermission } from "@/lib/permissions";
+import { requirePermission, getCurrentUser, quyenCua } from "@/lib/auth";
 import { thuMucCho, type CauHinhDrive } from "@/lib/documents-core";
 import { integrations } from "@/lib/schema";
 import { and, sql, ilike, gte, lte, desc, or, eq, type SQL } from "drizzle-orm";
@@ -30,7 +29,7 @@ type SP = Promise<{ q?: string; year?: string; chieu?: string; tu?: string; den?
 export default async function BankStatementPage({ searchParams }: { searchParams: SP }) {
   await requirePermission("finance");
   const user = await getCurrentUser();
-  const napDuoc = !!user && hasPermission(user.role, user.customPermissions, "finance", "edit");
+  const napDuoc = !!user && quyenCua(user, "finance", "edit");
   const sp = await searchParams;
 
   const q = sp.q?.trim() || null;

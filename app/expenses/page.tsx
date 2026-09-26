@@ -3,8 +3,7 @@ import { expenseRequests } from "@/lib/schema";
 import { desc, eq, and, gte, lte, sql, type SQL } from "drizzle-orm";
 import Link from "next/link";
 import { fmtMoney, fmtDate } from "@/lib/format";
-import { requirePermission, getCurrentUser } from "@/lib/auth";
-import { hasPermission } from "@/lib/permissions";
+import { requirePermission, getCurrentUser, quyenCua } from "@/lib/auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,7 +35,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Sea
   const user = await getCurrentUser();
   const canApprove =
     user != null &&
-    hasPermission(user.role, user.customPermissions, "expenses.approve", "edit");
+    quyenCua(user, "expenses.approve", "edit");
 
   const { status, category, requester, from, to, created, updated, deleted } =
     await searchParams;

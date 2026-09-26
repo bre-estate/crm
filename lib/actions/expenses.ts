@@ -7,7 +7,7 @@ import { expenseRequests } from "@/lib/schema";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getCurrentUser, requirePermission } from "@/lib/auth";
+import { getCurrentUser, requirePermission, quyenCua } from "@/lib/auth";
 import { logActivity } from "@/lib/audit";
 import { toNum, toStr, toStrOrNull } from "@/lib/parse";
 
@@ -279,7 +279,7 @@ export async function countPendingApprovals(): Promise<number> {
   const user = await getCurrentUser();
   if (!user) return 0;
   const { hasPermission } = await import("@/lib/permissions");
-  if (!hasPermission(user.role, user.customPermissions, "expenses.approve", "edit")) return 0;
+  if (!quyenCua(user, "expenses.approve", "edit")) return 0;
   const [row] = await db
     .select({ c: sql<number>`COUNT(*)::int` })
     .from(expenseRequests)

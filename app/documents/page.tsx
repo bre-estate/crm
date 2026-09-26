@@ -7,8 +7,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { documents, integrations } from "@/lib/schema";
 import { desc, eq } from "drizzle-orm";
-import { requirePermission, getCurrentUser } from "@/lib/auth";
-import { hasPermission } from "@/lib/permissions";
+import { requirePermission, getCurrentUser, quyenCua } from "@/lib/auth";
 import UploadPanel from "./UploadPanel";
 import DocumentRow, { type DocRow } from "./DocumentRow";
 import { DOC_TYPES, fmtDungLuong, type CauHinhDrive, type DocType } from "@/lib/documents-core";
@@ -26,8 +25,8 @@ export default async function DocumentsPage({ searchParams }: { searchParams: SP
   const sp = await searchParams;
   const loc = sp.loai && sp.loai in DOC_TYPES ? (sp.loai as DocType) : null;
 
-  const taiLenDuoc = !!user && hasPermission(user.role, user.customPermissions, "documents", "edit");
-  const xoaDuoc = !!user && hasPermission(user.role, user.customPermissions, "documents", "delete");
+  const taiLenDuoc = !!user && quyenCua(user, "documents", "edit");
+  const xoaDuoc = !!user && quyenCua(user, "documents", "delete");
 
   const rows = await db
     .select()
