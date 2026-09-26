@@ -13,7 +13,7 @@
  *   Ban lãnh đạo
  *   Kinh doanh ──── Hồ Gia
  *               └── 1 Tỷ
- *   Khối văn phòng
+ *   Hành chính nhân sự
  *   Marketing ───── Nội dung
  */
 
@@ -21,7 +21,7 @@
 export const KHOI = {
   BLD: "Ban lãnh đạo",
   KD: "Kinh doanh",
-  VP: "Khối văn phòng",
+  VP: "Hành chính nhân sự",
   MKT: "Marketing",
 } as const;
 
@@ -89,6 +89,37 @@ export function xepCay<T extends NodePhong>(ds: T[]): { node: T; sau: number }[]
     const daCo = new Set(ra.map((x) => x.node.id));
     for (const d of ds) if (!daCo.has(d.id)) ra.push({ node: d, sau: 0 });
   }
+  return ra;
+}
+
+/**
+ * Cộng dồn một con số lên cả nhánh: mỗi phòng nhận số của chính nó cộng số của
+ * mọi đội con bên dưới.
+ *
+ * Cần hàm này vì đếm rời từng phòng cho ra cảnh vô lý: phòng Kinh doanh hiện 4
+ * người trong khi hai đội con của nó có 9 người.
+ */
+export function congDonCay(ds: NodePhong[], rieng: Map<number, number>): Map<number, number> {
+  const con = new Map<number, number[]>();
+  for (const d of ds) {
+    if (d.parentId == null) continue;
+    (con.get(d.parentId) ?? con.set(d.parentId, []).get(d.parentId)!).push(d.id);
+  }
+  const ra = new Map<number, number>();
+  const dang = new Set<number>();
+  const tinh = (id: number): number => {
+    const daCo = ra.get(id);
+    if (daCo != null) return daCo;
+    // Chặn vòng lặp phòng hờ, dù tầng lưu đã chặn khi đặt phòng cha.
+    if (dang.has(id)) return rieng.get(id) ?? 0;
+    dang.add(id);
+    let tong = rieng.get(id) ?? 0;
+    for (const c of con.get(id) ?? []) tong += tinh(c);
+    dang.delete(id);
+    ra.set(id, tong);
+    return tong;
+  };
+  for (const d of ds) tinh(d.id);
   return ra;
 }
 

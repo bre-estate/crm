@@ -61,6 +61,13 @@ const isGroup = (n: NavEntry): n is NavGroup => "children" in n;
 const NAV: NavEntry[] = [
   { href: "/", label: "Tổng quan" },
   {
+    label: "Danh mục",
+    children: [
+      { href: "/partners", label: "Đối tác", resource: "partners" },
+      { href: "/projects", label: "Dự án", resource: "products" },
+    ],
+  },
+  {
     label: "Giao dịch",
     children: [
       { href: "/products", label: "Căn sơ cấp", resource: "products" },
@@ -94,20 +101,21 @@ const NAV: NavEntry[] = [
       { href: "/documents", label: "Kho tài liệu", resource: "documents" },
     ],
   },
+  // Bốn trang này đi liền một mạch: có người, xếp vào phòng, gán vị trí, rồi
+  // vị trí quyết định vào được những trang nào.
   {
-    label: "Danh mục",
+    label: "Tổ chức",
     children: [
-      { href: "/partners", label: "Đối tác", resource: "partners" },
-      { href: "/projects", label: "Dự án", resource: "products" },
       { href: "/employees", label: "Nhân viên", resource: "employees" },
       { href: "/departments", label: "Phòng ban", resource: "departments" },
+      { href: "/admin/positions", label: "Vị trí", resource: "admin.positions" },
+      { href: "/admin/permissions", label: "Phân quyền", resource: "admin.permissions" },
+      { href: "/admin/users", label: "Người dùng", ownerOnly: true },
     ],
   },
   {
     label: "Hệ thống",
     children: [
-      { href: "/admin/users", label: "Người dùng", ownerOnly: true },
-      { href: "/admin/positions", label: "Vị trí và quyền", resource: "admin.positions" },
       { href: "/settings/integrations", label: "Tích hợp", resource: "settings.integrations" },
       { href: "/admin/data-checks", label: "Kiểm tra dữ liệu", ownerOnly: true },
       { href: "/admin/activity", label: "Lịch sử hoạt động", resource: "admin.activity" },

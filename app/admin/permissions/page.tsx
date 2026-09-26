@@ -1,16 +1,19 @@
-import { requirePermission, quyenCua, getCurrentUser } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { employees, userPermissions } from "@/lib/schema";
 import { sql } from "drizzle-orm";
 import { layViTri } from "@/lib/vi-tri";
+import { RESOURCES, type Action } from "@/lib/permissions";
 import { KHOI } from "@/lib/to-chuc";
-import PositionsManager from "./PositionsManager";
+import PermissionsManager from "./PermissionsManager";
 
 export const dynamic = "force-dynamic";
 
-export default async function PositionsPage() {
-  await requirePermission("admin.positions");
-  const user = await getCurrentUser();
+type SP = Promise<{ viTri?: string }>;
+
+export default async function PermissionsPage({ searchParams }: { searchParams: SP }) {
+  await requirePermission("admin.permissions");
+  const sp = await searchParams;
 
   const [ds, demNhanSu, demTaiKhoan] = await Promise.all([
     layViTri(),
@@ -28,18 +31,18 @@ export default async function PositionsPage() {
   const taiKhoan = new Map(demTaiKhoan.map((r) => [r.code, Number(r.n)]));
 
   return (
-    <PositionsManager
+    <PermissionsManager
       viTri={ds.map((r) => ({
         code: r.code,
         label: r.label,
         khoi: r.khoi,
-        builtin: r.builtin,
-        soQuyen: Object.keys((r.permissions as Record<string, unknown>) ?? {}).length,
+        permissions: (r.permissions as Record<string, Action[]>) ?? {},
         soNhanSu: nhanSu.get(r.code) ?? 0,
         soTaiKhoan: taiKhoan.get(r.code) ?? 0,
       }))}
+      resources={RESOURCES as Record<string, string>}
       khoi={KHOI as Record<string, string>}
-      xemDuocPhanQuyen={!!user && quyenCua(user, "admin.permissions")}
+      chonSan={sp.viTri ?? null}
     />
   );
 }

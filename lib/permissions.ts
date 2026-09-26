@@ -41,6 +41,7 @@ export const RESOURCE_ACTIONS: Record<string, Action[]> = {
   expenses: ["view", "edit", "delete"],
   "admin.users": ["view", "edit", "delete"],
   "admin.positions": ["view", "edit"],
+  "admin.permissions": ["view", "edit"],
   // Tài liệu: view = xem và tải về, edit = tải lên, delete = xóa khỏi kho
   documents: ["view", "edit", "delete"],
   // View + Edit (không xóa)
@@ -93,7 +94,8 @@ export const RESOURCES = {
   "costs-report": "Đối chiếu giá vốn",
   "alerts": "Cảnh báo",
   "admin.users": "Quản lý user",
-  "admin.positions": "Vị trí và quyền",
+  "admin.positions": "Danh mục vị trí",
+  "admin.permissions": "Phân quyền",
   "admin.activity": "Nhật ký hoạt động",
   "help": "Trang trợ giúp / hướng dẫn nhập liệu",
   "documents": "Kho tài liệu (sao kê, hợp đồng, hóa đơn)",
@@ -103,27 +105,20 @@ export const RESOURCES = {
 export type Resource = keyof typeof RESOURCES;
 
 // Nhóm resources theo chức năng — dùng cho UI phân quyền (dễ tick từng nhóm).
-// Khớp với structure menu AppSidebar: Giao dịch / Đối tác & Nhân sự / Tài chính / Báo cáo / Hệ thống.
+/** Xếp theo đúng thứ tự các nhóm trên menu, để tick quyền và đi menu thấy giống nhau. */
 export const RESOURCE_GROUPS: { label: string; keys: Resource[] }[] = [
   {
-    label: "Giao dịch sơ cấp",
-    keys: ["products", "revenues", "costs", "costs-report", "invoices"],
+    label: "Danh mục",
+    keys: ["partners"],
   },
   {
-    label: "Giao dịch thứ cấp",
-    keys: ["secondary-sales"],
-  },
-  {
-    label: "Đối tác & Nhân sự",
-    keys: ["partners", "departments", "employees"],
-  },
-  {
-    label: "Tài chính",
-    keys: ["finance", "expenses", "expenses.approve", "payroll.commissions", "periods"],
+    label: "Giao dịch",
+    keys: ["products", "revenues", "costs", "costs-report", "invoices", "secondary-sales"],
   },
   {
     label: "Báo cáo",
     keys: [
+      "reports.overview",
       "reports.profit-detail",
       "reports.cash-flow",
       "reports.ar-aging",
@@ -132,18 +127,25 @@ export const RESOURCE_GROUPS: { label: string; keys: Resource[] }[] = [
       "reports.sales",
       "reports.commissions",
       "reports.project-profitability",
+      "reports.unit-profitability",
       "reports.expenses",
       "reports.kpi-dashboard",
       "reports.people",
-      "reports.unit-profitability",
       "reports.segments",
       "reports.obligations",
-      "reports.overview",
     ],
   },
   {
+    label: "Kế toán",
+    keys: ["periods", "payroll.commissions", "expenses", "expenses.approve", "finance", "documents"],
+  },
+  {
+    label: "Tổ chức và phân quyền",
+    keys: ["employees", "departments", "admin.positions", "admin.permissions", "admin.users"],
+  },
+  {
     label: "Hệ thống",
-    keys: ["alerts", "documents", "settings.integrations", "admin.users", "admin.positions", "admin.activity", "help"],
+    keys: ["alerts", "settings.integrations", "admin.activity", "help"],
   },
 ];
 
@@ -317,6 +319,7 @@ export function resourceOfPath(path: string): Resource | "reports.*" | null {
   // Admin
   if (p.startsWith("/admin/users")) return "admin.users";
   if (p.startsWith("/admin/positions")) return "admin.positions";
+  if (p.startsWith("/admin/permissions")) return "admin.permissions";
   if (p.startsWith("/admin/activity")) return "admin.activity";
   if (p.startsWith("/admin/data-checks")) return "admin.activity";
 

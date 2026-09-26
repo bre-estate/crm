@@ -8,14 +8,13 @@ import {
 } from "@/lib/actions/employees";
 import EmployeesManager from "./EmployeesManager";
 import { layViTriGon } from "@/lib/vi-tri";
-import { getOwnerEmail } from "@/lib/auth";
-import { notFound } from "next/navigation";
+import { requirePermission } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function EmployeesPage() {
-  // Owner-only — lộ lương/thông tin cá nhân, không cho staff xem
-  if (!(await getOwnerEmail())) notFound();
+  // Theo đúng bảng phân quyền, không khóa cứng theo chủ tài khoản nữa.
+  await requirePermission("employees");
   const [rows, depts, viTri] = await Promise.all([
     db
       .select({

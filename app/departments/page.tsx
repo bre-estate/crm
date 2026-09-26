@@ -7,15 +7,16 @@ import {
   deleteDepartmentNoRedirect,
 } from "@/lib/actions/departments";
 import DepartmentsManager from "./DepartmentsManager";
-import { getOwnerEmail } from "@/lib/auth";
-import { notFound } from "next/navigation";
+import { layNhanViTri } from "@/lib/vi-tri";
+import { requirePermission } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function DepartmentsPage() {
-  // Owner-only — quản lý phòng ban là quyền của founder
-  if (!(await getOwnerEmail())) notFound();
-  const [depts, tpkds, prodCounts, empCounts] = await Promise.all([
+  // Theo đúng bảng phân quyền. Trước đây khóa cứng theo chủ tài khoản nên ai được
+  // cấp quyền xem phòng ban vẫn thấy menu mà bấm vào ra trang không tồn tại.
+  await requirePermission("departments");
+  const [depts, tpkds, prodCounts, empCounts, viTriLabel] = await Promise.all([
     db.select().from(departments).orderBy(asc(departments.name)),
     db
       .select({ id: employees.id, name: employees.name, position: employees.position })
@@ -32,6 +33,7 @@ export default async function DepartmentsPage() {
       .select({ departmentId: employees.departmentId, count: sql<number>`COUNT(*)::int` })
       .from(employees)
       .groupBy(employees.departmentId),
+    layNhanViTri(),
   ]);
 
   const prodCountMap = new Map(prodCounts.map((r) => [r.departmentId, Number(r.count)]));
@@ -47,6 +49,7 @@ export default async function DepartmentsPage() {
     <DepartmentsManager
       departments={rows}
       tpkdCandidates={tpkds}
+      viTriLabel={viTriLabel}
       onCreate={async (fd) => {
         "use server";
         return await createDepartmentNoRedirect(fd);
