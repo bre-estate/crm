@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { xepCay, congDonCay, SAU_TOI_DA } from "@/lib/to-chuc";
+import { xepCay, congDonCay, nhanPhong, SAU_TOI_DA } from "@/lib/to-chuc";
 
 type Department = {
   id: number;
@@ -302,11 +302,9 @@ function HopThoai({
                 <option value="">Tách ra thành phòng lớn</option>
                 {xepCay(departments)
                   .filter(({ node }) => node.id !== sua?.id)
-                  .map(({ node, sau }) => (
+                  .map(({ node }) => (
                     <option key={node.id} value={node.id}>
-                      {"  ".repeat(sau)}
-                      {sau > 0 ? "└ " : ""}
-                      {node.name}
+                      {nhanPhong(node.id, departments)}
                     </option>
                   ))}
               </select>

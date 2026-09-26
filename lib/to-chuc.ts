@@ -181,8 +181,17 @@ export interface TenPhong {
   ten: string;
   /** Tên phòng gốc, dùng để chọn màu, ví dụ "Kinh doanh". */
   goc: string;
-  /** Đường đi đầy đủ, ví dụ "Kinh doanh / Hồ Gia". */
+  /** Đường đi đầy đủ, ví dụ "Kinh doanh - Hồ Gia". */
   duongDan: string;
+}
+
+/**
+ * Nhãn cho ô chọn phòng: ghi thẳng đường đi thay vì thụt lề bằng ký tự cây.
+ * Ký tự "└" đứng lẻ trong một ô chọn nhìn lạc, mà cũng không cho biết phòng gốc
+ * là gì khi ô đã đóng lại và chỉ còn một dòng.
+ */
+export function nhanPhong(id: number | null, ds: NodePhong[]): string {
+  return tenPhong(id, ds)?.duongDan ?? "";
 }
 
 export function tenPhong(id: number | null, ds: NodePhong[]): TenPhong | null {
@@ -198,7 +207,7 @@ export function tenPhong(id: number | null, ds: NodePhong[]): TenPhong | null {
     chuoi.unshift(cha.name);
     hienTai = cha;
   }
-  return { ten: nut.name, goc: chuoi[0], duongDan: chuoi.join(" / ") };
+  return { ten: nut.name, goc: chuoi[0], duongDan: chuoi.join(" - ") };
 }
 
 /** Mã của phòng gốc chứa phòng này, để tra vị trí gợi ý. */

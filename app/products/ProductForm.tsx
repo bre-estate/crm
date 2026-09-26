@@ -6,7 +6,7 @@ import type { Product, Project, Partner, Department, ProductAdjustment } from "@
 import MoneyInput from "@/components/MoneyInput";
 import PercentInput from "@/components/PercentInput";
 import SearchableSelect from "@/components/SearchableSelect";
-import { nhanhDuoi, xepCay } from "@/lib/to-chuc";
+import { nhanhDuoi, xepCay, nhanPhong } from "@/lib/to-chuc";
 import { fmtMoney, fmtDate, fmtPctTight, toTitleCase } from "@/lib/format";
 import AdjustmentDialog from "./[id]/AdjustmentDialog";
 import { toast } from "sonner";
@@ -24,6 +24,7 @@ type EmployeeOption = {
   name: string;
   position: string;
   departmentId: number | null;
+  active?: boolean | null;
 };
 
 type Props = {
@@ -187,9 +188,9 @@ export default function ProductForm({
   const departmentOptions = useMemo(() => {
     const laBanHang = (d: Department) => phongBanHang.has(d.id) || d.code === "BLD";
     const xep = (ds: Department[], nhom: string) =>
-      xepCay(ds).map(({ node, sau }) => ({
+      xepCay(ds).map(({ node }) => ({
         value: node.id,
-        label: `${sau > 0 ? "└ " : ""}${node.name}`,
+        label: nhanPhong(node.id, departments),
         sublabel: node.leaderName ? `Trưởng phòng: ${node.leaderName}` : undefined,
         nhom,
       }));
@@ -206,23 +207,46 @@ export default function ProductForm({
    * chọn được họ nữa.
    */
   const employeeOptions = useMemo(() => {
-    const idPhong = departmentIdState ? Number(departmentIdState) : null;
-    const trongPhong = idPhong ? nhanhDuoi(idPhong, departments) : new Set<number>();
+    const daNghi = (e: EmployeeOption) => e.active === false;
     const tenPhongCua = (e: EmployeeOption) =>
       e.departmentId ? (departments.find((d) => d.id === e.departmentId)?.name ?? "") : "";
     const lam = (ds: EmployeeOption[], nhom?: string) =>
       ds.map((e) => ({
-        value: e.name,
+        value: e.name, // đúng tên gốc, đây là giá trị ghi xuống products.sales_person
         label: e.name,
-        sublabel: `${e.position.toUpperCase()}${tenPhongCua(e) ? " · " + tenPhongCua(e) : ""}`.trim(),
+        sublabel: [
+          e.position.toUpperCase(),
+          tenPhongCua(e),
+          daNghi(e) ? "đã nghỉ" : "",
+        ]
+          .filter(Boolean)
+          .join(" · "),
         nhom,
       }));
-    if (!idPhong) return lam(employees);
-    const thuoc = employees.filter((e) => e.departmentId != null && trongPhong.has(e.departmentId));
-    const conLai = employees.filter((e) => !(e.departmentId != null && trongPhong.has(e.departmentId)));
+
+    // Tạo căn mới thì không cho chọn người đã nghỉ. Sửa căn cũ thì vẫn cho, vì
+    // căn bán từ lâu có thể do người giờ đã nghỉ bán, phải giữ đúng tên họ.
+    const dungDuoc = product
+      ? employees
+      : employees.filter((e) => !daNghi(e) || e.name === salesPersonName);
+
+    const idPhong = departmentIdState ? Number(departmentIdState) : null;
+    if (!idPhong) {
+      const dangLam = dungDuoc.filter((e) => !daNghi(e));
+      const nghi = dungDuoc.filter(daNghi);
+      return nghi.length ? [...lam(dangLam), ...lam(nghi, "Đã nghỉ")] : lam(dungDuoc);
+    }
+
+    const trongPhong = nhanhDuoi(idPhong, departments);
+    const thuocPhong = (e: EmployeeOption) =>
+      e.departmentId != null && trongPhong.has(e.departmentId);
     const tenPhong = departments.find((d) => d.id === idPhong)?.name ?? "phòng này";
-    return [...lam(thuoc, `Nhân viên ${tenPhong}`), ...lam(conLai, "Người khác")];
-  }, [employees, departments, departmentIdState]);
+    return [
+      ...lam(dungDuoc.filter((e) => thuocPhong(e) && !daNghi(e)), `Nhân viên ${tenPhong}`),
+      ...lam(dungDuoc.filter((e) => !thuocPhong(e) && !daNghi(e)), "Người khác"),
+      ...lam(dungDuoc.filter(daNghi), "Đã nghỉ"),
+    ];
+  }, [employees, departments, departmentIdState, product, salesPersonName]);
   /**
    * NVKD và phòng ghi nhận là HAI dữ kiện độc lập, không ràng buộc nhau.
    *

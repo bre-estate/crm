@@ -15,7 +15,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LOAI_HOP_DONG, mauViTri, maKhoiGoc, xepCay, nhanhDuoi } from "@/lib/to-chuc";
+import {
+  LOAI_HOP_DONG,
+  mauViTri,
+  maKhoiGoc,
+  xepCay,
+  nhanhDuoi,
+  nhanPhong,
+} from "@/lib/to-chuc";
 
 /** Vị trí đọc từ bảng positions, truyền xuống từ máy chủ. */
 type ViTri = { code: string; label: string; khoi: string | null };
@@ -210,11 +217,9 @@ export default function EmployeesManager({
             className="input w-52"
           >
             <option value="">Tất cả phòng ban</option>
-            {xepCay(departments).map(({ node, sau }) => (
+            {xepCay(departments).map(({ node }) => (
               <option key={node.id} value={String(node.id)}>
-                {"  ".repeat(sau)}
-                {sau > 0 ? "└ " : ""}
-                {node.name}
+                {nhanPhong(node.id, departments)}
               </option>
             ))}
             <option value="__none__">(chưa phân phòng)</option>
@@ -502,11 +507,9 @@ function PhongVaViTri({
           className="input"
         >
           <option value="">Chưa phân phòng ban</option>
-          {xepCay(departments).map(({ node, sau }) => (
+          {xepCay(departments).map(({ node }) => (
             <option key={node.id} value={String(node.id)}>
-              {"  ".repeat(sau)}
-              {sau > 0 ? "\u2514 " : ""}
-              {node.name}
+              {nhanPhong(node.id, departments)}
             </option>
           ))}
         </select>

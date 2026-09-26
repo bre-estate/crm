@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useState } from "react";
 import SearchableSelect from "@/components/SearchableSelect";
-import { xepCay } from "@/lib/to-chuc";
+import { xepCay, nhanPhong } from "@/lib/to-chuc";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Button } from "@/components/ui/button";
 
@@ -81,9 +81,9 @@ export default function ProductsFilterForm(props: Props) {
           emptyOption="— Tất cả —"
           placeholder="Phòng..."
           className="w-32"
-          options={xepCay(props.allDepts).map(({ node, sau }) => ({
+          options={xepCay(props.allDepts).map(({ node }) => ({
             value: node.id,
-            label: `${"  ".repeat(sau)}${sau > 0 ? "└ " : ""}${node.name}`,
+            label: nhanPhong(node.id, props.allDepts),
           }))}
         />
       </div>

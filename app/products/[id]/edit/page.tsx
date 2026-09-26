@@ -101,7 +101,11 @@ export default async function EditProductPage({
       .from(employees)
       .where(isNull(employees.aliasOfId))
       .orderBy(asc(employees.name))
-  ).map((e) => ({ ...e, name: e.active ? e.name : `${e.name} (đã nghỉ)` }));
+  );
+  // KHÔNG nối "(đã nghỉ)" vào tên: tên này là giá trị được ghi thẳng xuống
+  // products.sales_person, nối vào là dữ liệu mang đuôi rác và không khớp bảng
+  // nhân sự nữa. Trạng thái nghỉ hiện ở dòng mô tả phụ trong ô chọn.
+
 
   const adjustments = await db
     .select()
