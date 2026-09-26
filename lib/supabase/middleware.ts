@@ -68,9 +68,21 @@ export async function updateSession(request: NextRequest) {
           return NextResponse.redirect(url);
         }
       } else if (perm.role !== "owner") {
+        // Quyền của vị trí nằm ở bảng positions chứ không còn ghi cứng trong code.
+        // Thiếu bước đọc này thì resolvePermissions rơi về preset cũ, và vai trò
+        // nào không có trong preset (ví dụ "ceo") sẽ ra rỗng, tức chặn sạch mọi trang.
+        const { data: dsViTri } = await supabase
+          .from("positions")
+          .select("code, permissions");
+        const quyenViTro: Record<string, Record<string, Action[]>> = {};
+        for (const v of dsViTri ?? []) {
+          quyenViTro[v.code as string] = (v.permissions as Record<string, Action[]>) ?? {};
+        }
+
         const perms = resolvePermissions(
           perm.role as Role,
           (perm.permissions as Record<string, Action[]>) ?? {},
+          quyenViTro,
         );
         const required: Action = request.method === "GET" ? "view" : "edit";
         // Wildcard /reports → allow nếu có ANY reports.* permission

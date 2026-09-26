@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 type SP = Promise<{ ok?: string; loi?: string }>;
 
 export default async function IntegrationsPage({ searchParams }: { searchParams: SP }) {
-  await requirePermission("settings.integrations", "view");
+  await requirePermission("admin.integrations", "view");
   const sp = await searchParams;
   const khaiBaoDu = daKhaiBaoUngDung();
   const coKhoaPicker = !!process.env.NEXT_PUBLIC_GOOGLE_API_KEY;

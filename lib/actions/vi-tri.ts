@@ -39,7 +39,7 @@ function soatKhoi(khoi: string | null) {
 // ── Danh mục vị trí ──────────────────────────────────────────────────────────
 
 async function _luuThongTin(code: string, label: string, khoi: string | null) {
-  await requirePermission("admin.positions", "edit");
+  await requirePermission("positions", "edit");
   const ten = label.trim();
   if (!ten) throw new Error("Tên vị trí không được để trống.");
   soatKhoi(khoi);
@@ -51,7 +51,7 @@ async function _luuThongTin(code: string, label: string, khoi: string | null) {
 }
 
 async function _taoMoi(ma: string, label: string, khoi: string | null, chepTu: string | null) {
-  await requirePermission("admin.positions", "edit");
+  await requirePermission("positions", "edit");
   const m = ma.trim().toLowerCase();
   const ten = label.trim();
   if (!ten) throw new Error("Tên vị trí không được để trống.");
@@ -83,7 +83,7 @@ async function _taoMoi(ma: string, label: string, khoi: string | null, chepTu: s
 }
 
 async function _xoa(code: string) {
-  await requirePermission("admin.positions", "edit");
+  await requirePermission("positions", "edit");
   const [vt] = await db.select().from(positions).where(eq(positions.code, code));
   if (!vt) throw new Error("Không tìm thấy vị trí này.");
   if (vt.builtin) {

@@ -9,7 +9,7 @@ import PositionsManager from "./PositionsManager";
 export const dynamic = "force-dynamic";
 
 export default async function PositionsPage() {
-  await requirePermission("admin.positions");
+  await requirePermission("positions");
   const user = await getCurrentUser();
 
   const [ds, demNhanSu, demTaiKhoan] = await Promise.all([

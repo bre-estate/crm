@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
   const goc = `${h.get("x-forwarded-proto") ?? "https"}://${h.get("x-forwarded-host") ?? h.get("host")}`;
 
   const user = await getCurrentUser();
-  if (!user || !quyenCua(user, "settings.integrations", "edit")) {
+  if (!user || !quyenCua(user, "admin.integrations", "edit")) {
     return ve(goc, "Bạn không có quyền nối dịch vụ ngoài.", true);
   }
 

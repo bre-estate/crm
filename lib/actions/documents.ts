@@ -132,7 +132,7 @@ async function _xoaTaiLieu(id: number) {
 
 /** Bật hoặc tắt một tích hợp. Phần nối Google Drive làm ở đợt sau. */
 async function _datTrangThaiTichHop(provider: string, enabled: boolean) {
-  await requirePermission("settings.integrations", "edit");
+  await requirePermission("admin.integrations", "edit");
   const user = await getCurrentUser();
   const [row] = await db.select().from(integrations).where(eq(integrations.provider, provider));
   if (!row) throw new Error("Không có tích hợp này trong danh sách.");
@@ -168,7 +168,7 @@ export async function datTrangThaiTichHop(provider: string, enabled: boolean): P
 
 /** Dựng đường dẫn sang Google và đặt cookie state để chống giả mạo lượt quay về. */
 async function _batDauNoiDrive(): Promise<string> {
-  await requirePermission("settings.integrations", "edit");
+  await requirePermission("admin.integrations", "edit");
   if (!daKhaiBaoUngDung()) {
     throw new Error(
       "Chưa khai báo ứng dụng Google. Cần đặt GOOGLE_CLIENT_ID và GOOGLE_CLIENT_SECRET trên Vercel rồi deploy lại.",
@@ -189,7 +189,7 @@ async function _batDauNoiDrive(): Promise<string> {
 }
 
 async function _ngatDrive() {
-  await requirePermission("settings.integrations", "edit");
+  await requirePermission("admin.integrations", "edit");
   await db
     .update(integrations)
     .set({
@@ -221,7 +221,7 @@ export async function ngatDrive(): Promise<KetQuaLuu> {
  * Mã làm mới thì vẫn nằm nguyên trên máy chủ, không bao giờ gửi ra ngoài.
  */
 async function _veChoCuaSoChon(): Promise<{ token: string; apiKey: string }> {
-  await requirePermission("settings.integrations", "edit");
+  await requirePermission("admin.integrations", "edit");
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
   if (!apiKey) {
     throw new Error(
@@ -242,7 +242,7 @@ async function _veChoCuaSoChon(): Promise<{ token: string; apiKey: string }> {
  * dùng chung cho những loại chưa chỉ định.
  */
 async function _datThuMucDrive(folderId: string, folderName: string, docType?: string | null) {
-  await requirePermission("settings.integrations", "edit");
+  await requirePermission("admin.integrations", "edit");
   if (!folderId.trim()) throw new Error("Chưa chọn thư mục nào.");
   if (docType && !isDocType(docType)) throw new Error("Loại tài liệu không hợp lệ.");
 
@@ -268,7 +268,7 @@ async function _datThuMucDrive(folderId: string, folderName: string, docType?: s
  * sẽ không được đẩy lên Drive nữa.
  */
 async function _boThuMuc(docType?: string | null) {
-  await requirePermission("settings.integrations", "edit");
+  await requirePermission("admin.integrations", "edit");
   const [th] = await db.select().from(integrations).where(eq(integrations.provider, "google_drive"));
   if (!th) return;
   const cu = (th.config ?? {}) as CauHinhDrive;

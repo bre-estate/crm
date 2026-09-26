@@ -40,7 +40,7 @@ export const RESOURCE_ACTIONS: Record<string, Action[]> = {
   employees: ["view", "edit", "delete"],
   expenses: ["view", "edit", "delete"],
   "admin.users": ["view", "edit", "delete"],
-  "admin.positions": ["view", "edit"],
+  positions: ["view", "edit"],
   "admin.permissions": ["view", "edit"],
   // Tài liệu: view = xem và tải về, edit = tải lên, delete = xóa khỏi kho
   documents: ["view", "edit", "delete"],
@@ -50,7 +50,7 @@ export const RESOURCE_ACTIONS: Record<string, Action[]> = {
   // Duyệt chi — view = thấy queue duyệt, edit = approve/reject
   "expenses.approve": ["view", "edit"],
   // Tích hợp dịch vụ ngoài — view = xem trạng thái, edit = nối và ngắt kết nối
-  "settings.integrations": ["view", "edit"],
+  "admin.integrations": ["view", "edit"],
   // Payroll HH generator — view chỉ preview, edit = xuất Excel
   "payroll.commissions": ["view", "edit"],
   // Kỳ HH & thưởng — view = xem, edit = tạo hồi tố + xuất Excel
@@ -94,12 +94,12 @@ export const RESOURCES = {
   "costs-report": "Đối chiếu giá vốn",
   "notifications": "Thông báo",
   "admin.users": "Quản lý user",
-  "admin.positions": "Danh mục vị trí",
+  positions: "Vị trí",
   "admin.permissions": "Phân quyền",
   "admin.activity": "Nhật ký hoạt động",
   "help": "Trang trợ giúp / hướng dẫn nhập liệu",
   "documents": "Kho tài liệu (sao kê, hợp đồng, hóa đơn)",
-  "settings.integrations": "Tích hợp dịch vụ ngoài (Google Drive)",
+  "admin.integrations": "Tích hợp dịch vụ ngoài",
 } as const;
 
 export type Resource = keyof typeof RESOURCES;
@@ -141,11 +141,17 @@ export const RESOURCE_GROUPS: { label: string; keys: Resource[] }[] = [
   },
   {
     label: "Tổ chức",
-    keys: ["employees", "departments", "admin.positions"],
+    keys: ["employees", "departments", "positions"],
   },
   {
     label: "Quản trị",
-    keys: ["admin.users", "admin.permissions", "settings.integrations", "documents", "admin.activity", "notifications", "help"],
+    keys: ["admin.users", "admin.permissions", "admin.integrations", "documents", "admin.activity"],
+  },
+  {
+    // Hai mục này không nằm trong nhóm nào trên menu: Thông báo là cái chuông,
+    // Hướng dẫn là mục đứng riêng dưới cùng.
+    label: "Chung",
+    keys: ["notifications", "help"],
   },
 ];
 
@@ -314,11 +320,11 @@ export function resourceOfPath(path: string): Resource | "reports.*" | null {
   if (p === "/reports") return "reports.*";
 
   // Cài đặt
-  if (p.startsWith("/settings/integrations")) return "settings.integrations";
+  if (p.startsWith("/settings/integrations")) return "admin.integrations";
 
   // Admin
   if (p.startsWith("/admin/users")) return "admin.users";
-  if (p.startsWith("/admin/positions")) return "admin.positions";
+  if (p.startsWith("/admin/positions")) return "positions";
   if (p.startsWith("/admin/permissions")) return "admin.permissions";
   if (p.startsWith("/admin/activity")) return "admin.activity";
   if (p.startsWith("/admin/data-checks")) return "admin.activity";
@@ -335,6 +341,12 @@ export function resourceOfPath(path: string): Resource | "reports.*" | null {
   if (p.startsWith("/partners")) return "partners";
   if (p.startsWith("/departments")) return "departments";
   if (p.startsWith("/employees")) return "employees";
+  // Ba trang dưới trước đây không có trong bảng tra, nên middleware bỏ qua không
+  // xét quyền. Trang tự kiểm bằng requirePermission nên không hở, nhưng thiếu ở
+  // đây thì tầng chặn ngoài cùng vô dụng với chúng.
+  if (p.startsWith("/expenses")) return "expenses";
+  if (p.startsWith("/payroll/commissions")) return "payroll.commissions";
+  if (p.startsWith("/periods")) return "periods";
   // /finance/bank-review là tool riêng, nhưng vẫn dùng permission "finance"
   if (p.startsWith("/finance")) return "finance";
   if (p.startsWith("/documents")) return "documents";
