@@ -5,12 +5,15 @@
  *
  * CÁCH LẤY SỐ TỪ EXCEL, khác nhau theo loại chi phí:
  *
- *   KPI CEO  và KPI TPKD  có ba cột: lũy kế, đã thanh toán, còn thanh toán đợt
- *   này. Lấy LŨY KẾ ở dòng cuối cùng của mã đó (cột AD và AH), không cộng cột
- *   "còn thanh toán đợt này". Lý do: có dòng điều chỉnh giảm chỉ ghi vào cột
- *   tổng AM mà không ghi vào cột từng đợt, nên cộng từng đợt sẽ dư. Ví dụ
- *   AVIO_BAML_B.16.11 cộng đợt ra 3.369.452 trong khi lũy kế là 2.969.452,
- *   dư đúng 400.000 của dòng điều chỉnh 445.
+ *   KPI CEO và KPI TPKD có ba cột: lũy kế, đã thanh toán, còn thanh toán đợt
+ *   này. Lấy TỔNG CÁC ĐỢT (cột AF và AJ), vì tiền cũng chi theo từng đợt.
+ *   Đếm trên toàn bộ dữ liệu 27/09/2026 thì app khớp cách này ở 37/37 mã KPI
+ *   CEO và 40/41 mã KPI TPKD, trong khi không mã KPI CEO nào chỉ khớp lũy kế.
+ *
+ *   Ngoại lệ duy nhất: AVIO_BAML_B.16.11 KPI TPKD. Ở mã này cộng đợt ra
+ *   3.369.452 còn lũy kế là 2.969.452, chênh đúng 400.000 của dòng 445, mà
+ *   khoản đó chỉ ghi vào cột tổng AM chứ không vào cột từng đợt. App đang theo
+ *   lũy kế ở mã này. Script vẫn in ra để thấy, chưa chốt bên nào đúng.
  *
  *   Các loại còn lại chỉ có một cột số tiền mỗi đợt, nên cộng các đợt.
  *
@@ -51,8 +54,8 @@ const MAP: Record<string, { nhan: string; cot: number; luyKe?: true }> = {
   cdt_bonus_manager: { nhan: "CĐT thưởng QL", cot: 25 }, // Z
   bonus_sale: { nhan: "CTY thưởng sale", cot: 26 }, // AA
   bonus_manager: { nhan: "CTY thưởng QL", cot: 27 }, // AB
-  kpi_ceo: { nhan: "KPI CEO", cot: 29, luyKe: true }, // AD lũy kế
-  kpi_tpkd: { nhan: "KPI TPKD", cot: 33, luyKe: true }, // AH lũy kế
+  kpi_ceo: { nhan: "KPI CEO", cot: 31, luyKe: true }, // AF còn TT đợt này
+  kpi_tpkd: { nhan: "KPI TPKD", cot: 35, luyKe: true }, // AJ còn TT đợt này
   kpi_admin: { nhan: "KPI Admin", cot: 37 }, // AL
 };
 
@@ -64,7 +67,7 @@ async function main() {
 
   // excel[maSP][cost_type] = số tiền
   const excel = new Map<string, number>();
-  const congDot = new Map<string, number>();
+  const luyKe = new Map<string, number>();
   for (let r = 4; r < grid.length; r++) {
     const row = grid[r];
     if (!row) continue;
@@ -73,15 +76,12 @@ async function main() {
     for (const [loai, m] of Object.entries(MAP)) {
       const k = `${ma}|${loai}`;
       const v = so(row[m.cot]);
+      if (v) excel.set(k, (excel.get(k) ?? 0) + v);
       if (m.luyKe) {
-        // Lũy kế: lấy giá trị ở dòng cuối cùng có số, không cộng dồn.
-        if (v) excel.set(k, v);
-        // Giữ thêm cách cộng từng đợt để đối chiếu chéo, vì hai cách này
-        // không phải lúc nào cũng ra cùng một số trong chính file.
-        const vDot = so(row[m.cot + 2]);
-        if (vDot) congDot.set(k, (congDot.get(k) ?? 0) + vDot);
-      } else if (v) {
-        excel.set(k, (excel.get(k) ?? 0) + v);
+        // Giữ thêm cột lũy kế để đối chiếu chéo: hai cách này không phải lúc
+        // nào cũng ra cùng một số trong chính file.
+        const vLk = so(row[m.cot - 2]);
+        if (vLk) luyKe.set(k, vLk); // dòng cuối cùng có số
       }
     }
   }
@@ -113,17 +113,17 @@ async function main() {
   console.log(`SHEET: ${SHEET}\n`);
   console.log(
     "Ma SP".padEnd(26), "Loai".padEnd(18),
-    "App".padStart(14), "Excel lũy kế".padStart(14), "App - Excel".padStart(14),
+    "App".padStart(14), "Excel cộng đợt".padStart(14), "App - Excel".padStart(14),
   );
   for (const r of lech) {
     const [ma, loai] = r.k.split("|");
-    // Với KPI CEO và KPI TPKD, in thêm cách cộng từng đợt để thấy chính file
-    // đang cho hai số khác nhau ở đâu.
-    const dot = MAP[loai]?.luyKe ? (congDot.get(r.k) ?? 0) : null;
+    // Với KPI CEO và KPI TPKD, in thêm cột lũy kế để thấy chính file đang cho
+    // hai số khác nhau ở đâu.
+    const dot = MAP[loai]?.luyKe ? (luyKe.get(r.k) ?? 0) : null;
     console.log(
       ma.padEnd(26), (MAP[loai]?.nhan ?? loai).padEnd(18),
       tr(r.a).padStart(14), tr(r.e).padStart(14), tr(r.d).padStart(14),
-      dot == null ? "" : `   cộng đợt ${tr(dot).padStart(13)}${Math.abs(dot - r.a) < NGUONG ? "  = app" : ""}`,
+      dot == null ? "" : `   lũy kế ${tr(dot).padStart(13)}${Math.abs(dot - r.a) < NGUONG ? "  = app" : ""}`,
     );
   }
 
