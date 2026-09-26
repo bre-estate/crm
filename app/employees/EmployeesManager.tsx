@@ -183,7 +183,7 @@ export default function EmployeesManager({
         <div>
           <h1 className="text-2xl font-bold">Nhân viên</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Danh sách NVKD, TPKD, CEO, Admin, CTV. Dùng cho dropdown ở form giao dịch và giá vốn.
+            Quản lý danh sách Nhân viên và Cộng tác viên của công ty.
           </p>
         </div>
         <Button
@@ -215,13 +215,13 @@ export default function EmployeesManager({
           />
         </div>
         <div>
-          <label className="block text-xs text-slate-600 mb-1">Phòng KD</label>
+          <label className="block text-xs text-slate-600 mb-1">Phòng ban</label>
           <select
             value={deptFilter}
             onChange={(e) => setDeptFilter(e.target.value)}
             className="input w-52"
           >
-            <option value="">Tất cả phòng</option>
+            <option value="">Tất cả phòng ban</option>
             {departments.map((d) => (
               <option key={d.id} value={String(d.id)}>
                 {d.name}
@@ -338,12 +338,12 @@ export default function EmployeesManager({
         <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold">
-              {editing ? `Sửa — ${editing.name}` : "Thêm nhân viên mới"}
+              {editing ? `Sửa: ${editing.name}` : "Thêm nhân viên mới"}
             </DialogTitle>
           </DialogHeader>
           <form action={submit} className="space-y-3">
             <div className="grid grid-cols-2 gap-4">
-                <Field label="Tên đầy đủ" required>
+                <Field label="Họ tên" required>
                   <input
                     name="name"
                     defaultValue={editing?.name ?? ""}
@@ -366,13 +366,13 @@ export default function EmployeesManager({
                     ))}
                   </select>
                 </Field>
-                <Field label="Phòng KD">
+                <Field label="Phòng ban">
                   <select
                     name="departmentId"
                     defaultValue={editing?.departmentId ?? ""}
                     className="input"
                   >
-                    <option value="">— chưa phân —</option>
+                    <option value="">Chưa phân phòng ban</option>
                     {departments.map((d) => (
                       <option key={d.id} value={d.id}>
                         {d.name}
@@ -400,7 +400,7 @@ export default function EmployeesManager({
                   <SearchableSelect
                     name="aliasOfId"
                     defaultValue={editing?.aliasOfId ?? ""}
-                    emptyOption="— Không đứng tên cho ai —"
+                    emptyOption="Không đứng tên cho ai"
                     placeholder="Gõ tên người bán thật..."
                     options={employees
                       .filter((x) => x.id !== editing?.id && !x.aliasOfId)
@@ -424,9 +424,6 @@ export default function EmployeesManager({
                     <option value="true">Đang làm việc</option>
                     <option value="false">Đã nghỉ việc</option>
                   </select>
-                  <div className="text-[10px] text-slate-500 mt-1">
-                    Đã nghỉ việc → ẩn khỏi dropdown ở form giao dịch/giá vốn.
-                  </div>
                 </Field>
                 <Field label="Ghi chú" full>
                   <textarea
