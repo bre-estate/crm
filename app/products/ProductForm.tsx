@@ -223,10 +223,19 @@ export default function ProductForm({
     const tenPhong = departments.find((d) => d.id === idPhong)?.name ?? "phòng này";
     return [...lam(thuoc, `Nhân viên ${tenPhong}`), ...lam(conLai, "Người khác")];
   }, [employees, departments, departmentIdState]);
+  /**
+   * Chọn NVKD thì điền hộ phòng, nhưng KHÔNG đè lên phòng đã ghi của căn cũ.
+   *
+   * Phòng trên căn là phòng lúc bán, phòng trên hồ sơ nhân sự là phòng hiện tại,
+   * hai thứ khác nhau. Cẩm Giang đã chuyển từ Hồ Gia sang 1 Tỷ, 7 căn cũ của chị
+   * vẫn phải thuộc Hồ Gia. Đè lên là sửa lại lịch sử và làm sai KPI trưởng phòng.
+   */
   const handleSalesPersonChange = (v: string) => {
     setSalesPersonName(v);
     const emp = employees.find((e) => e.name === v);
-    if (emp?.departmentId) setDepartmentIdState(String(emp.departmentId));
+    if (!emp?.departmentId) return;
+    const laCanMoi = !product;
+    if (laCanMoi || !departmentIdState) setDepartmentIdState(String(emp.departmentId));
   };
   // Nếu switch saleType → project hiện tại không còn trong list → reset về option đầu
   useEffect(() => {
