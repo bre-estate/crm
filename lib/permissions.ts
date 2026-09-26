@@ -141,11 +141,11 @@ export const RESOURCE_GROUPS: { label: string; keys: Resource[] }[] = [
   },
   {
     label: "Tổ chức",
-    keys: ["employees", "departments", "admin.positions", "admin.permissions"],
+    keys: ["employees", "departments", "admin.positions"],
   },
   {
     label: "Quản trị",
-    keys: ["admin.users", "settings.integrations", "documents", "admin.activity", "alerts", "help"],
+    keys: ["admin.users", "admin.permissions", "settings.integrations", "documents", "admin.activity", "alerts", "help"],
   },
 ];
 

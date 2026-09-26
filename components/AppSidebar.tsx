@@ -108,13 +108,13 @@ const NAV: NavEntry[] = [
       { href: "/employees", label: "Nhân viên", resource: "employees" },
       { href: "/departments", label: "Phòng ban", resource: "departments" },
       { href: "/admin/positions", label: "Vị trí", resource: "admin.positions" },
-      { href: "/admin/permissions", label: "Phân quyền", resource: "admin.permissions" },
     ],
   },
   {
     label: "Quản trị",
     children: [
       { href: "/admin/users", label: "Người dùng", ownerOnly: true },
+      { href: "/admin/permissions", label: "Phân quyền", resource: "admin.permissions" },
       { href: "/settings/integrations", label: "Tích hợp", resource: "settings.integrations" },
       { href: "/documents", label: "Kho tài liệu", resource: "documents" },
       { href: "/admin/data-checks", label: "Kiểm tra dữ liệu", ownerOnly: true },
