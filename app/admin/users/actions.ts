@@ -8,14 +8,14 @@ import { requirePermission } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import type { Action, Role } from "@/lib/permissions";
-import { layQuyenVaiTro } from "@/lib/vai-tro";
+import { layQuyenViTri } from "@/lib/vi-tri";
 
 /**
  * Vai trò hợp lệ: hai vai trò đặc biệt cộng với những vai trò có trong database.
  * Đọc từ database chứ không ghi cứng, vì tạo thêm vai trò được ở trang Vai trò và quyền.
  */
 async function vaiTroHopLe(): Promise<Set<string>> {
-  return new Set(["owner", "custom", ...Object.keys(await layQuyenVaiTro())]);
+  return new Set(["owner", "custom", ...Object.keys(await layQuyenViTri())]);
 }
 
 function parsePermissions(formData: FormData): Record<string, Action[]> {

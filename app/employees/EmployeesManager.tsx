@@ -15,15 +15,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  VI_TRI,
-  MAU_VI_TRI,
-  VI_TRI_GOI_Y,
-  LOAI_HOP_DONG,
-  maKhoiGoc,
-  xepCay,
-  type ViTri,
-} from "@/lib/to-chuc";
+import { LOAI_HOP_DONG, mauViTri, maKhoiGoc, xepCay } from "@/lib/to-chuc";
+
+/** Vị trí đọc từ bảng positions, truyền xuống từ máy chủ. */
+type ViTri = { code: string; label: string; khoi: string | null };
 
 type Employee = {
   id: number;
@@ -60,23 +55,25 @@ function khoaMa(code: string | null): [number, number] {
 type Props = {
   employees: Employee[];
   departments: Department[];
+  viTri: ViTri[];
   onCreate: (fd: FormData) => Promise<{ error: string } | void>;
   onUpdate: (id: number, fd: FormData) => Promise<{ error: string } | void>;
   onDelete: (id: number) => Promise<{ error: string } | void>;
 };
 
-// Nhãn, màu và danh sách vị trí nằm ở lib/to-chuc.ts, dùng chung với form và kiểm tra dữ liệu.
-const POSITION_LABEL: Record<string, string> = VI_TRI;
-const POSITION_COLOR: Record<string, string> = MAU_VI_TRI;
-
 export default function EmployeesManager({
   employees,
   departments,
+  viTri,
   onCreate,
   onUpdate,
   onDelete,
 }: Props) {
   const router = useRouter();
+  const nhanViTri = useMemo(
+    () => Object.fromEntries(viTri.map((v) => [v.code, v.label])) as Record<string, string>,
+    [viTri],
+  );
   const [pending, start] = useTransition();
   const [editing, setEditing] = useState<Employee | null>(null);
   const [creating, setCreating] = useState(false);
@@ -97,7 +94,7 @@ export default function EmployeesManager({
       }
       if (!s) return true;
       const hay =
-        `${e.code ?? ""} ${e.name} ${e.email ?? ""} ${e.phone ?? ""} ${POSITION_LABEL[e.position] ?? e.position}`.toLowerCase();
+        `${e.code ?? ""} ${e.name} ${e.email ?? ""} ${e.phone ?? ""} ${nhanViTri[e.position] ?? e.position}`.toLowerCase();
       return hay.includes(s);
     });
   }, [employees, q, deptFilter, showInactive]);
@@ -266,9 +263,9 @@ export default function EmployeesManager({
                 </td>
                 <td className="p-3">
                   <span
-                    className={`text-xs px-2 py-1 rounded-md whitespace-nowrap ${POSITION_COLOR[e.position] ?? "bg-slate-100 text-slate-700"}`}
+                    className={`text-xs px-2 py-1 rounded-md whitespace-nowrap ${mauViTri(e.position)}`}
                   >
-                    {POSITION_LABEL[e.position] ?? e.position}
+                    {nhanViTri[e.position] ?? e.position}
                   </span>
                   {e.contractType === "hd_dich_vu" && (
                     <div className="text-[11px] text-slate-500 mt-1">Cộng tác viên</div>
@@ -341,8 +338,9 @@ export default function EmployeesManager({
                 <PhongVaViTri
                   key={editing?.id ?? "moi"}
                   departments={departments}
+                  viTri={viTri}
                   phongBanDau={editing?.departmentId ?? null}
-                  viTriBanDau={(editing?.position as ViTri) ?? "nvkd"}
+                  viTriBanDau={editing?.position ?? viTri[0]?.code ?? "nvkd"}
                 />
                 <Field label="Loại hợp đồng">
                   <select
@@ -385,7 +383,7 @@ export default function EmployeesManager({
                       .map((x) => ({
                         value: x.id,
                         label: x.name,
-                        sublabel: `${POSITION_LABEL[x.position] ?? x.position}${x.departmentName ? " · " + x.departmentName : ""}`,
+                        sublabel: `${nhanViTri[x.position] ?? x.position}${x.departmentName ? " · " + x.departmentName : ""}`,
                       }))}
                   />
                   <div className="text-[10px] text-slate-500 mt-1">
@@ -470,17 +468,19 @@ function Field({
  */
 function PhongVaViTri({
   departments,
+  viTri,
   phongBanDau,
   viTriBanDau,
 }: {
   departments: Department[];
+  viTri: ViTri[];
   phongBanDau: number | null;
-  viTriBanDau: ViTri;
+  viTriBanDau: string;
 }) {
   const [phong, setPhong] = useState<string>(phongBanDau ? String(phongBanDau) : "");
   const khoi = maKhoiGoc(phong ? Number(phong) : null, departments);
-  const goiY: ViTri[] = khoi ? (VI_TRI_GOI_Y[khoi] ?? []) : [];
-  const conLai = (Object.keys(VI_TRI) as ViTri[]).filter((v) => !goiY.includes(v));
+  const goiY = khoi ? viTri.filter((v) => v.khoi === khoi) : [];
+  const conLai = viTri.filter((v) => !goiY.includes(v));
 
   return (
     <>
@@ -495,35 +495,37 @@ function PhongVaViTri({
           {xepCay(departments).map(({ node, sau }) => (
             <option key={node.id} value={String(node.id)}>
               {"  ".repeat(sau)}
-              {sau > 0 ? "└ " : ""}
+              {sau > 0 ? "\u2514 " : ""}
               {node.name}
             </option>
           ))}
         </select>
       </Field>
-      <Field label="Vị trí" required>
+      <Field label="V\u1ecb tr\u00ed" required>
         <select name="position" defaultValue={viTriBanDau} className="input" required>
           {goiY.length > 0 ? (
             <>
-              <optgroup label="Vị trí của phòng này">
+              <optgroup label="V\u1ecb tr\u00ed c\u1ee7a ph\u00f2ng n\u00e0y">
                 {goiY.map((v) => (
-                  <option key={v} value={v}>
-                    {VI_TRI[v]}
+                  <option key={v.code} value={v.code}>
+                    {v.label}
                   </option>
                 ))}
               </optgroup>
-              <optgroup label="Vị trí khác">
-                {conLai.map((v) => (
-                  <option key={v} value={v}>
-                    {VI_TRI[v]}
-                  </option>
-                ))}
-              </optgroup>
+              {conLai.length > 0 && (
+                <optgroup label="V\u1ecb tr\u00ed kh\u00e1c">
+                  {conLai.map((v) => (
+                    <option key={v.code} value={v.code}>
+                      {v.label}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </>
           ) : (
-            (Object.keys(VI_TRI) as ViTri[]).map((v) => (
-              <option key={v} value={v}>
-                {VI_TRI[v]}
+            viTri.map((v) => (
+              <option key={v.code} value={v.code}>
+                {v.label}
               </option>
             ))
           )}

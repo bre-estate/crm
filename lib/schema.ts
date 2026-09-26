@@ -446,24 +446,31 @@ export const financialTransactions = pgTable("financial_transactions", {
 
 // ===================== USER PERMISSIONS =====================
 /**
- * Quyền của từng vai trò. Trước đây nằm cứng trong lib/permissions.ts, giờ ở đây
- * để chủ tài khoản tự sửa trong app. "owner" luôn toàn quyền nên không có hàng,
- * "custom" là quyền riêng từng người nên nằm ở user_permissions.
+ * Vị trí công việc: vừa là danh mục chức danh cho hồ sơ nhân sự, vừa là nơi giữ
+ * quyền truy cập. Trước đây tách làm hai thứ song song (employees.position và
+ * vai trò trong user_permissions) tuy cùng mô tả một việc, nên mỗi lần thêm chức
+ * danh phải nhớ sửa hai chỗ.
+ *
+ * "owner" và "custom" không có hàng ở đây: owner luôn toàn quyền, custom là quyền
+ * riêng của từng tài khoản và nằm ở user_permissions.
  */
-export const rolePermissions = pgTable("role_permissions", {
-  role: text("role").primaryKey(),
+export const positions = pgTable("positions", {
+  code: text("code").primaryKey(),
   label: text("label").notNull(),
+  /** Mã phòng gốc gợi ý (BLD, KD, VP, MKT), để form nhân sự lọc vị trí theo phòng. */
+  khoi: text("khoi"),
   permissions: jsonb("permissions").notNull().default({}),
-  /** Vai trò dựng sẵn: sửa được quyền nhưng không xóa được. */
+  /** Vị trí dựng sẵn: sửa được nhưng không xóa được. */
   builtin: boolean("builtin").notNull().default(false),
+  thuTu: integer("thu_tu").notNull().default(100),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const userPermissions = pgTable("user_permissions", {
   email: text("email").primaryKey(),
   fullName: text("full_name"),
-  // Không dùng enum cố định vì vai trò tạo thêm được trong trang Vai trò.
-  // "owner" và "custom" là hai giá trị đặc biệt, còn lại tra ở role_permissions.
+  // Vai trò chính là mã vị trí. Hai giá trị đặc biệt: "owner" toàn quyền,
+  // "custom" dùng quyền riêng ghi ngay ở cột permissions bên dưới.
   role: text("role").notNull().default("custom"),
   // JSONB: { "resource_key": ["view", "edit", "delete"] }
   permissions: jsonb("permissions").notNull().default({}),
@@ -492,13 +499,10 @@ export const employees = pgTable("employees", {
   name: text("name").notNull(),
   email: text("email"),
   phone: text("phone"),
-  // Danh sách vị trí ở lib/to-chuc.ts, thêm mới thì sửa ở đó và ở đây.
-  // Không có "ctv": cộng tác viên là loại hợp đồng, xem contractType.
-  position: text("position", {
-    enum: ["ceo", "tpkd", "nvkd", "admin", "hr", "accountant", "content_writer", "video_editor", "cameraman"],
-  })
-    .notNull()
-    .default("nvkd"),
+  // Mã vị trí, tra ở bảng positions. Không ràng buộc enum vì thêm vị trí được
+  // trong trang Vị trí và quyền. Không có "ctv": cộng tác viên là loại hợp đồng,
+  // xem contractType.
+  position: text("position").notNull().default("nvkd"),
   departmentId: integer("department_id").references(() => departments.id),
   active: boolean("active").default(true),
   note: text("note"),

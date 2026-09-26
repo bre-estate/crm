@@ -40,7 +40,7 @@ export const RESOURCE_ACTIONS: Record<string, Action[]> = {
   employees: ["view", "edit", "delete"],
   expenses: ["view", "edit", "delete"],
   "admin.users": ["view", "edit", "delete"],
-  "admin.roles": ["view", "edit"],
+  "admin.positions": ["view", "edit"],
   // Tài liệu: view = xem và tải về, edit = tải lên, delete = xóa khỏi kho
   documents: ["view", "edit", "delete"],
   // View + Edit (không xóa)
@@ -95,7 +95,7 @@ export const RESOURCES = {
   "costs-report": "Đối chiếu giá vốn",
   "alerts": "Cảnh báo",
   "admin.users": "Quản lý user",
-  "admin.roles": "Vai trò và quyền",
+  "admin.positions": "Vị trí và quyền",
   "admin.activity": "Nhật ký hoạt động",
   "help": "Trang trợ giúp / hướng dẫn nhập liệu",
   "documents": "Kho tài liệu (sao kê, hợp đồng, hóa đơn)",
@@ -145,7 +145,7 @@ export const RESOURCE_GROUPS: { label: string; keys: Resource[] }[] = [
   },
   {
     label: "Hệ thống",
-    keys: ["alerts", "documents", "settings.integrations", "admin.users", "admin.roles", "admin.activity", "help"],
+    keys: ["alerts", "documents", "settings.integrations", "admin.users", "admin.positions", "admin.activity", "help"],
   },
 ];
 
@@ -318,7 +318,7 @@ export function resourceOfPath(path: string): Resource | "reports.*" | null {
 
   // Admin
   if (p.startsWith("/admin/users")) return "admin.users";
-  if (p.startsWith("/admin/roles")) return "admin.roles";
+  if (p.startsWith("/admin/positions")) return "admin.positions";
   if (p.startsWith("/admin/activity")) return "admin.activity";
   if (p.startsWith("/admin/data-checks")) return "admin.activity";
 

@@ -7,6 +7,7 @@ import {
   deleteEmployeeNoRedirect,
 } from "@/lib/actions/employees";
 import EmployeesManager from "./EmployeesManager";
+import { layViTriGon } from "@/lib/vi-tri";
 import { getOwnerEmail } from "@/lib/auth";
 import { notFound } from "next/navigation";
 
@@ -15,7 +16,7 @@ export const dynamic = "force-dynamic";
 export default async function EmployeesPage() {
   // Owner-only — lộ lương/thông tin cá nhân, không cho staff xem
   if (!(await getOwnerEmail())) notFound();
-  const [rows, depts] = await Promise.all([
+  const [rows, depts, viTri] = await Promise.all([
     db
       .select({
         id: employees.id,
@@ -35,12 +36,14 @@ export default async function EmployeesPage() {
       .leftJoin(departments, eq(employees.departmentId, departments.id))
       .orderBy(asc(employees.position), asc(employees.name)),
     db.select().from(departments).orderBy(asc(departments.name)),
+    layViTriGon(),
   ]);
 
   return (
     <EmployeesManager
       employees={rows}
       departments={depts}
+      viTri={viTri}
       onCreate={async (fd) => {
         "use server";
         return await createEmployeeNoRedirect(fd);

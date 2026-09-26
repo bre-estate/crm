@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { userPermissions } from "@/lib/schema";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES, type Action, type Role } from "@/lib/permissions";
-import { layNhanVaiTro, layQuyenVaiTro } from "@/lib/vai-tro";
+import { layNhanViTri, layQuyenViTri } from "@/lib/vi-tri";
 import { desc } from "drizzle-orm";
 import Link from "next/link";
 import UsersTable from "./UsersTable";
@@ -14,8 +14,8 @@ export default async function AdminUsersPage() {
 
   const [rows, nhanVaiTro, quyenVaiTro] = await Promise.all([
     db.select().from(userPermissions).orderBy(desc(userPermissions.invitedAt)),
-    layNhanVaiTro(),
-    layQuyenVaiTro(),
+    layNhanViTri(),
+    layQuyenViTri(),
   ]);
 
   return (
@@ -32,7 +32,7 @@ export default async function AdminUsersPage() {
             <p className="text-sm text-slate-500 mt-1">
               Thêm email vào đây là người đó đăng nhập bằng Google với email đó là vào
               được, không cần gửi lời mời. Muốn đổi quyền cho cả một vai trò thì sang{" "}
-              <Link href="/admin/roles" className="text-blue-600 hover:underline">
+              <Link href="/admin/positions" className="text-blue-600 hover:underline">
                 Vai trò và quyền
               </Link>
               .

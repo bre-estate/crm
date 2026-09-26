@@ -107,7 +107,7 @@ const NAV: NavEntry[] = [
     label: "Hệ thống",
     children: [
       { href: "/admin/users", label: "Người dùng", ownerOnly: true },
-      { href: "/admin/roles", label: "Vai trò và quyền", resource: "admin.roles" },
+      { href: "/admin/positions", label: "Vị trí và quyền", resource: "admin.positions" },
       { href: "/settings/integrations", label: "Tích hợp", resource: "settings.integrations" },
       { href: "/admin/data-checks", label: "Kiểm tra dữ liệu", ownerOnly: true },
       { href: "/admin/activity", label: "Lịch sử hoạt động", resource: "admin.activity" },

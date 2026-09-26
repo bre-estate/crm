@@ -12,7 +12,7 @@ import {
   type Role,
   type QuyenVaiTro,
 } from "@/lib/permissions";
-import { layQuyenVaiTro } from "@/lib/vai-tro";
+import { layQuyenViTri } from "@/lib/vi-tri";
 
 export type CurrentUser = {
   email: string;
@@ -57,7 +57,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       fullName: row.fullName,
       role: row.role as Role,
       customPermissions: (row.permissions as Record<string, Action[]>) ?? {},
-      quyenVaiTro: await layQuyenVaiTro(),
+      quyenVaiTro: await layQuyenViTri(),
       active: row.active,
     };
   } catch {

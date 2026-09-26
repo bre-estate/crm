@@ -8,13 +8,16 @@ import { employees } from "@/lib/schema";
 import { eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { MA_VI_TRI, MA_LOAI_HOP_DONG } from "@/lib/to-chuc";
+import { MA_LOAI_HOP_DONG } from "@/lib/to-chuc";
+import { layQuyenViTri } from "@/lib/vi-tri";
 
 const EmployeeSchema = z.object({
   name: z.string().trim().min(1, "Tên bắt buộc"),
   email: z.string().trim().optional().nullable(),
   phone: z.string().trim().optional().nullable(),
-  position: z.enum(MA_VI_TRI),
+  // Không dùng enum cố định: vị trí nằm ở bảng positions và thêm được trong app.
+  // Kiểm tra mã có thật ở dưới, sau khi đọc danh sách từ database.
+  position: z.string().trim().min(1, "Vị trí bắt buộc"),
   contractType: z.enum(MA_LOAI_HOP_DONG).nullable().optional(),
   departmentId: z.coerce.number().int().nullable().optional(),
   aliasOfId: z.coerce.number().int().nullable().optional(),
@@ -33,10 +36,17 @@ function formToObject(fd: FormData): Record<string, unknown> {
   return obj;
 }
 
+/** Vị trí phải có thật trong bảng positions, không thì hồ sơ trỏ vào chỗ trống. */
+async function soatViTri(ma: string) {
+  const co = await layQuyenViTri();
+  if (!(ma in co)) throw new Error("Vị trí không hợp lệ, chọn lại từ danh sách.");
+}
+
 async function _createEmployeeNoRedirect(fd: FormData) {
   await requirePermission("employees", "edit");
   const raw = formToObject(fd);
   const data = EmployeeSchema.parse(raw);
+  await soatViTri(data.position);
   await db.insert(employees).values({
     ...data,
     email: data.email || null,
@@ -52,6 +62,7 @@ async function _updateEmployeeNoRedirect(id: number, fd: FormData) {
   await requirePermission("employees", "edit");
   const raw = formToObject(fd);
   const data = EmployeeSchema.parse(raw);
+  await soatViTri(data.position);
   await db
     .update(employees)
     .set({
