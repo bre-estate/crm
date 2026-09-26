@@ -31,6 +31,20 @@
  *   gồm VAT, đợt sau trừ lại 1.627.273. Đó là điều chỉnh phía CHI TIỀN, không
  *   phải điều chỉnh nghĩa vụ, nên không được trừ vào số đối chiếu.
  *
+ * BA DÒNG LẤY CỘT AM THAY VÌ CỘT KHOẢN
+ *
+ *   Toàn sheet 449 dòng thì 446 dòng có cột AM đúng bằng tổng các cột khoản.
+ *   Ba dòng còn lại không, và ở cả ba thì AM trùng khít cột AO "Số tiền thanh
+ *   toán", tức AM mới là số thật sự chi. App cũng đang theo AM.
+ *
+ *   Kiểm ở mức tổng: tổng cột AM 6.639.516.225, trừ Thưởng booking 46.540.000
+ *   mà app chưa có, cộng lại 8.136.365 phần VAT của 5 căn FENICA, ra
+ *   6.601.112.590 so với tổng app 6.601.112.561, chỉ chênh 29 đồng làm tròn.
+ *
+ *   Không đổi cả script sang đọc AM được, vì 72 dòng chứa từ hai loại chi phí
+ *   trở lên và AM gộp chung, không tách ra theo loại được. Nên chỉ ghi đè đúng
+ *   ba dòng này, cả ba đều chỉ có một loại.
+ *
  * Chỉ đọc, không ghi gì.
  *   npx tsx --env-file=.env.local scripts/doi-chieu-gia-von.ts
  */
@@ -61,6 +75,28 @@ const MAP: Record<string, { nhan: string; cot: number; luyKe?: true }> = {
   kpi_admin: { nhan: "KPI Admin", cot: 37 }, // AL
 };
 
+/**
+ * Dòng Excel → loại chi phí lấy cột AM thay cho cột khoản.
+ * Thêm dòng mới vào đây khi kế toán xác nhận, script sẽ cảnh báo nếu gặp dòng
+ * lệch mà chưa khai ở bảng này.
+ */
+const GHI_DE_AM: Record<number, { loai: string; vi_sao: string }> = {
+  245: { loai: "kpi_admin", vi_sao: "AL 253.401 nhưng AM và AO đều 231.559, cột AK % để 0" },
+  246: { loai: "kpi_admin", vi_sao: "AL 243.575 nhưng AM và AO đều 240.918, cột AK % để 0" },
+  445: { loai: "kpi_tpkd", vi_sao: "điều chỉnh -400.000 chỉ ghi vào AM, bỏ trống cột AJ" },
+};
+
+/**
+ * Chênh lệch đã tra ra nguyên nhân, không cần xử lý nữa. Vẫn in ra bảng chứ
+ * không lọc bỏ, để đừng giấu mất số thật, chỉ đánh dấu để khỏi soi lại.
+ */
+const DA_GIAI_THICH: Record<string, string> = Object.fromEntries(
+  ["B.07-13", "A.08-06", "A.17-11", "B.07-12", "B.08-04"].map((c) => [
+    `FENI_DXFE_${c}|cdt_bonus_sale`,
+    "VAT chi dư, app đúng",
+  ]),
+);
+
 async function main() {
   const wb = XLSX.readFile(FILE, { cellDates: true });
   const grid = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[SHEET], {
@@ -70,14 +106,25 @@ async function main() {
   // excel[maSP][cost_type] = số tiền
   const excel = new Map<string, number>();
   const luyKe = new Map<string, number>();
+  const canhBao: string[] = [];
   for (let r = 4; r < grid.length; r++) {
     const row = grid[r];
     if (!row) continue;
     const ma = String(row[3] ?? "").trim();
     if (!ma) continue;
+
+    const ghiDe = GHI_DE_AM[r + 1];
+    // Dòng lệch mà chưa khai trong bảng ghi đè thì phải kêu lên, không im lặng bỏ qua.
+    const congKhoan = Object.values(MAP).reduce((a, m) => a + so(row[m.cot]), 0);
+    if (!ghiDe && Math.abs(so(row[38]) - congKhoan) >= NGUONG) {
+      canhBao.push(
+        `  dòng ${r + 1} ${ma}: AM ${tr(so(row[38]))} khác tổng khoản ${tr(congKhoan)}`,
+      );
+    }
+
     for (const [loai, m] of Object.entries(MAP)) {
       const k = `${ma}|${loai}`;
-      const v = so(row[m.cot]);
+      const v = ghiDe ? (ghiDe.loai === loai ? so(row[38]) : 0) : so(row[m.cot]);
       if (v) excel.set(k, (excel.get(k) ?? 0) + v);
       if (m.luyKe) {
         // Giữ thêm cột lũy kế để đối chiếu chéo: hai cách này không phải lúc
@@ -109,10 +156,23 @@ async function main() {
     .map((k) => ({ k, a: app.get(k) ?? 0, e: excel.get(k) ?? 0 }))
     .map((r) => ({ ...r, d: r.a - r.e }))
     .filter((r) => Math.abs(r.d) >= NGUONG)
-    .sort((x, y) => Math.abs(y.d) - Math.abs(x.d));
+    .sort((x, y) => {
+      // Chưa rõ nguyên nhân lên trước, trong mỗi nhóm thì số lớn lên trước.
+      const ga = DA_GIAI_THICH[x.k] ? 1 : 0;
+      const gb = DA_GIAI_THICH[y.k] ? 1 : 0;
+      return ga - gb || Math.abs(y.d) - Math.abs(x.d);
+    });
 
   console.log(`FILE : ${FILE}`);
-  console.log(`SHEET: ${SHEET}\n`);
+  console.log(`SHEET: ${SHEET}`);
+  console.log(
+    `Lấy cột AM thay cột khoản ở ${Object.keys(GHI_DE_AM).length} dòng: ${Object.keys(GHI_DE_AM).join(", ")}\n`,
+  );
+  if (canhBao.length) {
+    console.log("CẢNH BÁO: có dòng AM khác tổng khoản mà chưa khai trong GHI_DE_AM");
+    for (const c of canhBao) console.log(c);
+    console.log("");
+  }
   console.log(
     "Ma SP".padEnd(26), "Loai".padEnd(18),
     "App".padStart(14), "Excel cộng đợt".padStart(14), "App - Excel".padStart(14),
@@ -125,13 +185,25 @@ async function main() {
     console.log(
       ma.padEnd(26), (MAP[loai]?.nhan ?? loai).padEnd(18),
       tr(r.a).padStart(14), tr(r.e).padStart(14), tr(r.d).padStart(14),
-      dot == null ? "" : `   lũy kế ${tr(dot).padStart(13)}${Math.abs(dot - r.a) < NGUONG ? "  = app" : ""}`,
+      DA_GIAI_THICH[r.k]
+        ? `   ${DA_GIAI_THICH[r.k]}`
+        : dot == null
+          ? ""
+          : `   lũy kế ${tr(dot).padStart(13)}${Math.abs(dot - r.a) < NGUONG ? "  = app" : ""}`,
     );
   }
 
   const tongApp = [...app.values()].reduce((a, b) => a + b, 0);
   const tongExcel = [...excel.values()].reduce((a, b) => a + b, 0);
-  console.log(`\n${lech.length} dòng lệch từ ${NGUONG} đồng trở lên.`);
+  const chuaRo = lech.filter((r) => !DA_GIAI_THICH[r.k]);
+  const daRo = lech.filter((r) => DA_GIAI_THICH[r.k]);
+  console.log(`\n${lech.length} dòng lệch từ ${NGUONG} đồng trở lên:`);
+  console.log(
+    `  chưa rõ nguyên nhân ${chuaRo.length} dòng, ${tr(chuaRo.reduce((a, b) => a + b.d, 0))}`,
+  );
+  console.log(
+    `  đã giải thích       ${daRo.length} dòng, ${tr(daRo.reduce((a, b) => a + b.d, 0))}`,
+  );
   console.log(`Tổng app   ${tr(tongApp)}`);
   console.log(`Tổng excel ${tr(tongExcel)}`);
   console.log(`Chênh      ${tr(tongApp - tongExcel)}`);
