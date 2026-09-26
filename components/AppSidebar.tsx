@@ -61,7 +61,7 @@ const isGroup = (n: NavEntry): n is NavGroup => "children" in n;
 const NAV: NavEntry[] = [
   { href: "/", label: "Tổng quan" },
   {
-    label: "Danh mục",
+    label: "Nguồn hàng",
     children: [
       { href: "/partners", label: "Đối tác", resource: "partners" },
       { href: "/projects", label: "Dự án", resource: "products" },
@@ -98,7 +98,6 @@ const NAV: NavEntry[] = [
       { href: "/finance/nkc-review", label: "Sổ NKC", resource: "finance" },
       { href: "/finance/transactions", label: "Giao dịch tài chính", resource: "finance" },
       { href: "/finance", label: "Vốn góp và tài sản", resource: "finance", exact: true },
-      { href: "/documents", label: "Kho tài liệu", resource: "documents" },
     ],
   },
   // Bốn trang này đi liền một mạch: có người, xếp vào phòng, gán vị trí, rồi
@@ -110,13 +109,14 @@ const NAV: NavEntry[] = [
       { href: "/departments", label: "Phòng ban", resource: "departments" },
       { href: "/admin/positions", label: "Vị trí", resource: "admin.positions" },
       { href: "/admin/permissions", label: "Phân quyền", resource: "admin.permissions" },
-      { href: "/admin/users", label: "Người dùng", ownerOnly: true },
     ],
   },
   {
-    label: "Hệ thống",
+    label: "Quản trị",
     children: [
+      { href: "/admin/users", label: "Người dùng", ownerOnly: true },
       { href: "/settings/integrations", label: "Tích hợp", resource: "settings.integrations" },
+      { href: "/documents", label: "Kho tài liệu", resource: "documents" },
       { href: "/admin/data-checks", label: "Kiểm tra dữ liệu", ownerOnly: true },
       { href: "/admin/activity", label: "Lịch sử hoạt động", resource: "admin.activity" },
       { href: "/admin/chat-analytics", label: "Phân tích chatbot", ownerOnly: true },

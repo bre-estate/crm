@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { xepCay, congDonCay } from "@/lib/to-chuc";
+import { xepCay, congDonCay, SAU_TOI_DA } from "@/lib/to-chuc";
 
 type Department = {
   id: number;
@@ -113,8 +113,7 @@ export default function DepartmentsManager({
         <div>
           <h1 className="text-2xl font-bold">Phòng ban</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Phòng lớn nằm ngoài cùng, đội nằm bên trong. Con số của phòng lớn đã gồm cả các
-            đội bên trong nó. Gán người vào phòng ở trang{" "}
+            Số liệu của phòng đã gồm cả các đội bên trong. Gán người vào phòng ở trang{" "}
             <Link href="/employees" className="text-blue-600 hover:underline">
               Nhân viên
             </Link>
@@ -177,14 +176,16 @@ export default function DepartmentsManager({
                 </div>
 
                 <div className="w-44 flex justify-end gap-3 whitespace-nowrap text-sm">
-                  <button
-                    type="button"
-                    onClick={() => setDangLam({ kieu: "themCon", cha: d })}
-                    disabled={pending}
-                    className="text-slate-600 hover:underline disabled:opacity-50"
-                  >
-                    + Đội con
-                  </button>
+                  {sau < SAU_TOI_DA && (
+                    <button
+                      type="button"
+                      onClick={() => setDangLam({ kieu: "themCon", cha: d })}
+                      disabled={pending}
+                      className="text-slate-600 hover:underline disabled:opacity-50"
+                    >
+                      + Thêm đội
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => setDangLam({ kieu: "sua", phong: d })}

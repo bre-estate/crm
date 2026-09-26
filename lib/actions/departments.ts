@@ -8,6 +8,47 @@ import { departments, products, employees } from "@/lib/schema";
 import { eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { SAU_TOI_DA, sauCuaPhong } from "@/lib/to-chuc";
+
+/**
+ * Cây phòng ban chỉ cho ba cấp: phòng lớn, đội, đội nhỏ trong đội.
+ * Đặt một phòng vào chỗ quá sâu thì chặn ngay ở đây chứ không chỉ ẩn nút trên
+ * giao diện, vì lệnh còn gọi được từ chỗ khác.
+ */
+async function soatDoSau(parentId: number | null, tuChon?: { doiPhong: number }) {
+  if (parentId == null) return;
+  const tatCa = await db
+    .select({ id: departments.id, parentId: departments.parentId, name: departments.name, code: departments.code })
+    .from(departments);
+  const sauCha = sauCuaPhong(parentId, tatCa);
+  if (sauCha + 1 > SAU_TOI_DA) {
+    throw new Error(
+      `Chỉ xếp được ${SAU_TOI_DA + 1} cấp: phòng ban, đội, rồi đội nhỏ trong đội. Chỗ bạn chọn đã là cấp cuối.`,
+    );
+  }
+  // Khi chuyển chỗ, cả nhánh bên dưới cũng bị đẩy xuống theo.
+  if (tuChon) {
+    const sauNhanh = sauNhanhDuoi(tuChon.doiPhong, tatCa);
+    if (sauCha + 1 + sauNhanh > SAU_TOI_DA) {
+      throw new Error(
+        "Chuyển vào đây thì các đội bên trong bị đẩy xuống quá sâu. Chuyển chúng ra trước.",
+      );
+    }
+  }
+}
+
+/** Nhánh dưới một phòng còn sâu thêm mấy cấp nữa. */
+function sauNhanhDuoi(
+  id: number,
+  ds: { id: number; parentId: number | null }[],
+  daQua = new Set<number>(),
+): number {
+  if (daQua.has(id)) return 0;
+  daQua.add(id);
+  const con = ds.filter((d) => d.parentId === id);
+  if (con.length === 0) return 0;
+  return 1 + Math.max(...con.map((c) => sauNhanhDuoi(c.id, ds, daQua)));
+}
 
 const DeptSchema = z.object({
   code: z.string().trim().min(1, "Mã phòng bắt buộc").max(16),
@@ -28,6 +69,7 @@ async function _createDepartmentNoRedirect(fd: FormData) {
   await requirePermission("departments", "edit");
   const raw = formToObject(fd);
   const data = DeptSchema.parse(raw);
+  await soatDoSau(data.parentId ?? null);
   await db.insert(departments).values({
     code: data.code,
     name: data.name,
@@ -42,6 +84,8 @@ async function _updateDepartmentNoRedirect(id: number, fd: FormData) {
   await requirePermission("departments", "edit");
   const raw = formToObject(fd);
   const data = DeptSchema.parse(raw);
+
+  await soatDoSau(data.parentId ?? null, { doiPhong: id });
 
   // Chặn vòng lặp: phòng không được nhận chính nó hay một đội con của nó làm cha,
   // không thì cây phòng ban tự quay vòng và mọi chỗ duyệt cây sẽ treo.

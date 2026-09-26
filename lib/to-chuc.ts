@@ -123,6 +123,27 @@ export function congDonCay(ds: NodePhong[], rieng: Map<number, number>): Map<num
   return ra;
 }
 
+/**
+ * Độ sâu lớn nhất của một phòng: 0 là phòng lớn, 1 là đội, 2 là đội nhỏ trong đội.
+ * Sâu hơn nữa thì bảng thụt lề quá xa và cũng không ai cần tới cấp thứ tư.
+ */
+export const SAU_TOI_DA = 2;
+
+/** Phòng này đang nằm ở cấp mấy. Phòng lớn là 0. */
+export function sauCuaPhong(id: number | null, ds: NodePhong[]): number {
+  let sau = 0;
+  let hienTai = ds.find((d) => d.id === id) ?? null;
+  const daQua = new Set<number>();
+  while (hienTai?.parentId != null && !daQua.has(hienTai.id)) {
+    daQua.add(hienTai.id);
+    const cha = ds.find((d) => d.id === hienTai!.parentId);
+    if (!cha) break;
+    hienTai = cha;
+    sau++;
+  }
+  return sau;
+}
+
 /** Mã của phòng gốc chứa phòng này, để tra vị trí gợi ý. */
 export function maKhoiGoc(id: number | null, ds: NodePhong[]): string | null {
   let hienTai = ds.find((d) => d.id === id) ?? null;

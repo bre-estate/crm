@@ -108,7 +108,7 @@ export type Resource = keyof typeof RESOURCES;
 /** Xếp theo đúng thứ tự các nhóm trên menu, để tick quyền và đi menu thấy giống nhau. */
 export const RESOURCE_GROUPS: { label: string; keys: Resource[] }[] = [
   {
-    label: "Danh mục",
+    label: "Nguồn hàng",
     keys: ["partners"],
   },
   {
@@ -137,15 +137,15 @@ export const RESOURCE_GROUPS: { label: string; keys: Resource[] }[] = [
   },
   {
     label: "Kế toán",
-    keys: ["periods", "payroll.commissions", "expenses", "expenses.approve", "finance", "documents"],
+    keys: ["periods", "payroll.commissions", "expenses", "expenses.approve", "finance"],
   },
   {
-    label: "Tổ chức và phân quyền",
-    keys: ["employees", "departments", "admin.positions", "admin.permissions", "admin.users"],
+    label: "Tổ chức",
+    keys: ["employees", "departments", "admin.positions", "admin.permissions"],
   },
   {
-    label: "Hệ thống",
-    keys: ["alerts", "settings.integrations", "admin.activity", "help"],
+    label: "Quản trị",
+    keys: ["admin.users", "settings.integrations", "documents", "admin.activity", "alerts", "help"],
   },
 ];
 
