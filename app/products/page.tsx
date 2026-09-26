@@ -164,6 +164,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
     .select({
       name: employees.name,
       position: employees.position,
+      contractType: employees.contractType,
       departmentId: employees.departmentId,
     })
     .from(employees);
@@ -182,7 +183,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
       return {
         name,
         position: emp?.position ?? null,
-        isCtv: emp?.position === "ctv",
+        isCtv: emp?.contractType === "hd_dich_vu",
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name, "vi"));
@@ -445,7 +446,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
             invoiceIds: new Set<number>(),
           };
           const emp = r.salesPerson ? empByName.get(r.salesPerson.trim().toLowerCase()) : null;
-          const isCtv = emp?.position === "ctv";
+          const isCtv = emp?.contractType === "hd_dich_vu";
           // Nếu NVKD là CTV và chưa gán phòng thực → không show text Excel legacy
           // (VD "Freelancer / Đoàn Lê Bách" không còn chính xác vì Bách giờ CEO).
           const displayDeptName =

@@ -14,11 +14,13 @@ const DeptSchema = z.object({
   name: z.string().trim().min(1, "Tên phòng bắt buộc"),
   leaderName: z.string().trim().optional().nullable(),
   note: z.string().trim().optional().nullable(),
+  parentId: z.coerce.number().int().nullable().optional(),
 });
 
 function formToObject(fd: FormData): Record<string, unknown> {
   const obj: Record<string, unknown> = {};
   for (const [k, v] of fd.entries()) obj[k] = typeof v === "string" ? v : "";
+  if (obj.parentId === "" || obj.parentId === "0") obj.parentId = null;
   return obj;
 }
 
@@ -31,6 +33,7 @@ async function _createDepartmentNoRedirect(fd: FormData) {
     name: data.name,
     leaderName: data.leaderName || null,
     note: data.note || null,
+    parentId: data.parentId ?? null,
   });
   revalidatePath("/departments");
 }
@@ -39,6 +42,27 @@ async function _updateDepartmentNoRedirect(id: number, fd: FormData) {
   await requirePermission("departments", "edit");
   const raw = formToObject(fd);
   const data = DeptSchema.parse(raw);
+
+  // Chặn vòng lặp: phòng không được nhận chính nó hay một đội con của nó làm cha,
+  // không thì cây phòng ban tự quay vòng và mọi chỗ duyệt cây sẽ treo.
+  if (data.parentId != null) {
+    if (data.parentId === id) {
+      throw new Error("Một phòng ban không thể là cấp trên của chính nó.");
+    }
+    const tatCa = await db
+      .select({ id: departments.id, parentId: departments.parentId, name: departments.name })
+      .from(departments);
+    let cha = tatCa.find((d) => d.id === data.parentId);
+    const daQua = new Set<number>();
+    while (cha && !daQua.has(cha.id)) {
+      if (cha.id === id) {
+        throw new Error("Không đặt được: phòng bạn chọn đang nằm bên dưới phòng này.");
+      }
+      daQua.add(cha.id);
+      cha = cha.parentId == null ? undefined : tatCa.find((d) => d.id === cha!.parentId);
+    }
+  }
+
   await db
     .update(departments)
     .set({
@@ -46,6 +70,7 @@ async function _updateDepartmentNoRedirect(id: number, fd: FormData) {
       name: data.name,
       leaderName: data.leaderName || null,
       note: data.note || null,
+      parentId: data.parentId ?? null,
     })
     .where(eq(departments.id, id));
   revalidatePath("/departments");

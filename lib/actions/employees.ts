@@ -8,15 +8,14 @@ import { employees } from "@/lib/schema";
 import { eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { MA_VI_TRI, MA_LOAI_HOP_DONG } from "@/lib/to-chuc";
 
 const EmployeeSchema = z.object({
   name: z.string().trim().min(1, "Tên bắt buộc"),
   email: z.string().trim().optional().nullable(),
   phone: z.string().trim().optional().nullable(),
-  position: z.enum([
-    "ceo", "tpkd", "nvkd", "admin", "ctv",
-    "hr", "content_writer", "video_editor", "cameraman", "accountant",
-  ]),
+  position: z.enum(MA_VI_TRI),
+  contractType: z.enum(MA_LOAI_HOP_DONG).nullable().optional(),
   departmentId: z.coerce.number().int().nullable().optional(),
   aliasOfId: z.coerce.number().int().nullable().optional(),
   active: z.boolean().optional(),
@@ -29,6 +28,7 @@ function formToObject(fd: FormData): Record<string, unknown> {
   // Convert empty deptId → null
   if (obj.departmentId === "" || obj.departmentId === "0") obj.departmentId = null;
   if (obj.aliasOfId === "" || obj.aliasOfId === "0") obj.aliasOfId = null;
+  if (obj.contractType === "") obj.contractType = null;
   obj.active = fd.get("active") === "on" || fd.get("active") === "true";
   return obj;
 }
@@ -59,6 +59,7 @@ async function _updateEmployeeNoRedirect(id: number, fd: FormData) {
       email: data.email || null,
       phone: data.phone || null,
       departmentId: data.departmentId ?? null,
+      contractType: data.contractType ?? null,
       aliasOfId: data.aliasOfId ?? null,
       active: data.active ?? true,
       note: data.note || null,

@@ -136,12 +136,17 @@ export default async function ProductDetailPage({
   // → không hiển thị text Excel legacy misleading.
   const nvkdEmp = p.salesPerson
     ? await db
-        .select({ position: employees.position, departmentId: employees.departmentId })
+        .select({
+          position: employees.position,
+          contractType: employees.contractType,
+          departmentId: employees.departmentId,
+        })
         .from(employees)
         .where(eq(employees.name, p.salesPerson))
         .then((r) => r[0] ?? null)
     : null;
-  const isNvkdCtv = nvkdEmp?.position === "ctv";
+  // CTV giờ là loại hợp đồng chứ không phải vị trí, xem lib/to-chuc.ts.
+  const isNvkdCtv = nvkdEmp?.contractType === "hd_dich_vu";
   const nvkdCtvUnassigned = isNvkdCtv && !nvkdEmp?.departmentId;
 
   // === Compute derived values ===

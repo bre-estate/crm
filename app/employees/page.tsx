@@ -24,6 +24,7 @@ export default async function EmployeesPage() {
         email: employees.email,
         phone: employees.phone,
         position: employees.position,
+        contractType: employees.contractType,
         departmentId: employees.departmentId,
         active: employees.active,
         note: employees.note,

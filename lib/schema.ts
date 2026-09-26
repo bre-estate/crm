@@ -34,6 +34,9 @@ export const departments = pgTable("departments", {
   name: text("name").notNull(),
   leaderName: text("leader_name"), // tên leader (text, không FK để giữ đơn giản)
   note: text("note"),
+  // Phòng cha. Nhân viên gắn vào nhánh lá, báo cáo gom được cả hai tầng:
+  // từng đội riêng và cộng gộp cả phòng. Xem lib/to-chuc.ts.
+  parentId: integer("parent_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -477,10 +480,10 @@ export const employees = pgTable("employees", {
   name: text("name").notNull(),
   email: text("email"),
   phone: text("phone"),
-  // Preset cứng — thêm mới bằng cách sửa enum + POSITION_LABEL/COLOR ở
-  // app/employees/EmployeesManager.tsx. Không dùng bảng positions riêng.
+  // Danh sách vị trí ở lib/to-chuc.ts, thêm mới thì sửa ở đó và ở đây.
+  // Không có "ctv": cộng tác viên là loại hợp đồng, xem contractType.
   position: text("position", {
-    enum: ["ceo", "tpkd", "nvkd", "admin", "ctv", "hr", "content_writer", "video_editor", "cameraman", "accountant"],
+    enum: ["ceo", "tpkd", "nvkd", "admin", "hr", "accountant", "content_writer", "video_editor", "cameraman"],
   })
     .notNull()
     .default("nvkd"),

@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { xepCay } from "@/lib/to-chuc";
 
 type Department = {
   id: number;
@@ -21,6 +22,8 @@ type Department = {
   name: string;
   leaderName: string | null;
   note: string | null;
+  /** Phòng cha. Để trống là phòng gốc. */
+  parentId: number | null;
   prodCount: number;
   empCount: number;
 };
@@ -116,10 +119,13 @@ export default function DepartmentsManager({
             </tr>
           </thead>
           <tbody>
-            {departments.map((d) => (
+            {xepCay(departments).map(({ node: d, sau }) => (
               <tr key={d.id} className="border-t border-slate-100 hover:bg-slate-50">
                 <td className="p-3 font-mono text-xs">{d.code}</td>
-                <td className="p-3 font-medium">{d.name}</td>
+                <td className="p-3 font-medium">
+                  {sau > 0 && <span className="text-slate-300 mr-1">└</span>}
+                  <span style={{ paddingLeft: sau * 12 }}>{d.name}</span>
+                </td>
                 <td className="p-3 text-sm">{d.leaderName ?? <span className="text-slate-300">—</span>}</td>
                 <td className="p-3 text-center tabular-nums">{d.empCount}</td>
                 <td className="p-3 text-center tabular-nums">{d.prodCount}</td>
@@ -190,6 +196,28 @@ export default function DepartmentsManager({
                     required
                     placeholder="vd: Hồ Gia, 1 Tỷ"
                   />
+                </Field>
+                <Field label="Thuộc phòng ban" full>
+                  <select
+                    name="parentId"
+                    defaultValue={editing?.parentId ?? ""}
+                    className="input"
+                  >
+                    <option value="">Là phòng cấp trên cùng</option>
+                    {xepCay(departments)
+                      .filter(({ node }) => node.id !== editing?.id)
+                      .map(({ node, sau }) => (
+                        <option key={node.id} value={node.id}>
+                          {"  ".repeat(sau)}
+                          {sau > 0 ? "└ " : ""}
+                          {node.name}
+                        </option>
+                      ))}
+                  </select>
+                  <div className="text-[11px] text-slate-500 mt-1">
+                    Để trống nếu đây là một phòng lớn. Chọn phòng cha nếu đây là một đội bên
+                    trong, ví dụ đội Hồ Gia thuộc phòng Kinh doanh.
+                  </div>
                 </Field>
                 <Field label="TPKD (trưởng phòng)" full>
                   <SearchableSelect

@@ -15,6 +15,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  VI_TRI,
+  MAU_VI_TRI,
+  VI_TRI_GOI_Y,
+  LOAI_HOP_DONG,
+  maKhoiGoc,
+  xepCay,
+  type ViTri,
+} from "@/lib/to-chuc";
 
 type Employee = {
   id: number;
@@ -24,6 +33,8 @@ type Employee = {
   email: string | null;
   phone: string | null;
   position: string;
+  /** hd_lao_dong hoặc hd_dich_vu. Cộng tác viên là loại hợp đồng, không phải vị trí. */
+  contractType: string | null;
   departmentId: number | null;
   active: boolean | null;
   note: string | null;
@@ -31,9 +42,9 @@ type Employee = {
   aliasOfId: number | null;
 };
 
-type Department = { id: number; name: string; code: string };
+type Department = { id: number; name: string; code: string; parentId: number | null };
 
-type Nhom = "all" | "nv" | "ctv";
+type Nhom = "all" | "hd_lao_dong" | "hd_dich_vu";
 
 /**
  * Khóa sắp xếp theo mã: nhân viên trước cộng tác viên, trong mỗi nhóm thì theo số.
@@ -46,8 +57,6 @@ function khoaMa(code: string | null): [number, number] {
   return [m[1].toUpperCase() === "CTV" ? 1 : 0, Number(m[2])];
 }
 
-const laCtv = (code: string | null) => (code ?? "").toUpperCase().startsWith("CTV");
-
 type Props = {
   employees: Employee[];
   departments: Department[];
@@ -56,46 +65,9 @@ type Props = {
   onDelete: (id: number) => Promise<{ error: string } | void>;
 };
 
-// Preset cứng — thêm mới thì sửa 3 chỗ (schema enum + zod enum + đây).
-const POSITION_LABEL: Record<string, string> = {
-  ceo: "CEO",
-  tpkd: "TPKD",
-  nvkd: "NVKD",
-  admin: "Admin",
-  ctv: "CTV",
-  hr: "HR",
-  content_writer: "Content Writer",
-  video_editor: "Video Editor",
-  cameraman: "Cameraman",
-  accountant: "Kế toán",
-};
-
-const POSITION_COLOR: Record<string, string> = {
-  ceo: "bg-red-100 text-red-700",
-  tpkd: "bg-orange-100 text-orange-700",
-  nvkd: "bg-blue-100 text-blue-700",
-  admin: "bg-yellow-100 text-yellow-700",
-  ctv: "bg-purple-100 text-purple-700",
-  hr: "bg-teal-100 text-teal-700",
-  content_writer: "bg-cyan-100 text-cyan-700",
-  video_editor: "bg-indigo-100 text-indigo-700",
-  cameraman: "bg-violet-100 text-violet-700",
-  accountant: "bg-emerald-100 text-emerald-700",
-};
-
-// Thứ tự hiển thị trong dropdown — sale team ưu tiên trên, back office dưới.
-const POSITION_OPTIONS = [
-  { value: "nvkd", label: "NVKD (Nhân viên kinh doanh)" },
-  { value: "tpkd", label: "TPKD (Trưởng phòng)" },
-  { value: "ceo", label: "CEO" },
-  { value: "ctv", label: "CTV / Freelance" },
-  { value: "admin", label: "Admin" },
-  { value: "hr", label: "HR" },
-  { value: "accountant", label: "Kế toán" },
-  { value: "content_writer", label: "Content Writer" },
-  { value: "video_editor", label: "Video Editor" },
-  { value: "cameraman", label: "Cameraman" },
-];
+// Nhãn, màu và danh sách vị trí nằm ở lib/to-chuc.ts, dùng chung với form và kiểm tra dữ liệu.
+const POSITION_LABEL: Record<string, string> = VI_TRI;
+const POSITION_COLOR: Record<string, string> = MAU_VI_TRI;
 
 export default function EmployeesManager({
   employees,
@@ -130,12 +102,14 @@ export default function EmployeesManager({
     });
   }, [employees, q, deptFilter, showInactive]);
 
-  const soNv = truocNhom.filter((e) => !laCtv(e.code)).length;
-  const soCtv = truocNhom.filter((e) => laCtv(e.code)).length;
+  // Tab theo loại hợp đồng, không theo tiền tố mã. Chỉ 4 người mang mã CTV-xxx
+  // nhưng 33 người ký hợp đồng dịch vụ, nên đếm theo mã là sai.
+  const soNv = truocNhom.filter((e) => e.contractType === "hd_lao_dong").length;
+  const soCtv = truocNhom.filter((e) => e.contractType === "hd_dich_vu").length;
+  const soChuaRo = truocNhom.length - soNv - soCtv;
 
   const filtered = useMemo(() => {
-    const ds =
-      nhom === "all" ? truocNhom : truocNhom.filter((e) => laCtv(e.code) === (nhom === "ctv"));
+    const ds = nhom === "all" ? truocNhom : truocNhom.filter((e) => e.contractType === nhom);
     return [...ds].sort((a, b) => {
       const [na, sa] = khoaMa(a.code);
       const [nb, sb] = khoaMa(b.code);
@@ -195,13 +169,20 @@ export default function EmployeesManager({
         </Button>
       </div>
 
-      <Tabs value={nhom} onValueChange={(v) => setNhom(v as Nhom)}>
-        <TabsList>
-          <TabsTrigger value="all">Tất cả ({soNv + soCtv})</TabsTrigger>
-          <TabsTrigger value="nv">Nhân viên ({soNv})</TabsTrigger>
-          <TabsTrigger value="ctv">CTV ({soCtv})</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <div className="flex items-center gap-3 flex-wrap">
+        <Tabs value={nhom} onValueChange={(v) => setNhom(v as Nhom)}>
+          <TabsList>
+            <TabsTrigger value="all">Tất cả ({truocNhom.length})</TabsTrigger>
+            <TabsTrigger value="hd_lao_dong">Nhân viên ({soNv})</TabsTrigger>
+            <TabsTrigger value="hd_dich_vu">Cộng tác viên ({soCtv})</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        {soChuaRo > 0 && nhom === "all" && (
+          <span className="text-xs text-slate-500">
+            {soChuaRo} người chưa ghi loại hợp đồng, chỉ hiện ở tab Tất cả.
+          </span>
+        )}
+      </div>
 
       <div className="flex items-end gap-3 flex-wrap">
         <div>
@@ -222,9 +203,11 @@ export default function EmployeesManager({
             className="input w-52"
           >
             <option value="">Tất cả phòng ban</option>
-            {departments.map((d) => (
-              <option key={d.id} value={String(d.id)}>
-                {d.name}
+            {xepCay(departments).map(({ node, sau }) => (
+              <option key={node.id} value={String(node.id)}>
+                {"  ".repeat(sau)}
+                {sau > 0 ? "└ " : ""}
+                {node.name}
               </option>
             ))}
             <option value="__none__">(chưa phân phòng)</option>
@@ -287,6 +270,9 @@ export default function EmployeesManager({
                   >
                     {POSITION_LABEL[e.position] ?? e.position}
                   </span>
+                  {e.contractType === "hd_dich_vu" && (
+                    <div className="text-[11px] text-slate-500 mt-1">Cộng tác viên</div>
+                  )}
                 </td>
                 <td className="p-3 text-slate-600 text-xs">{e.departmentName ?? "—"}</td>
                 <td className="p-3 text-xs break-all">{e.email ?? "—"}</td>
@@ -352,30 +338,22 @@ export default function EmployeesManager({
                     autoFocus={!editing}
                   />
                 </Field>
-                <Field label="Vị trí" required>
+                <PhongVaViTri
+                  key={editing?.id ?? "moi"}
+                  departments={departments}
+                  phongBanDau={editing?.departmentId ?? null}
+                  viTriBanDau={(editing?.position as ViTri) ?? "nvkd"}
+                />
+                <Field label="Loại hợp đồng">
                   <select
-                    name="position"
-                    defaultValue={editing?.position ?? "nvkd"}
-                    className="input"
-                    required
-                  >
-                    {POSITION_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Phòng ban">
-                  <select
-                    name="departmentId"
-                    defaultValue={editing?.departmentId ?? ""}
+                    name="contractType"
+                    defaultValue={editing?.contractType ?? ""}
                     className="input"
                   >
-                    <option value="">Chưa phân phòng ban</option>
-                    {departments.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.name}
+                    <option value="">Chưa ghi</option>
+                    {Object.entries(LOAI_HOP_DONG).map(([v, l]) => (
+                      <option key={v} value={v}>
+                        {l}
                       </option>
                     ))}
                   </select>
@@ -477,5 +455,80 @@ function Field({
       </label>
       {children}
     </div>
+  );
+}
+
+/**
+ * Hai ô Phòng ban và Vị trí đi cùng nhau: chọn phòng nào thì vị trí của phòng đó
+ * hiện lên trước, phần còn lại gom xuống nhóm "Vị trí khác".
+ *
+ * Gợi ý chứ không chặn, vì dữ liệu thật có trường hợp hợp lệ nằm ngoài bảng gợi ý:
+ * hai NVKD đứng tên dùm cho CEO đang thuộc Ban lãnh đạo. Chặn cứng thì không sửa
+ * được hồ sơ của họ.
+ *
+ * Đặt key theo người đang sửa để mở hồ sơ khác là trạng thái tự đặt lại.
+ */
+function PhongVaViTri({
+  departments,
+  phongBanDau,
+  viTriBanDau,
+}: {
+  departments: Department[];
+  phongBanDau: number | null;
+  viTriBanDau: ViTri;
+}) {
+  const [phong, setPhong] = useState<string>(phongBanDau ? String(phongBanDau) : "");
+  const khoi = maKhoiGoc(phong ? Number(phong) : null, departments);
+  const goiY: ViTri[] = khoi ? (VI_TRI_GOI_Y[khoi] ?? []) : [];
+  const conLai = (Object.keys(VI_TRI) as ViTri[]).filter((v) => !goiY.includes(v));
+
+  return (
+    <>
+      <Field label="Phòng ban">
+        <select
+          name="departmentId"
+          value={phong}
+          onChange={(e) => setPhong(e.target.value)}
+          className="input"
+        >
+          <option value="">Chưa phân phòng ban</option>
+          {xepCay(departments).map(({ node, sau }) => (
+            <option key={node.id} value={String(node.id)}>
+              {"  ".repeat(sau)}
+              {sau > 0 ? "└ " : ""}
+              {node.name}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Vị trí" required>
+        <select name="position" defaultValue={viTriBanDau} className="input" required>
+          {goiY.length > 0 ? (
+            <>
+              <optgroup label="Vị trí của phòng này">
+                {goiY.map((v) => (
+                  <option key={v} value={v}>
+                    {VI_TRI[v]}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Vị trí khác">
+                {conLai.map((v) => (
+                  <option key={v} value={v}>
+                    {VI_TRI[v]}
+                  </option>
+                ))}
+              </optgroup>
+            </>
+          ) : (
+            (Object.keys(VI_TRI) as ViTri[]).map((v) => (
+              <option key={v} value={v}>
+                {VI_TRI[v]}
+              </option>
+            ))
+          )}
+        </select>
+      </Field>
+    </>
   );
 }
