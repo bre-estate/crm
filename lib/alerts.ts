@@ -114,7 +114,7 @@ const VAI_TRO_NHAN: Record<Alert["id"], Role[]> = {
  * Không mở được trang thì báo cũng vô ích, bấm vào chỉ ra trang báo lỗi.
  */
 const QUYEN_CAN: Record<Alert["id"], { res: Resource; act: Action }> = {
-  "below-be-3m": { res: "reports.management", act: "view" },
+  "below-be-3m": { res: "reports.profit-detail", act: "view" },
   "doanh-thu-ve": { res: "revenues", act: "view" },
   "idle-sale": { res: "reports.people", act: "view" },
   "opex-spike": { res: "reports.expenses", act: "view" },
@@ -218,7 +218,7 @@ export async function computeAlerts(): Promise<Alert[]> {
       severity: "critical",
       title: `Bán dưới điểm hòa vốn 3 tháng liền`,
       description: `Điểm hòa vốn cần ${beUnits.toFixed(1)} căn/tháng.`,
-      url: "/reports/management",
+      url: "/reports/profit-detail",
       beUnits,
       months: last3Counts,
     });
