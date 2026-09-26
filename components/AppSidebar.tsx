@@ -229,7 +229,7 @@ function NotificationsPanel({
 
       <div className="border-t border-slate-100 px-4 py-2 bg-slate-50">
         <Link
-          href="/alerts"
+          href="/notifications"
           onClick={onClose}
           className="text-xs text-blue-600 hover:underline"
         >
@@ -363,7 +363,7 @@ export default function AppSidebar({
                   >
                     <PopoverTrigger
                       render={
-                        <SidebarMenuButton isActive={pathname.startsWith("/alerts")}>
+                        <SidebarMenuButton isActive={pathname.startsWith("/notifications")}>
                           <Bell />
                           <span>Thông báo</span>
                         </SidebarMenuButton>

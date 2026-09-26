@@ -56,7 +56,7 @@ export const RESOURCE_ACTIONS: Record<string, Action[]> = {
   // Kỳ HH & thưởng — view = xem, edit = tạo hồi tố + xuất Excel
   periods: ["view", "edit"],
   // View only (report / log / help)
-  alerts: ["view"],
+  notifications: ["view"],
   "admin.activity": ["view"],
   help: ["view"],
   // reports.* — view only (mặc định phía dưới)
@@ -92,7 +92,7 @@ export const RESOURCES = {
   "reports.unit-profitability": "Lãi/lỗ per căn",
   "reports.segments": "Phân khúc căn",
   "costs-report": "Đối chiếu giá vốn",
-  "alerts": "Cảnh báo",
+  "notifications": "Thông báo",
   "admin.users": "Quản lý user",
   "admin.positions": "Danh mục vị trí",
   "admin.permissions": "Phân quyền",
@@ -145,7 +145,7 @@ export const RESOURCE_GROUPS: { label: string; keys: Resource[] }[] = [
   },
   {
     label: "Quản trị",
-    keys: ["admin.users", "admin.permissions", "settings.integrations", "documents", "admin.activity", "alerts", "help"],
+    keys: ["admin.users", "admin.permissions", "settings.integrations", "documents", "admin.activity", "notifications", "help"],
   },
 ];
 
@@ -203,7 +203,7 @@ const PRESETS: Record<string, Partial<Record<Resource, Action[]>>> = {
     periods: ["view", "edit"],
     documents: ["view", "edit"],
     ...reportsView,
-    alerts: ["view"],
+    notifications: ["view"],
     help: ["view"],
   },
   // Sale Admin: chỉnh sửa giao dịch sơ cấp + đối tác, không xoá; không đụng thứ cấp / nhân sự / báo cáo.
@@ -218,7 +218,7 @@ const PRESETS: Record<string, Partial<Record<Resource, Action[]>>> = {
     documents: ["view", "edit"],
     // Người đi hối chủ đầu tư trả tiền, nên cần thấy tuổi nợ và nhận cảnh báo quá hạn.
     "reports.ar-aging": ["view"],
-    alerts: ["view"],
+    notifications: ["view"],
     help: ["view"],
   },
   // HR: xem giao dịch để đối chiếu; edit riêng giá vốn (nhập HH sale).
@@ -234,7 +234,7 @@ const PRESETS: Record<string, Partial<Record<Resource, Action[]>>> = {
     periods: ["view", "edit"],
     "payroll.commissions": ["view", "edit"],
     documents: ["view"],
-    alerts: ["view"],
+    notifications: ["view"],
     help: ["view"],
   },
 };
@@ -338,7 +338,7 @@ export function resourceOfPath(path: string): Resource | "reports.*" | null {
   // /finance/bank-review là tool riêng, nhưng vẫn dùng permission "finance"
   if (p.startsWith("/finance")) return "finance";
   if (p.startsWith("/documents")) return "documents";
-  if (p.startsWith("/alerts")) return "alerts";
+  if (p.startsWith("/notifications")) return "notifications";
   if (p.startsWith("/help")) return "help";
   if (p.startsWith("/secondary-sales")) return "secondary-sales";
   if (p.startsWith("/rentals")) return "products";  // rentals dùng chung permission products (đang hidden)

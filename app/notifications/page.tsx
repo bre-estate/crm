@@ -12,7 +12,7 @@ const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
 export default async function AlertsPage() {
   // Trước đây khóa cứng theo chủ tài khoản, nên Sale Admin và nhân sự bấm vào
   // thông báo là ra trang không tồn tại. Giờ theo đúng bảng phân quyền.
-  await requirePermission("alerts");
+  await requirePermission("notifications");
   const user = await getCurrentUser();
   if (!user) notFound();
 

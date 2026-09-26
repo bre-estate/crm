@@ -86,7 +86,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const canSeeAlerts = checkPerm(
     currentUser.role,
     currentUser.customPermissions,
-    "alerts",
+    "notifications",
     "view",
     currentUser.quyenVaiTro,
   );

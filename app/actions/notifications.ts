@@ -83,7 +83,7 @@ export async function markNotificationRead(key: string): Promise<void> {
       .onConflictDoNothing({
         target: [notificationReads.email, notificationReads.notificationKey],
       });
-    revalidatePath("/alerts");
+    revalidatePath("/notifications");
   } catch (e) {
     console.warn("[markNotificationRead] table chưa tồn tại", e);
   }
@@ -107,7 +107,7 @@ export async function markAllNotificationsRead(): Promise<void> {
       )}]::text[])
       ON CONFLICT (email, notification_key) DO NOTHING
     `);
-    revalidatePath("/alerts");
+    revalidatePath("/notifications");
   } catch (e) {
     console.warn("[markAllNotificationsRead] table chưa tồn tại", e);
   }

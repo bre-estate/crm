@@ -8,6 +8,13 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "1mb",
     },
   },
+  async redirects() {
+    return [
+      // Trang Thông báo trước ở /alerts. Giữ đường cũ cho link đã lưu và cho
+      // thông báo cũ đã gửi đi, khỏi rơi vào trang không tồn tại.
+      { source: "/alerts", destination: "/notifications", permanent: true },
+    ];
+  },
 };
 
 export default nextConfig;
