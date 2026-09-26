@@ -161,23 +161,47 @@ function UserFormModal({
 }) {
   const [role, setRole] = useState<Role>(user?.role ?? "custom");
   const [perms, setPerms] = useState<Record<string, Action[]>>(user?.permissions ?? {});
+  // Vai trò dựng sẵn mà bộ quyền tùy chỉnh này chép ra, chỉ để hiện chữ và cho quay lại.
+  const [nenTang, setNenTang] = useState<Role | null>(null);
   const [pending, startTransition] = useTransition();
   const isNew = user === null;
 
+  /** Bật tắt một hành động, trả về bộ quyền mới. Sửa hay xóa thì kéo theo quyền xem. */
+  const doiQuyen = (
+    goc: Record<string, Action[]>,
+    resource: string,
+    action: Action,
+  ): Record<string, Action[]> => {
+    const current = goc[resource] ?? [];
+    const has = current.includes(action);
+    const updated = has ? current.filter((a) => a !== action) : [...current, action];
+    if (!has && action !== "view" && !updated.includes("view")) updated.push("view");
+    if (updated.length === 0) {
+      const copy = { ...goc };
+      delete copy[resource];
+      return copy;
+    }
+    return { ...goc, [resource]: updated };
+  };
+
   const togglePerm = (resource: string, action: Action) => {
-    setPerms((prev) => {
-      const current = prev[resource] ?? [];
-      const has = current.includes(action);
-      const updated = has ? current.filter((a) => a !== action) : [...current, action];
-      // Edit/delete implies view
-      if (!has && action !== "view" && !updated.includes("view")) updated.push("view");
-      if (updated.length === 0) {
-        const copy = { ...prev };
-        delete copy[resource];
-        return copy;
-      }
-      return { ...prev, [resource]: updated };
-    });
+    // Đang ở vai trò dựng sẵn thì chép nguyên bộ quyền của vai trò đó rồi mới sửa.
+    // Trước đây phải tự chọn "Tùy chỉnh" rồi tick lại từ đầu vài chục ô chỉ để
+    // thêm một quyền, nên ai cũng ngại đụng vào.
+    if (role !== "custom") {
+      const goc = resolvePermissions(role);
+      setNenTang(role);
+      setRole("custom");
+      setPerms(doiQuyen(goc, resource, action));
+      return;
+    }
+    setPerms((prev) => doiQuyen(prev, resource, action));
+  };
+
+  const vePhaiMacDinh = () => {
+    if (!nenTang) return;
+    setRole(nenTang);
+    setNenTang(null);
   };
 
   const handleSubmit = async (fd: FormData) => {
@@ -231,7 +255,10 @@ function UserFormModal({
             <label className="block text-xs text-slate-600 mb-1">Role</label>
             <select
               value={role}
-              onChange={(e) => setRole(e.target.value as Role)}
+              onChange={(e) => {
+                setRole(e.target.value as Role);
+                setNenTang(null);
+              }}
               className="input w-full"
             >
               {Object.entries(roleLabels).map(([r, label]) => (
@@ -241,21 +268,43 @@ function UserFormModal({
           </div>
 
           {(() => {
-            // Custom: dùng perms user tự tick. Preset: dùng resolvePermissions() readonly.
+            // Tùy chỉnh thì dùng bộ quyền tự tick, vai trò dựng sẵn thì lấy bộ mặc định.
+            // Chủ tài khoản luôn toàn quyền nên khóa lại.
             const isCustom = role === "custom";
             const effective = isCustom ? perms : resolvePermissions(role);
-            const isDisabled = !isCustom;
+            const isDisabled = role === "owner";
             return (
               <div>
-                <label className="block text-xs text-slate-600 mb-2">
-                  {isCustom
-                    ? "Quyền tùy chỉnh — tick theo từng nhóm"
-                    : (
+                <div className="flex items-baseline justify-between gap-3 mb-2">
+                  <label className="block text-xs text-slate-600">
+                    {role === "owner" ? (
+                      "Chủ tài khoản luôn có toàn quyền, không chỉnh được."
+                    ) : isCustom && nenTang ? (
                       <>
-                        Quyền mặc định của <span className="text-orange-700 font-semibold">{roleLabels[role]}</span> (chỉ xem, chọn "Tùy chỉnh" để sửa)
+                        Quyền riêng, chép từ{" "}
+                        <span className="text-orange-700 font-semibold">{roleLabels[nenTang]}</span>.
+                        Tick thêm hoặc bỏ bớt tùy ý.
+                      </>
+                    ) : isCustom ? (
+                      "Quyền riêng, tick theo từng nhóm."
+                    ) : (
+                      <>
+                        Quyền mặc định của{" "}
+                        <span className="text-orange-700 font-semibold">{roleLabels[role]}</span>.
+                        Tick vào ô bất kỳ để chỉnh riêng cho người này.
                       </>
                     )}
-                </label>
+                  </label>
+                  {nenTang && (
+                    <button
+                      type="button"
+                      onClick={vePhaiMacDinh}
+                      className="text-xs text-blue-600 hover:underline whitespace-nowrap"
+                    >
+                      Về lại quyền mặc định
+                    </button>
+                  )}
+                </div>
                 <div className={`space-y-3 ${isDisabled ? "opacity-80" : ""}`}>
                   {RESOURCE_GROUPS.map((group) => (
                     <div
@@ -294,7 +343,7 @@ function UserFormModal({
                                       <input
                                         type="checkbox"
                                         checked={supported && current.includes(a)}
-                                        onChange={() => isCustom && supported && togglePerm(key, a)}
+                                        onChange={() => !isDisabled && supported && togglePerm(key, a)}
                                         disabled={cbDisabled}
                                       />
                                       {ACTION_LABELS[a]}

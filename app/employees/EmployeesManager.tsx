@@ -270,28 +270,28 @@ export default function EmployeesManager({
                 <td className="p-3 text-xs tabular-nums text-slate-600 whitespace-nowrap">
                   {e.code ?? "—"}
                 </td>
-                <td className="p-3 font-medium">
-                  {e.name}
+                <td className="p-3">
+                  <div className="font-medium">{e.name}</div>
                   {ownerOfAlias && (
-                    <span
-                      className="ml-2 text-[10px] px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200"
-                      title={`Đứng tên cho ${ownerOfAlias.name} — doanh số quy về người này trong báo cáo`}
+                    <div
+                      className="text-[11px] text-indigo-700 mt-0.5"
+                      title="Doanh số quy về người này trong báo cáo"
                     >
                       Đứng tên cho {ownerOfAlias.name}
-                    </span>
+                    </div>
                   )}
                 </td>
                 <td className="p-3">
                   <span
-                    className={`text-xs px-2 py-1 rounded-md ${POSITION_COLOR[e.position] ?? "bg-slate-100 text-slate-700"}`}
+                    className={`text-xs px-2 py-1 rounded-md whitespace-nowrap ${POSITION_COLOR[e.position] ?? "bg-slate-100 text-slate-700"}`}
                   >
                     {POSITION_LABEL[e.position] ?? e.position}
                   </span>
                 </td>
                 <td className="p-3 text-slate-600 text-xs">{e.departmentName ?? "—"}</td>
-                <td className="p-3 text-xs">{e.email ?? "—"}</td>
-                <td className="p-3 text-xs">{e.phone ?? "—"}</td>
-                <td className="p-3 text-center">
+                <td className="p-3 text-xs break-all">{e.email ?? "—"}</td>
+                <td className="p-3 text-xs tabular-nums whitespace-nowrap">{e.phone ?? "—"}</td>
+                <td className="p-3 text-center whitespace-nowrap">
                   {e.active ? (
                     <span className="text-xs px-2 py-1 rounded-md bg-green-100 text-green-700">
                       Đang làm việc
