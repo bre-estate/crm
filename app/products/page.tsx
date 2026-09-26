@@ -13,6 +13,7 @@ import { eq, asc, desc, and, gte, lte, ilike, inArray, sql, type SQL } from "dri
 import Link from "next/link";
 import SearchableSelect from "@/components/SearchableSelect";
 import ProductsFilterForm from "./ProductsFilterForm";
+import { nhanhDuoi, tenPhong } from "@/lib/to-chuc";
 import ProductsTable, { type ProductRow } from "./ProductsTable";
 import { deleteProductBulk } from "@/lib/actions/products";
 import HighlightManager from "../HighlightManager";
@@ -108,7 +109,11 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
   const whereParts: SQL[] = skipFilters ? [] : [eq(products.saleType, activeTab)];
   if (!skipFilters) {
     if (filterProjectId) whereParts.push(eq(products.projectId, filterProjectId));
-    if (filterDeptId) whereParts.push(eq(products.departmentId, filterDeptId));
+    // Chọn phòng cha thì lấy cả căn của các đội bên trong, không thì lọc
+    // Kinh doanh chỉ ra 4 căn gắn thẳng vào phòng cha thay vì 62 căn cả nhánh.
+    if (filterDeptId) {
+      whereParts.push(inArray(products.departmentId, [...nhanhDuoi(filterDeptId, allDepts)]));
+    }
     if (filterSalesPerson) whereParts.push(eq(products.salesPerson, filterSalesPerson));
     if (dateFrom) whereParts.push(gte(products.depositDate, dateFrom));
     if (dateTo) whereParts.push(lte(products.depositDate, dateTo));
@@ -449,9 +454,12 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
           const isCtv = emp?.contractType === "hd_dich_vu";
           // Nếu NVKD là CTV và chưa gán phòng thực → không show text Excel legacy
           // (VD "Freelancer / Đoàn Lê Bách" không còn chính xác vì Bách giờ CEO).
+          // Phòng gắn thật trong cây. Không có thì mới rơi về chuỗi text cũ từ
+          // Excel, và bỏ luôn chuỗi đó nếu người bán là CTV chưa phân phòng, vì
+          // "Freelancer / Đoàn Lê Bách" không còn đúng khi Bách đã là CEO.
+          const phong = tenPhong(r.departmentId, allDepts);
           const displayDeptName =
-            r.departmentName ??
-            (isCtv && !emp?.departmentId ? null : r.deptName ?? null);
+            phong?.ten ?? (isCtv && !emp?.departmentId ? null : r.deptName ?? null);
           return {
             id: r.id,
             unitCode: r.unitCode,
@@ -459,6 +467,10 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
             partnerName: r.partnerName ?? null,
             departmentName: displayDeptName,
             deptName: displayDeptName,
+            // Màu thẻ lấy theo phòng gốc để cùng một phòng thì cùng màu, dù
+            // dòng này ghi tên đội còn dòng kia ghi tên phòng.
+            deptGoc: phong?.goc ?? displayDeptName,
+            deptDuongDan: phong?.duongDan ?? displayDeptName,
             salesPerson: r.salesPerson ?? null,
             isCtv,
             depositDate: r.depositDate ?? null,

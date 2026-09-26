@@ -144,6 +144,63 @@ export function sauCuaPhong(id: number | null, ds: NodePhong[]): number {
   return sau;
 }
 
+/**
+ * Id của một phòng cùng mọi đội bên dưới nó.
+ *
+ * Dùng khi lọc: chọn phòng Kinh doanh thì phải ra cả người của Hồ Gia và 1 Tỷ,
+ * chứ không chỉ bốn người gắn thẳng vào phòng cha.
+ */
+export function nhanhDuoi(id: number, ds: NodePhong[]): Set<number> {
+  const ra = new Set<number>([id]);
+  let themDuoc = true;
+  while (themDuoc) {
+    themDuoc = false;
+    for (const d of ds) {
+      if (d.parentId != null && ra.has(d.parentId) && !ra.has(d.id)) {
+        ra.add(d.id);
+        themDuoc = true;
+      }
+    }
+  }
+  return ra;
+}
+
+/**
+ * Quy ước hiển thị phòng ban ở các bảng dữ liệu.
+ *
+ * Một căn hay một người gắn vào đúng một nút trong cây, mà nút đó có thể ở bất
+ * kỳ cấp nào: căn của Trọng gắn thẳng vào Kinh doanh vì anh không thuộc đội nào,
+ * căn của Bách gắn vào Ban lãnh đạo, còn lại gắn vào đội Hồ Gia hoặc 1 Tỷ.
+ *
+ * Nên bảng hiện tên của chính nút đó, còn MÀU lấy theo phòng gốc. Cùng màu là
+ * cùng một phòng, dù dòng này ghi Hồ Gia còn dòng kia ghi Kinh doanh. Tên đầy
+ * đủ để trong tooltip cho ai cần biết chính xác.
+ */
+export interface TenPhong {
+  /** Tên của chính nút đang gắn, ví dụ "Hồ Gia". */
+  ten: string;
+  /** Tên phòng gốc, dùng để chọn màu, ví dụ "Kinh doanh". */
+  goc: string;
+  /** Đường đi đầy đủ, ví dụ "Kinh doanh / Hồ Gia". */
+  duongDan: string;
+}
+
+export function tenPhong(id: number | null, ds: NodePhong[]): TenPhong | null {
+  const nut = ds.find((d) => d.id === id);
+  if (!nut) return null;
+  const chuoi: string[] = [nut.name];
+  let hienTai = nut;
+  const daQua = new Set<number>([nut.id]);
+  while (hienTai.parentId != null && !daQua.has(hienTai.parentId)) {
+    const cha = ds.find((d) => d.id === hienTai.parentId);
+    if (!cha) break;
+    daQua.add(cha.id);
+    chuoi.unshift(cha.name);
+    hienTai = cha;
+  }
+  return { ten: nut.name, goc: chuoi[0], duongDan: chuoi.join(" / ") };
+}
+
 /** Mã của phòng gốc chứa phòng này, để tra vị trí gợi ý. */
 export function maKhoiGoc(id: number | null, ds: NodePhong[]): string | null {
   let hienTai = ds.find((d) => d.id === id) ?? null;

@@ -10,7 +10,6 @@ import {
   fmtPctRaw,
   displayPartnerName,
 } from "@/lib/format";
-import { shortDeptName } from "@/lib/dept";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { cauLoi } from "@/lib/actions/ket-qua";
@@ -23,6 +22,10 @@ export type ProductRow = {
   partnerName: string | null;
   departmentName: string | null;
   deptName: string | null;
+  /** Tên phòng gốc, dùng chọn màu thẻ. Xem quy ước ở lib/to-chuc.ts. */
+  deptGoc?: string | null;
+  /** Đường đi đầy đủ trong cây, ví dụ "Kinh doanh / Hồ Gia". */
+  deptDuongDan?: string | null;
   salesPerson: string | null;
   isCtv?: boolean;
   depositDate: string | null;
@@ -180,9 +183,7 @@ export default function ProductsTable({
               <div className="flex justify-between items-center text-xs gap-2 flex-wrap">
                 <div className="flex items-center gap-1.5 min-w-0 text-slate-600">
                   <span className="truncate">{r.salesPerson || "—"}</span>
-                  {r.deptName && (
-                    <span className="text-slate-400">· {shortDeptName(r.deptName)}</span>
-                  )}
+                  {r.deptName && <span className="text-slate-400">· {r.deptName}</span>}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {!noData && (
@@ -289,11 +290,12 @@ export default function ProductsTable({
                   <td className="p-2">
                     {r.departmentName ? (
                       <span
+                        title={r.deptDuongDan ?? undefined}
                         className={`text-xs px-2 py-0.5 rounded whitespace-nowrap ${deptColor(
-                          shortDeptName(r.deptName ?? r.departmentName),
+                          r.deptGoc ?? r.departmentName,
                         )}`}
                       >
-                        {shortDeptName(r.departmentName)}
+                        {r.departmentName}
                       </span>
                     ) : r.isCtv ? (
                       <span

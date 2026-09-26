@@ -15,7 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LOAI_HOP_DONG, mauViTri, maKhoiGoc, xepCay } from "@/lib/to-chuc";
+import { LOAI_HOP_DONG, mauViTri, maKhoiGoc, xepCay, nhanhDuoi } from "@/lib/to-chuc";
 
 /** Vị trí đọc từ bảng positions, truyền xuống từ máy chủ. */
 type ViTri = { code: string; label: string; khoi: string | null };
@@ -82,6 +82,14 @@ export default function EmployeesManager({
   const [showInactive, setShowInactive] = useState(false);
   const [nhom, setNhom] = useState<Nhom>("all");
 
+  const trongNhanh = useMemo(
+    () =>
+      deptFilter && deptFilter !== "__none__"
+        ? nhanhDuoi(Number(deptFilter), departments)
+        : new Set<number>(),
+    [deptFilter, departments],
+  );
+
   // Lọc mọi thứ trừ tab, để số trên tab vẫn đúng theo phòng ban và ô tìm đang chọn.
   const truocNhom = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -90,14 +98,16 @@ export default function EmployeesManager({
       if (deptFilter === "__none__") {
         if (e.departmentId != null) return false;
       } else if (deptFilter) {
-        if (String(e.departmentId ?? "") !== deptFilter) return false;
+        // Chọn phòng cha thì lấy cả người của các đội bên trong, không thì chọn
+        // Kinh doanh chỉ ra bốn người gắn thẳng vào phòng cha.
+        if (e.departmentId == null || !trongNhanh.has(e.departmentId)) return false;
       }
       if (!s) return true;
       const hay =
         `${e.code ?? ""} ${e.name} ${e.email ?? ""} ${e.phone ?? ""} ${nhanViTri[e.position] ?? e.position}`.toLowerCase();
       return hay.includes(s);
     });
-  }, [employees, q, deptFilter, showInactive]);
+  }, [employees, q, deptFilter, showInactive, trongNhanh, nhanViTri]);
 
   // Tab theo loại hợp đồng, không theo tiền tố mã. Chỉ 4 người mang mã CTV-xxx
   // nhưng 33 người ký hợp đồng dịch vụ, nên đếm theo mã là sai.
@@ -229,7 +239,7 @@ export default function EmployeesManager({
             <tr>
               <th className="text-left p-3 w-24">Mã NV</th>
               <th className="text-left p-3">Tên</th>
-              <th className="text-left p-3">Vị trí</th>
+              <th className="text-center p-3 w-36">Vị trí</th>
               <th className="text-left p-3">Phòng</th>
               <th className="text-left p-3">Email</th>
               <th className="text-left p-3">SĐT</th>
@@ -261,9 +271,9 @@ export default function EmployeesManager({
                     </div>
                   )}
                 </td>
-                <td className="p-3">
+                <td className="p-3 text-center">
                   <span
-                    className={`text-xs px-2 py-1 rounded-md whitespace-nowrap ${mauViTri(e.position)}`}
+                    className={`inline-block text-xs px-2 py-1 rounded-md whitespace-nowrap ${mauViTri(e.position)}`}
                   >
                     {nhanViTri[e.position] ?? e.position}
                   </span>

@@ -4,13 +4,14 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useState } from "react";
 import SearchableSelect from "@/components/SearchableSelect";
+import { xepCay } from "@/lib/to-chuc";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Button } from "@/components/ui/button";
 
 type Props = {
   activeTab: string;
   allProjects: { id: number; name: string; fullCode: string }[];
-  allDepts: { id: number; name: string }[];
+  allDepts: { id: number; name: string; code: string | null; parentId: number | null }[];
   salesPersonOptions: { name: string; position: string | null; isCtv: boolean }[];
   filterUnitCode?: string;
   projectId?: string;
@@ -80,7 +81,10 @@ export default function ProductsFilterForm(props: Props) {
           emptyOption="— Tất cả —"
           placeholder="Phòng..."
           className="w-32"
-          options={props.allDepts.map((d) => ({ value: d.id, label: d.name }))}
+          options={xepCay(props.allDepts).map(({ node, sau }) => ({
+            value: node.id,
+            label: `${"  ".repeat(sau)}${sau > 0 ? "└ " : ""}${node.name}`,
+          }))}
         />
       </div>
       <div>
