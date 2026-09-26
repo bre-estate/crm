@@ -224,19 +224,23 @@ export default function ProductForm({
     return [...lam(thuoc, `Nhân viên ${tenPhong}`), ...lam(conLai, "Người khác")];
   }, [employees, departments, departmentIdState]);
   /**
-   * Chọn NVKD thì điền hộ phòng, nhưng KHÔNG đè lên phòng đã ghi của căn cũ.
+   * NVKD và phòng ghi nhận là HAI dữ kiện độc lập, không ràng buộc nhau.
    *
-   * Phòng trên căn là phòng lúc bán, phòng trên hồ sơ nhân sự là phòng hiện tại,
-   * hai thứ khác nhau. Cẩm Giang đã chuyển từ Hồ Gia sang 1 Tỷ, 7 căn cũ của chị
-   * vẫn phải thuộc Hồ Gia. Đè lên là sửa lại lịch sử và làm sai KPI trưởng phòng.
+   * Người thì đổi đội được, còn căn đã bán thì thuộc về đội lúc bán. Cẩm Giang
+   * bán 7 căn hồi còn ở Hồ Gia rồi mới tách ra lập đội 1 Tỷ: 7 căn đó là doanh
+   * số của Hồ Gia vĩnh viễn, còn doanh số cá nhân thì luôn của chị.
+   *
+   * Nên chọn NVKD KHÔNG tự điền phòng nữa. Chỉ gợi ý đội hiện tại của người đó
+   * ngay dưới ô, bấm một cái là dùng, còn quyết định vẫn là của người nhập.
    */
-  const handleSalesPersonChange = (v: string) => {
-    setSalesPersonName(v);
-    const emp = employees.find((e) => e.name === v);
-    if (!emp?.departmentId) return;
-    const laCanMoi = !product;
-    if (laCanMoi || !departmentIdState) setDepartmentIdState(String(emp.departmentId));
-  };
+  const handleSalesPersonChange = (v: string) => setSalesPersonName(v);
+
+  const phongHienTaiCuaNvkd = useMemo(() => {
+    const emp = employees.find((e) => e.name === salesPersonName);
+    if (!emp?.departmentId) return null;
+    const d = departments.find((x) => x.id === emp.departmentId);
+    return d ? { id: d.id, name: d.name } : null;
+  }, [employees, departments, salesPersonName]);
   // Nếu switch saleType → project hiện tại không còn trong list → reset về option đầu
   useEffect(() => {
     if (!projectId) return;
@@ -551,14 +555,29 @@ export default function ProductForm({
             />
             <input type="hidden" name="salesPerson" value={salesPersonName} />
           </Field>
-          <Field label="Phòng kinh doanh">
+          <Field label="Phòng ghi nhận doanh số">
             <SearchableSelect
               value={departmentIdState}
               onChange={setDepartmentIdState}
-              emptyOption="— Chưa phân phòng —"
+              emptyOption="Chưa phân phòng"
               placeholder="Gõ tên phòng..."
               options={departmentOptions}
             />
+            {phongHienTaiCuaNvkd && String(phongHienTaiCuaNvkd.id) !== departmentIdState && (
+              <div className="text-[11px] text-slate-500 mt-1">
+                {salesPersonName} hiện thuộc {phongHienTaiCuaNvkd.name}.{" "}
+                <button
+                  type="button"
+                  onClick={() => setDepartmentIdState(String(phongHienTaiCuaNvkd.id))}
+                  className="text-blue-600 hover:underline"
+                >
+                  Dùng phòng này
+                </button>
+              </div>
+            )}
+            <div className="text-[11px] text-slate-500 mt-1">
+              Là phòng lúc bán, không đổi theo khi người bán chuyển đội sau này.
+            </div>
             <input type="hidden" name="departmentId" value={departmentIdState} />
             <input type="hidden" name="deptName" defaultValue={product?.deptName ?? ""} />
           </Field>

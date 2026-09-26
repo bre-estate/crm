@@ -136,9 +136,12 @@ export default async function SalesReportPage({ searchParams }: { searchParams: 
       units: r.units,
     }));
   } else if (tab === "department") {
+    // Gom theo phòng thật trên căn, không theo cột text cũ products.dept_name.
+    // Cột text đó là chuỗi Excel mang sang ("Kinh doanh - Hồ Gia", "BLĐ", "CTV"),
+    // nên báo cáo hiện tên đã bỏ và không đổi theo khi phòng được đặt lại tên.
     const rows = await db
       .select({
-        deptName: products.deptName,
+        deptName: departments.name,
         rev: sql<number>`coalesce(sum(${revenueReconciliations.totalReceivableThisTime}), 0)::float8`,
         count: sql<number>`count(*)::int`,
         units: sql<number>`count(distinct ${revenueReconciliations.productId})::int`,
@@ -146,8 +149,9 @@ export default async function SalesReportPage({ searchParams }: { searchParams: 
       })
       .from(revenueReconciliations)
       .innerJoin(products, eq(products.id, revenueReconciliations.productId))
+      .leftJoin(departments, eq(departments.id, products.departmentId))
       .where(whereClauses)
-      .groupBy(products.deptName)
+      .groupBy(departments.name)
       .orderBy(desc(sql`coalesce(sum(${revenueReconciliations.totalReceivableThisTime}), 0)`));
     breakdown = rows.map(r => ({
       key: r.deptName ?? "?",
