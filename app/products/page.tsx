@@ -13,7 +13,7 @@ import { eq, asc, desc, and, gte, lte, ilike, inArray, sql, type SQL } from "dri
 import Link from "next/link";
 import SearchableSelect from "@/components/SearchableSelect";
 import ProductsFilterForm from "./ProductsFilterForm";
-import { nhanhDuoi, tenPhong } from "@/lib/to-chuc";
+import { nhanhDuoi, tenPhong, bangMauPhong } from "@/lib/to-chuc";
 import ProductsTable, { type ProductRow } from "./ProductsTable";
 import { deleteProductBulk } from "@/lib/actions/products";
 import HighlightManager from "../HighlightManager";
@@ -321,23 +321,6 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
     0,
   );
 
-  const deptColor = (code: string | null | undefined): string => {
-    switch ((code ?? "").toLowerCase()) {
-      case "hồ gia":
-      case "ho gia":
-        return "bg-blue-100 text-blue-700";
-      case "blđ":
-      case "bld":
-        return "bg-purple-100 text-purple-700";
-      case "1 tỷ":
-      case "1 ty":
-        return "bg-emerald-100 text-emerald-700";
-      case "freelancer":
-        return "bg-amber-100 text-amber-700";
-      default:
-        return "bg-slate-100 text-slate-500";
-    }
-  };
 
   return (
     <div className="space-y-4">
@@ -491,6 +474,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
           : tableRows;
         return (
           <ProductsTable
+            mauPhong={bangMauPhong(allDepts)}
             rows={displayRows}
             detailQs={detailQs}
             justCreatedIds={justCreatedIds}

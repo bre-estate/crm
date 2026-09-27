@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { MAU_PHONG_TRONG } from "@/lib/to-chuc";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -44,34 +45,13 @@ export type ProductRow = {
   overpaidEmployees?: string[];
 };
 
-// Hardcode màu cho CTV (phòng ảo) để đồng bộ 2 màu ở mọi nơi. Các phòng
-// khác vẫn dùng hash để tự động phân biệt.
-const DEPT_COLORS: Record<string, string> = {
-  CTV: "bg-amber-100 text-amber-800 border border-amber-200",
-};
-function deptColor(name: string | null | undefined): string {
-  if (!name) return "bg-slate-100 text-slate-600";
-  if (DEPT_COLORS[name]) return DEPT_COLORS[name];
-  const palette = [
-    "bg-blue-100 text-blue-700",
-    "bg-orange-100 text-orange-700",
-    "bg-purple-100 text-purple-700",
-    "bg-teal-100 text-teal-700",
-    "bg-rose-100 text-rose-700",
-    "bg-amber-100 text-amber-700",
-    "bg-cyan-100 text-cyan-700",
-  ];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) & 0xffffff;
-  const cls = palette[hash % palette.length];
-  DEPT_COLORS[name] = cls;
-  return cls;
-}
 
 type Props = {
   rows: ProductRow[];
   detailQs: string;
   justCreatedIds: Set<number>;
+  /** Bảng màu phòng ban dùng chung mọi trang, xem bangMauPhong() ở lib/to-chuc.ts. */
+  mauPhong: Record<string, string>;
   onBulkDelete: (ids: number[]) => Promise<{
     ok: number;
     deletedIds: number[];
@@ -83,6 +63,7 @@ export default function ProductsTable({
   rows,
   detailQs,
   justCreatedIds,
+  mauPhong,
   onBulkDelete,
 }: Props) {
   const router = useRouter();
@@ -291,9 +272,9 @@ export default function ProductsTable({
                     {r.departmentName ? (
                       <span
                         title={r.deptDuongDan ?? undefined}
-                        className={`text-xs px-2 py-0.5 rounded whitespace-nowrap ${deptColor(
-                          r.deptGoc ?? r.departmentName,
-                        )}`}
+                        className={`text-xs px-2 py-0.5 rounded whitespace-nowrap ${
+                          mauPhong[r.departmentName] ?? MAU_PHONG_TRONG
+                        }`}
                       >
                         {r.departmentName}
                       </span>

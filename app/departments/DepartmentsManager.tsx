@@ -15,7 +15,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { xepCay, congDonCay, nhanPhong, SAU_TOI_DA } from "@/lib/to-chuc";
+import {
+  xepCay,
+  congDonCay,
+  nhanPhong,
+  bangMauPhong,
+  MAU_PHONG_TRONG,
+  SAU_TOI_DA,
+} from "@/lib/to-chuc";
 
 type Department = {
   id: number;
@@ -59,6 +66,7 @@ export default function DepartmentsManager({
   const [dangLam, setDangLam] = useState<DangLam>(null);
 
   const cay = xepCay(departments);
+  const mauPhong = bangMauPhong(departments);
   // Con số của phòng cha phải gồm cả các đội bên dưới, không thì phòng Kinh doanh
   // hiện 4 người trong khi hai đội con của nó có 9 người, nhìn vào thấy vô lý.
   const nhanSu = congDonCay(
@@ -151,7 +159,13 @@ export default function DepartmentsManager({
                 <div className="flex-1 min-w-52" style={{ paddingLeft: sau * 22 }}>
                   <div className="flex items-center gap-2">
                     {sau > 0 && <span className="text-slate-300 select-none">└</span>}
-                    <span className={sau === 0 ? "font-semibold" : "font-medium"}>{d.name}</span>
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded whitespace-nowrap ${
+                        mauPhong[d.name] ?? MAU_PHONG_TRONG
+                      } ${sau === 0 ? "font-semibold" : ""}`}
+                    >
+                      {d.name}
+                    </span>
                     <span className="text-[10px] font-mono text-slate-400">{d.code}</span>
                   </div>
                   {d.note && <div className="text-[11px] text-slate-500 mt-0.5">{d.note}</div>}

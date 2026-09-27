@@ -22,6 +22,8 @@ import {
   xepCay,
   nhanhDuoi,
   nhanPhong,
+  bangMauPhong,
+  MAU_PHONG_TRONG,
 } from "@/lib/to-chuc";
 
 /** Vị trí đọc từ bảng positions, truyền xuống từ máy chủ. */
@@ -81,6 +83,7 @@ export default function EmployeesManager({
     () => Object.fromEntries(viTri.map((v) => [v.code, v.label])) as Record<string, string>,
     [viTri],
   );
+  const mauPhong = useMemo(() => bangMauPhong(departments), [departments]);
   const [pending, start] = useTransition();
   const [editing, setEditing] = useState<Employee | null>(null);
   const [creating, setCreating] = useState(false);
@@ -286,7 +289,20 @@ export default function EmployeesManager({
                     <div className="text-[11px] text-slate-500 mt-1">Cộng tác viên</div>
                   )}
                 </td>
-                <td className="p-3 text-slate-600 text-xs">{e.departmentName ?? "—"}</td>
+                <td className="p-3">
+                  {e.departmentName ? (
+                    <span
+                      title={nhanPhong(e.departmentId, departments)}
+                      className={`text-xs px-2 py-0.5 rounded whitespace-nowrap ${
+                        mauPhong[e.departmentName] ?? MAU_PHONG_TRONG
+                      }`}
+                    >
+                      {e.departmentName}
+                    </span>
+                  ) : (
+                    <span className="text-slate-300 text-xs">chưa phân</span>
+                  )}
+                </td>
                 <td className="p-3 text-xs break-all">{e.email ?? "—"}</td>
                 <td className="p-3 text-xs tabular-nums whitespace-nowrap">{e.phone ?? "—"}</td>
                 <td className="p-3 text-center whitespace-nowrap">
