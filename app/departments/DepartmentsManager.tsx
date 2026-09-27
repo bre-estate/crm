@@ -418,8 +418,8 @@ function Field({
 function ChonMau({ banDau }: { banDau: string }) {
   const [chon, setChon] = useState(banDau);
 
-  // Xếp theo gam màu, mỗi gam một cột dọc: sắc nhạt trên, sắc đậm dưới. Để hai
-  // sắc cùng gam nằm cạnh nhau thì lúc chọn mới so được chúng với nhau.
+  // Xếp theo gam màu, mỗi gam một cột dọc: sắc nhạt trên, sắc đậm dưới. Dùng
+  // lưới cố định 11 cột thay vì flex-wrap, không thì cột cuối rớt xuống một mình.
   const gam = Object.keys(MAU_PHONG_CHON)
     .filter((m) => !m.endsWith("_dam"))
     .map((nhat) => ({ nhat, dam: `${nhat}_dam` }))
@@ -431,7 +431,8 @@ function ChonMau({ banDau }: { banDau: string }) {
       type="button"
       title={MAU_PHONG_CHON[m].ten}
       aria-label={MAU_PHONG_CHON[m].ten}
-      onClick={() => setChon(m)}
+      // Bấm lại đúng màu đang chọn thì bỏ chọn, phòng quay về màu tự động.
+      onClick={() => setChon((truoc) => (truoc === m ? "" : m))}
       className={`h-7 w-7 rounded-full ${MAU_PHONG_CHON[m].cham} ${
         chon === m ? "ring-2 ring-offset-2 ring-slate-800" : "hover:opacity-75"
       }`}
@@ -441,29 +442,13 @@ function ChonMau({ banDau }: { banDau: string }) {
   return (
     <>
       <input type="hidden" name="color" value={chon} />
-      <div className="flex flex-wrap items-start gap-x-2.5 gap-y-3">
-        <button
-          type="button"
-          title="Để app tự chọn màu"
-          onClick={() => setChon("")}
-          className={`h-7 px-2.5 rounded-full border text-xs whitespace-nowrap ${
-            chon === ""
-              ? "border-slate-800 bg-slate-100 text-slate-800"
-              : "border-slate-300 text-slate-500 hover:bg-slate-50"
-          }`}
-        >
-          Tự động
-        </button>
-        {gam.map(({ nhat, dam }) => (
-          <div key={nhat} className="flex flex-col gap-1.5">
-            {oMau(nhat)}
-            {oMau(dam)}
-          </div>
-        ))}
+      <div className="grid grid-cols-11 gap-x-2 gap-y-1.5 justify-items-center max-w-full">
+        {gam.map(({ nhat }) => oMau(nhat))}
+        {gam.map(({ dam }) => oMau(dam))}
       </div>
       <div className="text-[11px] text-slate-500 mt-2">
-        Mỗi cột là một gam, trên nhạt dưới đậm. Để Tự động thì phòng nhận màu chưa ai
-        dùng, theo thứ tự trong cây.
+        Mỗi cột là một gam, trên nhạt dưới đậm. Không chọn màu nào thì phòng tự nhận màu
+        chưa ai dùng. Bấm lại màu đang chọn để bỏ chọn.
       </div>
     </>
   );
