@@ -621,7 +621,6 @@ phẩm ảo trong Excel không gắn căn nào.
 |---|---|
 | Không sửa hàng loạt phòng của căn cũ | Sai phòng thì phải mở từng căn. Cố ý không làm, xử lý bằng script khi cần |
 | Không lưu vết chi dư rồi thu lại | App chỉ thấy số cuối. Khớp từng dòng với ngân hàng sẽ hụt |
-| `README.md` lỗi thời | Ghi là SQLite trong khi app chạy Postgres/Supabase |
 | Supabase gói miễn phí | Không có khôi phục theo thời điểm. Chưa có sao lưu `pg_dump` định kỳ |
 | Nhập sao kê thủ công | Phụ thuộc người nhớ nhập theo quý |
 
