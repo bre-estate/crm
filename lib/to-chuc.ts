@@ -66,18 +66,33 @@ const BANG_MAU = [
  *
  * Chuỗi lớp phải viết nguyên văn ở đây thì Tailwind mới sinh CSS cho chúng.
  */
-export const MAU_PHONG_CHON: Record<string, { ten: string; lop: string }> = {
-  do: { ten: "Đỏ", lop: "bg-red-100 text-red-700" },
-  xanh_duong: { ten: "Xanh dương", lop: "bg-blue-100 text-blue-700" },
-  xanh_la: { ten: "Xanh lá", lop: "bg-emerald-100 text-emerald-700" },
-  ho_phach: { ten: "Hổ phách", lop: "bg-amber-100 text-amber-800" },
-  tim: { ten: "Tím", lop: "bg-violet-100 text-violet-700" },
-  xanh_lo: { ten: "Xanh lơ", lop: "bg-cyan-100 text-cyan-700" },
-  cam: { ten: "Cam", lop: "bg-orange-100 text-orange-700" },
-  xanh_ngoc: { ten: "Xanh ngọc", lop: "bg-teal-100 text-teal-700" },
-  hong_sen: { ten: "Hồng sen", lop: "bg-fuchsia-100 text-fuchsia-700" },
-  xanh_non: { ten: "Xanh nõn", lop: "bg-lime-100 text-lime-800" },
-  xanh_troi: { ten: "Xanh trời", lop: "bg-sky-100 text-sky-700" },
+export const MAU_PHONG_CHON: Record<string, { ten: string; lop: string; cham: string }> = {
+  // Sắc nhạt: nền rất nhạt, chữ đậm. Hợp với thẻ nhỏ trong bảng dày.
+  do: { ten: "Đỏ", lop: "bg-red-100 text-red-700", cham: "bg-red-400" },
+  xanh_duong: { ten: "Xanh dương", lop: "bg-blue-100 text-blue-700", cham: "bg-blue-400" },
+  xanh_la: { ten: "Xanh lá", lop: "bg-emerald-100 text-emerald-700", cham: "bg-emerald-400" },
+  ho_phach: { ten: "Hổ phách", lop: "bg-amber-100 text-amber-800", cham: "bg-amber-400" },
+  tim: { ten: "Tím", lop: "bg-violet-100 text-violet-700", cham: "bg-violet-400" },
+  xanh_lo: { ten: "Xanh lơ", lop: "bg-cyan-100 text-cyan-700", cham: "bg-cyan-400" },
+  cam: { ten: "Cam", lop: "bg-orange-100 text-orange-700", cham: "bg-orange-400" },
+  xanh_ngoc: { ten: "Xanh ngọc", lop: "bg-teal-100 text-teal-700", cham: "bg-teal-400" },
+  hong_sen: { ten: "Hồng sen", lop: "bg-fuchsia-100 text-fuchsia-700", cham: "bg-fuchsia-400" },
+  xanh_non: { ten: "Xanh nõn", lop: "bg-lime-100 text-lime-800", cham: "bg-lime-400" },
+  xanh_troi: { ten: "Xanh trời", lop: "bg-sky-100 text-sky-700", cham: "bg-sky-400" },
+
+  // Sắc đậm: nền đậm, chữ trắng. Cùng gam với sắc nhạt cùng tên nhưng nhìn
+  // tách hẳn ra, nên một phòng lớn và đội bên trong nó dùng được cùng gam.
+  do_dam: { ten: "Đỏ đậm", lop: "bg-red-600 text-white", cham: "bg-red-600" },
+  xanh_duong_dam: { ten: "Xanh dương đậm", lop: "bg-blue-600 text-white", cham: "bg-blue-600" },
+  xanh_la_dam: { ten: "Xanh lá đậm", lop: "bg-emerald-600 text-white", cham: "bg-emerald-600" },
+  ho_phach_dam: { ten: "Hổ phách đậm", lop: "bg-amber-600 text-white", cham: "bg-amber-600" },
+  tim_dam: { ten: "Tím đậm", lop: "bg-violet-600 text-white", cham: "bg-violet-600" },
+  xanh_lo_dam: { ten: "Xanh lơ đậm", lop: "bg-cyan-700 text-white", cham: "bg-cyan-700" },
+  cam_dam: { ten: "Cam đậm", lop: "bg-orange-600 text-white", cham: "bg-orange-600" },
+  xanh_ngoc_dam: { ten: "Xanh ngọc đậm", lop: "bg-teal-600 text-white", cham: "bg-teal-600" },
+  hong_sen_dam: { ten: "Hồng sen đậm", lop: "bg-fuchsia-600 text-white", cham: "bg-fuchsia-600" },
+  xanh_non_dam: { ten: "Xanh nõn đậm", lop: "bg-lime-600 text-white", cham: "bg-lime-600" },
+  xanh_troi_dam: { ten: "Xanh trời đậm", lop: "bg-sky-600 text-white", cham: "bg-sky-600" },
 };
 
 export const MA_MAU_PHONG = Object.keys(MAU_PHONG_CHON);
@@ -86,12 +101,17 @@ export const MA_MAU_PHONG = Object.keys(MAU_PHONG_CHON);
  * Phòng chưa tự chọn màu thì nhận màu theo thứ tự cây.
  *
  * Không băm từ tên: băm thì hai phòng dễ trùng màu, mà đổi tên phòng là đổi
- * luôn màu. Không có sắc đỏ và hồng đào trong danh sách tự động: đỏ để riêng
- * cho Ban lãnh đạo, hồng đào nhìn dễ lẫn với đỏ.
+ * luôn màu. Không có sắc đỏ trong danh sách tự động vì để riêng cho Ban lãnh
+ * đạo, cũng không có hồng đào vì nhìn dễ lẫn với đỏ.
+ *
+ * Chạy hết sắc nhạt rồi mới sang sắc đậm, nên tới phòng thứ hai mươi mốt mới
+ * phải dùng lại màu.
  */
 const MAU_TU_DONG = [
   "xanh_duong", "xanh_la", "ho_phach", "tim", "xanh_lo",
   "cam", "xanh_ngoc", "hong_sen", "xanh_non", "xanh_troi",
+  "xanh_duong_dam", "xanh_la_dam", "ho_phach_dam", "tim_dam", "xanh_lo_dam",
+  "cam_dam", "xanh_ngoc_dam", "hong_sen_dam", "xanh_non_dam", "xanh_troi_dam",
 ];
 
 /** Màu chỉ định sẵn theo mã phòng, dùng khi phòng chưa tự chọn màu. */
@@ -108,12 +128,28 @@ export const MAU_PHONG_TRONG = "bg-slate-100 text-slate-600";
  * bảng chỉ còn tên phòng.
  */
 export function bangMauPhong(ds: NodePhong[]): Record<string, string> {
+  const cay = xepCay(ds);
+
+  /** Màu đã cố định của một phòng: người dùng tự chọn, hoặc mặc định theo mã. */
+  const maCoDinh = (node: NodePhong): string | null => {
+    if (node.color && MAU_PHONG_CHON[node.color]) return node.color;
+    return (node.code && MAU_MAC_DINH_THEO_MA[node.code]) || null;
+  };
+
+  // Màu tự động phải né những màu đã bị chiếm, không thì hai phòng trùng màu.
+  const daChiem = new Set<string>();
+  for (const { node } of cay) {
+    const m = maCoDinh(node);
+    if (m) daChiem.add(m);
+  }
+  const conTrong = MAU_TU_DONG.filter((m) => !daChiem.has(m));
+  // Chiếm hết bảng rồi thì đành quay vòng lại từ đầu, còn hơn không có màu nào.
+  const nguon = conTrong.length > 0 ? conTrong : MAU_TU_DONG;
+
   const ra: Record<string, string> = {};
-  let ke = 0; // chỉ tăng khi thật sự lấy một màu tự động, để không bỏ trống màu nào
-  for (const { node } of xepCay(ds)) {
-    const tuChon = node.color && MAU_PHONG_CHON[node.color] ? node.color : null;
-    const macDinh = node.code ? MAU_MAC_DINH_THEO_MA[node.code] : undefined;
-    const ma = tuChon ?? macDinh ?? MAU_TU_DONG[ke++ % MAU_TU_DONG.length];
+  let ke = 0; // chỉ tăng khi thật sự lấy một màu tự động
+  for (const { node } of cay) {
+    const ma = maCoDinh(node) ?? nguon[ke++ % nguon.length];
     const lop = MAU_PHONG_CHON[ma]?.lop ?? MAU_PHONG_TRONG;
     ra[String(node.id)] = lop;
     ra[node.name] = lop;
