@@ -341,14 +341,7 @@ function HopThoai({
             </Field>
 
             <Field label="Màu thẻ" full>
-              <ChonMau
-                banDau={sua?.color ?? ""}
-                phongDungMau={Object.fromEntries(
-                  departments
-                    .filter((d) => d.color && d.id !== sua?.id)
-                    .map((d) => [d.color as string, d.name]),
-                )}
-              />
+              <ChonMau banDau={sua?.color ?? ""} />
             </Field>
 
             <Field label="Trưởng phòng" full>
@@ -422,77 +415,56 @@ function Field({
  * Chọn màu thẻ cho phòng. Không bắt buộc: để Tự động thì phòng nhận màu theo
  * thứ tự trong cây, đảm bảo không trùng phòng nào khác.
  */
-function ChonMau({
-  banDau,
-  phongDungMau,
-}: {
-  banDau: string;
-  /** Màu nào đang được phòng khác dùng, để báo trước khi chọn trùng. */
-  phongDungMau: Record<string, string>;
-}) {
+function ChonMau({ banDau }: { banDau: string }) {
   const [chon, setChon] = useState(banDau);
-  const ma = Object.keys(MAU_PHONG_CHON);
-  const nhat = ma.filter((m) => !m.endsWith("_dam"));
-  const dam = ma.filter((m) => m.endsWith("_dam"));
 
-  const oMau = (m: string) => {
-    const trung = phongDungMau[m];
-    return (
-      <button
-        key={m}
-        type="button"
-        title={trung ? `${MAU_PHONG_CHON[m].ten}, đang dùng cho ${trung}` : MAU_PHONG_CHON[m].ten}
-        aria-label={MAU_PHONG_CHON[m].ten}
-        onClick={() => setChon(m)}
-        className={`relative h-7 w-7 rounded-full ${MAU_PHONG_CHON[m].cham} ${
-          chon === m ? "ring-2 ring-offset-2 ring-slate-800" : "hover:opacity-75"
-        }`}
-      >
-        {trung && (
-          <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-white ring-1 ring-slate-300 text-[8px] leading-3 text-slate-500">
-            !
-          </span>
-        )}
-      </button>
-    );
-  };
+  // Xếp theo gam màu, mỗi gam một cột dọc: sắc nhạt trên, sắc đậm dưới. Để hai
+  // sắc cùng gam nằm cạnh nhau thì lúc chọn mới so được chúng với nhau.
+  const gam = Object.keys(MAU_PHONG_CHON)
+    .filter((m) => !m.endsWith("_dam"))
+    .map((nhat) => ({ nhat, dam: `${nhat}_dam` }))
+    .filter(({ dam }) => MAU_PHONG_CHON[dam]);
 
-  const dangTrung = chon && phongDungMau[chon];
+  const oMau = (m: string) => (
+    <button
+      key={m}
+      type="button"
+      title={MAU_PHONG_CHON[m].ten}
+      aria-label={MAU_PHONG_CHON[m].ten}
+      onClick={() => setChon(m)}
+      className={`h-7 w-7 rounded-full ${MAU_PHONG_CHON[m].cham} ${
+        chon === m ? "ring-2 ring-offset-2 ring-slate-800" : "hover:opacity-75"
+      }`}
+    />
+  );
 
   return (
     <>
       <input type="hidden" name="color" value={chon} />
-      <div className="space-y-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            title="Để app tự chọn màu"
-            onClick={() => setChon("")}
-            className={`h-7 px-2.5 rounded-full border text-xs whitespace-nowrap ${
-              chon === ""
-                ? "border-slate-800 bg-slate-100 text-slate-800"
-                : "border-slate-300 text-slate-500 hover:bg-slate-50"
-            }`}
-          >
-            Tự động
-          </button>
-          {nhat.map(oMau)}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="w-[4.5rem]" />
-          {dam.map(oMau)}
-        </div>
+      <div className="flex flex-wrap items-start gap-x-2.5 gap-y-3">
+        <button
+          type="button"
+          title="Để app tự chọn màu"
+          onClick={() => setChon("")}
+          className={`h-7 px-2.5 rounded-full border text-xs whitespace-nowrap ${
+            chon === ""
+              ? "border-slate-800 bg-slate-100 text-slate-800"
+              : "border-slate-300 text-slate-500 hover:bg-slate-50"
+          }`}
+        >
+          Tự động
+        </button>
+        {gam.map(({ nhat, dam }) => (
+          <div key={nhat} className="flex flex-col gap-1.5">
+            {oMau(nhat)}
+            {oMau(dam)}
+          </div>
+        ))}
       </div>
-      {dangTrung ? (
-        <div className="text-[11px] text-orange-700 mt-1.5">
-          Màu này đang dùng cho {dangTrung}. Chọn trùng thì hai phòng nhìn giống nhau.
-        </div>
-      ) : (
-        <div className="text-[11px] text-slate-500 mt-1.5">
-          Để Tự động thì phòng nhận màu chưa ai dùng, theo thứ tự trong cây. Ô có dấu chấm
-          than là màu phòng khác đã lấy.
-        </div>
-      )}
+      <div className="text-[11px] text-slate-500 mt-2">
+        Mỗi cột là một gam, trên nhạt dưới đậm. Để Tự động thì phòng nhận màu chưa ai
+        dùng, theo thứ tự trong cây.
+      </div>
     </>
   );
 }
