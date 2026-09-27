@@ -60,37 +60,63 @@ const BANG_MAU = [
  *
  * Trả về map tra được bằng cả id lẫn tên, vì có bảng chỉ còn tên phòng.
  */
-/** Phòng có màu chỉ định sẵn, không lấy theo thứ tự. */
-const MAU_PHONG_RIENG: Record<string, string> = {
-  // Đỏ dành riêng cho cấp cao nhất, phòng khác không dùng.
-  BLD: "bg-red-100 text-red-700",
+/**
+ * Bảng màu chọn được cho phòng ban. Khóa lưu xuống cột departments.color,
+ * không lưu thẳng lớp CSS để đổi bảng màu sau này không phải sửa dữ liệu.
+ *
+ * Chuỗi lớp phải viết nguyên văn ở đây thì Tailwind mới sinh CSS cho chúng.
+ */
+export const MAU_PHONG_CHON: Record<string, { ten: string; lop: string }> = {
+  do: { ten: "Đỏ", lop: "bg-red-100 text-red-700" },
+  xanh_duong: { ten: "Xanh dương", lop: "bg-blue-100 text-blue-700" },
+  xanh_la: { ten: "Xanh lá", lop: "bg-emerald-100 text-emerald-700" },
+  ho_phach: { ten: "Hổ phách", lop: "bg-amber-100 text-amber-800" },
+  tim: { ten: "Tím", lop: "bg-violet-100 text-violet-700" },
+  xanh_lo: { ten: "Xanh lơ", lop: "bg-cyan-100 text-cyan-700" },
+  cam: { ten: "Cam", lop: "bg-orange-100 text-orange-700" },
+  xanh_ngoc: { ten: "Xanh ngọc", lop: "bg-teal-100 text-teal-700" },
+  hong_sen: { ten: "Hồng sen", lop: "bg-fuchsia-100 text-fuchsia-700" },
+  xanh_non: { ten: "Xanh nõn", lop: "bg-lime-100 text-lime-800" },
+  xanh_troi: { ten: "Xanh trời", lop: "bg-sky-100 text-sky-700" },
 };
 
-// Không có sắc đỏ và hồng đào trong bảng này: đỏ để riêng cho Ban lãnh đạo,
-// hồng đào nhìn dễ lẫn với đỏ nên bỏ luôn.
-const MAU_PHONG = [
-  "bg-blue-100 text-blue-700",
-  "bg-emerald-100 text-emerald-700",
-  "bg-amber-100 text-amber-800",
-  "bg-violet-100 text-violet-700",
-  "bg-cyan-100 text-cyan-700",
-  "bg-orange-100 text-orange-700",
-  "bg-teal-100 text-teal-700",
-  "bg-fuchsia-100 text-fuchsia-700",
-  "bg-lime-100 text-lime-800",
-  "bg-sky-100 text-sky-700",
+export const MA_MAU_PHONG = Object.keys(MAU_PHONG_CHON);
+
+/**
+ * Phòng chưa tự chọn màu thì nhận màu theo thứ tự cây.
+ *
+ * Không băm từ tên: băm thì hai phòng dễ trùng màu, mà đổi tên phòng là đổi
+ * luôn màu. Không có sắc đỏ và hồng đào trong danh sách tự động: đỏ để riêng
+ * cho Ban lãnh đạo, hồng đào nhìn dễ lẫn với đỏ.
+ */
+const MAU_TU_DONG = [
+  "xanh_duong", "xanh_la", "ho_phach", "tim", "xanh_lo",
+  "cam", "xanh_ngoc", "hong_sen", "xanh_non", "xanh_troi",
 ];
+
+/** Màu chỉ định sẵn theo mã phòng, dùng khi phòng chưa tự chọn màu. */
+const MAU_MAC_DINH_THEO_MA: Record<string, string> = {
+  BLD: "do", // đỏ cho cấp cao nhất
+};
 
 export const MAU_PHONG_TRONG = "bg-slate-100 text-slate-600";
 
+/**
+ * Màu thẻ của mọi phòng ban, dùng chung cho MỌI trang.
+ * Ưu tiên màu phòng tự chọn, không có thì lấy màu mặc định theo mã, không có
+ * nữa thì lấy theo thứ tự cây. Trả về map tra được bằng cả id lẫn tên, vì có
+ * bảng chỉ còn tên phòng.
+ */
 export function bangMauPhong(ds: NodePhong[]): Record<string, string> {
   const ra: Record<string, string> = {};
-  let ke = 0; // chỉ tăng khi thật sự lấy một màu từ bảng, để không bỏ trống màu nào
+  let ke = 0; // chỉ tăng khi thật sự lấy một màu tự động, để không bỏ trống màu nào
   for (const { node } of xepCay(ds)) {
-    const rieng = node.code ? MAU_PHONG_RIENG[node.code] : undefined;
-    const mau = rieng ?? MAU_PHONG[ke++ % MAU_PHONG.length];
-    ra[String(node.id)] = mau;
-    ra[node.name] = mau;
+    const tuChon = node.color && MAU_PHONG_CHON[node.color] ? node.color : null;
+    const macDinh = node.code ? MAU_MAC_DINH_THEO_MA[node.code] : undefined;
+    const ma = tuChon ?? macDinh ?? MAU_TU_DONG[ke++ % MAU_TU_DONG.length];
+    const lop = MAU_PHONG_CHON[ma]?.lop ?? MAU_PHONG_TRONG;
+    ra[String(node.id)] = lop;
+    ra[node.name] = lop;
   }
   return ra;
 }
@@ -106,6 +132,8 @@ export interface NodePhong {
   name: string;
   code: string | null;
   parentId: number | null;
+  /** Khóa trong MAU_PHONG_CHON. Để trống thì nhận màu tự động. */
+  color?: string | null;
 }
 
 /**

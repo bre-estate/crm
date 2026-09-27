@@ -37,6 +37,8 @@ export const departments = pgTable("departments", {
   // Phòng cha. Nhân viên gắn vào nhánh lá, báo cáo gom được cả hai tầng:
   // từng đội riêng và cộng gộp cả phòng. Xem lib/to-chuc.ts.
   parentId: integer("parent_id"),
+  // Khóa màu thẻ, xem MAU_PHONG_CHON ở lib/to-chuc.ts. Trống thì nhận màu tự động.
+  color: text("color"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

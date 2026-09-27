@@ -20,6 +20,7 @@ import {
   congDonCay,
   nhanPhong,
   bangMauPhong,
+  MAU_PHONG_CHON,
   MAU_PHONG_TRONG,
   SAU_TOI_DA,
 } from "@/lib/to-chuc";
@@ -31,6 +32,8 @@ type Department = {
   leaderName: string | null;
   note: string | null;
   parentId: number | null;
+  /** Khóa màu tự chọn. Để trống thì nhận màu tự động theo thứ tự cây. */
+  color: string | null;
   prodCount: number;
   empCount: number;
 };
@@ -337,6 +340,10 @@ function HopThoai({
               />
             </Field>
 
+            <Field label="Màu thẻ" full>
+              <ChonMau banDau={sua?.color ?? ""} />
+            </Field>
+
             <Field label="Trưởng phòng" full>
               <SearchableSelect
                 name="leaderName"
@@ -401,5 +408,45 @@ function Field({
       </label>
       {children}
     </div>
+  );
+}
+
+/**
+ * Chọn màu thẻ cho phòng. Không bắt buộc: để Tự động thì phòng nhận màu theo
+ * thứ tự trong cây, đảm bảo không trùng phòng nào khác.
+ */
+function ChonMau({ banDau }: { banDau: string }) {
+  const [chon, setChon] = useState(banDau);
+  return (
+    <>
+      <input type="hidden" name="color" value={chon} />
+      <div className="flex flex-wrap items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => setChon("")}
+          className={`text-xs px-2 py-1 rounded border ${
+            chon === "" ? "border-slate-800 bg-slate-100" : "border-slate-200 text-slate-500"
+          }`}
+        >
+          Tự động
+        </button>
+        {Object.entries(MAU_PHONG_CHON).map(([ma, m]) => (
+          <button
+            key={ma}
+            type="button"
+            title={m.ten}
+            onClick={() => setChon(ma)}
+            className={`text-xs px-2.5 py-1 rounded ${m.lop} ${
+              chon === ma ? "ring-2 ring-offset-1 ring-slate-800" : ""
+            }`}
+          >
+            {m.ten}
+          </button>
+        ))}
+      </div>
+      <div className="text-[11px] text-slate-500 mt-1">
+        Để Tự động thì phòng nhận màu theo thứ tự trong cây, không trùng phòng nào khác.
+      </div>
+    </>
   );
 }

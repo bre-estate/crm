@@ -8,7 +8,7 @@ import { departments, products, employees } from "@/lib/schema";
 import { eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { SAU_TOI_DA, sauCuaPhong } from "@/lib/to-chuc";
+import { SAU_TOI_DA, sauCuaPhong, MA_MAU_PHONG } from "@/lib/to-chuc";
 
 /**
  * Cây phòng ban chỉ cho ba cấp: phòng lớn, đội, đội nhỏ trong đội.
@@ -56,12 +56,15 @@ const DeptSchema = z.object({
   leaderName: z.string().trim().optional().nullable(),
   note: z.string().trim().optional().nullable(),
   parentId: z.coerce.number().int().nullable().optional(),
+  // Trống nghĩa là để phòng nhận màu tự động.
+  color: z.enum(MA_MAU_PHONG as [string, ...string[]]).nullable().optional(),
 });
 
 function formToObject(fd: FormData): Record<string, unknown> {
   const obj: Record<string, unknown> = {};
   for (const [k, v] of fd.entries()) obj[k] = typeof v === "string" ? v : "";
   if (obj.parentId === "" || obj.parentId === "0") obj.parentId = null;
+  if (obj.color === "") obj.color = null;
   return obj;
 }
 
@@ -76,6 +79,7 @@ async function _createDepartmentNoRedirect(fd: FormData) {
     leaderName: data.leaderName || null,
     note: data.note || null,
     parentId: data.parentId ?? null,
+    color: data.color ?? null,
   });
   revalidatePath("/departments");
 }
@@ -115,6 +119,7 @@ async function _updateDepartmentNoRedirect(id: number, fd: FormData) {
       leaderName: data.leaderName || null,
       note: data.note || null,
       parentId: data.parentId ?? null,
+      color: data.color ?? null,
     })
     .where(eq(departments.id, id));
   revalidatePath("/departments");
