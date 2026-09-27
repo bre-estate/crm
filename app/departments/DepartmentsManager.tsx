@@ -148,7 +148,6 @@ export default function DepartmentsManager({
 
         <div className="divide-y divide-slate-100">
           {cay.map(({ node: d, sau }) => {
-            const laCha = coCon.has(d.id);
             const tongNguoi = nhanSu.get(d.id) ?? 0;
             const tongCan = soCan.get(d.id) ?? 0;
             return (
@@ -166,7 +165,7 @@ export default function DepartmentsManager({
                     >
                       {d.name}
                     </span>
-                    <span className="text-[10px] font-mono text-slate-400">{d.code}</span>
+
                   </div>
                   {d.note && <div className="text-[11px] text-slate-500 mt-0.5">{d.note}</div>}
                 </div>
@@ -175,19 +174,8 @@ export default function DepartmentsManager({
                   {d.leaderName ?? <span className="text-slate-300">chưa có</span>}
                 </div>
 
-                <div className="w-20 text-right text-sm tabular-nums">
-                  {tongNguoi}
-                  {laCha && d.empCount !== tongNguoi && (
-                    <div className="text-[11px] text-slate-400">{d.empCount} trực tiếp</div>
-                  )}
-                </div>
-
-                <div className="w-24 text-right text-sm tabular-nums">
-                  {tongCan}
-                  {laCha && d.prodCount !== tongCan && (
-                    <div className="text-[11px] text-slate-400">{d.prodCount} trực tiếp</div>
-                  )}
-                </div>
+                <div className="w-20 text-right text-sm tabular-nums">{tongNguoi}</div>
+                <div className="w-24 text-right text-sm tabular-nums">{tongCan}</div>
 
                 <div className="w-44 flex justify-end gap-3 whitespace-nowrap text-sm">
                   {sau < SAU_TOI_DA && (
