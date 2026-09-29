@@ -6,7 +6,8 @@
  * - Turn synthesis cuối: streaming (msg dài, cải thiện perceived speed)
  * - Emit "status" events giữa turns để UI show progress.
  */
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, quyenCua } from "@/lib/auth";
+import type { Resource } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { chatLogs } from "@/lib/schema";
 import OpenAI from "openai";
@@ -14,7 +15,7 @@ import {
   TOOL_SCHEMAS,
   TOOL_IMPL,
   SENSITIVE_TOOL_NAMES,
-  SENSITIVE_ALLOWED_ROLES,
+  SENSITIVE_TOOL_RESOURCE,
 } from "@/lib/chatbot/tools";
 
 export const runtime = "nodejs";
@@ -33,6 +34,21 @@ QUY TẮC TUYỆT ĐỐI:
    Note nội bộ (KHÔNG lặp lại trong câu trả lời cho user): %HH sale là chính sách nội bộ BRE trả NVKD, không phải CĐT trả. Đừng dùng %HH sale để rank CĐT, cũng đừng giải thích vì sao trong câu trả lời (user đã biết).
 4. Nếu user hỏi ranking bán tốt nhất theo doanh số → dùng getTopProjects (số căn + doanh thu + HH).
 5. Nếu user hỏi 1 căn cụ thể → dùng getUnitInfo.
+5b. Nếu user hỏi VÌ SAO một con số lại như vậy, vì sao hai căn khác nhau, còn
+   bao nhiêu phần trăm doanh thu chưa nhận, hoa hồng tính ra sao → dùng
+   giaiThichCan. Tool này gom đủ ba nguồn. Khi trả lời:
+   - Nói rõ số đó đến từ nguồn nào trong ba nguồn, và ai phụ trách nguồn đó:
+     hợp đồng với đối tác và file đối chiếu là Sale Admin, chính sách nội bộ
+     là HR. Người hỏi cần biết hỏi tiếp ai.
+   - Trình bày phép tính bằng số thật, đừng chỉ đọc kết quả. Ví dụ trần hoa
+     hồng thì viết ra cơ sở tính rồi nhân tỷ lệ.
+   - Nếu trường khac_voi_hop_dong có phần tử, nêu ngay: đó thường chính là lý
+     do căn này khác căn kia.
+   - Đọc mảng luuY và nhắc lại những cảnh báo trong đó.
+   - pmg_luy_ke là số LŨY KẾ, không cộng dồn các đợt. Phần trăm còn lại lấy ở
+     phan_tram_pmg_con_lai.
+   - Nếu dữ liệu không đủ để kết luận, nói thẳng là chưa đủ và chỉ ra cần hỏi
+     ai. Không suy đoán nguyên nhân.
 6. Nếu user hỏi:
    - "căn nào chưa nhận đủ tiền", "căn nào cần thu tiếp", "lô nào CĐT chưa trả" → listUnitsNeedingCollection
    - "căn nào chưa đối chiếu HH", "căn nào chưa ghi nợ HH cho NV" → listUnitsMissingHHRecon
@@ -77,10 +93,17 @@ export async function POST(req: Request) {
       { status: 403, headers: { "Content-Type": "application/json" } },
     );
   }
-  const canSensitive = SENSITIVE_ALLOWED_ROLES.has(user.role);
-  const allowedTools = canSensitive
-    ? TOOL_SCHEMAS
-    : TOOL_SCHEMAS.filter((t) => !SENSITIVE_TOOL_NAMES.has(t.function.name));
+  // Quyền gọi tool nhạy cảm xét theo quyền xem báo cáo tương ứng, không theo
+  // tên vai trò. Trước đây chặn bằng danh sách ["owner", "manager"], mà vai trò
+  // "manager" đã bị bỏ khi gộp vào vị trí, nên CEO rơi xuống nhóm nhân viên.
+  const duocGoi = (ten: string) => {
+    const res = SENSITIVE_TOOL_RESOURCE[ten];
+    return !res || quyenCua(user, res as Resource);
+  };
+  const canSensitive = Object.values(SENSITIVE_TOOL_RESOURCE).some((r) =>
+    quyenCua(user, r as Resource),
+  );
+  const allowedTools = TOOL_SCHEMAS.filter((t) => duocGoi(t.function.name));
 
   if (!process.env.BRE_CRM_KEY) {
     return new Response(

@@ -5,6 +5,7 @@
  * JSON schema theo OpenAI function calling convention.
  */
 import { db } from "@/lib/db";
+import { giaiThichCan } from "@/lib/chatbot/giai-thich-can";
 import { sql } from "drizzle-orm";
 import { getEmployeeOverpaid } from "@/lib/employee-overpaid";
 
@@ -282,6 +283,24 @@ export const TOOL_SCHEMAS = [
             description: "Số dự án top (default 10).",
           },
         },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "giaiThichCan",
+      description:
+        "Giải thích VÌ SAO một con số của căn lại như vậy. Dùng khi người dùng hỏi tại sao số này thế này, vì sao hai căn khác nhau, còn bao nhiêu phần trăm doanh thu chưa nhận, hoa hồng tính ra sao. Trả về đủ ba nguồn: hợp đồng với đối tác (%PMG, Sale Admin phụ trách), các đợt đối chiếu (tiến độ chi trả và %PMG lũy kế, Sale Admin phụ trách), chính sách nội bộ (%HH sale và các KPI, HR phụ trách). Có kèm chỗ cấu hình trên căn lệch với hợp đồng.",
+      parameters: {
+        type: "object",
+        properties: {
+          unitCode: {
+            type: "string",
+            description: "Mã căn hoặc mã sản phẩm. VD: A-07-09, EMGV_DT26_A1-09-06",
+          },
+        },
+        required: ["unitCode"],
       },
     },
   },
@@ -1500,23 +1519,38 @@ async function getBreakEven(args: { year?: number }): Promise<ToolResult> {
   };
 }
 
-// Tools nhạy cảm: chỉ owner + manager xem được. NV khác gọi → refuse.
-// Sensitive = số liệu tổng thể công ty (P&L, tổng DT, biên gộp, hòa vốn,
-// nghĩa vụ tài chính, ranking cross-project, chi dư nội bộ).
-export const SENSITIVE_TOOL_NAMES = new Set([
-  "getObligations",
-  "getPnL",
-  "getBreakEven",
-  "getSalesReport",
-  "getProjectProfitability",
-  "getTopProjects",
-  "listAllProjectPolicies",
-  "getEmployeeOverpaidList",
-]);
+/**
+ * Tool nhạy cảm gắn với tài nguyên quyền tương ứng, thay vì gắn với danh sách
+ * vai trò. Trước đây chặn theo tên vai trò "owner" và "manager", mà "manager"
+ * đã bị bỏ khi gộp vai trò vào vị trí, nên CEO rơi xuống nhóm nhân viên thường
+ * và mất quyền hỏi các số liệu này.
+ *
+ * Gắn theo tài nguyên thì cấp quyền ở trang Phân quyền là chatbot theo ngay,
+ * không phải sửa code.
+ */
+export const SENSITIVE_TOOL_RESOURCE: Record<string, string> = {
+  getObligations: "reports.obligations",
+  getPnL: "reports.profit-detail",
+  getBreakEven: "reports.profit-detail",
+  getSalesReport: "reports.sales",
+  getProjectProfitability: "reports.project-profitability",
+  getTopProjects: "reports.sales",
+  listAllProjectPolicies: "reports.project-profitability",
+  getEmployeeOverpaidList: "reports.commissions",
+};
 
-export const SENSITIVE_ALLOWED_ROLES = new Set(["owner", "manager"]);
+export const SENSITIVE_TOOL_NAMES = new Set(Object.keys(SENSITIVE_TOOL_RESOURCE));
+
+async function giaiThichCanTool(args: { unitCode: string }): Promise<ToolResult> {
+  const code = (args.unitCode ?? "").trim();
+  if (!code) return { ok: false, error: "Thiếu mã căn" };
+  const data = await giaiThichCan(code);
+  if (!data) return { ok: false, error: `Không tìm thấy căn "${code}"` };
+  return { ok: true, data };
+}
 
 export const TOOL_IMPL: Record<string, (args: any) => Promise<ToolResult>> = {
+  giaiThichCan: giaiThichCanTool,
   getEmployeeCommission,
   getEmployeeOverpaidList,
   getUnitInfo,
