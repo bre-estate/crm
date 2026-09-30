@@ -43,7 +43,7 @@ export default async function ChoTaoGiaVon() {
             <th className="text-left p-2 w-36">NVKD</th>
             <th className="text-left p-2 w-32">Nhận tiền</th>
             <th className="text-right p-2 w-32">Đã thu</th>
-            <th className="text-left p-2">Loại còn thiếu</th>
+            <th className="text-left p-2">Vì sao còn trong danh sách</th>
             <th className="p-2 w-28" />
           </tr>
         </thead>
@@ -73,25 +73,32 @@ export default async function ChoTaoGiaVon() {
                 )}
               </td>
               <td className="p-2 text-right tabular-nums">{fmt(x.tienDaThu)}</td>
+              {/* Một căn có thể còn trong danh sách vì HAI lý do cùng lúc. Liệt
+                  kê đủ cả hai, không thì làm xong một lý do lại tưởng app sai. */}
               <td className="p-2">
-                {x.chuaTao.length > 0 ? (
-                  <span className="text-slate-700">
-                    {x.chuaTao.map((l, i) => (
-                      <span key={l.ma} title={`Trần ${fmt(l.tran)}`}>
-                        {i > 0 && <span className="text-slate-300"> · </span>}
-                        {l.ten}
+                <ul className="space-y-0.5">
+                  {x.chuaTao.length > 0 && (
+                    <li className="text-slate-700">
+                      Chưa tạo{" "}
+                      {x.chuaTao.map((l, i) => (
+                        <span key={l.ma} title={`Trần ${fmt(l.tran)}`}>
+                          {i > 0 && <span className="text-slate-300"> · </span>}
+                          <span className="font-medium">{l.ten}</span>
+                        </span>
+                      ))}
+                      <span className="text-slate-400">
+                        {" "}
+                        ({x.tatCaLoai.length - x.chuaTao.length}/{x.tatCaLoai.length} loại đã có)
                       </span>
-                    ))}
-                    <span className="text-slate-400">
-                      {" "}
-                      ({x.tatCaLoai.length - x.chuaTao.length}/{x.tatCaLoai.length} loại đã có)
-                    </span>
-                  </span>
-                ) : (
-                  <span className="text-slate-500">
-                    Đủ loại, chỉ còn đối chiếu thêm đợt cho tiền vừa về
-                  </span>
-                )}
+                    </li>
+                  )}
+                  {x.tienMoiVe && (
+                    <li className="text-slate-700">
+                      Tiền về {fmtNgay(x.ngayThuCuoi)}, sau lần lập giá vốn gần nhất{" "}
+                      {x.ngayGiaVonCuoi ? fmtNgay(x.ngayGiaVonCuoi) : "(chưa có lần nào)"}
+                    </li>
+                  )}
+                </ul>
               </td>
               <td className="p-2 text-right">
                 <Link
