@@ -23,7 +23,7 @@ function pctStr(actual: number, cap: number): string {
 
 /**
  * Doanh thu một căn gồm BA khoản riêng, mỗi khoản một trần riêng, KHÔNG gộp chung:
- *   hoa hồng       ≤ pmg_base_price × pmg_rate  (PMG × %PMG_LK)
+ *   hoa hồng       ≤ pmg_base_price × (pmg_rate + other_fee_pct)
  *   thưởng nóng sale    ≤ products.cdt_bonus_sale
  *   thưởng nóng quản lý ≤ products.cdt_bonus_manager
  *
@@ -31,6 +31,12 @@ function pctStr(actual: number, cap: number): string {
  * riêng hoa hồng, nên căn nào có thưởng nóng là bị chặn oan. Bảy căn Emerald Garden
  * hoa hồng mới đi 77% trần mà tổng đã 91-93% chỉ vì cộng thêm 22tr thưởng nóng đúng
  * bằng target CĐT cam kết.
+ *
+ * Sửa 30/09/2026: trần hoa hồng bỏ sót other_fee_pct. Công thức ghi nhận doanh
+ * thu ở lib/actions/products.ts cộng cả hai tỷ lệ, `pmgBase * (rate + otherFeePct)`,
+ * còn trần ở đây chỉ nhân pmg_rate. Hai công thức đá nhau nên bảy căn A&T
+ * Saigon Riverside, vốn có other_fee_pct 0,5%, ghi doanh thu đúng vẫn bị chặn
+ * khi lên 100%. Toàn hệ thống chỉ bảy căn này có other_fee_pct khác 0.
  */
 export async function assertRevenueCapNotExceeded(
   productId: number,
@@ -44,6 +50,7 @@ export async function assertRevenueCapNotExceeded(
       code: products.productCode,
       pmgBase: products.pmgBasePrice,
       pmgRate: products.pmgRate,
+      otherFeePct: products.otherFeePct,
       cdtBonusSale: products.cdtBonusSale,
       cdtBonusManager: products.cdtBonusManager,
     })
@@ -67,10 +74,16 @@ export async function assertRevenueCapNotExceeded(
   const khoan: { nhan: string; cap: number; moi: number; sau: number; giaiThich: string }[] = [
     {
       nhan: "hoa hồng",
-      cap: Number(p.pmgBase ?? 0) * Number(p.pmgRate ?? 0),
+      // Cộng cả %phí khác, khớp đúng công thức ghi nhận doanh thu.
+      cap:
+        Number(p.pmgBase ?? 0) *
+        (Number(p.pmgRate ?? 0) + Number(p.otherFeePct ?? 0)),
       moi: newCommission,
       sau: Number(row?.hh ?? 0) + newCommission,
-      giaiThich: "PMG × %PMG_LK",
+      giaiThich:
+        Number(p.otherFeePct ?? 0) > 0
+          ? "PMG × (%PMG_LK + %phí khác)"
+          : "PMG × %PMG_LK",
     },
     {
       nhan: "thưởng nóng cho sale",
