@@ -118,7 +118,7 @@ export default function CostReconRow({
               >
                 ✓
               </span>
-            ) : paid > 0 ? (
+            ) : paid !== 0 ? (
               <span
                 title={`Đã trả 1 phần ${fmtMoney(paid)} / ${fmtMoney(payable)}`}
                 className="text-amber-600"

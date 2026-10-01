@@ -1604,8 +1604,13 @@ export default async function ProductDetailPage({
                       {fmtMoney(payable)}
                     </td>
                     <td className="p-2">{fmtDate(paidDate)}</td>
-                    <td className="p-2 text-right tabular-nums text-green-700">
-                      {paidAmt > 0 ? fmtMoney(paidAmt) : <span className="text-slate-400">—</span>}
+                    <td
+                      className={`p-2 text-right tabular-nums ${
+                        paidAmt < 0 ? "text-red-600" : "text-green-700"
+                      }`}
+                      title={paidAmt < 0 ? "Số âm = khoản đã thu lại" : ""}
+                    >
+                      {paidAmt !== 0 ? fmtMoney(paidAmt) : <span className="text-slate-400">—</span>}
                     </td>
                     <td className="p-2">
                       <span

@@ -197,7 +197,7 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
     const receivable = Number(r.totalReceivable ?? 0);
     const hasDate = !!r.date;
     const isFullyPaid = receivable > 0 && Math.abs(paid - receivable) < 1000;
-    const isPartial = paid > 0 && !isFullyPaid;
+    const isPartial = paid !== 0 && !isFullyPaid;
     let statusKey: (typeof STATUS_OPTIONS)[number]["key"] = "all";
     if (!hasDate) statusKey = "no_date";
     else if (isFullyPaid) statusKey = "done";
@@ -474,8 +474,16 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
                 </Link>
               </div>
               <div className="text-xs pt-1 border-t border-slate-100 flex justify-between">
-                <span className={paid > 0 ? "text-green-700" : "text-slate-400"}>
-                  {paid > 0 ? `Đã thu: ${fmtMoney(paid)}` : "Chưa thu"}
+                <span
+                  className={
+                    paid === 0
+                      ? "text-slate-400"
+                      : paid < 0
+                        ? "text-red-600"
+                        : "text-green-700"
+                  }
+                >
+                  {paid !== 0 ? `Đã thu: ${fmtMoney(paid)}` : "Chưa thu"}
                 </span>
                 <span className={remaining < 1000 ? "text-slate-400" : "text-red-600 font-medium"}>
                   {remaining >= 1000 ? `Còn: ${fmtMoney(remaining)}` : "✓ đủ"}
@@ -597,8 +605,12 @@ export default async function RevenuesPage({ searchParams }: { searchParams: Sea
                   <td className="p-2 text-right tabular-nums font-semibold">
                     {fmtMoney(r.totalReceivable)}
                   </td>
-                  <td className="p-2 text-right tabular-nums text-green-700">
-                    {paid > 0 ? fmtMoney(paid) : <span className="text-slate-400">Chưa thu</span>}
+                  <td
+                    className={`p-2 text-right tabular-nums ${
+                      paid < 0 ? "text-red-600" : "text-green-700"
+                    }`}
+                  >
+                    {paid !== 0 ? fmtMoney(paid) : <span className="text-slate-400">Chưa thu</span>}
                   </td>
                   <td
                     className={`p-2 text-right tabular-nums ${

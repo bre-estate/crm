@@ -483,9 +483,11 @@ export default async function CostsPage({ searchParams }: { searchParams: Search
                   Sửa →
                 </Link>
               </div>
-              {paid > 0 && (
+              {paid !== 0 && (
                 <div className="text-xs pt-1 border-t border-slate-100 flex justify-between">
-                  <span className="text-green-700">Đã trả: {fmtMoney(paid)}</span>
+                  <span className={paid < 0 ? "text-red-600" : "text-green-700"}>
+                    Đã trả: {fmtMoney(paid)}
+                  </span>
                   <span className={paidFull ? "text-slate-400" : "text-red-600"}>
                     {paidFull ? "✓ đủ" : `Còn: ${fmtMoney(Math.max(0, remaining))}`}
                   </span>
