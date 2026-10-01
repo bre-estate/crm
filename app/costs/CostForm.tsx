@@ -207,8 +207,12 @@ export default function CostForm({
   //   1. hasValue: config > 0 trên căn (không có loại này thì ẩn)
   //   2. notFullyPaid: |paid − target| >= 1000 (đã chi đủ 100% → ẩn)
   // Giữ costType hiện tại của recon nếu đang edit (kể cả done) để không phá option.
-  const availableCostTypes = useMemo(() => {
-    if (!product) return [...COST_TYPES];
+  const { dsLoaiChiPhi, loaiChiDeDieuChinh } = useMemo(() => {
+    if (!product)
+      return {
+        dsLoaiChiPhi: [...COST_TYPES],
+        loaiChiDeDieuChinh: new Set<string>(),
+      };
     const cfg = {
       pmgBasePrice: Number(product.pmgBasePrice ?? 0),
       pmgSaleRate:
@@ -253,9 +257,23 @@ export default function CostForm({
       const paid = paidByType.get(t) ?? 0;
       return Math.abs(paid - target) < 1000;
     };
-    return COST_TYPES.filter(
-      (t) => t === costType || (hasValue(t) && !isFullyPaid(t)),
+    // Loại đã có số đối chiếu trên căn thì luôn cho chọn, kể cả khi cấu hình
+    // trần bằng 0 hoặc đã chi đủ 100%. Không mở thì không ai ghi được khoản
+    // hoàn lại, ví dụ chi dư đợt trước hoặc CĐT thu lại thưởng nóng.
+    const coLichSu = (t: (typeof COST_TYPES)[number]): boolean =>
+      (paidByType.get(t) ?? 0) !== 0;
+    const conMo = (t: (typeof COST_TYPES)[number]): boolean =>
+      hasValue(t) && !isFullyPaid(t);
+
+    const ds = COST_TYPES.filter(
+      (t) => t === costType || conMo(t) || coLichSu(t),
     );
+    return {
+      dsLoaiChiPhi: ds,
+      loaiChiDeDieuChinh: new Set<string>(
+        ds.filter((t) => !conMo(t) && coLichSu(t)),
+      ),
+    };
   }, [product, costType, paidByType]);
 
   // Trạng thái "URL param costType đã đủ 100% cho căn này" — show warning banner
@@ -690,15 +708,23 @@ export default function CostForm({
               className="input"
               required
             >
-              {availableCostTypes.map((t) => (
+              {dsLoaiChiPhi.map((t) => (
                 <option key={t} value={t}>
                   {costTypeLabel(t)}
+                  {loaiChiDeDieuChinh.has(t) ? " (chỉ để điều chỉnh giảm)" : ""}
                 </option>
               ))}
             </select>
             {currentTypeAlreadyPaid && (
               <div className="text-[10px] text-amber-700 mt-1">
-                ⚠ Loại này đã chi đủ 100% target — không nên tạo thêm ĐC.
+                ⚠ Loại này đã chi đủ 100% target, chỉ nên tạo thêm để ghi
+                khoản hoàn lại.
+              </div>
+            )}
+            {loaiChiDeDieuChinh.has(costType) && !currentTypeAlreadyPaid && (
+              <div className="text-[10px] text-blue-700 mt-1">
+                Loại này không còn hạn mức trên căn nhưng đã có số đã đối chiếu.
+                Chỉ dùng để ghi khoản hoàn lại, nhập số tiền âm.
               </div>
             )}
           </Field>
