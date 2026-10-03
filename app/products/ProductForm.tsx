@@ -683,6 +683,16 @@ export default function ProductForm({
                 <input type="hidden" name="pmgRate" value={product?.pmgRate ? Number((Number(product.pmgRate) * 100).toFixed(4)) : ""} />
               )}
               {lockCoreFields && <LockedFieldHint />}
+              {otherFeePctLegacy > 0 && (
+                <div className="text-[11px] text-amber-700 mt-1 leading-snug">
+                  ⚠ Căn này còn {fmtPctTight(otherFeePctLegacy)} %phí khác lưu
+                  riêng, hệ thống tự cộng vào ô trên khi ghi nhận doanh thu.
+                  Tỷ lệ thực tế đang áp dụng là{" "}
+                  <b>{fmtPctTight(pmgRateLive + otherFeePctLegacy)}</b>. Đừng
+                  cộng tay {fmtPctTight(otherFeePctLegacy)} vào ô trên, sẽ tính
+                  hai lần.
+                </div>
+              )}
             </Field>
             <Field label="Phí admin (CĐT trừ khỏi PMG)">
               {lockCoreFields ? (

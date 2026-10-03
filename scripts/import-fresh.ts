@@ -279,8 +279,11 @@ async function main() {
           totalRevenue: toNum(r[15]),
           totalCost: toNum(r[17]),
           pmgBasePrice: toNum(r[19]),
-          pmgRate: toRate(r[20]),
-          otherFeePct: toRate(r[21]),
+          // Cột V (%phí khác, tức PQLKD trong hợp đồng) gộp thẳng vào %PMG_LK.
+          // Lưu tách hai trường đã gây tính hai lần ba lần liền, vì giao diện
+          // sửa căn không hiện cột V. Xem drizzle/0061_gop_phi_khac_vao_pmg.sql.
+          pmgRate: toRate(r[20]) + toRate(r[21]),
+          otherFeePct: 0,
           otherRevenue: toNum(r[22]),
           revenueReduction: toNum(r[23]),
           adminFee: toNum(r[24]),

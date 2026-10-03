@@ -40,7 +40,7 @@ async function main() {
 
     // Excel sheet 2.1 mapping:
     // T (index 19) = Gia tinh PMG (pmgBasePrice)
-    // U (20) = %PMG_LK
+    // U (20) = %PMG_LK, V (21) = %phi khac — gộp cả hai vào pmgRate
     // Y (24) = Phi admin (dùng cho revenue side)
     // AA (26) = CĐT thuong sale (cdtBonusSale)
     // AB (27) = CĐT thuong QL (cdtBonusManager)
@@ -57,7 +57,7 @@ async function main() {
 
     const newConfig = {
       pmgBasePrice: Number(r[19] ?? 0),
-      pmgRate: Number(r[20] ?? 0),
+      pmgRate: Number(r[20] ?? 0) + Number(r[21] ?? 0),
       cdtBonusSale: Number(r[26] ?? 0),
       cdtBonusManager: Number(r[27] ?? 0),
       pmgSaleRate: Number(r[28] ?? 0),
