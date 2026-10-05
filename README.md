@@ -55,24 +55,11 @@ Cách làm hiện nay là **viết tay file SQL** rồi chạy lên database, kh
 `drizzle-kit generate`. Lý do là nhiều thay đổi cần kèm chuyển dữ liệu chứ
 không chỉ đổi cấu trúc, ví dụ đổi tên khóa quyền trong cột JSON.
 
-Viết một script chạy tạm để nạp file, rồi xóa script đi:
-
-```ts
-// scripts/chay-migration.ts
-import { db } from "@/lib/db";
-import { sql } from "drizzle-orm";
-import { readFileSync } from "fs";
-
-async function main() {
-  const duongDan = process.argv[2];
-  await db.execute(sql.raw(readFileSync(duongDan, "utf8")));
-  console.log(`Đã chạy ${duongDan}`);
-}
-main().then(() => process.exit(0));
-```
+Nạp bằng `scripts/chay-migration.ts`, truyền một hoặc nhiều file theo thứ tự:
 
 ```bash
 npx tsx --env-file=.env.local scripts/chay-migration.ts drizzle/00xx_ten_file.sql
+npx tsx --env-file=.env.local scripts/chay-migration.ts drizzle/00xx_a.sql drizzle/00yy_b.sql
 ```
 
 Postgres chạy cả tệp trong một giao dịch, nên sai ở giữa là quay lui hết,
