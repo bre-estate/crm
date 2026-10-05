@@ -24,9 +24,9 @@ export async function GET() {
       latency_ms: ms,
     });
   } catch (err) {
-    return NextResponse.json(
-      { status: "error", message: err instanceof Error ? err.message : String(err) },
-      { status: 503 },
-    );
+    // Endpoint công khai, không đăng nhập. Không trả err.message ra ngoài vì
+    // lỗi kết nối Postgres có kèm host, cổng và tên người dùng.
+    console.error("keep-alive:", err);
+    return NextResponse.json({ status: "error" }, { status: 503 });
   }
 }
