@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import SearchableSelect from "@/components/SearchableSelect";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { fmtMoney, fmtDate, fmtPct } from "@/lib/format";
-import { exportCommissionsExcel } from "@/lib/actions/payroll";
+import { exportCommissionsExcel, soatKyLuongAction } from "@/lib/actions/payroll";
+import type { MucSoat } from "@/lib/payroll-preflight";
 import type { PayrollLayout } from "@/lib/payroll";
 import { toast } from "sonner";
 import { cauLoi } from "@/lib/actions/ket-qua";
@@ -40,6 +41,25 @@ export default function PayrollCommissionsClient({ employees }: { employees: Emp
   const [periodLabel, setPeriodLabel] = useState(`Tháng ${m} năm ${y}`);
   const [previewRows, setPreviewRows] = useState<PreviewRow[] | null>(null);
   const [pending, start] = useTransition();
+  const [soat, setSoat] = useState<MucSoat[] | null>(null);
+  const [dangSoat, setDangSoat] = useState(false);
+
+  // Soát lại mỗi khi đổi khoảng ngày. Phải sạch mới cho tải Excel, vì tiền ra
+  // khỏi công ty theo file này.
+  useEffect(() => {
+    let huy = false;
+    setDangSoat(true);
+    setSoat(null);
+    soatKyLuongAction({ fromDate, toDate })
+      .then((kq) => { if (!huy) setSoat(kq); })
+      .catch(() => { if (!huy) setSoat(null); })
+      .finally(() => { if (!huy) setDangSoat(false); });
+    return () => { huy = true; };
+  }, [fromDate, toDate]);
+
+  const loiChan = (soat ?? []).filter((m) => m.chan && !m.dat);
+  const canhBao = (soat ?? []).filter((m) => !m.chan && !m.dat);
+  const chuaSachDeXuat = dangSoat || loiChan.length > 0;
 
   const selectedEmp = useMemo(
     () => employees.find((e) => e.name === employeeName),
@@ -173,8 +193,13 @@ export default function PayrollCommissionsClient({ employees }: { employees: Emp
           <Button
             type="button"
             onClick={handleDownload}
-            disabled={pending || !employeeName}
-            className="h-[36px] px-4 bg-orange-500 hover:bg-orange-600 text-white"
+            disabled={pending || !employeeName || chuaSachDeXuat}
+            title={
+              chuaSachDeXuat
+                ? "Còn lỗi phải sửa trong phần Soát kỳ lương bên dưới"
+                : undefined
+            }
+            className="h-[36px] px-4 bg-orange-500 hover:bg-orange-600 text-white disabled:opacity-50"
           >
             📥 Tải Excel
           </Button>
@@ -185,6 +210,64 @@ export default function PayrollCommissionsClient({ employees }: { employees: Emp
             </span>
           )}
         </div>
+      </Card>
+
+      <Card className="p-4 space-y-3">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-sm font-semibold">Soát kỳ lương</h2>
+          <span className="text-xs text-slate-500">
+            {fmtDate(fromDate)} đến {fmtDate(toDate)}
+          </span>
+        </div>
+
+        {dangSoat && <div className="text-xs text-slate-500">Đang soát...</div>}
+
+        {!dangSoat && soat && (
+          <>
+            <ul className="space-y-2">
+              {soat.map((m) => (
+                <li key={m.ma}>
+                  <div className="flex items-start gap-2 text-sm">
+                    <span className={m.dat ? "text-green-600" : m.chan ? "text-red-600" : "text-amber-600"}>
+                      {m.dat ? "✓" : m.chan ? "✗" : "⚠"}
+                    </span>
+                    <span className={m.dat ? "text-slate-500" : "font-medium"}>
+                      {m.ten}
+                      {!m.dat && ` (${m.chiTiet.length})`}
+                    </span>
+                  </div>
+                  {!m.dat && (
+                    <ul className="mt-1 ml-6 space-y-1">
+                      {m.chiTiet.map((c, i) => (
+                        <li key={i} className="text-xs text-slate-700">
+                          <span className="font-medium">{c.nhan}</span>{" "}
+                          {c.mo_ta}
+                          {c.duongDan && (
+                            <a href={c.duongDan} className="text-blue-600 hover:underline ml-1">
+                              mở
+                            </a>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              ))}
+            </ul>
+
+            {loiChan.length > 0 ? (
+              <div className="text-xs text-red-700 border-t border-slate-100 pt-2">
+                Còn lỗi phải sửa nên chưa tải Excel được. Sửa xong quay lại trang
+                này, phần soát tự chạy lại.
+              </div>
+            ) : (
+              <div className="text-xs text-green-700 border-t border-slate-100 pt-2">
+                Kỳ này sạch, tải Excel được.
+                {canhBao.length > 0 && " Vẫn còn cảnh báo bên trên, xem qua trước khi gửi."}
+              </div>
+            )}
+          </>
+        )}
       </Card>
 
       {previewRows && (

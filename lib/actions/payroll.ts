@@ -5,6 +5,7 @@ import { employees } from "@/lib/schema";
 import { and, asc, eq } from "drizzle-orm";
 import * as XLSX from "xlsx";
 import { requirePermission } from "@/lib/auth";
+import { soatKyLuong, type MucSoat } from "@/lib/payroll-preflight";
 import {
   computeHhCoBan,
   computeHhLkDot,
@@ -406,4 +407,16 @@ function sheetFromAoa(
   }
   ws["!ref"] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: maxR, c: maxC } });
   return ws;
+}
+
+/**
+ * Soát kỳ lương trước khi xuất. Trả về danh sách mục kiểm kèm phát hiện.
+ * Giao diện khoá nút xuất khi còn mục `chan` chưa đạt.
+ */
+export async function soatKyLuongAction(input: {
+  fromDate: string;
+  toDate: string;
+}): Promise<MucSoat[]> {
+  await requirePermission("payroll.commissions", "view");
+  return soatKyLuong(input);
 }
