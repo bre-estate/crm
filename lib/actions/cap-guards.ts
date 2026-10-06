@@ -319,9 +319,11 @@ export async function kiemTraTranGiaVon(
   amount: number,
   paymentProgressPct: number,
   excludeCostId?: number,
+  pmgLkSaleRate?: number,
 ): Promise<string | null> {
   try {
     assertPaymentProgressPctInRange(paymentProgressPct);
+    await assertSaleRateNotAboveContract(productId, pmgLkSaleRate);
     await assertCostCapNotExceeded(productId, costType, amount, excludeCostId);
     return null;
   } catch (e) {
@@ -342,4 +344,47 @@ export function assertPaymentProgressPctInRange(pct: number): void {
   if (pct < 0) {
     throw new Error(`Tiến độ thanh toán N = ${(pct * 100).toFixed(1)}% âm. Kiểm tra lại.`);
   }
+}
+
+/**
+ * %PMG_LK_sale ghi trên dòng đối chiếu không được cao hơn mức hợp đồng của căn.
+ *
+ * Giao diện vốn đã cảnh báo "Vượt mức tối đa HĐ", nhưng chỉ là cảnh báo nên
+ * vẫn lưu được. Ngày 25/09/2026 năm dòng FENICA được lưu ở 7,5% trong khi hợp
+ * đồng ghi 6,5% (7,5% là tỷ lệ phía DOANH THU, không phải phía giá vốn), rồi
+ * bảng lương chạy theo, chi dư 22.507.771. Từ nay chặn hẳn ở tầng lưu.
+ *
+ * Số âm hoặc bỏ trống thì bỏ qua, vì nhiều loại chi phí không dùng tỷ lệ này.
+ */
+export async function assertSaleRateNotAboveContract(
+  productId: number,
+  pmgLkSaleRate?: number,
+): Promise<void> {
+  const rate = Number(pmgLkSaleRate ?? 0);
+  if (!rate || rate <= 0) return;
+
+  const [p] = await db
+    .select({
+      code: products.productCode,
+      saleRate: products.pmgSaleRate,
+      pmgRate: products.pmgRate,
+    })
+    .from(products)
+    .where(eq(products.id, productId));
+  if (!p) return;
+
+  const tran = Number(p.saleRate ?? 0);
+  if (tran <= 0) return;
+  if (rate <= tran * (1 + TOLERANCE)) return;
+
+  const pct = (v: number) => `${(v * 100).toFixed(2).replace(".", ",")}%`;
+  const nhamDoanhThu =
+    Math.abs(rate - Number(p.pmgRate ?? 0)) < 1e-9
+      ? ` Số ${pct(rate)} là %PMG_LK phía doanh thu, không dùng cho giá vốn.`
+      : "";
+  throw new Error(
+    `%PMG_LK_sale ${pct(rate)} cao hơn mức hợp đồng ${pct(tran)} của căn ${p.code}.` +
+      `${nhamDoanhThu} Sửa lại thành ${pct(tran)}, hoặc nếu chủ đầu tư thật sự tăng tỷ lệ ` +
+      `thì sửa %PMG sale ở trang căn trước rồi quay lại nhập.`,
+  );
 }

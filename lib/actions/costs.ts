@@ -108,6 +108,8 @@ export async function createCost(fd: FormData): Promise<KetQuaLuu> {
     data.costType,
     Number(data.amountPayableThisTime ?? 0),
     Number(data.paymentProgressPct ?? 0),
+    undefined,
+    Number(data.pmgLkSaleRate ?? 0),
   );
   if (loiTran) return { error: loiTran };
 
@@ -164,6 +166,7 @@ export async function updateCost(id: number, fd: FormData, returnTo?: string | n
     Number(data.amountPayableThisTime ?? 0),
     Number(data.paymentProgressPct ?? 0),
     id,
+    Number(data.pmgLkSaleRate ?? 0),
   );
   if (loiTran) return { error: loiTran };
 
