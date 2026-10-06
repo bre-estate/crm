@@ -635,6 +635,8 @@ export default function ProductForm({
             <input type="hidden" name="sellPrice" value={0} />
             <input type="hidden" name="pmgBasePrice" value={0} />
             <input type="hidden" name="pmgRate" value="" />
+            {/* otherFeePct đã nghỉ hưu, gộp vào pmgRate. Form không nộp nữa
+                để không hồi sinh giá trị cũ. Xem drizzle/0061. */}
             <input type="hidden" name="otherFeePct" value="" />
             <input type="hidden" name="otherRevenue" value={0} />
             <input type="hidden" name="revenueReduction" value={0} />
@@ -803,11 +805,6 @@ export default function ProductForm({
           {/* ROUND để tránh decimal → server toNum strip . thành 10^N */}
           <input type="hidden" name="totalRevenue" value={String(Math.round(grossTotal))} />
           <input type="hidden" name="sellPrice" value={String(Math.round(pmgBase))} />
-          <input
-            type="hidden"
-            name="otherFeePct"
-            value={product?.otherFeePct != null ? String(Number(product.otherFeePct) * 100) : ""}
-          />
           <input type="hidden" name="otherRevenue" value={String(Number(product?.otherRevenue ?? 0))} />
           <input
             type="hidden"

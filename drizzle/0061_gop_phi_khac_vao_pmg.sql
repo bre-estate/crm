@@ -1,36 +1,51 @@
--- Gộp %phí khác vào %PMG_LK, bỏ cách lưu tách hai trường.
+-- Gộp %phí khác vào %PMG_LK và trả %PMG sale về đúng cơ sở giá vốn.
 --
--- Hợp đồng ATSR_DXMD số 09/2025/HĐDV/DXMD-BRE ghi cấu trúc ba phần:
---   X < 25 SP:       5% PDV cơ bản + 0,5% PQLKD
---   25 =< X < 50 SP: 5% PDV cơ bản + 0,5% PQLKD + 0,5% PDVLT
---   X >= 50 SP:      5% PDV cơ bản + 0,5% PQLKD + 1% PDVLT
--- BRE đang có 7 căn A&T nên thuộc bậc đầu, tổng đúng là 5,5%.
+-- Bản này viết lại ngày 06/10/2026. Bản cũ viết cho trạng thái ngày 03/10 và
+-- CHƯA TỪNG CHẠY, kiểm chứng bằng dữ liệu: nếu đã chạy thì other_fee_pct của
+-- 5 căn phải bằng 0, thực tế vẫn 0,005. Bản này đặt thẳng giá trị đích thay
+-- vì cộng dồn, nên chạy bao nhiêu lần cũng ra một kết quả.
 --
--- Đợt nhập đọc sheet 2.1 cột U vào pmg_rate và cột V vào other_fee_pct. Công
--- thức doanh thu cộng cả hai, nhưng giao diện sửa căn KHÔNG có ô nào hiện
--- other_fee_pct, chỉ có input ẩn. Người sửa căn thấy 5% nên tưởng thiếu 0,5%
--- rồi nâng pmg_rate lên 5,5%, thành ra tính hai lần. Đã xảy ra ba lần:
--- migration 0058 (tự sửa, đã hoàn tác), căn B-09-05 trước đó, và 03/10/2026.
+-- BỐI CẢNH
 --
--- Dự án FENICA có cấu trúc hợp đồng y hệt (6,5% PDV + 0,5% QLKD + PLT) nhưng
--- lưu gộp thành một số 7,5%. Migration này đưa A&T về cùng quy ước đó.
+-- Hợp đồng ATSR_DXMD số 09/2025/HĐDV/DXMD-BRE: 5% PDV cơ bản + 0,5% PQLKD,
+-- bậc dưới 25 sản phẩm, tổng 5,5%. BRE đang có 7 căn nên đúng bậc này.
+-- Admin xác nhận B-09-11A là 4,4%.
 --
--- Toàn hệ thống chỉ 7 căn A&T có other_fee_pct khác 0, không dự án nào đặt
--- mặc định. Phép gộp không đổi doanh thu tính ra, vì công thức vốn đã cộng
--- cả hai trường.
+-- Đợt nhập đọc sheet 2.1 cột U vào pmg_rate, cột V vào other_fee_pct. Công
+-- thức doanh thu cộng cả hai. Nhưng giao diện KHÔNG có ô nào hiện cột V, chỉ
+-- có input ẩn nộp lại giá trị cũ. Người sửa căn thấy 5% nên tưởng thiếu rồi
+-- nâng pmg_rate lên 5,5%, thành tính hai lần ra 6%. Đã lặp bốn lần:
+-- migration 0058 (tự sửa, đã hoàn tác), B-09-05 từ trước, 03/10 với B-09-05
+-- và B-15-01, rồi 05/10 với B-31-12, B-35-05, A-05-07, B-09-11A.
 --
--- CHƯA XỬ LÝ ở đây: B-09-05 và B-15-01. Hai căn đó đang có pmg_rate 0,055
--- cộng other_fee_pct 0,005 thành 6%, và gắn hóa đơn 46 ngày 29/09/2026 tổng
--- 136.875.199 mà tỷ lệ suy ra không tròn (5,90% và 5,88%). Chờ Sale Admin
--- xác nhận hóa đơn rồi xử lý riêng.
+-- Các lần điều chỉnh đó còn kéo theo pmg_sale_rate từ 0,05 lên 0,055. Cột
+-- này là cơ sở tính GIÁ VỐN, sheet 2.3 cột M ghi 0,05 cho mọi căn DXMD, nên
+-- phải trả về 0,05. Chênh giữa 5,5% doanh thu và 5% giá vốn là phần thặng dư
+-- có chủ đích, app đang hiển thị ở trang căn.
+--
+-- Sau bản vá này other_fee_pct bằng 0 trên toàn hệ thống, và hai script nhập
+-- đã sửa ở cùng đợt để cộng cột V thẳng vào pmg_rate, nên cách lưu tách hai
+-- trường không quay lại được nữa.
 
-UPDATE products
-SET pmg_rate = pmg_rate + other_fee_pct,
-    other_fee_pct = 0
+UPDATE products SET
+  pmg_rate      = 0.055,
+  pmg_sale_rate = 0.05,
+  other_fee_pct = 0
 WHERE product_code IN (
   'ATSR_DXMD_A-05-07',
   'ATSR_DXMD_A-29-12',
+  'ATSR_DXMD_B-09-05',
+  'ATSR_DXMD_B-15-01',
   'ATSR_DXMD_B-31-12',
-  'ATSR_DXMD_B-35-05',
-  'ATSR_OPLR_B-09-11A'
-) AND COALESCE(other_fee_pct, 0) <> 0;
+  'ATSR_DXMD_B-35-05'
+);
+
+-- Admin xác nhận 4,4%. Giá vốn giữ 0,04 đúng sheet 2.3 cột M.
+UPDATE products SET
+  pmg_rate      = 0.044,
+  pmg_sale_rate = 0.04,
+  other_fee_pct = 0
+WHERE product_code = 'ATSR_OPLR_B-09-11A';
+
+-- Quét sạch phần còn sót, phòng căn nào khác cũng dính.
+UPDATE products SET other_fee_pct = 0 WHERE COALESCE(other_fee_pct, 0) <> 0;

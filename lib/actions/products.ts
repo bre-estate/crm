@@ -91,7 +91,8 @@ function buildProductData(fd: FormData) {
 
     pmgRate: toPct(fd.get("pmgRate")),
     pmgRateHistory: toStrOrNull(fd.get("pmgRateHistory")),
-    otherFeePct: toPct(fd.get("otherFeePct")),
+    // otherFeePct đã nghỉ hưu, gộp vào pmgRate (drizzle/0061). Form không
+    // nộp nữa và server không ghi nữa, nên cột giữ nguyên 0 vĩnh viễn.
     otherRevenue: toNum(fd.get("otherRevenue")),
     revenueReduction: toNum(fd.get("revenueReduction")),
     adminFee: toNum(fd.get("adminFee")),
