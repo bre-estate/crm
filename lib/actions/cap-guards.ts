@@ -364,11 +364,7 @@ export async function assertSaleRateNotAboveContract(
   if (!rate || rate <= 0) return;
 
   const [p] = await db
-    .select({
-      code: products.productCode,
-      saleRate: products.pmgSaleRate,
-      pmgRate: products.pmgRate,
-    })
+    .select({ saleRate: products.pmgSaleRate })
     .from(products)
     .where(eq(products.id, productId));
   if (!p) return;
@@ -377,14 +373,10 @@ export async function assertSaleRateNotAboveContract(
   if (tran <= 0) return;
   if (rate <= tran * (1 + TOLERANCE)) return;
 
+  // Câu ngắn gọn: người nhập đang đứng ngay trên dòng đó, giao diện đã hiện
+  // sẵn mức tối đa, nên không cần nhắc lại mã căn hay cách sửa.
   const pct = (v: number) => `${(v * 100).toFixed(2).replace(".", ",")}%`;
-  const nhamDoanhThu =
-    Math.abs(rate - Number(p.pmgRate ?? 0)) < 1e-9
-      ? ` Số ${pct(rate)} là %PMG_LK phía doanh thu, không dùng cho giá vốn.`
-      : "";
   throw new Error(
-    `%PMG_LK_sale ${pct(rate)} cao hơn mức hợp đồng ${pct(tran)} của căn ${p.code}.` +
-      `${nhamDoanhThu} Sửa lại thành ${pct(tran)}, hoặc nếu chủ đầu tư thật sự tăng tỷ lệ ` +
-      `thì sửa %PMG sale ở trang căn trước rồi quay lại nhập.`,
+    `%PMG_LK_sale ${pct(rate)} vượt mức hợp đồng ${pct(tran)}.`,
   );
 }
