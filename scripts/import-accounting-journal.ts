@@ -12,6 +12,7 @@ import XLSX from "xlsx";
 import postgres from "postgres";
 import crypto from "crypto";
 import path from "path";
+import { docNKC, type DongNKC } from "../lib/accounting/nkc-parser";
 
 const FILE_ARG = process.argv[2];
 if (!FILE_ARG) {
@@ -22,70 +23,29 @@ if (!FILE_ARG) {
 const sql = postgres(process.env.DATABASE_URL!);
 const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
 
-// Excel date serial → YYYY-MM-DD
-function excelDateToISO(serial: unknown): string | null {
-  const n = Number(serial);
-  if (!Number.isFinite(n) || n < 1) return null;
-  // Excel epoch: Jan 1 1900 = 1, but Excel has 1900 leap year bug → offset -2
-  const days = Math.floor(n) - 2;
-  const date = new Date(Date.UTC(1900, 0, 1) + days * 86400000);
-  return date.toISOString().slice(0, 10);
-}
+type Row = DongNKC;
 
-type Row = {
-  entryDate: string;
-  docType: string;
-  docNumber: string;
-  invoiceSeri: string | null;
-  invoiceNumber: string | null;
-  invoiceDate: string | null;
-  description: string;
-  debitAccount: string;
-  creditAccount: string;
-  amount: number;
-  sourceRow: number;
-};
-
+/**
+ * Đọc sheet NKC. Bộ đọc dò cột theo tên tiêu đề nên chạy được cả mẫu cũ
+ * (SO SACH BRE) lẫn mẫu mới (BC Bre Q1+2.2026), và ném lỗi nếu kế toán đổi
+ * mẫu tới mức thiếu cột, thay vì nạp 0 dòng rồi báo thành công.
+ */
 function parseNKC(filePath: string): Row[] {
   const wb = XLSX.readFile(filePath);
   const ws = wb.Sheets["NKC"];
   if (!ws) throw new Error("Sheet 'NKC' không tồn tại trong file");
   const raw = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: "" });
-
-  const rows: Row[] = [];
-  // Data starts at row index 9 (header 7-8)
-  for (let i = 9; i < raw.length; i++) {
-    const r = raw[i] as unknown[];
-    const docType = String(r[1] ?? "").trim();
-    const docNumber = String(r[2] ?? "").trim();
-    const entryDate = excelDateToISO(r[3]);
-    const desc = String(r[7] ?? "").trim();
-    const debit = String(r[8] ?? "").trim();
-    const credit = String(r[9] ?? "").trim();
-    const amount = Number(r[10]);
-
-    // Skip empty rows
-    if (!docType && !docNumber && !entryDate) continue;
-    // Skip footer / summary rows
-    if (!Number.isFinite(amount) || amount === 0) continue;
-    if (!debit || !credit) continue;
-    if (!entryDate) continue;
-
-    rows.push({
-      entryDate,
-      docType,
-      docNumber,
-      invoiceSeri: String(r[4] ?? "").trim() || null,
-      invoiceNumber: String(r[5] ?? "").trim() || null,
-      invoiceDate: excelDateToISO(r[6]),
-      description: desc,
-      debitAccount: debit,
-      creditAccount: credit,
-      amount,
-      sourceRow: i,
-    });
+  const { dong, bando, boQua } = docNKC(raw);
+  const viTri = Object.entries(bando)
+    .filter(([k]) => k !== "dongDauDuLieu")
+    .map(([k, v]) => `${k}=${XLSX.utils.encode_col(v as number)}`)
+    .join(" ");
+  console.log(`  Cột nhận được: ${viTri}`);
+  console.log(`  Đọc ${dong.length} dòng, bỏ qua ${boQua} dòng không hợp lệ`);
+  if (dong.length === 0) {
+    throw new Error("Không đọc được dòng nào. Kiểm tra lại mẫu file trước khi nạp.");
   }
-  return rows;
+  return dong;
 }
 
 function makeDedupKey(sourceFile: string, r: Row): string {

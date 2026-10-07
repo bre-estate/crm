@@ -59,6 +59,10 @@ async function main() {
     const code = str(row.getCell(1).value);
     const name = str(row.getCell(2).value);
     if (!code || code === "Cộng" || code === "TỔNG" || !name) continue;
+    // Mã tài khoản TT200 luôn là chữ số. Lọc theo đó thay vì tin vào vị trí
+    // dòng tiêu đề: file "BC Bre Q1+2.2026.xlsx" đẩy tiêu đề xuống hai dòng
+    // nên logic cũ nuốt luôn dòng "Mã / Tên tài khoản" thành một tài khoản.
+    if (!/^\d+$/.test(code)) continue;
     // Skip parent aggregates that duplicate children (VD 111 = parent của 1111 nếu 111 chỉ có 1 child)
     // Nhưng vẫn giữ vì có thể user muốn view tổng nhóm
     rows.push({
