@@ -20,6 +20,15 @@ import { computeLuyKe, type CostType } from "@/lib/costCalc";
 
 const DUNG_SAI = 0.001;
 
+/** Khoản cố định ghi sẵn trên căn, công thức không dùng %PMG_LK_sale. */
+const LOAI_KHOAN_CO_DINH = new Set([
+  "bonus_sale",
+  "bonus_manager",
+  "cdt_bonus_sale",
+  "cdt_bonus_manager",
+  "customer_support",
+]);
+
 export type MucSoat = {
   ma: string;
   ten: string;
@@ -78,6 +87,7 @@ export async function soatKyLuong(input: {
   // ── 1. Tỷ lệ trên dòng cao hơn hợp đồng ──────────────────────────────
   const saiTyLe = dsDong
     .filter((d) => {
+      if (LOAI_KHOAN_CO_DINH.has(d.costType)) return false;
       const r = Number(d.tyLeDong ?? 0);
       const tran = Number(d.tyLeCan ?? 0);
       return r > 0 && tran > 0 && r > tran * (1 + DUNG_SAI);

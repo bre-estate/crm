@@ -323,7 +323,7 @@ export async function kiemTraTranGiaVon(
 ): Promise<string | null> {
   try {
     assertPaymentProgressPctInRange(paymentProgressPct);
-    await assertSaleRateNotAboveContract(productId, pmgLkSaleRate);
+    await assertSaleRateNotAboveContract(productId, pmgLkSaleRate, costType);
     await assertCostCapNotExceeded(productId, costType, amount, excludeCostId);
     return null;
   } catch (e) {
@@ -346,6 +346,15 @@ export function assertPaymentProgressPctInRange(pct: number): void {
   }
 }
 
+/** Loại chi phí là khoản cố định trên căn, không tính theo %PMG_LK_sale. */
+const LOAI_KHOAN_CO_DINH = new Set([
+  "bonus_sale",
+  "bonus_manager",
+  "cdt_bonus_sale",
+  "cdt_bonus_manager",
+  "customer_support",
+]);
+
 /**
  * %PMG_LK_sale ghi trên dòng đối chiếu không được cao hơn mức hợp đồng của căn.
  *
@@ -359,9 +368,13 @@ export function assertPaymentProgressPctInRange(pct: number): void {
 export async function assertSaleRateNotAboveContract(
   productId: number,
   pmgLkSaleRate?: number,
+  costType?: string,
 ): Promise<void> {
   const rate = Number(pmgLkSaleRate ?? 0);
   if (!rate || rate <= 0) return;
+  // Năm loại dưới đây là khoản cố định ghi sẵn trên căn, công thức không dùng
+  // %PMG_LK_sale. Giá trị còn sót trong ô đó vô hại, chặn là báo nhầm.
+  if (costType && LOAI_KHOAN_CO_DINH.has(costType)) return;
 
   const [p] = await db
     .select({ saleRate: products.pmgSaleRate })
