@@ -52,9 +52,18 @@ async function main() {
 
   await sql`DELETE FROM trial_balance WHERE period_end = ${PERIOD_END}`;
 
-  // Data từ row 10 (header ở R8-9)
+  // Dò dòng dữ liệu đầu tiên thay vì ghi cứng. Ba mẫu file của kế toán bắt
+  // đầu ở ba chỗ khác nhau: SO SACH BRE 2025 dòng 10, BC BRE 2025 dòng 9,
+  // BC Bre Q1+2.2026 dòng 12. Ghi cứng là bỏ sót tài khoản đầu bảng.
+  let dongDau = 0;
+  for (let i = 1; i <= ws.rowCount; i++) {
+    if (/^\d+$/.test(str(ws.getRow(i).getCell(1).value))) { dongDau = i; break; }
+  }
+  if (!dongDau) throw new Error("Không tìm thấy dòng dữ liệu nào trong sheet CDPS.");
+  console.log(`Dữ liệu CDPS bắt đầu ở dòng ${dongDau}`);
+
   const rows: any[] = [];
-  for (let i = 10; i <= ws.rowCount; i++) {
+  for (let i = dongDau; i <= ws.rowCount; i++) {
     const row = ws.getRow(i);
     const code = str(row.getCell(1).value);
     const name = str(row.getCell(2).value);

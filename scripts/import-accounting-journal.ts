@@ -14,7 +14,8 @@ import crypto from "crypto";
 import path from "path";
 import { docNKC, type DongNKC } from "../lib/accounting/nkc-parser";
 
-const FILE_ARG = process.argv[2];
+const THAY_THE = process.argv.includes("--thay-the");
+const FILE_ARG = process.argv.slice(2).find((a) => !a.startsWith("--")) ?? "";
 if (!FILE_ARG) {
   console.error("Usage: npx tsx scripts/import-accounting-journal.ts <file.xlsx>");
   process.exit(1);
@@ -85,6 +86,33 @@ async function main() {
   const BATCH = 100;
   let inserted = 0;
   let skipped = 0;
+  // Khoá chống trùng có kèm TÊN FILE. Kế toán đổi tên file (SO SACH BRE 2025
+  // thành BC BRE 2025) là khoá đổi theo, nạp vào sẽ cộng chồng lên dữ liệu cũ
+  // chứ không đè. Nên phải chặn, và chỉ cho qua khi người chạy nói rõ là thay thế.
+  const tuNgay = rows.reduce((m, r) => (r.entryDate < m ? r.entryDate : m), rows[0].entryDate);
+  const denNgay = rows.reduce((m, r) => (r.entryDate > m ? r.entryDate : m), rows[0].entryDate);
+  const trungKy = await sql<{ source_file: string; n: number }[]>`
+    SELECT source_file, count(*)::int AS n
+    FROM accounting_journal
+    WHERE entry_date BETWEEN ${tuNgay} AND ${denNgay} AND source_file <> ${fileName}
+    GROUP BY source_file
+  `;
+  if (trungKy.length > 0) {
+    const mo = trungKy.map((x) => `${x.source_file} (${x.n} dòng)`).join(", ");
+    if (!THAY_THE) {
+      console.error(
+        `\n✗ Khoảng ${tuNgay} đến ${denNgay} đã có dữ liệu từ nguồn khác: ${mo}.\n` +
+          `  Nạp tiếp sẽ cộng chồng chứ không đè, vì khoá chống trùng tính theo tên file.\n` +
+          `  Nếu file này THAY THẾ nguồn cũ, chạy lại kèm --thay-the.`,
+      );
+      process.exit(1);
+    }
+    for (const x of trungKy) {
+      const xoa = await sql`DELETE FROM accounting_journal WHERE source_file = ${x.source_file} RETURNING id`;
+      console.log(`  Đã xoá ${xoa.length} dòng của nguồn cũ ${x.source_file}`);
+    }
+  }
+
   for (let i = 0; i < rows.length; i += BATCH) {
     const chunk = rows.slice(i, i + BATCH);
     const values = chunk.map((r) => ({
