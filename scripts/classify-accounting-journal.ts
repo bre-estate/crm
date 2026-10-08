@@ -61,33 +61,19 @@ async function main() {
     console.log(`${key.padEnd(20)} ${String(v.count).padStart(4)} rows  ${fmt(v.total).padStart(18)}  ${meta?.label ?? ""}`);
   }
 
-  // So sánh với Kim BC 2025
-  console.log(`\n═══ So Kim BC 2025 (dồn tích) ═══`);
-  const kim: Record<string, number> = {
-    'hh_sale': 1794473527,
-    'ho_tro_khach': 83539517,
-    'cty_thuong_ql': 165000000,
-    'cty_thuong_tpkd': 52040296,
-    'cty_thuong_admin': 7958743,
-    'cty_thuong_ceo': 122971840,
-    'luong_nvkd': 345221721,
-    'thuong_ds_sale': 83981270,
-    'luong_admin': 348473123,
-    'marketing': 192330000,
-  };
-  const rows2025 = await sql`
-    SELECT category, COALESCE(SUM(amount),0)::float8 as s
-    FROM accounting_journal
-    WHERE substr(entry_date,1,4)='2025' AND credit_account != '911'
-    GROUP BY category`;
-  const g = new Map<string, number>();
-  for (const r of rows2025) g.set(r.category, Number(r.s));
-  for (const [k, v] of Object.entries(kim)) {
-    const em = g.get(k) ?? 0;
-    const diff = em - v;
-    const mark = Math.abs(diff) < v * 0.1 ? '✅' : Math.abs(diff) < v * 0.3 ? '~' : '❌';
-    console.log(`  ${k.padEnd(20)} em: ${fmt(em).padStart(15)}  Kim: ${fmt(v).padStart(15)}  chênh: ${(diff>=0?'+':'')+fmt(diff)}  ${mark}`);
-  }
+  // Bỏ bảng "So Kim BC 2025" từng in ở đây.
+  //
+  // Nó cộng các nhóm của sổ nhật ký chung rồi đem so với báo cáo lợi nhuận
+  // đầy đủ của Kim, nên luôn hiện thiếu và gắn dấu ✗ oan. Báo cáo lãi lỗ thật
+  // không lấy giá vốn từ sổ này: mục 2.x lấy từ cost_reconciliations cộng
+  // year_end_accruals, chỉ mục 4.x mới lấy từ đây. Chạy thử 2025 thì mục 2.x
+  // khớp Kim tới từng đồng, trong khi bảng cũ báo lệch 595 triệu ở hoa hồng.
+  //
+  // Muốn đối chiếu với Kim thì xem trang Lãi lỗ quản trị, nơi so đúng nguồn.
+  console.log(
+    `\nĐể đối chiếu với báo cáo của kế toán, xem trang Lãi lỗ quản trị.` +
+      `\nBảng nhóm ở trên chỉ phản ánh cách phân loại sổ nhật ký chung.`,
+  );
 
     log.updated = rows.length;
     log.details = { force: FORCE, buckets: Object.fromEntries([...buckets].map(([k, v]) => [k, v])) };
