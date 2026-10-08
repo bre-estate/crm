@@ -50,8 +50,12 @@ function parseNKC(filePath: string): Row[] {
 }
 
 function makeDedupKey(sourceFile: string, r: Row): string {
-  // Hash các field định danh — cùng chứng từ + cùng amount + cùng ngày = same entry
-  const raw = `${sourceFile}|${r.entryDate}|${r.docType}|${r.docNumber}|${r.debitAccount}|${r.creditAccount}|${r.amount}|${r.description.slice(0, 100)}`;
+  // Phải có sourceRow. Thiếu nó thì hai bút toán KHÁC NHAU mà trùng ngày,
+  // trùng số chứng từ, trùng tài khoản, trùng số tiền và trùng diễn giải sẽ
+  // bị gộp làm một. File BC Bre Q1+2.2026 có 24 nhóm như vậy (trả lương cùng
+  // ngày cùng mức cho nhiều người), nạp vào mất 42 dòng và 325.826.750 mà
+  // script vẫn báo thành công. Một dòng Excel là một bút toán.
+  const raw = `${sourceFile}|${r.sourceRow}|${r.entryDate}|${r.docType}|${r.docNumber}|${r.debitAccount}|${r.creditAccount}|${r.amount}|${r.description.slice(0, 100)}`;
   return crypto.createHash("sha256").update(raw).digest("hex").slice(0, 32);
 }
 
@@ -97,6 +101,14 @@ async function main() {
     WHERE entry_date BETWEEN ${tuNgay} AND ${denNgay} AND source_file <> ${fileName}
     GROUP BY source_file
   `;
+  // Nạp lại CHÍNH file này thì xoá sạch dòng cũ của nó rồi nạp lại, thay vì
+  // dựa vào khoá chống trùng. Kế toán xuất lại file là thứ tự dòng đổi, khoá
+  // đổi theo, nên dựa vào khoá sẽ sinh bản sao.
+  const cuCungTen = await sql`DELETE FROM accounting_journal WHERE source_file = ${fileName} RETURNING id`;
+  if (cuCungTen.length > 0) {
+    console.log(`  Đã xoá ${cuCungTen.length} dòng cũ của chính file này để nạp lại`);
+  }
+
   if (trungKy.length > 0) {
     const mo = trungKy.map((x) => `${x.source_file} (${x.n} dòng)`).join(", ");
     if (!THAY_THE) {
