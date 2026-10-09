@@ -57,7 +57,8 @@ export default function SoatClient({
   }, [phatHien]);
 
   const dangXem = phatHien.find((x) => x.id === chon) ?? null;
-  const tongLech = phatHien.reduce((s, x) => s + x.lech, 0);
+  const canXuLy = phatHien.filter((x) => x.nhom !== "da_giai_thich");
+  const tongLech = canXuLy.reduce((s, x) => s + x.lech, 0);
 
   if (phatHien.length === 0) {
     return (
@@ -76,7 +77,7 @@ export default function SoatClient({
       {/* ── Cột trái: danh sách ── */}
       <div className="bg-card ring-1 ring-foreground/10 rounded-xl overflow-hidden">
         <div className="px-3 py-2 border-b border-slate-100 flex items-baseline justify-between">
-          <span className="text-sm font-semibold">{phatHien.length} sai lệch</span>
+          <span className="text-sm font-semibold">{canXuLy.length} cần xử lý</span>
           {tongLech > 0 && (
             <span className="text-xs text-red-700 tabular-nums">{fmt(tongLech)}</span>
           )}
@@ -110,7 +111,11 @@ export default function SoatClient({
                       </span>
                     )}
                     {x.lech > 0 && (
-                      <span className="text-xs text-red-700 tabular-nums shrink-0">
+                      <span
+                        className={`text-xs tabular-nums shrink-0 ${
+                          x.nhom === "da_giai_thich" ? "text-green-700" : "text-red-700"
+                        }`}
+                      >
                         {fmt(x.lech)}
                       </span>
                     )}
@@ -150,7 +155,13 @@ export default function SoatClient({
             </tbody>
           </table>
 
-          <div className="text-sm bg-amber-50 border border-amber-200 rounded-lg p-3 leading-relaxed">
+          <div
+            className={`text-sm rounded-lg p-3 leading-relaxed border ${
+              dangXem.nhom === "da_giai_thich"
+                ? "bg-green-50 border-green-200"
+                : "bg-amber-50 border-amber-200"
+            }`}
+          >
             {dangXem.ketLuan}
           </div>
 

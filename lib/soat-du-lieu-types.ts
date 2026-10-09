@@ -32,7 +32,8 @@ export type NhomLoi =
   | "gia_von_vuot"
   | "sai_ty_le"
   | "tien_do_qua"
-  | "thieu_ten";
+  | "thieu_ten"
+  | "da_giai_thich";
 
 export const TEN_NHOM: Record<NhomLoi, string> = {
   doanh_thu_vuot: "Doanh thu vượt trần hợp đồng",
@@ -40,5 +41,6 @@ export const TEN_NHOM: Record<NhomLoi, string> = {
   sai_ty_le: "Tỷ lệ trên dòng cao hơn hợp đồng",
   tien_do_qua: "Tiến độ thanh toán quá 100%",
   thieu_ten: "Dòng chưa có tên người nhận",
+  da_giai_thich: "Đã giải thích được, không cần sửa",
 };
 

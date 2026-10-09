@@ -80,6 +80,7 @@ export async function soatDuLieu(): Promise<PhatHien[]> {
     const hhDaGhi = dt.reduce((s, r) => s + Number(r.revenueThisTime ?? 0), 0);
     if (tranDT > 0 && hhDaGhi > tranDT * (1 + DUNG_SAI) && hhDaGhi - tranDT > NGUONG_BO_QUA) {
       const lech = hhDaGhi - tranDT;
+      let daGiaiThich = false;
       const phep: DongTinh[] = [
         { nhan: "Giá tính PMG", giaTri: tien(base) },
         { nhan: "Tỷ lệ hợp đồng", giaTri: `× ${pct(tyLeDT)}` },
@@ -96,35 +97,54 @@ export async function soatDuLieu(): Promise<PhatHien[]> {
       phep.push({ nhan: "Đã ghi", giaTri: tien(hhDaGhi), chot: true });
       phep.push({ nhan: "Vượt trần", giaTri: tien(lech), chot: true });
 
-      // Nếu vượt đúng bằng VAT của đợt đầu thì đó là VAT dồn sang, không phải
-      // ghi sai. Chủ đầu tư ứng tiền đợt 1 mà chưa xuất hóa đơn nên phần thuế
-      // bị đẩy qua đợt sau.
-      const vatDot1 = Number(dt[0]?.totalReceivableThisTime ?? 0) * 0.1 / 1.1;
+      // Sale Admin xác nhận 09/10/2026: "do đợt 1 không xuất hóa đơn nên đợt 2
+      // dồn toàn bộ VAT của đợt 1 vào đợt 2". Phép thử gồm HAI vế, phải đúng
+      // cả hai mới coi là đã giải thích:
+      //   1. có đợt chưa xuất hóa đơn
+      //   2. phần vượt đúng bằng VAT của riêng các đợt đó
+      // Chỉ trùng con số mà đợt nào cũng có hóa đơn thì không phải cơ chế này.
+      const dotChuaXuatHD = dt.filter((r) => !r.invoiceId);
+      const vatChuaXuat = dotChuaXuatHD.reduce(
+        (sum, r) => sum + (Number(r.totalReceivableThisTime ?? 0) * 0.1) / 1.1,
+        0,
+      );
+      const vatDot1 = vatChuaXuat;
       let ketLuan: string;
-      if (vatDot1 > 0 && Math.abs(lech - vatDot1) < 2) {
-        phep.push({ nhan: "VAT đợt 1 (tổng đợt 1 × 10/110)", giaTri: tien(vatDot1) });
+      const nhanDot = dotChuaXuatHD.map((r) => String(r.reconciliationDate ?? r.id)).join(", ");
+      if (dotChuaXuatHD.length > 0) {
+        phep.push({
+          nhan: `VAT của đợt chưa xuất hóa đơn (${nhanDot}), × 10/110`,
+          giaTri: tien(vatChuaXuat),
+        });
+      }
+
+      if (dotChuaXuatHD.length > 0 && Math.abs(lech - vatChuaXuat) < 2) {
+        daGiaiThich = true;
         ketLuan =
-          `Phần vượt đúng bằng VAT của đợt 1. Lưu ý công thức này do app suy ra: ` +
-          `Sale Admin chỉ nói VAT đợt 1 dồn sang đợt 2, không nêu con số nào. ` +
-          `Chưa rõ ${tien(lech)} là doanh thu của công ty hay thuế thu hộ, nên ` +
-          `chưa có cơ sở để sửa. Hỏi kế toán trước khi đụng vào số.`;
-      } else if (vatDot1 > 0) {
-        phep.push({ nhan: "VAT đợt 1 (tổng đợt 1 × 10/110)", giaTri: tien(vatDot1) });
-        phep.push({ nhan: "Chênh so với VAT đợt 1", giaTri: tien(lech - vatDot1), chot: true });
+          `Đã giải thích được. Đợt ${nhanDot} nhận tiền nhưng chưa xuất hóa đơn, ` +
+          `nên toàn bộ VAT của đợt đó dồn sang đợt sau, đúng như Sale Admin xác ` +
+          `nhận ngày 09/10/2026. Phần vượt khớp VAT tới từng đồng. Tiền không ` +
+          `sai, chỉ là khoản thuế đang nằm trong cột hoa hồng. Chưa cần sửa, ` +
+          `nhưng nếu muốn tách ra thì hỏi kế toán khoản này ghi vào doanh thu ` +
+          `hay thuế GTGT đầu ra.`;
+      } else if (dotChuaXuatHD.length === 0) {
         ketLuan =
-          `Nếu đây là VAT đợt 1 dồn sang thì phần vượt phải là ${tien(vatDot1)}, ` +
-          `nhưng đang ghi ${tien(lech)}, lệch ${tien(lech - vatDot1)}. Công thức ` +
-          `VAT do app suy ra, chưa ai xác nhận, nên lệch có thể do công thức sai ` +
-          `chứ không hẳn do số nhập sai. Nhờ Sale Admin đọc bảng đối soát của ` +
-          `chủ đầu tư cho đợt này.`;
+          `Mọi đợt của căn này đều đã xuất hóa đơn, nên KHÔNG phải trường hợp ` +
+          `VAT dồn sang. Phần vượt ${tien(lech)} chưa có lời giải. Nhờ Sale ` +
+          `Admin đọc bảng đối soát của chủ đầu tư cho đợt gần nhất.`;
       } else {
-        ketLuan = `Hoa hồng lũy kế cao hơn trần hợp đồng ${tien(lech)}. Kiểm tra lại số tiền từng đợt.`;
+        phep.push({ nhan: "Chênh so với mức VAT", giaTri: tien(lech - vatChuaXuat), chot: true });
+        ketLuan =
+          `Có đợt chưa xuất hóa đơn nên cơ chế VAT dồn sang là đúng, nhưng số ` +
+          `không khớp: đáng ra vượt ${tien(vatChuaXuat)}, thực tế ${tien(lech)}, ` +
+          `lệch ${tien(lech - vatChuaXuat)}. Nhờ Sale Admin đọc bảng đối soát của ` +
+          `chủ đầu tư cho đợt này.`;
       }
 
       ra.push({
         ...nen,
         id: `dt-${p.id}`,
-        nhom: "doanh_thu_vuot",
+        nhom: daGiaiThich ? "da_giai_thich" : "doanh_thu_vuot",
         tieuDe: "Doanh thu vượt trần",
         lech,
         phepTinh: phep,
@@ -265,7 +285,7 @@ export async function soatDuLieu(): Promise<PhatHien[]> {
     }
   }
 
-  const thuTu: NhomLoi[] = ["doanh_thu_vuot", "gia_von_vuot", "sai_ty_le", "tien_do_qua", "thieu_ten"];
+  const thuTu: NhomLoi[] = ["doanh_thu_vuot", "gia_von_vuot", "sai_ty_le", "tien_do_qua", "thieu_ten", "da_giai_thich"];
   return ra.sort(
     (a, b) => thuTu.indexOf(a.nhom) - thuTu.indexOf(b.nhom) || b.lech - a.lech || a.canMa.localeCompare(b.canMa),
   );
