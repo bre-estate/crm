@@ -104,15 +104,19 @@ export async function soatDuLieu(): Promise<PhatHien[]> {
       if (vatDot1 > 0 && Math.abs(lech - vatDot1) < 2) {
         phep.push({ nhan: "VAT đợt 1 (tổng đợt 1 × 10/110)", giaTri: tien(vatDot1) });
         ketLuan =
-          `Phần vượt đúng bằng VAT của đợt 1, tức tiền không sai, chỉ là khoản thuế ` +
-          `dồn sang bị ghi vào cột hoa hồng. Nên tách ${tien(lech)} sang cột doanh thu khác.`;
+          `Phần vượt đúng bằng VAT của đợt 1. Lưu ý công thức này do app suy ra: ` +
+          `Sale Admin chỉ nói VAT đợt 1 dồn sang đợt 2, không nêu con số nào. ` +
+          `Chưa rõ ${tien(lech)} là doanh thu của công ty hay thuế thu hộ, nên ` +
+          `chưa có cơ sở để sửa. Hỏi kế toán trước khi đụng vào số.`;
       } else if (vatDot1 > 0) {
         phep.push({ nhan: "VAT đợt 1 (tổng đợt 1 × 10/110)", giaTri: tien(vatDot1) });
         phep.push({ nhan: "Chênh so với VAT đợt 1", giaTri: tien(lech - vatDot1), chot: true });
         ketLuan =
           `Nếu đây là VAT đợt 1 dồn sang thì phần vượt phải là ${tien(vatDot1)}, ` +
-          `nhưng đang ghi ${tien(lech)}, lệch ${tien(lech - vatDot1)}. Nhờ Sale Admin ` +
-          `đọc bảng đối soát của chủ đầu tư cho đợt này.`;
+          `nhưng đang ghi ${tien(lech)}, lệch ${tien(lech - vatDot1)}. Công thức ` +
+          `VAT do app suy ra, chưa ai xác nhận, nên lệch có thể do công thức sai ` +
+          `chứ không hẳn do số nhập sai. Nhờ Sale Admin đọc bảng đối soát của ` +
+          `chủ đầu tư cho đợt này.`;
       } else {
         ketLuan = `Hoa hồng lũy kế cao hơn trần hợp đồng ${tien(lech)}. Kiểm tra lại số tiền từng đợt.`;
       }
