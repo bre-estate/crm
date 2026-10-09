@@ -80,7 +80,6 @@ export async function soatDuLieu(): Promise<PhatHien[]> {
     const hhDaGhi = dt.reduce((s, r) => s + Number(r.revenueThisTime ?? 0), 0);
     if (tranDT > 0 && hhDaGhi > tranDT * (1 + DUNG_SAI) && hhDaGhi - tranDT > NGUONG_BO_QUA) {
       const lech = hhDaGhi - tranDT;
-      let daGiaiThich = false;
       const phep: DongTinh[] = [
         { nhan: "Giá tính PMG", giaTri: tien(base) },
         { nhan: "Tỷ lệ hợp đồng", giaTri: `× ${pct(tyLeDT)}` },
@@ -118,33 +117,35 @@ export async function soatDuLieu(): Promise<PhatHien[]> {
         });
       }
 
-      if (dotChuaXuatHD.length > 0 && Math.abs(lech - vatChuaXuat) < 2) {
-        daGiaiThich = true;
-        ketLuan =
-          `Đã giải thích được. Đợt ${nhanDot} nhận tiền nhưng chưa xuất hóa đơn, ` +
-          `nên toàn bộ VAT của đợt đó dồn sang đợt sau, đúng như Sale Admin xác ` +
-          `nhận ngày 09/10/2026. Phần vượt khớp VAT tới từng đồng. Tiền không ` +
-          `sai, chỉ là khoản thuế đang nằm trong cột hoa hồng. Chưa cần sửa, ` +
-          `nhưng nếu muốn tách ra thì hỏi kế toán khoản này ghi vào doanh thu ` +
-          `hay thuế GTGT đầu ra.`;
-      } else if (dotChuaXuatHD.length === 0) {
-        ketLuan =
-          `Mọi đợt của căn này đều đã xuất hóa đơn, nên KHÔNG phải trường hợp ` +
-          `VAT dồn sang. Phần vượt ${tien(lech)} chưa có lời giải. Nhờ Sale ` +
-          `Admin đọc bảng đối soát của chủ đầu tư cho đợt gần nhất.`;
-      } else {
-        phep.push({ nhan: "Chênh so với mức VAT", giaTri: tien(lech - vatChuaXuat), chot: true });
-        ketLuan =
-          `Có đợt chưa xuất hóa đơn nên cơ chế VAT dồn sang là đúng, nhưng số ` +
-          `không khớp: đáng ra vượt ${tien(vatChuaXuat)}, thực tế ${tien(lech)}, ` +
-          `lệch ${tien(lech - vatChuaXuat)}. Nhờ Sale Admin đọc bảng đối soát của ` +
-          `chủ đầu tư cho đợt này.`;
-      }
+      // Thuế chỉ dịch tiền GIỮA các đợt, không làm TỔNG to ra. Nên so tổng
+      // tiền thật đã vào với tổng theo hợp đồng mới là phép thử đúng. Trước
+      // đây app gắn nhãn "đã giải thích" cho căn có phần vượt khớp mức VAT,
+      // đó là sai: khớp mức VAT không chứng minh được tổng đúng.
+      const tongHopDong = tranDT + Number(p.cdtBonusSale ?? 0) + Number(p.cdtBonusManager ?? 0);
+      const tongDaNhan = dt.reduce((sum, r) => sum + Number(r.totalReceivableThisTime ?? 0), 0);
+      const duTong = tongDaNhan - tongHopDong;
+      phep.push({ nhan: "Tổng theo hợp đồng (hoa hồng + CĐT thưởng)", giaTri: tien(tongHopDong) });
+      phep.push({ nhan: "Tổng đã nhận, cộng mọi đợt", giaTri: tien(tongDaNhan) });
+      phep.push({ nhan: "Nhận nhiều hơn hợp đồng", giaTri: tien(duTong), chot: true });
+
+      ketLuan =
+        `Tổng đã nhận cao hơn tổng theo hợp đồng ${tien(duTong)}. Dù xuất hóa ` +
+        `đơn sớm hay muộn thì tổng cuối cùng vẫn phải bằng giá tính PMG nhân ` +
+        `%PMG cộng CĐT thưởng, vì thuế chỉ dịch tiền giữa các đợt chứ không ` +
+        `làm tổng to ra. Nên cơ chế VAT dồn sang KHÔNG giải thích được khoản ` +
+        `này.` +
+        (dotChuaXuatHD.length > 0
+          ? ` Đợt ${nhanDot} chưa xuất hóa đơn, và mức VAT của đợt đó là ` +
+            `${tien(vatChuaXuat)}${Math.abs(duTong - vatChuaXuat) < 2 ? ", trùng đúng khoản dư" : ""}. ` +
+            `Có thể đợt đó đang ghi gồm VAT trong khi chủ đầu tư tính chưa gồm VAT.`
+          : ` Mọi đợt đều đã xuất hóa đơn nên không có VAT nào để dồn.`) +
+        ` Nhờ Sale Admin và kế toán đối chiếu: tổng hợp đồng là số gồm VAT hay ` +
+        `chưa gồm VAT, và chủ đầu tư đã trả dư hay chưa.`;
 
       ra.push({
         ...nen,
         id: `dt-${p.id}`,
-        nhom: daGiaiThich ? "da_giai_thich" : "doanh_thu_vuot",
+        nhom: "doanh_thu_vuot",
         tieuDe: "Doanh thu vượt trần",
         lech,
         phepTinh: phep,
