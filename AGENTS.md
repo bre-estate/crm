@@ -45,9 +45,26 @@ quyền bấm vào ra trang không tồn tại.
 
 ## Kiểm trước khi khẳng định
 
-Trước khi nói "nguyên nhân là X" hay "đã sửa xong", phải mở dữ liệu thật ra
-xem: truy vấn database, `git log`, timestamp, log. Chưa kiểm thì nói là chưa
-rõ. Nêu dữ kiện, đừng suy diễn thành kết luận.
+Mỗi khẳng định về số liệu phải gắn với một **phép thử chạy được**:
+
+```bash
+npx tsx --env-file=.env.local scripts/kiem-bat-bien.ts
+```
+
+Mười ba phép thử trên mọi trường số quan trọng. Chạy trước khi kết luận, và
+chạy lại sau mỗi lần sửa dữ liệu. Không có phép thử nào phân biệt được đúng
+sai thì **không sửa**, hỏi người phụ trách.
+
+Nói rõ đang ở mức nào, đừng trộn ba mức vào một câu:
+
+| Mức | Cách nói |
+|---|---|
+| Dữ kiện đọc được | "dòng 6117 ghi 10.000.000" |
+| Trích lời, có nguồn | "Admin nói trong tin nhắn 06/10 lúc 10:59" |
+| Mình suy ra | "công thức này mình suy ra, chưa ai xác nhận" |
+
+Chi tiết ở `.claude/skills/kiem-chung-so-lieu/`, kèm danh sách tiền lệ đã
+sai và nguồn sự thật cho từng loại số.
 
 ## Vài quy tắc nghiệp vụ hay quên
 
