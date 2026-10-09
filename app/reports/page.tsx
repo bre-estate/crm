@@ -57,6 +57,7 @@ const SECTIONS: Section[] = [
       { href: "/reports/ap-aging", title: "Tuổi nợ phải trả", desc: "Còn nợ sale, thuế, BHXH bao lâu.", gate: "owner" },
       { href: "/reports/obligations", title: "Nghĩa vụ tài chính", desc: "Còn thu từ CĐT, còn nợ sale, nợ thuế tại thời điểm.", gate: "reports" },
       { href: "/reports/expenses", title: "Phân tích chi phí", desc: "Chi phí theo nhóm và tháng, phát hiện chi đột biến.", gate: "reports" },
+      { href: "/reports/soat-du-lieu", title: "Soát dữ liệu", desc: "Căn nào có doanh thu hoặc giá vốn vượt trần hợp đồng, kèm phép tính.", gate: "reports" },
     ],
   },
   {

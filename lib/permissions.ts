@@ -91,6 +91,7 @@ export const RESOURCES = {
   "reports.obligations": "Nghĩa vụ tài chính (còn thu/nợ)",
   "reports.unit-profitability": "Lãi/lỗ per căn",
   "reports.segments": "Phân khúc căn",
+  "reports.soat-du-lieu": "Soát dữ liệu (sai lệch doanh thu, giá vốn)",
   "costs-report": "Đối chiếu giá vốn",
   "notifications": "Thông báo",
   "admin.users": "Quản lý user",
@@ -133,6 +134,7 @@ export const RESOURCE_GROUPS: { label: string; keys: Resource[] }[] = [
       "reports.people",
       "reports.segments",
       "reports.obligations",
+      "reports.soat-du-lieu",
     ],
   },
   {

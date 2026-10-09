@@ -1,0 +1,268 @@
+/**
+ * Soát dữ liệu doanh thu và giá vốn, tìm những căn có số không khớp hợp đồng.
+ *
+ * Mỗi phát hiện kèm đầy đủ phép tính để người đọc tự kiểm, không phải tin
+ * vào nhãn. Trước đây những lỗi này chỉ nằm trong các lần rà tay rời rạc,
+ * muốn xem lại phải mò từng căn.
+ */
+import { db } from "@/lib/db";
+import { products, projects, revenueReconciliations, costReconciliations } from "@/lib/schema";
+import { asc } from "drizzle-orm";
+import { computeLuyKe, type CostType } from "@/lib/costCalc";
+import type { DongTinh, NhomLoi, PhatHien } from "@/lib/soat-du-lieu-types";
+
+export * from "@/lib/soat-du-lieu-types";
+
+const DUNG_SAI = 0.001;
+/** Bỏ qua chênh lệch nhỏ hơn mức này, đó là sai số làm tròn chứ không phải lỗi. */
+const NGUONG_BO_QUA = 5_000;
+
+/** Loại chi phí ghi số cố định trên căn, công thức không dùng %PMG_LK_sale. */
+const LOAI_KHOAN_CO_DINH = new Set([
+  "bonus_sale",
+  "bonus_manager",
+  "cdt_bonus_sale",
+  "cdt_bonus_manager",
+  "customer_support",
+]);
+
+const TEN_CHI_PHI: Record<string, string> = {
+  sale_commission: "Hoa hồng sale",
+  kpi_ceo: "KPI CEO",
+  kpi_tpkd: "KPI TPKD",
+  kpi_admin: "KPI Admin",
+  bonus_sale: "Công ty thưởng sale",
+  bonus_manager: "Công ty thưởng quản lý",
+  cdt_bonus_sale: "CĐT thưởng NVKD",
+  cdt_bonus_manager: "CĐT thưởng quản lý",
+  customer_support: "Hỗ trợ khách",
+};
+
+const tien = (n: number) => Math.round(n).toLocaleString("vi-VN");
+const pct = (v: number) => `${(v * 100).toFixed(2).replace(".", ",")}%`;
+
+export async function soatDuLieu(): Promise<PhatHien[]> {
+  const dsCan = await db.select().from(products).orderBy(asc(products.productCode));
+  const dsDuAn = await db.select({ id: projects.id, ten: projects.name }).from(projects);
+  const tenDuAn = new Map(dsDuAn.map((d) => [d.id, d.ten ?? ""]));
+  const dsDT = await db.select().from(revenueReconciliations);
+  const dsGV = await db.select().from(costReconciliations);
+
+  const dtTheoCan = new Map<number, typeof dsDT>();
+  for (const r of dsDT) {
+    if (r.productId == null) continue;
+    if (!dtTheoCan.has(r.productId)) dtTheoCan.set(r.productId, []);
+    dtTheoCan.get(r.productId)!.push(r);
+  }
+  const gvTheoCan = new Map<number, typeof dsGV>();
+  for (const r of dsGV) {
+    if (r.productId == null) continue;
+    if (!gvTheoCan.has(r.productId)) gvTheoCan.set(r.productId, []);
+    gvTheoCan.get(r.productId)!.push(r);
+  }
+
+  const ra: PhatHien[] = [];
+
+  for (const p of dsCan) {
+    const nen = {
+      canId: p.id,
+      canMa: p.productCode ?? String(p.id),
+      canTen: p.unitCode ?? "",
+      duAn: tenDuAn.get(p.projectId) ?? "",
+    };
+    const base = Number(p.pmgBasePrice ?? 0);
+    const dt = (dtTheoCan.get(p.id) ?? []).sort((a, b) => a.id - b.id);
+    const gv = (gvTheoCan.get(p.id) ?? []).sort((a, b) => a.id - b.id);
+
+    // ── Doanh thu: hoa hồng lũy kế không vượt PMG × (%PMG_LK + %phí khác) ──
+    const tyLeDT = Number(p.pmgRate ?? 0) + Number(p.otherFeePct ?? 0);
+    const tranDT = base * tyLeDT;
+    const hhDaGhi = dt.reduce((s, r) => s + Number(r.revenueThisTime ?? 0), 0);
+    if (tranDT > 0 && hhDaGhi > tranDT * (1 + DUNG_SAI) && hhDaGhi - tranDT > NGUONG_BO_QUA) {
+      const lech = hhDaGhi - tranDT;
+      const phep: DongTinh[] = [
+        { nhan: "Giá tính PMG", giaTri: tien(base) },
+        { nhan: "Tỷ lệ hợp đồng", giaTri: `× ${pct(tyLeDT)}` },
+        { nhan: "Trần hoa hồng", giaTri: tien(tranDT), chot: true },
+      ];
+      for (const r of dt) {
+        if (!Number(r.revenueThisTime)) continue;
+        const tienDo = Number(r.phasePctThisTime ?? 0);
+        phep.push({
+          nhan: `Đợt ${r.reconciliationDate ?? ""}${tienDo ? `, tiến độ ${pct(tienDo)}` : ""}`,
+          giaTri: tien(Number(r.revenueThisTime)),
+        });
+      }
+      phep.push({ nhan: "Đã ghi", giaTri: tien(hhDaGhi), chot: true });
+      phep.push({ nhan: "Vượt trần", giaTri: tien(lech), chot: true });
+
+      // Nếu vượt đúng bằng VAT của đợt đầu thì đó là VAT dồn sang, không phải
+      // ghi sai. Chủ đầu tư ứng tiền đợt 1 mà chưa xuất hóa đơn nên phần thuế
+      // bị đẩy qua đợt sau.
+      const vatDot1 = Number(dt[0]?.totalReceivableThisTime ?? 0) * 0.1 / 1.1;
+      let ketLuan: string;
+      if (vatDot1 > 0 && Math.abs(lech - vatDot1) < 2) {
+        phep.push({ nhan: "VAT đợt 1 (tổng đợt 1 × 10/110)", giaTri: tien(vatDot1) });
+        ketLuan =
+          `Phần vượt đúng bằng VAT của đợt 1, tức tiền không sai, chỉ là khoản thuế ` +
+          `dồn sang bị ghi vào cột hoa hồng. Nên tách ${tien(lech)} sang cột doanh thu khác.`;
+      } else if (vatDot1 > 0) {
+        phep.push({ nhan: "VAT đợt 1 (tổng đợt 1 × 10/110)", giaTri: tien(vatDot1) });
+        phep.push({ nhan: "Chênh so với VAT đợt 1", giaTri: tien(lech - vatDot1), chot: true });
+        ketLuan =
+          `Nếu đây là VAT đợt 1 dồn sang thì phần vượt phải là ${tien(vatDot1)}, ` +
+          `nhưng đang ghi ${tien(lech)}, lệch ${tien(lech - vatDot1)}. Nhờ Sale Admin ` +
+          `đọc bảng đối soát của chủ đầu tư cho đợt này.`;
+      } else {
+        ketLuan = `Hoa hồng lũy kế cao hơn trần hợp đồng ${tien(lech)}. Kiểm tra lại số tiền từng đợt.`;
+      }
+
+      ra.push({
+        ...nen,
+        id: `dt-${p.id}`,
+        nhom: "doanh_thu_vuot",
+        tieuDe: "Doanh thu vượt trần",
+        lech,
+        phepTinh: phep,
+        ketLuan,
+        lienKet: [
+          { nhan: "Mở căn", href: `/products/${p.id}` },
+          { nhan: "Danh sách đợt doanh thu", href: `/revenues?productCode=${encodeURIComponent(nen.canMa)}` },
+        ],
+      });
+    }
+
+    // ── Giá vốn: lũy kế từng loại không vượt trần ──
+    const cfg = {
+      pmgBasePrice: base,
+      pmgSaleRate: Number(p.pmgSaleRate ?? 0),
+      adminFeeSale: Number(p.adminFeeSale ?? 0),
+      customerSupport: Number(p.customerSupport ?? 0),
+      saleCommissionRate: Number(p.saleCommissionRate ?? 0),
+      kpiCeoRate: Number(p.kpiCeoRate ?? 0),
+      kpiTpkdRate: Number(p.kpiTpkdRate ?? 0),
+      kpiAdminRate: Number(p.kpiAdminRate ?? 0),
+      bonusSale: Number(p.bonusSale ?? 0),
+      bonusManager: Number(p.bonusManager ?? 0),
+      cdtBonusSale: Number(p.cdtBonusSale ?? 0),
+      cdtBonusManager: Number(p.cdtBonusManager ?? 0),
+    };
+    const theoLoai = new Map<string, typeof gv>();
+    for (const r of gv) {
+      if (!theoLoai.has(r.costType)) theoLoai.set(r.costType, []);
+      theoLoai.get(r.costType)!.push(r);
+    }
+    for (const [loai, ds] of theoLoai) {
+      const tran = computeLuyKe(cfg, loai as CostType, 1);
+      const daGhi = ds.reduce((s, r) => s + Number(r.amountPayableThisTime ?? 0), 0);
+      if (!(tran > 0 && daGhi > tran * (1 + DUNG_SAI) && daGhi - tran > NGUONG_BO_QUA)) continue;
+      const lech = daGhi - tran;
+      const phep: DongTinh[] = [
+        { nhan: "Giá tính PMG", giaTri: tien(base) },
+        { nhan: "%PMG sale (cơ sở giá vốn)", giaTri: `× ${pct(cfg.pmgSaleRate)}` },
+      ];
+      if (cfg.adminFeeSale) phep.push({ nhan: "Trừ phí admin", giaTri: `− ${tien(cfg.adminFeeSale)}` });
+      phep.push({ nhan: "Chia VAT", giaTri: "÷ 1,1" });
+      if (cfg.customerSupport) phep.push({ nhan: "Trừ hỗ trợ khách", giaTri: `− ${tien(cfg.customerSupport)}` });
+      phep.push({ nhan: `Trần ${TEN_CHI_PHI[loai] ?? loai}`, giaTri: tien(tran), chot: true });
+      for (const r of ds) {
+        phep.push({
+          nhan: `Đợt ${r.reconciliationDate ?? ""} · ${r.employeeName ?? ""}`,
+          giaTri: tien(Number(r.amountPayableThisTime ?? 0)),
+        });
+      }
+      phep.push({ nhan: "Đã ghi", giaTri: tien(daGhi), chot: true });
+      phep.push({ nhan: "Vượt trần", giaTri: tien(lech), chot: true });
+
+      ra.push({
+        ...nen,
+        id: `gv-${p.id}-${loai}`,
+        nhom: "gia_von_vuot",
+        tieuDe: `${TEN_CHI_PHI[loai] ?? loai} vượt trần`,
+        lech,
+        phepTinh: phep,
+        ketLuan:
+          `Cộng các đợt đã vượt trần hợp đồng ${tien(lech)}. Tỷ lệ trên từng dòng ` +
+          `đúng hay sai xem ở nhóm bên dưới, nếu tỷ lệ đúng thì số tiền của một ` +
+          `trong các đợt bị nhập cao hơn tiến độ thực tế.`,
+        lienKet: [
+          { nhan: "Mở căn", href: `/products/${p.id}` },
+          ...ds.map((r) => ({ nhan: `Sửa đợt ${r.reconciliationDate ?? r.id}`, href: `/costs/${r.id}/edit` })),
+        ],
+      });
+    }
+
+    // ── Tỷ lệ ghi trên dòng cao hơn hợp đồng ──
+    for (const r of gv) {
+      if (LOAI_KHOAN_CO_DINH.has(r.costType)) continue;
+      const tl = Number(r.pmgLkSaleRate ?? 0);
+      const tran = Number(p.pmgSaleRate ?? 0);
+      if (!(tl > 0 && tran > 0 && tl > tran * (1 + DUNG_SAI))) continue;
+      ra.push({
+        ...nen,
+        id: `tl-${r.id}`,
+        nhom: "sai_ty_le",
+        tieuDe: `${TEN_CHI_PHI[r.costType] ?? r.costType} ghi ${pct(tl)}`,
+        lech: 0,
+        phepTinh: [
+          { nhan: "Tỷ lệ ghi trên dòng", giaTri: pct(tl) },
+          { nhan: "Tỷ lệ hợp đồng của căn", giaTri: pct(tran) },
+          { nhan: "Ngày đối chiếu", giaTri: String(r.reconciliationDate ?? "") },
+          { nhan: "Người nhận", giaTri: String(r.employeeName ?? "") },
+          { nhan: "Số tiền đợt này", giaTri: tien(Number(r.amountPayableThisTime ?? 0)), chot: true },
+        ],
+        ketLuan:
+          Math.abs(tl - Number(p.pmgRate ?? 0)) < 1e-9
+            ? `Số ${pct(tl)} là tỷ lệ phía doanh thu, không dùng cho giá vốn. Sửa về ${pct(tran)}.`
+            : `Sửa tỷ lệ về ${pct(tran)}, hoặc nếu chủ đầu tư thật sự tăng thì sửa %PMG sale ở trang căn trước.`,
+        lienKet: [
+          { nhan: "Sửa dòng này", href: `/costs/${r.id}/edit` },
+          { nhan: "Mở căn", href: `/products/${p.id}` },
+        ],
+      });
+    }
+
+    // ── Tiến độ thanh toán quá 100% ──
+    for (const r of gv) {
+      const td = Number(r.paymentProgressPct ?? 0);
+      if (td <= 1 + DUNG_SAI) continue;
+      ra.push({
+        ...nen,
+        id: `td-${r.id}`,
+        nhom: "tien_do_qua",
+        tieuDe: `Tiến độ ghi ${pct(td)}`,
+        lech: 0,
+        phepTinh: [
+          { nhan: "Tiến độ ghi trên dòng", giaTri: pct(td) },
+          { nhan: "Tối đa cho phép", giaTri: "100,00%" },
+          { nhan: "Số tiền đợt này", giaTri: tien(Number(r.amountPayableThisTime ?? 0)), chot: true },
+        ],
+        ketLuan: "Tiến độ khách đóng lũy kế không thể quá 100%.",
+        lienKet: [{ nhan: "Sửa dòng này", href: `/costs/${r.id}/edit` }],
+      });
+    }
+
+    // ── Dòng giá vốn chưa có tên người nhận ──
+    for (const r of gv) {
+      if (r.employeeName && String(r.employeeName).trim()) continue;
+      ra.push({
+        ...nen,
+        id: `tn-${r.id}`,
+        nhom: "thieu_ten",
+        tieuDe: `${TEN_CHI_PHI[r.costType] ?? r.costType} chưa có tên người`,
+        lech: 0,
+        phepTinh: [
+          { nhan: "Ngày đối chiếu", giaTri: String(r.reconciliationDate ?? "") },
+          { nhan: "Số tiền", giaTri: tien(Number(r.amountPayableThisTime ?? 0)), chot: true },
+        ],
+        ketLuan: "Không có tên thì số tiền này không vào bảng lương của ai.",
+        lienKet: [{ nhan: "Sửa dòng này", href: `/costs/${r.id}/edit` }],
+      });
+    }
+  }
+
+  const thuTu: NhomLoi[] = ["doanh_thu_vuot", "gia_von_vuot", "sai_ty_le", "tien_do_qua", "thieu_ten"];
+  return ra.sort(
+    (a, b) => thuTu.indexOf(a.nhom) - thuTu.indexOf(b.nhom) || b.lech - a.lech || a.canMa.localeCompare(b.canMa),
+  );
+}
