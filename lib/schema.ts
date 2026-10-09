@@ -492,6 +492,15 @@ export const companySettings = pgTable("company_settings", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Ghi chú theo dõi từng mục trên trang Soát dữ liệu. Không lưu tên người:
+// đây là sổ theo dõi việc, không phải sổ theo dõi người.
+export const soatGhiChu = pgTable("soat_ghi_chu", {
+  maPhatHien: text("ma_phat_hien").primaryKey(),
+  trangThai: text("trang_thai").notNull().default("moi"),
+  ghiChu: text("ghi_chu"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // ===================== 11. EMPLOYEES =====================
 // Danh sách nhân viên/CTV cty. Dùng cho dropdown ở product form (NVKD) +
 // cost form (người được đối chiếu). Text field cũ (salesPerson,
