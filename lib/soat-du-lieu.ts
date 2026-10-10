@@ -157,6 +157,58 @@ export async function soatDuLieu(): Promise<PhatHien[]> {
       });
     }
 
+    // ── Doanh thu phải khớp tiến độ đã đạt ──
+    // Công thức: trần × tiến độ − phí admin. Kiểm trên dữ liệu thật ngày
+    // 11/10/2026, khớp 65 trên 71 căn đang dở dang, nên lệch là có chuyện.
+    // Phép thử cũ chỉ bắt VƯỢT trần, bỏ lọt mọi trường hợp ghi HỤT.
+    const tienDo = dt.reduce((m, r) => Math.max(m, Number(r.phasePctThisTime ?? 0)), 0);
+    const phiAdmin = Number(p.adminFee ?? 0);
+    if (tranDT > 0 && tienDo > 0) {
+      const kyVong = tranDT * tienDo - phiAdmin;
+      const lechTD = hhDaGhi - kyVong;
+      if (Math.abs(lechTD) > NGUONG_BO_QUA && Math.abs(hhDaGhi - tranDT) > NGUONG_BO_QUA) {
+        const phep: DongTinh[] = [
+          { nhan: "Giá tính PMG", giaTri: tien(base) },
+          { nhan: "Tỷ lệ hợp đồng", giaTri: `× ${pct(tyLeDT)}` },
+          { nhan: "Trần hoa hồng", giaTri: tien(tranDT), chot: true },
+          { nhan: "Tiến độ đã đạt", giaTri: `× ${pct(tienDo)}` },
+        ];
+        if (phiAdmin) phep.push({ nhan: "Trừ phí admin", giaTri: `− ${tien(phiAdmin)}` });
+        phep.push({ nhan: "Đáng ra phải ghi", giaTri: tien(kyVong), chot: true });
+        for (const r of dt) {
+          if (!Number(r.revenueThisTime)) continue;
+          phep.push({
+            nhan: `Đợt ${r.reconciliationDate ?? ""}`,
+            giaTri: tien(Number(r.revenueThisTime)),
+          });
+        }
+        phep.push({ nhan: "Thực tế đã ghi", giaTri: tien(hhDaGhi), chot: true });
+        phep.push({ nhan: lechTD > 0 ? "Ghi DƯ" : "Ghi THIẾU", giaTri: tien(Math.abs(lechTD)), chot: true });
+
+        ra.push({
+          ...nen,
+          id: `td-dt-${p.id}`,
+          nhom: "doanh_thu_lech_tien_do",
+          tieuDe: `Tiến độ ${pct(tienDo)} nhưng ghi ${lechTD > 0 ? "dư" : "thiếu"}`,
+          lech: Math.abs(lechTD),
+          phepTinh: phep,
+          ketLuan:
+            `Ở tiến độ ${pct(tienDo)} thì doanh thu lũy kế phải là ${tien(kyVong)}, ` +
+            `thực tế ghi ${tien(hhDaGhi)}, ${lechTD > 0 ? "dư" : "thiếu"} ${tien(Math.abs(lechTD))}. ` +
+            `Công thức trần × tiến độ trừ phí admin đúng với 65 trên 71 căn đang dở dang, ` +
+            `nên lệch ở đây là dấu hiệu thật. Hai khả năng: tiến độ ghi sai, hoặc số tiền ` +
+            `của một đợt nhập sai. Đối chiếu sao kê để biết tiền thật đã vào bao nhiêu.`,
+          lienKet: [
+            { nhan: "Mở căn", href: `/products/${p.id}` },
+            ...dt.filter((r) => Number(r.revenueThisTime)).map((r) => ({
+              nhan: `Sửa đợt ${r.reconciliationDate ?? r.id}`,
+              href: `/revenues/${r.id}/edit`,
+            })),
+          ],
+        });
+      }
+    }
+
     // ── Giá vốn: lũy kế từng loại không vượt trần ──
     const cfg = {
       pmgBasePrice: base,
@@ -286,7 +338,7 @@ export async function soatDuLieu(): Promise<PhatHien[]> {
     }
   }
 
-  const thuTu: NhomLoi[] = ["doanh_thu_vuot", "gia_von_vuot", "sai_ty_le", "tien_do_qua", "thieu_ten", "da_giai_thich"];
+  const thuTu: NhomLoi[] = ["doanh_thu_vuot", "doanh_thu_lech_tien_do", "gia_von_vuot", "sai_ty_le", "tien_do_qua", "thieu_ten", "da_giai_thich"];
   return ra.sort(
     (a, b) => thuTu.indexOf(a.nhom) - thuTu.indexOf(b.nhom) || b.lech - a.lech || a.canMa.localeCompare(b.canMa),
   );
