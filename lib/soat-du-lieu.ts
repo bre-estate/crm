@@ -161,16 +161,24 @@ export async function soatDuLieu(): Promise<PhatHien[]> {
     // Công thức: trần × tiến độ − phí admin. Kiểm trên dữ liệu thật ngày
     // 11/10/2026, khớp 65 trên 71 căn đang dở dang, nên lệch là có chuyện.
     // Phép thử cũ chỉ bắt VƯỢT trần, bỏ lọt mọi trường hợp ghi HỤT.
-    const tienDo = dt.reduce((m, r) => Math.max(m, Number(r.phasePctThisTime ?? 0)), 0);
+    // %PMG tăng dần theo mốc sản lượng, nên phải lấy tỷ lệ GHI TRÊN ĐỢT GẦN
+    // NHẤT chứ không lấy tỷ lệ cuối của hợp đồng. Dùng tỷ lệ cuối thì mọi căn
+    // chưa tới mốc chót đều bị báo thiếu oan: đã báo nhầm B.23.24 và A2-06-17.
+    const dotCoDT = dt.filter((r) => Number(r.revenueThisTime ?? 0) !== 0);
+    const dotCuoi = dotCoDT[dotCoDT.length - 1];
+    const tienDo = Number(dotCuoi?.phasePctThisTime ?? 0);
+    const tyLeTaiDot = Number(dotCuoi?.pmgCumulativePct ?? 0) || tyLeDT;
     const phiAdmin = Number(p.adminFee ?? 0);
     if (tranDT > 0 && tienDo > 0) {
-      const kyVong = tranDT * tienDo - phiAdmin;
+      const kyVong = base * tyLeTaiDot * tienDo - phiAdmin;
       const lechTD = hhDaGhi - kyVong;
       if (Math.abs(lechTD) > NGUONG_BO_QUA && Math.abs(hhDaGhi - tranDT) > NGUONG_BO_QUA) {
         const phep: DongTinh[] = [
           { nhan: "Giá tính PMG", giaTri: tien(base) },
-          { nhan: "Tỷ lệ hợp đồng", giaTri: `× ${pct(tyLeDT)}` },
-          { nhan: "Trần hoa hồng", giaTri: tien(tranDT), chot: true },
+          {
+            nhan: `%PMG ghi trên đợt gần nhất${Math.abs(tyLeTaiDot - tyLeDT) > 1e-9 ? ` (mốc cuối hợp đồng ${pct(tyLeDT)})` : ""}`,
+            giaTri: `× ${pct(tyLeTaiDot)}`,
+          },
           { nhan: "Tiến độ đã đạt", giaTri: `× ${pct(tienDo)}` },
         ];
         if (phiAdmin) phep.push({ nhan: "Trừ phí admin", giaTri: `− ${tien(phiAdmin)}` });
