@@ -9,6 +9,7 @@ import { db } from "@/lib/db";
 import { products, projects, revenueReconciliations, costReconciliations } from "@/lib/schema";
 import { asc } from "drizzle-orm";
 import { computeLuyKe, type CostType } from "@/lib/costCalc";
+import { luyKeDoanhThu } from "@/lib/doanh-thu-core";
 import type { DongTinh, NhomLoi, PhatHien } from "@/lib/soat-du-lieu-types";
 
 export * from "@/lib/soat-du-lieu-types";
@@ -170,7 +171,13 @@ export async function soatDuLieu(): Promise<PhatHien[]> {
     const tyLeTaiDot = Number(dotCuoi?.pmgCumulativePct ?? 0) || tyLeDT;
     const phiAdmin = Number(p.adminFee ?? 0);
     if (tranDT > 0 && tienDo > 0) {
-      const kyVong = base * tyLeTaiDot * tienDo - phiAdmin;
+      const kyVong = luyKeDoanhThu({
+        pmgBasePrice: base,
+        pmgCumulativePct: tyLeTaiDot,
+        phasePct: tienDo,
+        adminFeeVat: dotCuoi?.adminFeeVat,
+        adminFee: p.adminFee,
+      });
       const lechTD = hhDaGhi - kyVong;
       if (Math.abs(lechTD) > NGUONG_BO_QUA && Math.abs(hhDaGhi - tranDT) > NGUONG_BO_QUA) {
         const phep: DongTinh[] = [

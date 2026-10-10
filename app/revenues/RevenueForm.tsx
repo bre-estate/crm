@@ -9,6 +9,7 @@ import PercentInput from "@/components/PercentInput";
 import SearchableSelect from "@/components/SearchableSelect";
 import { fmtMoney, fmtPctTight } from "@/lib/format";
 import { toast } from "sonner";
+import { soTienDotNay } from "@/lib/doanh-thu-core";
 import { Button } from "@/components/ui/button";
 import { baoLoi } from "@/lib/bao-loi";
 import { cauLoi } from "@/lib/actions/ket-qua";
@@ -297,11 +298,18 @@ export default function RevenueForm({
     if (!Number.isFinite(pmgLk) || !Number.isFinite(phasePct) || pmgLk <= 0 || phasePct <= 0) {
       return 0;
     }
-    const gross = Number(product.pmgBasePrice ?? 0) * pmgLk * phasePct;
-    // Admin fee: ưu tiên recon.adminFeeVat (đã lưu), fallback product.adminFee
-    const adminFee = Number(recon?.adminFeeVat ?? 0) || Number(product.adminFee ?? 0);
-    const lkThisTime = gross - adminFee; // = Excel col 19
-    return Math.max(0, Math.round(lkThisTime - prevCumulativeLK));
+    // Dùng hàm chung ở lib/doanh-thu-core để form và trang Soát dữ liệu
+    // không bao giờ tính khác nhau.
+    return soTienDotNay(
+      {
+        pmgBasePrice: Number(product.pmgBasePrice ?? 0),
+        pmgCumulativePct: pmgLk,
+        phasePct,
+        adminFeeVat: recon?.adminFeeVat,
+        adminFee: product.adminFee,
+      },
+      prevCumulativeLK,
+    );
   }, [reconType, product, recon, pmgLkDisplay, phasePctDisplay, prevCumulativeLK]);
 
   return (

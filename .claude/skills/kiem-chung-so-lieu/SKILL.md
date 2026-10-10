@@ -21,6 +21,28 @@ Không có phép thử thì nói là chưa rõ, đừng nói là sai.
 
 Điểm chung: suy từ một dấu hiệu rồi kết luận, không mở dữ liệu ra kiểm.
 
+## Đừng viết lại công thức app đã có
+
+Lỗi tốn thời gian nhất không phải tính sai, mà là **tự viết công thức mới
+trong khi app đã có sẵn**. Viết lại lần hai thì sai lần hai, và hai nơi lệch
+nhau âm thầm.
+
+Đã xảy ra: trang Soát dữ liệu tự tính doanh thu kỳ vọng bằng %PMG mốc cuối
+hợp đồng, trong khi form nhập dùng %PMG ghi trên từng đợt. %PMG tăng dần
+theo mốc nên mọi căn chưa tới mốc chót bị báo thiếu oan. Hai căn B.23.24 và
+A2-06-17 gắn nhãn sai, thực tế lệch đúng 0.
+
+**Trước khi viết bất kỳ phép tính tiền nào, tìm xem app đã có chưa:**
+
+| Việc | Gọi hàm |
+|---|---|
+| Doanh thu lũy kế, số tiền từng đợt | `lib/doanh-thu-core.ts` |
+| Trần giá vốn theo loại chi phí | `computeLuyKe()` ở `lib/costCalc.ts` |
+| Chốt chặn khi lưu | `lib/actions/cap-guards.ts` |
+
+Thấy hai chỗ cùng tính một thứ thì gộp lại một hàm chung rồi mới dùng, đừng
+để song song. Gộp xong ghim bằng test trong `tests/`.
+
 ## Ba mức chắc chắn, phải nói rõ đang ở mức nào
 
 | Mức | Nghĩa | Cách nói |
