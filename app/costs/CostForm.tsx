@@ -868,112 +868,16 @@ export default function CostForm({
               <RefInfo label="Hỗ trợ khách" value={fmtMoney(product.customerSupport)} />
               <RefInfo label="NVKD (mặc định)" value={product.salesPerson ?? "—"} />
             </div>
-            {/* So tiền đã chi với mức đúng theo cấu hình hiện tại của căn.
-                Trước đây màn hình chỉ báo "tỷ lệ lệch" mà không nói lệch đó
-                thành bao nhiêu tiền, nên không ai biết đang thừa hay thiếu. */}
-            {isEdit && tranTheoCanHienTai !== null && (
-              <div
-                className={`mt-2 rounded-lg border p-2 ${
-                  chenhTien > 0
-                    ? "border-red-200 bg-red-50"
-                    : chenhTien < 0
-                      ? "border-blue-200 bg-blue-50"
-                      : "border-green-200 bg-green-50"
-                }`}
-              >
-                <div className="flex items-baseline gap-x-5 gap-y-1 flex-wrap text-xs">
-                  <span className="text-[11px] font-medium">
-                    {chenhTien > 0
-                      ? "Đợt này đang chi THỪA"
-                      : chenhTien < 0
-                        ? "Đợt này đang chi THIẾU"
-                        : "Đợt này khớp mức hiện tại của căn"}
-                  </span>
-                  <span className="tabular-nums">
-                    <span className="text-slate-500">đã chi </span>
-                    <b>{fmtMoney(totalAmt)}</b>
-                  </span>
-                  <span className="tabular-nums">
-                    <span className="text-slate-500">đúng mức căn </span>
-                    <b>{fmtMoney(tranTheoCanHienTai)}</b>
-                  </span>
-                  {chenhTien !== 0 && (
-                    <span className="tabular-nums">
-                      <span className="text-slate-500">chênh </span>
-                      <b>{fmtMoney(Math.abs(chenhTien))}</b>
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
-            {mChanged && (
-              /* Bày hai con số cạnh nhau thay vì gói trong một câu dài. Chủ
-                 tài khoản đã không tìm ra chỗ nào ghi 5% vì nó nằm lẫn trong
-                 câu chữ, còn trang căn thì hiện 4%. */
-              <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2">
-                <div className="flex items-baseline gap-x-2 flex-wrap text-xs">
-                  <span className="text-[11px] font-medium text-amber-800">
-                    ⚠️ Lệch mức:
-                  </span>
-                  <span className="tabular-nums">
-                    <span className="text-slate-500">đợt này </span>
-                    <b>{fmtPctTight(mAtRecon)}</b>
-                  </span>
-                  <span className="text-slate-400">→</span>
-                  <span className="tabular-nums">
-                    <span className="text-slate-500">căn hiện để </span>
-                    <b>{fmtPctTight(mCurrent)}</b>
-                  </span>
-                </div>
-                <div className="text-[10px] text-amber-700 mt-1 leading-snug">
-                  Sửa ô %PMG_LK_sale xuống {fmtPctTight(mCurrent)} sẽ kéo số tiền
-                  giảm theo, nên chỉ sửa khi đã thống nhất thu lại phần chênh với
-                  người nhận.
-                </div>
-              </div>
-            )}
-            {(() => {
-              // Cảnh báo khi mức trong đợt đối chiếu khác mức hiện tại của căn
-              // (VD: sau khi tạo đợt, có người sửa mức trên căn nhưng đợt cũ giữ nguyên)
-              if (!isEdit) return null;
-              const alerts: string[] = [];
-              if (showCommission) {
-                const cur = Number(product.saleCommissionRate ?? 0);
-                const inRecon = Number(recon?.commissionRate ?? 0);
-                if (inRecon > 0 && Math.abs(inRecon - cur) > 0.0001) {
-                  alerts.push(`%HH sale: đợt này ${fmtPctTight(inRecon)}, căn hiện tại ${fmtPctTight(cur)}`);
-                }
-              }
-              const kpiPairs: Array<{ label: string; cur: number }> = [
-                { label: "%KPI CEO", cur: Number(product.kpiCeoRate ?? 0) },
-                { label: "%KPI TPKD", cur: Number(product.kpiTpkdRate ?? 0) },
-                { label: "%KPI Admin", cur: Number(product.kpiAdminRate ?? 0) },
-              ];
-              if (costType.startsWith("kpi_")) {
-                const kpiIdx = costType === "kpi_ceo" ? 0 : costType === "kpi_tpkd" ? 1 : 2;
-                const pair = kpiPairs[kpiIdx];
-                const inRecon = Number(recon?.kpiRate ?? 0);
-                if (inRecon > 0 && Math.abs(inRecon - pair.cur) > 0.0001) {
-                  alerts.push(`${pair.label}: đợt này ${fmtPctTight(inRecon)}, căn hiện tại ${fmtPctTight(pair.cur)}`);
-                }
-              }
-              if (alerts.length === 0) return null;
-              return (
-                <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
-                  <div className="font-semibold mb-1">⚠️ Mức trong đợt đối chiếu này khác mức của căn:</div>
-                  <ul className="list-disc list-inside space-y-0.5">
-                    {alerts.map((a, i) => <li key={i}>{a}</li>)}
-                  </ul>
-                  <div className="mt-2 text-[11px]">
-                    Đợt này đang giữ mức cũ (frozen tại lúc tạo). Nếu mức của căn mới là đúng,
-                    sửa số tiền bên dưới và{" "}
-                    <a href={`/products/${product.id}/edit`} className="text-blue-700 underline">
-                      xem lại thông tin căn
-                    </a>.
-                  </div>
-                </div>
-              );
-            })()}
+            {/* Đã bỏ hai khối "đang chi thừa/thiếu" và "lệch mức" ở đây.
+                Dòng đối chiếu là việc đã xong và đã chi tiền, nhắc lệch tại
+                chỗ này chỉ gây hiểu nhầm: căn đang chi theo tiến độ, so với
+                mức cuối cùng thì lúc nào cũng thấy lệch. Mọi chênh lệch gom
+                về bảng "Đối chiếu với trần hợp đồng" ở trang căn, tab Giá vốn,
+                nơi nhìn được toàn cảnh thay vì một đợt lẻ. */}
+            {/* Cũng bỏ khối "mức trong đợt khác mức của căn" ở đây, cùng
+                lý do: đợt đã chốt và đã chi, nhắc lệch ở màn hình sửa chỉ làm
+                người dùng tưởng phải sửa ngay. Chênh lệch nay gom về bảng
+                "Đối chiếu với trần hợp đồng" ở trang căn, tab Giá vốn. */}
           </Section>
         );
       })()}
@@ -1245,7 +1149,8 @@ export default function CostForm({
                   </div>
                   {isEdit && Math.abs(currentM - effectiveM) > 0.0001 && remainAfter > 1000 && (
                     <div className="text-[10px] text-amber-700 mt-0.5">
-                      (đã include hồi tố M {(effectiveM * 100).toFixed(2)}% → {(currentM * 100).toFixed(2)}%)
+                      (đã tính hồi tố, %PMG_LK_sale {(effectiveM * 100).toFixed(2).replace(".", ",")}% →{" "}
+                      {(currentM * 100).toFixed(2).replace(".", ",")}%)
                     </div>
                   )}
                 </div>

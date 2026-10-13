@@ -108,9 +108,9 @@ export default function SearchableSelect({
                 {selected ? (
                   <>
                     {selected.label}
-                    {selected.sublabel && (
-                      <span className="text-slate-400 ml-1">· {selected.sublabel}</span>
-                    )}
+                    {/* Khi đã chọn thì chỉ hiện nhãn chính. Phần phụ như tên
+                        trưởng phòng chỉ cần trong danh sách để phân biệt lúc
+                        tìm, chọn xong thì thành nhiễu và hay bị cắt mất. */}
                   </>
                 ) : (
                   <span className="text-slate-400">{emptyOption ?? "— Chọn —"}</span>
