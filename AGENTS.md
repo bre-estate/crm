@@ -43,6 +43,14 @@ quyền bấm vào ra trang không tồn tại.
 - Xưng "bạn", không xưng "anh".
 - Câu lỗi phải nói rõ sai ở đâu và sửa thế nào, không phải mã lỗi hệ thống.
 
+## Trả lời ngắn
+
+Mở đầu bằng việc cần làm, không mở đầu bằng cách tìm ra. Hỏi "tóm lại làm
+gì" thì chỉ liệt kê việc, không nhắc lại lý do. Giải thích dài chỉ khi được
+hỏi "vì sao", hoặc khi sắp sửa dữ liệu thật.
+
+Chi tiết ở `.claude/skills/kiem-chung-so-lieu/`.
+
 ## Kiểm trước khi khẳng định
 
 Mỗi khẳng định về số liệu phải gắn với một **phép thử chạy được**:

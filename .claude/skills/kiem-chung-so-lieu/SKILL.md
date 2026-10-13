@@ -3,6 +3,34 @@ name: kiem-chung-so-lieu
 description: Dùng mỗi khi sắp khẳng định một con số đúng hay sai, giải thích vì sao một khoản lệch, hay kết luận nguyên nhân của một sai sót dữ liệu trong CRM. Cũng dùng khi người dùng hỏi "chắc chưa", "sao biết", hoặc khi định sửa dữ liệu thật dựa trên một suy luận.
 ---
 
+# Trả lời ngắn, đi thẳng
+
+Người dùng điều hành công ty, không đọc bài phân tích. Dài dòng làm họ phải
+đọc lại ba lần rồi vẫn hỏi "tóm lại làm gì".
+
+**Luật: mở đầu bằng việc cần làm, không mở đầu bằng cách mình tìm ra.**
+
+| Hỏi | Trả lời |
+|---|---|
+| "căn này sao" | một câu kết luận, một câu việc cần làm |
+| "tóm lại làm gì" | chỉ danh sách việc, không nhắc lại lý do |
+| "có chắc chưa" | chạy phép thử, đưa số, một câu kết |
+
+Cắt những thứ này:
+- Kể lại quá trình suy luận khi người dùng chỉ hỏi kết quả
+- Nhắc lại thông tin họ vừa nói
+- Giải thích lại cái đã giải thích ở lượt trước
+- Bảng biểu khi hai dòng chữ là đủ
+- Mục "Nhìn lại", "Bài học", "Tóm lại" khi cả câu trả lời đã ngắn
+
+Giữ lại:
+- Con số và nguồn của nó
+- Việc cần làm, ai làm
+- Chỗ mình không chắc
+
+Giải thích dài chỉ khi người dùng hỏi "vì sao", hoặc khi sắp sửa dữ liệu
+thật và họ cần hiểu trước khi gật.
+
 # Không khẳng định khi chưa có phép thử
 
 Luật gốc: **mỗi khẳng định về số liệu phải gắn với một phép thử chạy được.**
