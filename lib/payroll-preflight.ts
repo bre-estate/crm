@@ -14,6 +14,7 @@ import {
   costReconciliations,
   products,
   employees,
+  revenueReconciliations,
 } from "@/lib/schema";
 import { and, eq, gte, lte, sql } from "drizzle-orm";
 import { computeLuyKe, type CostType } from "@/lib/costCalc";
@@ -153,6 +154,16 @@ export async function soatKyLuong(input: {
         ),
       );
 
+    // Tiến độ hiện tại của căn, lấy từ phía doanh thu. computeLuyKe tự biết
+    // loại nào nhân tiến độ (hoa hồng sale, KPI CEO, KPI TPKD) và loại nào
+    // không (KPI Admin, các khoản cố định). Truyền cứng số 1 như trước làm
+    // trần của căn chưa thu đủ bị tính cao hơn thực tế.
+    const [td] = await db
+      .select({ pct: sql<string>`COALESCE(MAX(${revenueReconciliations.phasePctThisTime}), 0)` })
+      .from(revenueReconciliations)
+      .where(eq(revenueReconciliations.productId, productId));
+    const tienDoHienTai = Number(td?.pct ?? 0) || 1;
+
     const cfg = {
       pmgBasePrice: Number(p.pmgBasePrice ?? 0),
       pmgSaleRate: Number(p.pmgSaleRate ?? 0),
@@ -167,7 +178,7 @@ export async function soatKyLuong(input: {
       cdtBonusSale: Number(p.cdtBonusSale ?? 0),
       cdtBonusManager: Number(p.cdtBonusManager ?? 0),
     };
-    const tran = computeLuyKe(cfg, loai as CostType, 1);
+    const tran = computeLuyKe(cfg, loai as CostType, tienDoHienTai);
     const luyKe = Number(tong?.t ?? 0);
     if (tran > 0 && luyKe > tran * (1 + DUNG_SAI)) {
       vuotTran.push({

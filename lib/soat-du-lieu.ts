@@ -239,13 +239,22 @@ export async function soatDuLieu(): Promise<PhatHien[]> {
       cdtBonusSale: Number(p.cdtBonusSale ?? 0),
       cdtBonusManager: Number(p.cdtBonusManager ?? 0),
     };
+    // Tiến độ hiện tại của căn, lấy từ phía doanh thu. computeLuyKe tự biết
+    // loại nào nhân tiến độ: hoa hồng sale, KPI CEO, KPI TPKD thì có, KPI
+    // Admin và các khoản cố định thì không. Trước đây truyền cứng số 1 nên
+    // trần của căn chưa thu đủ bị tính cao hơn thực tế, bỏ lọt chi vượt.
+    const tienDoHienTai = dt.reduce(
+      (m, r) => Math.max(m, Number(r.phasePctThisTime ?? 0)),
+      0,
+    ) || 1;
+
     const theoLoai = new Map<string, typeof gv>();
     for (const r of gv) {
       if (!theoLoai.has(r.costType)) theoLoai.set(r.costType, []);
       theoLoai.get(r.costType)!.push(r);
     }
     for (const [loai, ds] of theoLoai) {
-      const tran = computeLuyKe(cfg, loai as CostType, 1);
+      const tran = computeLuyKe(cfg, loai as CostType, tienDoHienTai);
       const daGhi = ds.reduce((s, r) => s + Number(r.amountPayableThisTime ?? 0), 0);
       if (!(tran > 0 && daGhi > tran * (1 + DUNG_SAI) && daGhi - tran > NGUONG_BO_QUA)) continue;
       const lech = daGhi - tran;
