@@ -669,7 +669,7 @@ export default function ProductForm({
               )}
               {lockCoreFields && <LockedFieldHint />}
             </Field>
-            <Field label="%PMG_LK (CĐT trả BRE)">
+            <Field label="%PMG_LK của căn (CĐT trả BRE)">
               <div className="relative">
                 <PercentInput
                   name={lockCoreFields ? "_locked_pmgRate" : "pmgRate"}
@@ -818,7 +818,7 @@ export default function ProductForm({
       <Section title={isSecondary ? "Giá vốn (BRE trả NVKD)" : "Giá vốn (BRE trả nội bộ)"}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {!isSecondary && (
-            <Field label="%PMG_LK_sale (base tính HH sale)">
+            <Field label="%PMG_LK_sale của căn (base tính HH sale)">
               <PercentInput
                 name="pmgSaleRate"
                 defaultValue={pctDisplay(product?.pmgSaleRate)}

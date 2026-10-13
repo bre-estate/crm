@@ -452,7 +452,7 @@ export default function RevenueForm({
             </>
           ) : (
             <>
-              <Field label="% PMG_LK đợt này">
+              <Field label="%PMG_LK của đợt này">
                 <PercentInput
                   name="pmgCumulativePct"
                   value={pmgLkDisplay}

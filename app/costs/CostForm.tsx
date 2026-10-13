@@ -276,6 +276,28 @@ export default function CostForm({
     };
   }, [product, costType, paidByType]);
 
+  // Mức đúng của đợt này nếu tính theo cấu hình HIỆN TẠI của căn, dùng tiến
+  // độ thật. computeLuyKe tự biết loại nào nhân tiến độ.
+  const tranTheoCanHienTai = useMemo(() => {
+    if (!product || !isEdit) return null;
+    const cfg = {
+      pmgBasePrice: Number(product.pmgBasePrice ?? 0),
+      pmgSaleRate: Number(product.pmgSaleRate ?? 0) || Number(product.pmgRate ?? 0),
+      adminFeeSale: Number(product.adminFeeSale ?? 0),
+      customerSupport: Number(product.customerSupport ?? 0),
+      saleCommissionRate: Number(product.saleCommissionRate ?? 0),
+      kpiCeoRate: Number(product.kpiCeoRate ?? 0),
+      kpiTpkdRate: Number(product.kpiTpkdRate ?? 0),
+      kpiAdminRate: Number(product.kpiAdminRate ?? 0),
+      bonusSale: Number(product.bonusSale ?? 0),
+      bonusManager: Number(product.bonusManager ?? 0),
+      cdtBonusSale: Number(product.cdtBonusSale ?? 0),
+      cdtBonusManager: Number(product.cdtBonusManager ?? 0),
+    };
+    const td = Number(recon?.paymentProgressPct ?? 0) || 1;
+    const v = computeLuyKe(cfg, costType as CostType, td);
+    return v > 0 ? v : null;
+  }, [product, isEdit, costType, recon]);
   // Trạng thái "URL param costType đã đủ 100% cho căn này" — show warning banner
   const currentTypeAlreadyPaid = useMemo(() => {
     if (!product || isEdit) return false;
@@ -344,6 +366,8 @@ export default function CostForm({
   const [totalAmt, setTotalAmt] = useState<number>(
     Number(recon?.amountPayableThisTime ?? 0),
   );
+  const chenhTien =
+    tranTheoCanHienTai === null ? 0 : Math.round(totalAmt - tranTheoCanHienTai);
   // Track khi user vừa gõ "-" chưa kèm digit → giữ hiển thị dấu "-"
   const [dashPending, setDashPending] = useState(false);
 
@@ -844,6 +868,44 @@ export default function CostForm({
               <RefInfo label="Hỗ trợ khách" value={fmtMoney(product.customerSupport)} />
               <RefInfo label="NVKD (mặc định)" value={product.salesPerson ?? "—"} />
             </div>
+            {/* So tiền đã chi với mức đúng theo cấu hình hiện tại của căn.
+                Trước đây màn hình chỉ báo "tỷ lệ lệch" mà không nói lệch đó
+                thành bao nhiêu tiền, nên không ai biết đang thừa hay thiếu. */}
+            {isEdit && tranTheoCanHienTai !== null && (
+              <div
+                className={`mt-2 rounded-lg border p-2 ${
+                  chenhTien > 0
+                    ? "border-red-200 bg-red-50"
+                    : chenhTien < 0
+                      ? "border-blue-200 bg-blue-50"
+                      : "border-green-200 bg-green-50"
+                }`}
+              >
+                <div className="text-[11px] font-medium mb-1">
+                  {chenhTien > 0
+                    ? "Đợt này đang chi THỪA"
+                    : chenhTien < 0
+                      ? "Đợt này đang chi THIẾU"
+                      : "Đợt này khớp mức hiện tại của căn"}
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div>
+                    <div className="text-[10px] text-slate-500">Đã chi</div>
+                    <div className="font-semibold tabular-nums">{fmtMoney(totalAmt)}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-slate-500">Đúng mức căn hiện tại</div>
+                    <div className="font-semibold tabular-nums">{fmtMoney(tranTheoCanHienTai)}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-slate-500">Chênh</div>
+                    <div className="font-semibold tabular-nums">
+                      {chenhTien === 0 ? "0" : fmtMoney(Math.abs(chenhTien))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             {mChanged && (
               /* Bày hai con số cạnh nhau thay vì gói trong một câu dài. Chủ
                  tài khoản đã không tìm ra chỗ nào ghi 5% vì nó nằm lẫn trong
@@ -1254,7 +1316,7 @@ export default function CostForm({
             </Field>
           )}
           {!isFlatCost && (
-            <Field label="%PMG sale của riêng đợt này">
+            <Field label="%PMG_LK_sale của đợt này">
               <div className="relative">
                 <PercentInput
                   value={mInput}

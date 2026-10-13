@@ -154,12 +154,28 @@ export default async function EditCostPage({
     .orderBy(desc(activityLogs.createdAt))
     .limit(50);
 
+  const canHienTai = productOptions.find((x) => x.id === recon.productId);
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 text-sm">
+      {/* Đường về phải dẫn tới chính CĂN đang sửa, không đổ ra danh sách giá
+          vốn của mọi căn. Muốn xem tổng quan giá vốn của căn này thì trang căn
+          mới là chỗ có đủ các loại chi phí và phần đã chi. */}
+      <div className="flex items-center gap-2 text-sm flex-wrap">
         <Link href={returnTo ?? "/costs"} className="text-blue-600 hover:underline">
           ← Giá vốn
         </Link>
+        {recon.productId && (
+          <>
+            <span className="text-slate-400">/</span>
+            <Link
+              href={`/products/${recon.productId}`}
+              className="text-blue-600 hover:underline"
+            >
+              Căn {canHienTai?.unitCode ?? recon.productId}
+            </Link>
+          </>
+        )}
         <span className="text-slate-400">/</span>
         <span>Sửa dòng #{id}</span>
       </div>
