@@ -465,6 +465,20 @@ export default function RevenueForm({
                   Thường trùng {product ? fmtPctTight(product.pmgRate) : "%PMG_LK căn"}. Chỉ nhập số, không kèm "%".
                 </div>
               </Field>
+              <Field label="Phí admin trừ ở đợt này">
+                {/* Trước đây là ô ẩn. Toàn hệ thống có 181 đợt mang giá trị
+                    này, tổng hơn một tỷ, mà người nhập không nhìn thấy. Nó
+                    trừ thẳng vào số tiền gợi ý nên phải hiện ra. */}
+                <MoneyInput
+                  name="adminFeeVat"
+                  defaultValue={recon?.adminFeeVat ?? 0}
+                  className="input"
+                />
+                <div className="text-[10px] text-slate-500 mt-1">
+                  Trừ thẳng vào số tiền đợt này. Để trống thì lấy phí admin của
+                  căn{product ? ` (${fmtMoney(product.adminFee)})` : ""}.
+                </div>
+              </Field>
               <Field label="Tỷ lệ % thu PMG_LK đợt này">
                 <PercentInput
                   name="phasePctThisTime"
@@ -671,11 +685,7 @@ export default function RevenueForm({
           name="pmgBasePrice"
           defaultValue={String(recon?.pmgBasePrice ?? product?.pmgBasePrice ?? 0)}
         />
-        <input
-          type="hidden"
-          name="adminFeeVat"
-          defaultValue={String(recon?.adminFeeVat ?? 0)}
-        />
+
         <input
           type="hidden"
           name="revenueOffProgress"
