@@ -14,6 +14,7 @@ import {
   employees,
 } from "@/lib/schema";
 import { fmtMoney, fmtDate, fmtPct, fmtPctTight, fmtPctRaw, costTypeLabel, toTitleCase } from "@/lib/format";
+import { computeLuyKe } from "@/lib/costCalc";
 import { shortDeptName } from "@/lib/dept";
 import { Card as ShadCard } from "@/components/ui/card";
 import { Badge as ShadBadge } from "@/components/ui/badge";
@@ -1538,6 +1539,99 @@ export default async function ProductDetailPage({
                   tooltip="Mỗi dòng = 1 cá nhân × 1 lần đối chiếu."
                 />
               )}
+            </div>
+          );
+        })()}
+
+        {/* So trần hợp đồng với số đã đối chiếu, theo TỪNG loại chi phí.
+            Trước đây chỉ có "Tổng đã đối chiếu" và "Còn phải trả", mà "còn
+            phải trả" chỉ so đã đối chiếu với đã trả chứ không so với trần.
+            Nên căn chi vượt hay đối chiếu thiếu đều không hiện ra. */}
+        {(() => {
+          const cfg = {
+            pmgBasePrice: Number(p.pmgBasePrice ?? 0),
+            pmgSaleRate: Number(p.pmgSaleRate ?? 0) || Number(p.pmgRate ?? 0),
+            adminFeeSale: Number(p.adminFeeSale ?? 0),
+            customerSupport: Number(p.customerSupport ?? 0),
+            saleCommissionRate: Number(p.saleCommissionRate ?? 0),
+            kpiCeoRate: Number(p.kpiCeoRate ?? 0),
+            kpiTpkdRate: Number(p.kpiTpkdRate ?? 0),
+            kpiAdminRate: Number(p.kpiAdminRate ?? 0),
+            bonusSale: Number(p.bonusSale ?? 0),
+            bonusManager: Number(p.bonusManager ?? 0),
+            cdtBonusSale: Number(p.cdtBonusSale ?? 0),
+            cdtBonusManager: Number(p.cdtBonusManager ?? 0),
+          };
+          const tienDo =
+            revRecs.reduce(
+              (m, r) => Math.max(m, Number(r.rec.phasePctThisTime ?? 0)),
+              0,
+            ) || 1;
+          const daDC = new Map<string, number>();
+          for (const r of costRecs) {
+            daDC.set(
+              r.costType,
+              (daDC.get(r.costType) ?? 0) + Number(r.amountPayableThisTime ?? 0),
+            );
+          }
+          const LOAI = [
+            "sale_commission", "kpi_ceo", "kpi_tpkd", "kpi_admin",
+            "cdt_bonus_sale", "cdt_bonus_manager",
+            "bonus_sale", "bonus_manager", "customer_support",
+          ] as const;
+          const hang = LOAI.map((lo) => {
+            const tran = computeLuyKe(cfg, lo, tienDo);
+            const dc = daDC.get(lo) ?? 0;
+            return { lo, tran, dc, chenh: dc - tran };
+          }).filter((h) => h.tran > 0 || h.dc !== 0);
+          if (hang.length === 0) return null;
+          const lech = hang.filter((h) => Math.abs(h.chenh) >= 1000);
+          return (
+            <div className="mb-4 rounded-xl ring-1 ring-foreground/10 overflow-hidden">
+              <div className="px-3 py-2 bg-slate-50 flex items-baseline justify-between gap-2 flex-wrap">
+                <span className="text-xs font-semibold">
+                  Đối chiếu với trần hợp đồng, ở tiến độ {(tienDo * 100).toFixed(0)}%
+                </span>
+                <span
+                  className={`text-[11px] ${lech.length === 0 ? "text-green-700" : "text-amber-700"}`}
+                >
+                  {lech.length === 0 ? "khớp hết" : `${lech.length} loại lệch`}
+                </span>
+              </div>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-[11px] text-slate-500 border-b border-slate-100">
+                    <th className="text-left p-2 font-normal">Loại chi phí</th>
+                    <th className="text-right p-2 font-normal">Trần hợp đồng</th>
+                    <th className="text-right p-2 font-normal">Đã đối chiếu</th>
+                    <th className="text-right p-2 font-normal">Chênh</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {hang.map((h) => (
+                    <tr key={h.lo} className="border-b border-slate-50 last:border-0">
+                      <td className="p-2">{costTypeLabel(h.lo)}</td>
+                      <td className="p-2 text-right tabular-nums text-slate-500">
+                        {fmtMoney(h.tran)}
+                      </td>
+                      <td className="p-2 text-right tabular-nums">{fmtMoney(h.dc)}</td>
+                      <td
+                        className={`p-2 text-right tabular-nums font-medium whitespace-nowrap ${
+                          Math.abs(h.chenh) < 1000
+                            ? "text-slate-400"
+                            : h.chenh > 0
+                              ? "text-red-600"
+                              : "text-blue-600"
+                        }`}
+                      >
+                        {Math.abs(h.chenh) < 1000
+                          ? "khớp"
+                          : `${h.chenh > 0 ? "thừa " : "thiếu "}${fmtMoney(Math.abs(h.chenh))}`}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           );
         })()}
