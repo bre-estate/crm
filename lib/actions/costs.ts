@@ -142,8 +142,26 @@ export async function createCost(fd: FormData): Promise<KetQuaLuu> {
   redirect(`/costs/${rec.id}/edit?created=1`);
 }
 
-function buildReturnUrl(returnTo: string | null | undefined, flag: string, id: number): string {
-  const safe = returnTo && returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/costs";
+/**
+ * Đường về sau khi lưu hoặc xoá.
+ *
+ * Ưu tiên returnTo (trang người dùng vừa rời đi). Không có thì về trang CĂN,
+ * nơi thấy đủ các loại chi phí và phần đã chi. Trước đây rơi về /costs, tức
+ * danh sách giá vốn của mọi căn trong công ty, vừa sửa một dòng xong lại bị
+ * ném ra giữa mấy trăm dòng không liên quan.
+ */
+function buildReturnUrl(
+  returnTo: string | null | undefined,
+  flag: string,
+  id: number,
+  productId?: number | null,
+): string {
+  const hopLe = returnTo && returnTo.startsWith("/") && !returnTo.startsWith("//");
+  const safe = hopLe
+    ? returnTo!
+    : productId
+      ? `/products/${productId}?section=cost`
+      : "/costs";
   const sep = safe.includes("?") ? "&" : "?";
   return `${safe}${sep}${flag}=${id}`;
 }
@@ -183,7 +201,7 @@ export async function updateCost(id: number, fd: FormData, returnTo?: string | n
 
   revalidatePath("/costs");
   revalidatePath(`/costs/${id}/edit`);
-  redirect(buildReturnUrl(returnTo, "updated", id));
+  redirect(buildReturnUrl(returnTo, "updated", id, data.productId));
 }
 
 async function _deleteCost(id: number, returnTo?: string | null) {
@@ -203,7 +221,7 @@ async function _deleteCost(id: number, returnTo?: string | null) {
     summary: `Xóa ĐC giá vốn #${id}`,
   });
   revalidatePath("/costs");
-  redirect(buildReturnUrl(returnTo, "deleted", id));
+  redirect(buildReturnUrl(returnTo, "deleted", id, before?.productId));
 }
 
 /**

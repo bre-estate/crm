@@ -360,7 +360,13 @@ export async function updateRevenue(id: number, fd: FormData): Promise<KetQuaLuu
   const returnTo = safeReturnTo(fd);
   revalidatePath("/revenues");
   revalidatePath(`/revenues/${id}/edit`);
-  redirect(returnTo ?? "/revenues");
+  // Không có returnTo thì về trang CĂN, không đổ ra danh sách doanh thu của
+  // mọi căn. Sửa một dòng xong mà bị ném ra giữa mấy trăm dòng thì không ai
+  // biết mình vừa sửa cái gì.
+  redirect(
+    returnTo ??
+      (data.productId ? `/products/${data.productId}?section=revenue` : "/revenues"),
+  );
 }
 
 async function _deleteRevenue(id: number) {

@@ -22,6 +22,12 @@ export * from "@/lib/soat-du-lieu-types";
 
 const DUNG_SAI = 0.001;
 /** Bỏ qua chênh lệch nhỏ hơn mức này, đó là sai số làm tròn chứ không phải lỗi. */
+/**
+ * Sửa xong một dòng thì quay lại chính trang soát, không bị ném ra danh sách
+ * giá vốn của mọi căn. Form đọc tham số returnTo này.
+ */
+const VE_SOAT = "?returnTo=%2Freports%2Fsoat-du-lieu";
+
 const NGUONG_BO_QUA = 5_000;
 
 /** Loại chi phí ghi số cố định trên căn, công thức không dùng %PMG_LK_sale. */
@@ -256,7 +262,7 @@ export async function soatDuLieu(): Promise<PhatHien[]> {
             { nhan: "Mở căn", href: `/products/${p.id}` },
             ...dt.filter((r) => Number(r.revenueThisTime)).map((r) => ({
               nhan: `Sửa đợt ${r.reconciliationDate ?? r.id}`,
-              href: `/revenues/${r.id}/edit`,
+              href: `/revenues/${r.id}/edit${VE_SOAT}`,
             })),
           ],
         });
@@ -327,7 +333,7 @@ export async function soatDuLieu(): Promise<PhatHien[]> {
           `trong các đợt bị nhập cao hơn tiến độ thực tế.`,
         lienKet: [
           { nhan: "Mở căn", href: `/products/${p.id}` },
-          ...ds.map((r) => ({ nhan: `Sửa đợt ${r.reconciliationDate ?? r.id}`, href: `/costs/${r.id}/edit` })),
+          ...ds.map((r) => ({ nhan: `Sửa đợt ${r.reconciliationDate ?? r.id}`, href: `/costs/${r.id}/edit${VE_SOAT}` })),
         ],
       });
     }
@@ -376,7 +382,7 @@ export async function soatDuLieu(): Promise<PhatHien[]> {
             : "") +
           `Sửa về ${pct(tran)}, hoặc nếu chủ đầu tư thật sự tăng thì sửa %PMG sale ở trang căn trước.`,
         lienKet: [
-          { nhan: "Sửa dòng này", href: `/costs/${r.id}/edit` },
+          { nhan: "Sửa dòng này", href: `/costs/${r.id}/edit${VE_SOAT}` },
           { nhan: "Mở căn", href: `/products/${p.id}` },
         ],
       });
@@ -398,7 +404,7 @@ export async function soatDuLieu(): Promise<PhatHien[]> {
           { nhan: "Số tiền đợt này", giaTri: tien(Number(r.amountPayableThisTime ?? 0)), chot: true },
         ],
         ketLuan: "Tiến độ khách đóng lũy kế không thể quá 100%.",
-        lienKet: [{ nhan: "Sửa dòng này", href: `/costs/${r.id}/edit` }],
+        lienKet: [{ nhan: "Sửa dòng này", href: `/costs/${r.id}/edit${VE_SOAT}` }],
       });
     }
 
@@ -416,7 +422,7 @@ export async function soatDuLieu(): Promise<PhatHien[]> {
           { nhan: "Số tiền", giaTri: tien(Number(r.amountPayableThisTime ?? 0)), chot: true },
         ],
         ketLuan: "Không có tên thì số tiền này không vào bảng lương của ai.",
-        lienKet: [{ nhan: "Sửa dòng này", href: `/costs/${r.id}/edit` }],
+        lienKet: [{ nhan: "Sửa dòng này", href: `/costs/${r.id}/edit${VE_SOAT}` }],
       });
     }
   }
