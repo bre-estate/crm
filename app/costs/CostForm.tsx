@@ -846,8 +846,12 @@ export default function CostForm({
             </div>
             {mChanged && (
               <div className="text-[10px] text-amber-700 mt-2">
-                ⚠️ %PMG_LK_sale của căn vừa đổi từ {fmtPctTight(mAtRecon)} lên {fmtPctTight(mCurrent)}.
-                Đợt này giữ mức cũ {fmtPctTight(mAtRecon)}; các con số bên dưới đã tính theo mức mới {fmtPctTight(mCurrent)}.
+                {/* Dùng "thành" chứ không "lên": tỷ lệ có thể giảm, và đã
+                    có trường hợp 5% xuống 4% mà câu vẫn đọc là "lên 4%". */}
+                ⚠️ %PMG_LK_sale của căn đã đổi từ {fmtPctTight(mAtRecon)} thành{" "}
+                {fmtPctTight(mCurrent)}. Đợt này vẫn giữ mức cũ{" "}
+                {fmtPctTight(mAtRecon)}, còn các con số bên dưới tính theo mức mới{" "}
+                {fmtPctTight(mCurrent)}.
               </div>
             )}
             {(() => {
