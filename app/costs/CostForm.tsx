@@ -845,13 +845,28 @@ export default function CostForm({
               <RefInfo label="NVKD (mặc định)" value={product.salesPerson ?? "—"} />
             </div>
             {mChanged && (
-              <div className="text-[10px] text-amber-700 mt-2">
-                {/* Dùng "thành" chứ không "lên": tỷ lệ có thể giảm, và đã
-                    có trường hợp 5% xuống 4% mà câu vẫn đọc là "lên 4%". */}
-                ⚠️ %PMG_LK_sale của căn đã đổi từ {fmtPctTight(mAtRecon)} thành{" "}
-                {fmtPctTight(mCurrent)}. Đợt này vẫn giữ mức cũ{" "}
-                {fmtPctTight(mAtRecon)}, còn các con số bên dưới tính theo mức mới{" "}
-                {fmtPctTight(mCurrent)}.
+              /* Bày hai con số cạnh nhau thay vì gói trong một câu dài. Chủ
+                 tài khoản đã không tìm ra chỗ nào ghi 5% vì nó nằm lẫn trong
+                 câu chữ, còn trang căn thì hiện 4%. */
+              <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2">
+                <div className="text-[11px] font-medium text-amber-800 mb-1">
+                  ⚠️ Hai nơi đang để hai mức khác nhau
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <div className="text-[10px] text-slate-500">Đợt này đang dùng</div>
+                    <div className="font-semibold tabular-nums">{fmtPctTight(mAtRecon)}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-slate-500">Căn hiện để</div>
+                    <div className="font-semibold tabular-nums">{fmtPctTight(mCurrent)}</div>
+                  </div>
+                </div>
+                <div className="text-[10px] text-amber-700 mt-1.5 leading-snug">
+                  Số tiền của đợt này đang tính theo mức {fmtPctTight(mAtRecon)}.
+                  Hạ xuống {fmtPctTight(mCurrent)} thì số tiền giảm theo, nên chỉ
+                  sửa khi đã thống nhất thu lại phần chênh với người nhận.
+                </div>
               </div>
             )}
             {(() => {
@@ -1239,7 +1254,7 @@ export default function CostForm({
             </Field>
           )}
           {!isFlatCost && (
-            <Field label="%PMG_LK_sale (M) — CĐT đã chi lũy kế">
+            <Field label="%PMG sale của riêng đợt này">
               <div className="relative">
                 <PercentInput
                   value={mInput}
@@ -1261,7 +1276,8 @@ export default function CostForm({
                 </div>
               ) : (
                 <div className="text-[10px] text-slate-500 mt-1">
-                  Tỷ lệ lũy kế CĐT đã chi đến đợt này. Mức tối đa HĐ: {(currentM * 100).toFixed(2)}%
+                  Số này đóng băng từ lúc tạo đợt, không đổi theo căn. Căn hiện
+                  đang để {(currentM * 100).toFixed(2).replace(".", ",")}%.
                   {maxPrevM > 0 && !isEdit && (
                     <span className="block mt-0.5">
                       Đợt trước M = {(maxPrevM * 100).toFixed(2).replace(".", ",")}%
