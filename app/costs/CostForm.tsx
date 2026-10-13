@@ -881,28 +881,28 @@ export default function CostForm({
                       : "border-green-200 bg-green-50"
                 }`}
               >
-                <div className="text-[11px] font-medium mb-1">
-                  {chenhTien > 0
-                    ? "Đợt này đang chi THỪA"
-                    : chenhTien < 0
-                      ? "Đợt này đang chi THIẾU"
-                      : "Đợt này khớp mức hiện tại của căn"}
-                </div>
-                <div className="grid grid-cols-3 gap-2 text-xs">
-                  <div>
-                    <div className="text-[10px] text-slate-500">Đã chi</div>
-                    <div className="font-semibold tabular-nums">{fmtMoney(totalAmt)}</div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-slate-500">Đúng mức căn hiện tại</div>
-                    <div className="font-semibold tabular-nums">{fmtMoney(tranTheoCanHienTai)}</div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-slate-500">Chênh</div>
-                    <div className="font-semibold tabular-nums">
-                      {chenhTien === 0 ? "0" : fmtMoney(Math.abs(chenhTien))}
-                    </div>
-                  </div>
+                <div className="flex items-baseline gap-x-5 gap-y-1 flex-wrap text-xs">
+                  <span className="text-[11px] font-medium">
+                    {chenhTien > 0
+                      ? "Đợt này đang chi THỪA"
+                      : chenhTien < 0
+                        ? "Đợt này đang chi THIẾU"
+                        : "Đợt này khớp mức hiện tại của căn"}
+                  </span>
+                  <span className="tabular-nums">
+                    <span className="text-slate-500">đã chi </span>
+                    <b>{fmtMoney(totalAmt)}</b>
+                  </span>
+                  <span className="tabular-nums">
+                    <span className="text-slate-500">đúng mức căn </span>
+                    <b>{fmtMoney(tranTheoCanHienTai)}</b>
+                  </span>
+                  {chenhTien !== 0 && (
+                    <span className="tabular-nums">
+                      <span className="text-slate-500">chênh </span>
+                      <b>{fmtMoney(Math.abs(chenhTien))}</b>
+                    </span>
+                  )}
                 </div>
               </div>
             )}
@@ -911,23 +911,24 @@ export default function CostForm({
                  tài khoản đã không tìm ra chỗ nào ghi 5% vì nó nằm lẫn trong
                  câu chữ, còn trang căn thì hiện 4%. */
               <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2">
-                <div className="text-[11px] font-medium text-amber-800 mb-1">
-                  ⚠️ Hai nơi đang để hai mức khác nhau
+                <div className="flex items-baseline gap-x-2 flex-wrap text-xs">
+                  <span className="text-[11px] font-medium text-amber-800">
+                    ⚠️ Lệch mức:
+                  </span>
+                  <span className="tabular-nums">
+                    <span className="text-slate-500">đợt này </span>
+                    <b>{fmtPctTight(mAtRecon)}</b>
+                  </span>
+                  <span className="text-slate-400">→</span>
+                  <span className="tabular-nums">
+                    <span className="text-slate-500">căn hiện để </span>
+                    <b>{fmtPctTight(mCurrent)}</b>
+                  </span>
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div>
-                    <div className="text-[10px] text-slate-500">Đợt này đang dùng</div>
-                    <div className="font-semibold tabular-nums">{fmtPctTight(mAtRecon)}</div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-slate-500">Căn hiện để</div>
-                    <div className="font-semibold tabular-nums">{fmtPctTight(mCurrent)}</div>
-                  </div>
-                </div>
-                <div className="text-[10px] text-amber-700 mt-1.5 leading-snug">
-                  Số tiền của đợt này đang tính theo mức {fmtPctTight(mAtRecon)}.
-                  Hạ xuống {fmtPctTight(mCurrent)} thì số tiền giảm theo, nên chỉ
-                  sửa khi đã thống nhất thu lại phần chênh với người nhận.
+                <div className="text-[10px] text-amber-700 mt-1 leading-snug">
+                  Sửa ô %PMG_LK_sale xuống {fmtPctTight(mCurrent)} sẽ kéo số tiền
+                  giảm theo, nên chỉ sửa khi đã thống nhất thu lại phần chênh với
+                  người nhận.
                 </div>
               </div>
             )}
