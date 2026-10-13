@@ -39,6 +39,18 @@ const TEN_CHI_PHI: Record<string, string> = {
   customer_support: "Hỗ trợ khách",
 };
 
+
+/** Tỷ lệ KPI cấu hình trên căn, theo từng loại chi phí. */
+function tyLeKpiCua(
+  p: { kpiCeoRate?: number | null; kpiTpkdRate?: number | null; kpiAdminRate?: number | null },
+  costType: string,
+): number {
+  if (costType === "kpi_ceo") return Number(p.kpiCeoRate ?? 0);
+  if (costType === "kpi_tpkd") return Number(p.kpiTpkdRate ?? 0);
+  if (costType === "kpi_admin") return Number(p.kpiAdminRate ?? 0);
+  return 0;
+}
+
 const tien = (n: number) => Math.round(n).toLocaleString("vi-VN");
 const pct = (v: number) => `${(v * 100).toFixed(2).replace(".", ",")}%`;
 
@@ -303,19 +315,32 @@ export async function soatDuLieu(): Promise<PhatHien[]> {
         ...nen,
         id: `tl-${r.id}`,
         nhom: "sai_ty_le",
-        tieuDe: `${TEN_CHI_PHI[r.costType] ?? r.costType} ghi ${pct(tl)}`,
+        // Nhãn phải nói rõ đây là %PMG sale, không phải tỷ lệ KPI. Nhãn cũ
+        // ghi "KPI CEO ghi 5,00%" làm người đọc tưởng tỷ lệ KPI sai, trong
+        // khi tỷ lệ KPI đúng, chỉ cơ sở tính bị sai.
+        tieuDe: `%PMG sale ghi ${pct(tl)} ở dòng ${TEN_CHI_PHI[r.costType] ?? r.costType}`,
         lech: 0,
         phepTinh: [
-          { nhan: "Tỷ lệ ghi trên dòng", giaTri: pct(tl) },
-          { nhan: "Tỷ lệ hợp đồng của căn", giaTri: pct(tran) },
+          { nhan: "Loại chi phí", giaTri: TEN_CHI_PHI[r.costType] ?? r.costType },
+          { nhan: "%PMG sale ghi trên dòng", giaTri: pct(tl) },
+          { nhan: "%PMG sale của căn theo hợp đồng", giaTri: pct(tran), chot: true },
+          {
+            nhan: "Tỷ lệ KPI ghi trên dòng",
+            giaTri: `${pct(Number(r.kpiRate ?? 0))}${
+              Math.abs(Number(r.kpiRate ?? 0) - tyLeKpiCua(p, r.costType)) < 1e-9 ? " (đúng)" : " (lệch)"
+            }`,
+          },
           { nhan: "Ngày đối chiếu", giaTri: String(r.reconciliationDate ?? "") },
           { nhan: "Người nhận", giaTri: String(r.employeeName ?? "") },
           { nhan: "Số tiền đợt này", giaTri: tien(Number(r.amountPayableThisTime ?? 0)), chot: true },
         ],
         ketLuan:
-          Math.abs(tl - Number(p.pmgRate ?? 0)) < 1e-9
-            ? `Số ${pct(tl)} là tỷ lệ phía doanh thu, không dùng cho giá vốn. Sửa về ${pct(tran)}.`
-            : `Sửa tỷ lệ về ${pct(tran)}, hoặc nếu chủ đầu tư thật sự tăng thì sửa %PMG sale ở trang căn trước.`,
+          `Tỷ lệ KPI trên dòng này đúng, chỉ CƠ SỞ TÍNH sai: dòng lấy %PMG sale ` +
+          `${pct(tl)} trong khi hợp đồng của căn là ${pct(tran)}. ` +
+          (Math.abs(tl - Number(p.pmgRate ?? 0)) < 1e-9
+            ? `Số ${pct(tl)} chính là tỷ lệ phía doanh thu, người nhập lấy nhầm sang giá vốn. `
+            : "") +
+          `Sửa về ${pct(tran)}, hoặc nếu chủ đầu tư thật sự tăng thì sửa %PMG sale ở trang căn trước.`,
         lienKet: [
           { nhan: "Sửa dòng này", href: `/costs/${r.id}/edit` },
           { nhan: "Mở căn", href: `/products/${p.id}` },
