@@ -341,6 +341,26 @@ export default function CostForm({
     costType === "kpi_tpkd" ||
     costType === "kpi_admin";
 
+  // Năm loại ghi số cố định trên căn: công thức không dùng %PMG_LK_sale, nên ô
+  // đó vô nghĩa. KPI thì khác, công thức trần vẫn nhân với %PMG_LK_sale, chỉ
+  // không nhân tiến độ N. Trước đây gom chung vào isFlatCost nên dòng KPI ghi
+  // sai tỷ lệ không có chỗ nào sửa được (DC 5996 kẹt ở 5% trong khi căn 4%).
+  const soTienCoDinh =
+    costType === "bonus_sale" ||
+    costType === "bonus_manager" ||
+    costType === "cdt_bonus_sale" ||
+    costType === "cdt_bonus_manager" ||
+    costType === "customer_support";
+  const hienN = !isFlatCost;
+  const hienM = !soTienCoDinh;
+  // Tailwind không sinh được class ghép chuỗi, phải viết sẵn từng lớp.
+  const LOP_COT: Record<number, string> = {
+    1: "",
+    2: "grid grid-cols-2 gap-4",
+    3: "grid grid-cols-3 gap-4",
+  };
+  const lopCotNhap = LOP_COT[1 + (hienN ? 1 : 0) + (hienM ? 1 : 0)];
+
   // === Auto-calc state ===
   const parsePct = (s: string): number => {
     const clean = s.replace(/,/g, ".").replace(/\s/g, "");
@@ -1175,7 +1195,7 @@ export default function CostForm({
         )}
 
         {/* Nội dung + Tiến độ PMG (N) + %PMG_LK_sale (M) */}
-        <div className={isFlatCost ? "" : "grid grid-cols-3 gap-4"}>
+        <div className={lopCotNhap}>
           <Field label="Nội dung thanh toán">
             <input
               name="note"
@@ -1188,7 +1208,7 @@ export default function CostForm({
               }
             />
           </Field>
-          {!isFlatCost && (
+          {hienN && (
             <Field label="Tiến độ PMG đã thu tiền (N)">
               <div className="relative">
                 <PercentInput
@@ -1221,7 +1241,7 @@ export default function CostForm({
               )}
             </Field>
           )}
-          {!isFlatCost && (
+          {hienM && (
             <Field label="%PMG_LK_sale của đợt này">
               <div className="relative">
                 <PercentInput
