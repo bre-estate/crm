@@ -6,8 +6,14 @@
  * muốn xem lại phải mò từng căn.
  */
 import { db } from "@/lib/db";
-import { products, projects, revenueReconciliations, costReconciliations } from "@/lib/schema";
-import { asc } from "drizzle-orm";
+import {
+  products,
+  projects,
+  revenueReconciliations,
+  costReconciliations,
+  activityLogs,
+} from "@/lib/schema";
+import { asc, sql } from "drizzle-orm";
 import { computeLuyKe, type CostType } from "@/lib/costCalc";
 import { luyKeDoanhThu } from "@/lib/doanh-thu-core";
 import type { DongTinh, NhomLoi, PhatHien } from "@/lib/soat-du-lieu-types";
@@ -73,6 +79,27 @@ export async function soatDuLieu(): Promise<PhatHien[]> {
     if (!gvTheoCan.has(r.productId)) gvTheoCan.set(r.productId, []);
     gvTheoCan.get(r.productId)!.push(r);
   }
+
+  // Các lần sửa %PMG sale của từng căn, dùng để biết tỷ lệ đóng băng trên
+  // đợt có phải do sửa sau hay không.
+  const dsSua = await db
+    .select({
+      productId: activityLogs.productId,
+      luc: activityLogs.createdAt,
+    })
+    .from(activityLogs)
+    .where(sql`${activityLogs.changes}::text LIKE '%pmgSaleRate%'`);
+  const suaTheoCan = new Map<number, Date[]>();
+  for (const x of dsSua) {
+    if (x.productId == null || !x.luc) continue;
+    if (!suaTheoCan.has(x.productId)) suaTheoCan.set(x.productId, []);
+    suaTheoCan.get(x.productId)!.push(new Date(x.luc));
+  }
+  /** Căn này có lần sửa %PMG sale nào sau thời điểm tạo đợt không. */
+  const daSuaSauKhiTao = (productId: number, taoLuc: Date | null): boolean => {
+    if (!taoLuc) return false;
+    return (suaTheoCan.get(productId) ?? []).some((d) => d > taoLuc);
+  };
 
   const ra: PhatHien[] = [];
 
@@ -306,11 +333,15 @@ export async function soatDuLieu(): Promise<PhatHien[]> {
     }
 
     // ── Tỷ lệ ghi trên dòng cao hơn hợp đồng ──
+    // Tỷ lệ trên đợt ĐÓNG BĂNG lúc tạo, nên căn đổi tỷ lệ sau đó là chuyện
+    // bình thường, không phải lỗi. Chỉ báo khi KHÔNG có lần sửa tỷ lệ nào
+    // sau ngày tạo đợt, tức là lúc nhập đã lấy sai cơ sở.
     for (const r of gv) {
       if (LOAI_KHOAN_CO_DINH.has(r.costType)) continue;
       const tl = Number(r.pmgLkSaleRate ?? 0);
       const tran = Number(p.pmgSaleRate ?? 0);
       if (!(tl > 0 && tran > 0 && tl > tran * (1 + DUNG_SAI))) continue;
+      if (daSuaSauKhiTao(p.id, r.createdAt ? new Date(r.createdAt) : null)) continue;
       ra.push({
         ...nen,
         id: `tl-${r.id}`,
@@ -335,6 +366,9 @@ export async function soatDuLieu(): Promise<PhatHien[]> {
           { nhan: "Số tiền đợt này", giaTri: tien(Number(r.amountPayableThisTime ?? 0)), chot: true },
         ],
         ketLuan:
+          `Tỷ lệ này đóng băng từ lúc tạo đợt, nhưng nhật ký cho thấy KHÔNG ` +
+          `ai sửa %PMG sale của căn sau đó, nên đây là lấy sai cơ sở ngay từ ` +
+          `lúc nhập chứ không phải hệ quả của việc đổi tỷ lệ. ` +
           `Tỷ lệ KPI trên dòng này đúng, chỉ CƠ SỞ TÍNH sai: dòng lấy %PMG sale ` +
           `${pct(tl)} trong khi hợp đồng của căn là ${pct(tran)}. ` +
           (Math.abs(tl - Number(p.pmgRate ?? 0)) < 1e-9
