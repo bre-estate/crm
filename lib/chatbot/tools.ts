@@ -7,7 +7,7 @@
 import { db } from "@/lib/db";
 import { giaiThichCan } from "@/lib/chatbot/giai-thich-can";
 import { sql } from "drizzle-orm";
-import { getEmployeeOverpaid } from "@/lib/employee-overpaid";
+import { getEmployeeClawback } from "@/lib/employee-overpaid";
 
 export const TOOL_SCHEMAS = [
   {
@@ -391,7 +391,7 @@ async function getEmployeeCommission(args: {
 async function getEmployeeOverpaidList(args: {
   employeeName?: string;
 }): Promise<ToolResult> {
-  const list = await getEmployeeOverpaid();
+  const list = await getEmployeeClawback();
   const filtered = args.employeeName
     ? list.filter((r) =>
         r.employeeName.toLowerCase().includes(args.employeeName!.toLowerCase()),

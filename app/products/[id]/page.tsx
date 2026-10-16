@@ -34,7 +34,7 @@ import { deleteProduct } from "@/lib/actions/products";
 import { hasPermission } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getEmployeeOverpaid } from "@/lib/employee-overpaid";
+import { getEmployeeClawback } from "@/lib/employee-overpaid";
 
 export const dynamic = "force-dynamic";
 
@@ -130,8 +130,9 @@ export default async function ProductDetailPage({
   const p = row.product;
   const isSecondary = p.saleType === "secondary";
 
-  // Chi dư thưởng nóng — BRE đã trả NV nhưng CĐT hoàn/không đủ → NV nợ cty
-  const overpaidList = await getEmployeeOverpaid(id);
+  // Chỉ lấy khoản CĐT đã cấp rồi THU LẠI. Trường hợp CĐT cấp ít hơn số công
+  // ty trả thì không phải nợ của NV, nó nằm ở trang Soát dữ liệu.
+  const overpaidList = await getEmployeeClawback(id);
 
   // Lookup NVKD trong employees để phân biệt CTV (chưa phân phòng)
   // → không hiển thị text Excel legacy misleading.

@@ -16,6 +16,7 @@ import {
 import { asc, sql } from "drizzle-orm";
 import { computeLuyKe, type CostType } from "@/lib/costCalc";
 import { luyKeDoanhThu } from "@/lib/doanh-thu-core";
+import { getEmployeeOverpaid } from "@/lib/employee-overpaid";
 import type { DongTinh, NhomLoi, PhatHien } from "@/lib/soat-du-lieu-types";
 
 export * from "@/lib/soat-du-lieu-types";
@@ -108,6 +109,7 @@ export async function soatDuLieu(): Promise<PhatHien[]> {
   };
 
   const ra: PhatHien[] = [];
+  const theoId = new Map(dsCan.map((c) => [c.id, c]));
 
   for (const p of dsCan) {
     const nen = {
@@ -427,7 +429,48 @@ export async function soatDuLieu(): Promise<PhatHien[]> {
     }
   }
 
-  const thuTu: NhomLoi[] = ["doanh_thu_vuot", "doanh_thu_lech_tien_do", "gia_von_vuot", "sai_ty_le", "tien_do_qua", "thieu_ten", "da_giai_thich"];
+  // ── Thưởng nóng: công ty trả NV nhiều hơn số chủ đầu tư cấp về ──
+  // Chỉ lấy loại cap_thieu. Loại hoan_lai (CĐT cấp rồi thu lại) là nợ của
+  // nhân viên, đã có cảnh báo riêng ở trang căn và trang hoa hồng.
+  for (const o of (await getEmployeeOverpaid()).filter((x) => x.loai === "cap_thieu")) {
+    if (o.overpaid <= NGUONG_BO_QUA) continue;
+    const p = theoId.get(o.productId);
+    if (!p) continue;
+    const congBo =
+      o.costType === "cdt_bonus_sale"
+        ? Number(p.cdtBonusSale ?? 0)
+        : Number(p.cdtBonusManager ?? 0);
+    ra.push({
+      canId: p.id,
+      canMa: p.productCode ?? String(p.id),
+      canTen: p.unitCode ?? "",
+      duAn: tenDuAn.get(p.projectId) ?? "",
+      id: `tn-dư-${o.productId}-${o.costType}`,
+      nhom: "thuong_nong_lech",
+      tieuDe: `${TEN_CHI_PHI[o.costType]} trả dư ${tien(o.overpaid)}`,
+      lech: o.overpaid,
+      phepTinh: [
+        { nhan: "Chủ đầu tư công bố trên căn", giaTri: tien(congBo) },
+        { nhan: "Công ty đã trả " + o.employeeName, giaTri: tien(o.paid) },
+        { nhan: "Chủ đầu tư thật sự cấp về", giaTri: tien(o.revenueTotal) },
+        { nhan: "Công ty tự chịu", giaTri: tien(o.overpaid), chot: true },
+      ],
+      ketLuan:
+        `Không có đợt nào ghi số âm, tức chủ đầu tư chưa từng thu lại đồng ` +
+        `nào. Chênh lệch sinh ra vì hai bên quy đổi cùng khoản thưởng theo ` +
+        `hai cách khác nhau, thường là bóc thuế chia 1,1 so với nhân tỷ lệ ` +
+        `F2. ${o.employeeName} KHÔNG nợ công ty và không được khấu trừ vào ` +
+        `hoa hồng đợt sau. Việc cần làm là chốt cách quy đổi thưởng nóng ` +
+        `ngay trong hợp đồng lần sau, còn ${tien(o.overpaid)} này ghi nhận ` +
+        `là chi phí của công ty.`,
+      lienKet: [
+        { nhan: "Mở căn", href: `/products/${p.id}?section=cost` },
+        { nhan: "Xem doanh thu", href: `/products/${p.id}?section=revenue` },
+      ],
+    });
+  }
+
+  const thuTu: NhomLoi[] = ["doanh_thu_vuot", "doanh_thu_lech_tien_do", "gia_von_vuot", "thuong_nong_lech", "sai_ty_le", "tien_do_qua", "thieu_ten", "da_giai_thich"];
   return ra.sort(
     (a, b) => thuTu.indexOf(a.nhom) - thuTu.indexOf(b.nhom) || b.lech - a.lech || a.canMa.localeCompare(b.canMa),
   );

@@ -7,7 +7,7 @@ import { costReconciliations, products, paymentsOut } from "@/lib/schema";
 import { sql, and, gte, lte, eq, desc } from "drizzle-orm";
 import { requirePermission } from "@/lib/auth";
 import Link from "next/link";
-import { getEmployeeOverpaid } from "@/lib/employee-overpaid";
+import { getEmployeeClawback } from "@/lib/employee-overpaid";
 
 export const dynamic = "force-dynamic";
 const fmt = (n: number) => Math.round(n).toLocaleString("vi-VN");
@@ -59,9 +59,9 @@ export default async function CommissionReportPage({ searchParams }: { searchPar
   const totalAccrued = rows.reduce((s, r) => s + Number(r.accrued), 0);
   const totalPaid = rows.reduce((s, r) => s + Number(r.paid), 0);
 
-  // "Chi dư thưởng nóng": BRE đã trả NV thưởng nóng nhưng CĐT hoàn/không đủ
-  // → NV nợ cty, sẽ khấu trừ HH sale đợt sau.
-  const overpaidRows = await getEmployeeOverpaid();
+  // Chỉ khoản CĐT đã cấp rồi THU LẠI mới là nợ của NV, khấu trừ HH đợt sau.
+  // CĐT cấp ít hơn số công ty trả là chi phí công ty, xem trang Soát dữ liệu.
+  const overpaidRows = await getEmployeeClawback();
   const overpaidByEmp = new Map<string, { totalOverpaid: number; items: typeof overpaidRows }>();
   for (const r of overpaidRows) {
     const cur = overpaidByEmp.get(r.employeeName) ?? { totalOverpaid: 0, items: [] };

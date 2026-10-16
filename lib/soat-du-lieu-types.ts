@@ -31,6 +31,7 @@ export type NhomLoi =
   | "doanh_thu_vuot"
   | "gia_von_vuot"
   | "doanh_thu_lech_tien_do"
+  | "thuong_nong_lech"
   | "sai_ty_le"
   | "tien_do_qua"
   | "thieu_ten"
@@ -40,6 +41,7 @@ export const TEN_NHOM: Record<NhomLoi, string> = {
   doanh_thu_vuot: "Doanh thu vượt trần hợp đồng",
   gia_von_vuot: "Giá vốn vượt trần hợp đồng",
   doanh_thu_lech_tien_do: "Doanh thu không khớp tiến độ đã đạt",
+  thuong_nong_lech: "Thưởng nóng trả nhiều hơn chủ đầu tư cấp",
   sai_ty_le: "Tỷ lệ trên dòng cao hơn hợp đồng",
   tien_do_qua: "Tiến độ thanh toán quá 100%",
   thieu_ten: "Dòng chưa có tên người nhận",

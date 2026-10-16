@@ -134,6 +134,23 @@ Ngưỡng bỏ qua 5.000 đồng, dưới mức đó là sai số làm tròn.
 Cộng trừ tương đối là cái đã làm hỏng ở migration 0058 và ở ước tính chi dư
 FENICA.
 
+## Trang Soát dữ liệu phải tự dò, không vá tay
+
+Mọi kết luận hiện trên `/reports/soat-du-lieu` phải do `lib/soat-du-lieu.ts`
+suy ra từ dữ liệu. **Không viết migration chèn ghi chú hay trạng thái vào
+`soat_ghi_chu`.** Ô trạng thái và ô ghi chú trên trang là để người vận hành
+tự điền khi họ đã hỏi được bên liên quan, không phải chỗ để mình chép lời
+giải thích vào.
+
+Khi một mục hiện ra mà thực tế không phải lỗi, việc cần làm là **sửa luật
+dò** cho nó tự phân loại đúng, không phải dán nhãn lên từng dòng. Dán nhãn
+tay thì lần sau có căn tương tự vẫn báo sai, mà người đọc lại tưởng đã có
+người kiểm.
+
+Cùng nguyên tắc với mọi cảnh báo khác trong app: nếu một cảnh báo kết luận
+sai về trách nhiệm của ai đó, sửa phép dò, đừng tắt cảnh báo và cũng đừng
+ghi chú đè lên.
+
 ## Nguồn sự thật cho từng loại số
 
 | Số | Hỏi ai, đọc đâu |
