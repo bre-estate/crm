@@ -31,6 +31,20 @@ Giữ lại:
 Giải thích dài chỉ khi người dùng hỏi "vì sao", hoặc khi sắp sửa dữ liệu
 thật và họ cần hiểu trước khi gật.
 
+## Mỗi mục phải tách rõ: số, nguyên nhân, việc cần làm
+
+Người dùng đọc để giao việc, nên mỗi mục viết theo đúng ba dòng này, không
+trộn vào một đoạn văn:
+
+| Dòng | Nội dung |
+|---|---|
+| **Số** | con số và công thức ra nó |
+| **Nguyên nhân** | công thức khớp tuyệt đối, hoặc ghi thẳng **chưa rõ** |
+| **Việc** | ai làm, làm gì |
+
+Mục nào nguyên nhân chưa rõ thì **gom riêng một cụm**, đừng xếp lẫn với mục
+đã có lời giải. Xếp lẫn thì người đọc tưởng cả cụm đã có người xác nhận.
+
 # Không khẳng định khi chưa có phép thử
 
 Luật gốc: **mỗi khẳng định về số liệu phải gắn với một phép thử chạy được.**
@@ -70,6 +84,37 @@ A2-06-17 gắn nhãn sai, thực tế lệch đúng 0.
 
 Thấy hai chỗ cùng tính một thứ thì gộp lại một hàm chung rồi mới dùng, đừng
 để song song. Gộp xong ghim bằng test trong `tests/`.
+
+## Nguyên nhân cũng phải ra từ công thức, không được đoán
+
+Con số lệch và **nguyên nhân** của nó là hai khẳng định riêng. Tính được số
+lệch không cho phép đoán vì sao lệch.
+
+Phép thử cho nguyên nhân: **viết ra công thức, thay số vào, ra đúng con số
+lệch tới từng đồng thì mới được nói là nguyên nhân.**
+
+Đạt chuẩn:
+
+> B-35-05 chi dư 457.526 vì Thúy hạ giá bán 18.301.053.
+> 18.301.053 × 5% ÷ 1,1 × 55% = 457.526. Khớp tuyệt đối.
+
+Không đạt chuẩn, đây là đoán:
+
+> A1-15-19 chi dư 6.917.648, cùng nguyên nhân với mấy căn KPI CEO của Nga.
+
+Vì giải ngược ra tiến độ ngầm 99,46%, không trùng 90% của căn mà cũng không
+trùng 100%. Không công thức nào ra đúng 6.917.648, nên nguyên nhân là **chưa
+rõ**, phải hỏi người chi.
+
+Cách viết đúng khi chưa giải được:
+
+> Chi dư 6.917.648 so với trần ở tiến độ 90%. Giải ngược ra tiến độ ngầm
+> 99,46%, không khớp mốc nào. **Chưa rõ vì sao, cần hỏi Nga.**
+
+Ba thứ tuyệt đối không được làm:
+- Gán một mục vào nhóm đã có lời giải thích chỉ vì nhìn giống nhau
+- Nói "cùng cơ chế", "tương tự căn X" khi chưa thay số ra đúng kết quả
+- Dùng lời giải thích của người này cho căn mà người đó chưa hề nhắc tới
 
 ## Ba mức chắc chắn, phải nói rõ đang ở mức nào
 
