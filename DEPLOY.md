@@ -69,7 +69,7 @@ Mục tiêu: đưa app lên `https://crm.bre.vn` để CEO/Admin/Kế toán vào
 Ở máy của bạn, mở Terminal:
 
 ```bash
-cd /Users/trietnguyen/Documents/Company/BRE/App
+cd /Users/trietnguyen/Documents/App/BRE
 cp .env.example .env.local
 ```
 
@@ -139,7 +139,7 @@ Supabase Dashboard → **Authentication → URL Configuration**:
 Ở Terminal:
 
 ```bash
-cd /Users/trietnguyen/Documents/Company/BRE/App
+cd /Users/trietnguyen/Documents/App/BRE
 
 # Init git + commit đầu
 git init

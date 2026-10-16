@@ -10,7 +10,7 @@ import dotenv from "dotenv";
 import postgres from "postgres";
 import XLSX from "xlsx";
 
-dotenv.config({ path: "/Users/trietnguyen/Documents/Company/BRE/App/CRM/.env.local" });
+dotenv.config({ path: "/Users/trietnguyen/Documents/App/BRE/CRM/.env.local" });
 
 const COMMIT = process.argv.includes("--commit");
 const ACTOR = "bulk-import-2026-08-22@bre.local";
@@ -37,7 +37,7 @@ function excelDateToISO(v) {
 
 async function main() {
   const wb = XLSX.readFile(
-    "/Users/trietnguyen/Documents/Company/BRE/App/CRM/data-excel/BAO CAO DOANH THU.xlsx",
+    "/Users/trietnguyen/Documents/App/BRE/CRM/data-excel/BAO CAO DOANH THU.xlsx",
     { cellDates: true },
   );
   const rows = XLSX.utils.sheet_to_json(wb.Sheets["2.3_Gia von"], {

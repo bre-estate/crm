@@ -20,7 +20,7 @@ import * as XLSX from "xlsx";
 import fs from "fs";
 import path from "path";
 
-const XLSX_PATH = process.env.XLSX_PATH ?? path.resolve(process.env.HOME ?? "", "Documents/Company/BRE/App/Drive/3-Nhân Sự - BRE/Danh Sách Nhân Viên.xlsx");
+const XLSX_PATH = process.env.XLSX_PATH ?? path.resolve(process.env.HOME ?? "", "Documents/App/BRE/Drive/3-Nhân Sự - BRE/Danh Sách Nhân Viên.xlsx");
 const APPLY = process.argv.includes("--apply");
 
 const POSITION_MAP: Record<string, string> = {

@@ -7,9 +7,9 @@ import dotenv from "dotenv";
 import postgres from "postgres";
 import XLSX from "xlsx";
 
-dotenv.config({ path: "/Users/trietnguyen/Documents/Company/BRE/App/CRM/.env.local" });
+dotenv.config({ path: "/Users/trietnguyen/Documents/App/BRE/CRM/.env.local" });
 const sql = postgres(process.env.DATABASE_URL, { prepare: false });
-const EXCEL_PATH = "/Users/trietnguyen/Documents/Company/BRE/App/CRM/data-excel/BAO CAO DOANH THU.xlsx";
+const EXCEL_PATH = "/Users/trietnguyen/Documents/App/BRE/CRM/data-excel/BAO CAO DOANH THU.xlsx";
 
 function toDateStr(v) {
   if (!v) return null;

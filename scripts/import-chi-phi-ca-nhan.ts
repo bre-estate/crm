@@ -15,7 +15,7 @@ import path from "path";
 import { classifyFounderSpend, isCompanySpend, isDeposit, type FounderSpendRow } from "../lib/founder-spending-core";
 
 const FILE = process.env.CHI_PHI_CA_NHAN_FILE ?? path.resolve(process.env.HOME ?? "",
-  "Documents/Company/BRE/App/Drive/4-Kế Toán - BRE/0.2-Sổ quản lý chung/Chi phí cá nhân/0.2.6-Chi phí cá nhân - Vốn góp.xlsx");
+  "Documents/App/BRE/Drive/4-Kế Toán - BRE/0.2-Sổ quản lý chung/Chi phí cá nhân/0.2.6-Chi phí cá nhân - Vốn góp.xlsx");
 const APPLY = process.argv.includes("--apply");
 
 const nfc = (s: unknown) => String(s ?? "").normalize("NFC").trim();

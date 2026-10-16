@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { readFileSync } from "fs";
 
-const env = readFileSync("/Users/trietnguyen/Documents/Company/BRE/App/CRM/.env.local", "utf-8");
+const env = readFileSync("/Users/trietnguyen/Documents/App/BRE/CRM/.env.local", "utf-8");
 const KEY = env.match(/BRE_CRM_KEY\s*=\s*['"]?([^'"\n]+)['"]?/)?.[1];
 if (!KEY) throw new Error("no key");
 

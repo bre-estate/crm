@@ -1,5 +1,5 @@
 import XLSX from "xlsx";
-const path = "/Users/trietnguyen/Documents/Company/BRE/App/CRM/data-excel/BAO CAO DOANH THU.xlsx";
+const path = "/Users/trietnguyen/Documents/App/BRE/CRM/data-excel/BAO CAO DOANH THU.xlsx";
 const wb = XLSX.readFile(path, { cellDates: true, cellNF: false });
 
 function showSheet(name, headerRowIdx = 0, showRows = [0, 1, 2, 3, 4, 5, 6, 7, 8]) {

@@ -63,7 +63,7 @@ async function main() {
 
   // 3. Backfill N from Excel
   console.log("\n=== Backfill N (payment_progress_pct) ===");
-  const wb = XLSX.readFile("/Users/trietnguyen/Documents/Company/BRE/App/CRM/BAO CAO DOANH THU.xlsx");
+  const wb = XLSX.readFile("/Users/trietnguyen/Documents/App/BRE/CRM/data-excel/BAO CAO DOANH THU.xlsx");
   const rows = XLSX.utils.sheet_to_json<any[]>(wb.Sheets["2.3_Gia von"], { header: 1, defval: null });
 
   // Build lookup: (unit_code + emp + date + costType approx) -> N

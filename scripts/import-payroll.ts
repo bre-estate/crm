@@ -13,7 +13,7 @@ import * as XLSX from "xlsx";
 import fs from "fs";
 import path from "path";
 
-const ROOT = process.env.PAYROLL_DIR ?? path.resolve(process.env.HOME ?? "", "Documents/Company/BRE/App/Drive/4-Kế Toán - BRE/4.1-Bảng lương");
+const ROOT = process.env.PAYROLL_DIR ?? path.resolve(process.env.HOME ?? "", "Documents/App/BRE/Drive/4-Kế Toán - BRE/4.1-Bảng lương");
 const APPLY = process.argv.includes("--apply");
 const nfc = (s: string) => s.normalize("NFC");
 const up = (v: unknown) => nfc(String(v ?? "")).toUpperCase().replace(/\s+/g, " ").trim();

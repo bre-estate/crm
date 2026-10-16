@@ -1,5 +1,5 @@
 /**
- * Fresh import từ data-excel/Báo cáo Doanh Thu.xlsx (override: XLSX_PATH=...).
+ * Fresh import từ data-excel/Bao Cao Doanh Thu.xlsx (override: XLSX_PATH=...).
  *
  * Phòng: Excel ghi "Hồ Gia"/"1 tỷ", DB tên "Kinh doanh - Hồ Gia"/"Kinh doanh - 1 Tỷ"
  * → so khớp sau khi bỏ tiền tố "Kinh doanh -" + lowercase. Không tự tạo phòng mới.
@@ -22,7 +22,7 @@ import { sql } from "drizzle-orm";
 import * as dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 
-const XLSX_PATH = process.env.XLSX_PATH ?? "/Users/trietnguyen/Documents/Company/BRE/App/CRM/data-excel/Báo cáo Doanh Thu.xlsx";
+const XLSX_PATH = process.env.XLSX_PATH ?? "/Users/trietnguyen/Documents/App/BRE/CRM/data-excel/Bao Cao Doanh Thu.xlsx";
 const APPLY = process.argv.includes("--apply");
 const FULL_WIPE = process.argv.includes("--full");
 

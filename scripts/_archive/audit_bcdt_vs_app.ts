@@ -11,7 +11,7 @@ import * as XLSX from "xlsx";
 import path from "path";
 
 const EXCEL_PATH =
-  "/Users/trietnguyen/Documents/Company/BRE/App/CRM/data-excel/BAO CAO DOANH THU.xlsx";
+  "/Users/trietnguyen/Documents/App/BRE/CRM/data-excel/BAO CAO DOANH THU.xlsx";
 const DIFF_THRESHOLD = 1000; // VND
 
 const sql = postgres(process.env.DATABASE_URL!, { max: 4 });

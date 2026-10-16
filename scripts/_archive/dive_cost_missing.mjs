@@ -2,11 +2,11 @@ import XLSX from "xlsx";
 import postgres from "postgres";
 import { readFileSync } from "fs";
 
-const env = readFileSync("/Users/trietnguyen/Documents/Company/BRE/App/CRM/.env.local", "utf-8");
+const env = readFileSync("/Users/trietnguyen/Documents/App/BRE/CRM/.env.local", "utf-8");
 const DB = env.match(/DATABASE_URL\s*=\s*['"]?([^'"\n]+)['"]?/)?.[1];
 const sql = postgres(DB);
 
-const wb = XLSX.readFile("/Users/trietnguyen/Documents/Company/BRE/App/CRM/data-excel/BAO CAO DOANH THU.xlsx", { cellDates: true, cellNF: false });
+const wb = XLSX.readFile("/Users/trietnguyen/Documents/App/BRE/CRM/data-excel/BAO CAO DOANH THU.xlsx", { cellDates: true, cellNF: false });
 const rows = XLSX.utils.sheet_to_json(wb.Sheets["2.3_Gia von"], { header: 1, raw: true, defval: null });
 
 // Sheet 2.3 header ở R3, data từ R4

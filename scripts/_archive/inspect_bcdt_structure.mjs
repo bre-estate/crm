@@ -1,5 +1,5 @@
 import XLSX from "xlsx";
-const path = "/Users/trietnguyen/Documents/Company/BRE/App/CRM/data-excel/BAO CAO DOANH THU.xlsx";
+const path = "/Users/trietnguyen/Documents/App/BRE/CRM/data-excel/BAO CAO DOANH THU.xlsx";
 const wb = XLSX.readFile(path, { cellDates: true, cellNF: false });
 console.log("Sheets:", wb.SheetNames);
 console.log(`Total ${wb.SheetNames.length} sheets\n`);

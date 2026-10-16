@@ -14,7 +14,7 @@ import { execFileSync } from "child_process";
 import fs from "fs";
 import path from "path";
 
-const ROOT = process.env.TAX_DIR ?? path.resolve(process.env.HOME ?? "", "Documents/Company/BRE/App/Drive/4-Kế Toán - BRE/6.1-Hồ sơ thuế");
+const ROOT = process.env.TAX_DIR ?? path.resolve(process.env.HOME ?? "", "Documents/App/BRE/Drive/4-Kế Toán - BRE/6.1-Hồ sơ thuế");
 const APPLY = process.argv.includes("--apply");
 const TYPE_BY_SUB: Record<string, string> = { "1701": "gtgt", "1001": "tncn", "1052": "tndn", "2863": "mon_bai", "2862": "mon_bai", "4944": "phat", "4917": "phat" };
 

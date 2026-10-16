@@ -30,7 +30,7 @@ async function main() {
     sourceFile: "BAO CAO DOANH THU.xlsx",
     targetTable: "invoices",
   }, async (log) => {
-  const wb = XLSX.readFile("/Users/trietnguyen/Documents/Company/BRE/App/CRM/BAO CAO DOANH THU.xlsx");
+  const wb = XLSX.readFile("/Users/trietnguyen/Documents/App/BRE/CRM/data-excel/BAO CAO DOANH THU.xlsx");
   const rows = XLSX.utils.sheet_to_json<any[]>(wb.Sheets["2.2_Doanh thu"], { header: 1, defval: null });
 
   const products = await c`SELECT id, product_code, unit_code FROM products`;

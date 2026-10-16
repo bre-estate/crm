@@ -1,7 +1,7 @@
 import XLSX from "xlsx";
 import fs from "fs";
 
-const path = "/Users/trietnguyen/Documents/Company/BRE/App/CRM/data-excel/Fenica/FENICA_BĐS BRE_ĐỐI CHIẾU PDV (Từ ngày 18.07.2026 đến ngày 17.08.2026).xlsx";
+const path = "/Users/trietnguyen/Documents/App/BRE/CRM/data-excel/Fenica/FENICA_BĐS BRE_ĐỐI CHIẾU PDV (Từ ngày 18.07.2026 đến ngày 17.08.2026).xlsx";
 const wb = XLSX.readFile(path, { cellDates: true, cellNF: false });
 console.log("Sheets:", wb.SheetNames);
 for (const name of wb.SheetNames) {
