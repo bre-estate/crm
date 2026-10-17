@@ -11,6 +11,8 @@ import {
 import { sql, inArray, eq, and, lt, gte, isNotNull } from "drizzle-orm";
 import { OPEX_MGMT_CATEGORIES, FIXED_COST_CATEGORIES } from "@/lib/accounting/categories";
 import { layCanChoTao } from "@/lib/cho-tao-gia-von";
+import { soatDuLieu } from "@/lib/soat-du-lieu";
+import { TEN_NHOM, type NhomLoi } from "@/lib/soat-du-lieu-types";
 import { hasPermission, type Action, type Resource, type Role } from "@/lib/permissions";
 
 /**
@@ -80,13 +82,55 @@ export type AlertDoanhThuVe = Base & {
   }[];
 };
 
+/** Mỗi nhóm trên trang Soát dữ liệu thành một cảnh báo riêng. */
+export type AlertSoat = Base & {
+  id: SoatAlertId;
+  muc: { canTen: string; tieuDe: string; lech: number }[];
+};
+
+export type SoatAlertId =
+  | "soat-doanh-thu-vuot"
+  | "soat-doanh-thu-thieu"
+  | "soat-gia-von-du"
+  | "soat-chi-truoc"
+  | "soat-thuong-nong"
+  | "soat-nhap-sai";
+
+/**
+ * Nhóm phát hiện nào thành cảnh báo nào, mức ra sao.
+ *
+ * Ba nhóm nhập sai gộp làm một vì cùng một việc phải làm là mở dòng ra sửa.
+ * Nhóm đã giải thích được không có mặt ở đây nên không sinh cảnh báo.
+ */
+const NHOM_THANH_CANH_BAO: Partial<Record<NhomLoi, { id: SoatAlertId; muc: Severity }>> = {
+  doanh_thu_vuot: { id: "soat-doanh-thu-vuot", muc: "critical" },
+  doanh_thu_lech_tien_do: { id: "soat-doanh-thu-thieu", muc: "warning" },
+  gia_von_vuot: { id: "soat-gia-von-du", muc: "warning" },
+  gia_von_chi_truoc: { id: "soat-chi-truoc", muc: "info" },
+  thuong_nong_lech: { id: "soat-thuong-nong", muc: "info" },
+  sai_ty_le: { id: "soat-nhap-sai", muc: "warning" },
+  tien_do_qua: { id: "soat-nhap-sai", muc: "warning" },
+  thieu_ten: { id: "soat-nhap-sai", muc: "warning" },
+};
+
+/** Câu mô tả việc phải làm, theo từng cảnh báo soát. */
+const VIEC_PHAI_LAM: Record<SoatAlertId, string> = {
+  "soat-doanh-thu-vuot": "Chủ đầu tư trả nhiều hơn hợp đồng, đối chiếu lại với bảng kê.",
+  "soat-doanh-thu-thieu": "Chưa thu đủ so với tiến độ khách đã đóng, hỏi chủ đầu tư lịch chuyển tiền.",
+  "soat-gia-von-du": "Đã chi vượt cả trần khi khách đóng đủ, không đợt nào bù được, phải thu lại.",
+  "soat-chi-truoc": "Công ty ứng trước, tới đợt cuối là khớp. Không mất tiền, chỉ là chuyện dòng tiền.",
+  "soat-thuong-nong": "Hai bên quy đổi thưởng nóng khác nhau. Nhân viên không nợ, cần chốt cách tính trong hợp đồng lần sau.",
+  "soat-nhap-sai": "Dòng đối chiếu ghi sai tỷ lệ, sai tiến độ hoặc thiếu tên người nhận. Mở ra sửa.",
+};
+
 export type Alert =
   | AlertBelowBe
   | AlertIdle
   | AlertOpexSpike
   | AlertOverdue
   | AlertChoGiaVon
-  | AlertDoanhThuVe;
+  | AlertDoanhThuVe
+  | AlertSoat;
 
 /** Số ngày coi là "vừa mới" cho thông báo tiền về. */
 const SO_NGAY_TIEN_MOI = 7;
@@ -107,6 +151,15 @@ const VAI_TRO_NHAN: Record<Alert["id"], Role[]> = {
   "opex-spike": ["owner"],
   "overdue-receivables": ["owner", "manager", "admin"],
   "cho-tao-gia-von": ["owner", "hr"],
+  // Soát dữ liệu: chia theo người đi làm việc đó. Nga làm lệnh hoàn nên nhận
+  // phần giá vốn, Thúy đi hỏi chủ đầu tư nên nhận phần doanh thu. CEO nhận cả
+  // hai để nắm toàn cảnh (chốt với operator 18/10/2026).
+  "soat-doanh-thu-vuot": ["owner", "manager", "admin"],
+  "soat-doanh-thu-thieu": ["owner", "manager", "admin"],
+  "soat-gia-von-du": ["owner", "manager", "hr"],
+  "soat-chi-truoc": ["owner", "manager", "hr"],
+  "soat-thuong-nong": ["owner", "manager", "admin"],
+  "soat-nhap-sai": ["owner", "manager", "admin"],
 };
 
 /**
@@ -121,6 +174,12 @@ const QUYEN_CAN: Record<Alert["id"], { res: Resource; act: Action }> = {
   "overdue-receivables": { res: "reports.ar-aging", act: "view" },
   // Cần quyền sửa vì việc phải làm là tạo đối chiếu, chỉ xem thì nhắc cũng không làm được.
   "cho-tao-gia-von": { res: "costs", act: "edit" },
+  "soat-doanh-thu-vuot": { res: "reports.soat-du-lieu", act: "view" },
+  "soat-doanh-thu-thieu": { res: "reports.soat-du-lieu", act: "view" },
+  "soat-gia-von-du": { res: "reports.soat-du-lieu", act: "view" },
+  "soat-chi-truoc": { res: "reports.soat-du-lieu", act: "view" },
+  "soat-thuong-nong": { res: "reports.soat-du-lieu", act: "view" },
+  "soat-nhap-sai": { res: "reports.soat-du-lieu", act: "view" },
 };
 
 /** Giữ lại những cảnh báo thuộc phần việc của người đang đăng nhập. */
@@ -479,6 +538,37 @@ export async function computeAlerts(): Promise<Alert[]> {
       url: "/revenues",
       tongTien,
       dot,
+    });
+  }
+
+  // ── Soát dữ liệu: mỗi nhóm phát hiện thành một cảnh báo ──
+  // Gọi thẳng soatDuLieu để chỉ có MỘT nơi định nghĩa thế nào là lệch. Viết
+  // lại phép dò ở đây thì hai chỗ sẽ trôi khỏi nhau, trang báo một kiểu mà
+  // thông báo báo một kiểu.
+  const phatHien = await soatDuLieu();
+  const gom = new Map<SoatAlertId, { muc: Severity; nhom: NhomLoi[]; ds: typeof phatHien }>();
+  for (const x of phatHien) {
+    const map = NHOM_THANH_CANH_BAO[x.nhom];
+    if (!map) continue;
+    const cu = gom.get(map.id) ?? { muc: map.muc, nhom: [], ds: [] };
+    if (!cu.nhom.includes(x.nhom)) cu.nhom.push(x.nhom);
+    cu.ds.push(x);
+    gom.set(map.id, cu);
+  }
+  for (const [id, g] of gom) {
+    const tongLech = g.ds.reduce((t, x) => t + x.lech, 0);
+    const soCan = new Set(g.ds.map((x) => x.canTen)).size;
+    const tenNhom = g.nhom.map((n) => TEN_NHOM[n]).join(", ");
+    alerts.push({
+      id,
+      key: `${id}::${todayISO}`,
+      severity: g.muc,
+      title:
+        `${soCan} căn ${tenNhom.charAt(0).toLowerCase()}${tenNhom.slice(1)}` +
+        (tongLech > 0 ? `, ${Math.round(tongLech).toLocaleString("vi-VN")} đồng` : ""),
+      description: VIEC_PHAI_LAM[id],
+      url: "/reports/soat-du-lieu",
+      muc: g.ds.map((x) => ({ canTen: x.canTen, tieuDe: x.tieuDe, lech: x.lech })),
     });
   }
 

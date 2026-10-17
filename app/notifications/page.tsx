@@ -276,5 +276,35 @@ function AlertDetail({ alert }: { alert: Alert }) {
       </table>
     );
   }
+  if (alert.id.startsWith("soat-")) {
+    const ds = (alert as Extract<Alert, { muc: unknown }>).muc;
+    return (
+      <table className="w-full text-xs mt-2">
+        <thead className="bg-slate-100">
+          <tr>
+            <th className="text-left p-1">Căn</th>
+            <th className="text-left p-1">Nội dung</th>
+            <th className="text-right p-1">Lệch</th>
+          </tr>
+        </thead>
+        <tbody>
+          {ds.slice(0, 10).map((x, i) => (
+            <tr key={i} className="border-t border-slate-200">
+              <td className="p-1 font-mono">{x.canTen}</td>
+              <td className="p-1">{x.tieuDe}</td>
+              <td className="p-1 text-right tabular-nums">{x.lech > 0 ? fmt(x.lech) : ""}</td>
+            </tr>
+          ))}
+          {ds.length > 10 && (
+            <tr className="border-t border-slate-200">
+              <td colSpan={3} className="p-1 text-slate-500">
+                còn {ds.length - 10} căn nữa, xem đủ ở trang Soát dữ liệu
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    );
+  }
   return null;
 }
