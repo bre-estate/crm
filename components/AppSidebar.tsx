@@ -56,7 +56,9 @@ type NavEntry = NavLeaf | NavGroup;
 const isGroup = (n: NavEntry): n is NavGroup => "children" in n;
 
 // Menu gọn: 5 nhóm, mỗi nhóm tối đa 7 mục (chốt với operator 12/09/2026).
-// Báo cáo chỉ đưa 4 báo cáo chính lên menu; đủ 17 báo cáo nằm ở trang /reports dạng thẻ.
+// Báo cáo chỉ đưa các báo cáo chính lên menu; đủ 17 báo cáo nằm ở trang /reports dạng thẻ.
+// Soát dữ liệu lên menu 18/10/2026: thành trang mở hằng ngày, để ở thẻ thì phải
+// qua hai lần bấm mới tới.
 // Nhóm không có resource riêng: quyền xét từng mục con, nhóm rỗng thì ẩn.
 const NAV: NavEntry[] = [
   { href: "/", label: "Tổng quan" },
@@ -85,6 +87,7 @@ const NAV: NavEntry[] = [
       { href: "/reports/kpi-dashboard", label: "KPI", resource: "reports.kpi-dashboard" },
       { href: "/reports/sales", label: "Bán hàng", resource: "reports.sales" },
       { href: "/reports/commissions", label: "Hoa hồng", resource: "reports.commissions" },
+      { href: "/reports/soat-du-lieu", label: "Soát dữ liệu", resource: "reports.soat-du-lieu" },
     ],
   },
   {
