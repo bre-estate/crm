@@ -18,9 +18,13 @@ export async function fetchNotifications(): Promise<NotificationData> {
   const user = await getCurrentUser();
   if (!user) return { items: [], unreadCount: 0 };
 
-  // Timebox — computeAlertSummaries chạy 20+ queries. Đo trên dữ liệu thật ngày
+  // Timebox. computeAlertSummaries chạy 20+ truy vấn. Đo trên dữ liệu thật ngày
   // 26/09/2026 là 2,1 giây, nên mốc 3 giây cũ quá sát: chỉ cần mạng chậm một chút
   // là quá giờ. Giới hạn hàm trên Vercel là 10 giây nên để 8 giây vẫn an toàn.
+  //
+  // Ngày 18/10/2026 thêm nhóm tra soát dữ liệu, đo riêng soatDuLieu là 290ms,
+  // nên tổng vào khoảng 2,4 giây. Còn xa mốc 8 giây, nhưng lần sau thêm cảnh
+  // báo mới thì đo lại trước.
   //
   // Quá giờ thì NÉM LỖI chứ không trả danh sách rỗng. Trả rỗng khiến chuông tụt
   // về 0 như thể mọi việc đã xong, còn ném lỗi thì phía trình duyệt giữ nguyên

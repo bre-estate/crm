@@ -87,7 +87,7 @@ const NAV: NavEntry[] = [
       { href: "/reports/kpi-dashboard", label: "KPI", resource: "reports.kpi-dashboard" },
       { href: "/reports/sales", label: "Bán hàng", resource: "reports.sales" },
       { href: "/reports/commissions", label: "Hoa hồng", resource: "reports.commissions" },
-      { href: "/reports/soat-du-lieu", label: "Soát dữ liệu", resource: "reports.soat-du-lieu" },
+      { href: "/reports/soat-du-lieu", label: "Tra soát dữ liệu", resource: "reports.soat-du-lieu" },
     ],
   },
   {

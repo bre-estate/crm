@@ -585,15 +585,58 @@ export type AlertSummary = {
   severity: Severity;
   title: string;
   url?: string;
+  /** Tiền đang mắc kẹt, để panel ở thanh bên xếp cùng thứ tự với trang. */
+  tien: number;
 };
 
+/**
+ * Số tiền đang mắc kẹt trong một cảnh báo, dùng để xếp thứ tự.
+ *
+ * Cùng một mức thì cảnh báo nào nhiều tiền hơn phải nằm trên. Trước đây chỉ
+ * xếp theo mức nên một mục lệch mười nghìn có thể đứng trên một mục lệch
+ * hai mươi bảy triệu.
+ *
+ * Cảnh báo không gắn với tiền (dưới điểm hòa vốn, sale không có giao dịch)
+ * trả 0 và rơi xuống cuối nhóm của nó.
+ */
+export function tienLienQuan(a: Alert): number {
+  switch (a.id) {
+    case "overdue-receivables":
+      return a.totalAmount;
+    case "doanh-thu-ve":
+      return a.tongTien;
+    case "cho-tao-gia-von":
+      return a.units.reduce((t, x) => t + x.tienDaThu, 0);
+    case "opex-spike":
+      return a.months.reduce((t, x) => Math.max(t, x.amount), 0);
+    case "below-be-3m":
+    case "idle-sale":
+      return 0;
+    default:
+      return a.muc.reduce((t, x) => t + x.lech, 0);
+  }
+}
+
+const THU_TU_MUC: Record<Severity, number> = { critical: 0, warning: 1, info: 2 };
+
+/** Nguy cấp trước, trong cùng mức thì nhiều tiền trước. */
+export function xepTheoDoQuanTrong<T extends Alert>(ds: T[]): T[] {
+  return [...ds].sort(
+    (a, b) =>
+      THU_TU_MUC[a.severity] - THU_TU_MUC[b.severity] ||
+      tienLienQuan(b) - tienLienQuan(a) ||
+      a.title.localeCompare(b.title, "vi"),
+  );
+}
+
 export async function computeAlertSummaries(): Promise<AlertSummary[]> {
-  const alerts = await computeAlerts();
+  const alerts = xepTheoDoQuanTrong(await computeAlerts());
   return alerts.map((a) => ({
     id: a.id,
     key: a.key,
     severity: a.severity,
     title: a.title,
     url: a.url,
+    tien: tienLienQuan(a),
   }));
 }

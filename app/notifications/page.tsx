@@ -1,7 +1,13 @@
 import { requirePermission, getCurrentUser } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { computeAlerts, locTheoVaiTro, type Alert } from "@/lib/alerts";
+import {
+  computeAlerts,
+  locTheoVaiTro,
+  tienLienQuan,
+  xepTheoDoQuanTrong,
+  type Alert,
+} from "@/lib/alerts";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
@@ -17,10 +23,14 @@ export default async function AlertsPage() {
   if (!user) notFound();
 
   // Mỗi vị trí chỉ thấy cảnh báo thuộc phần việc của mình.
-  const alerts = locTheoVaiTro(await computeAlerts(), user.role, user.customPermissions);
+  // Nguy cấp trước, trong cùng mức thì cảnh báo nhiều tiền hơn nằm trên.
+  const alerts = xepTheoDoQuanTrong(
+    locTheoVaiTro(await computeAlerts(), user.role, user.customPermissions),
+  );
   const critical = alerts.filter((a) => a.severity === "critical");
   const warning = alerts.filter((a) => a.severity === "warning");
   const info = alerts.filter((a) => a.severity === "info");
+  const tongTien = alerts.reduce((t, a) => t + tienLienQuan(a), 0);
 
   return (
     <div className="space-y-5">
@@ -29,20 +39,22 @@ export default async function AlertsPage() {
         <p className="text-sm text-slate-500 mt-1">
           {alerts.length === 0
             ? "Không có thông báo nào cần bạn xử lý."
-            : `${alerts.length} thông báo cần chú ý. Nguy cấp trước, cảnh báo sau.`}
+            : `${alerts.length} thông báo cần chú ý` +
+              (tongTien > 0 ? `, liên quan ${fmt(tongTien)} đồng` : "") +
+              ". Nguy cấp trước, trong cùng mức thì nhiều tiền trước."}
         </p>
       </div>
 
       {(critical.length > 0 || warning.length > 0 || info.length > 0) && (
         <div className="grid grid-cols-3 gap-3">
           {critical.length > 0 && (
-            <SummaryCard label="Nguy cấp" count={critical.length} color="red" />
+            <SummaryCard label="Nguy cấp" count={critical.length} tien={tien(critical)} color="red" />
           )}
           {warning.length > 0 && (
-            <SummaryCard label="Cảnh báo" count={warning.length} color="amber" />
+            <SummaryCard label="Cảnh báo" count={warning.length} tien={tien(warning)} color="amber" />
           )}
           {info.length > 0 && (
-            <SummaryCard label="Thông tin" count={info.length} color="blue" />
+            <SummaryCard label="Thông tin" count={info.length} tien={tien(info)} color="blue" />
           )}
         </div>
       )}
@@ -52,19 +64,31 @@ export default async function AlertsPage() {
           <div className="text-4xl mb-2">✅</div>
           <div className="text-green-800 font-semibold">Không có cảnh báo nào</div>
           <div className="text-sm text-green-700 mt-1">
-            Công ty đang chạy ổn — không có chỉ số nào vượt ngưỡng cần chú ý.
+            Công ty đang chạy ổn, không có chỉ số nào vượt ngưỡng cần chú ý.
           </div>
         </Card>
       )}
 
-      {[...critical, ...warning, ...info].map((a) => (
+      {alerts.map((a) => (
         <AlertCard key={a.id} alert={a} />
       ))}
     </div>
   );
 }
 
-function SummaryCard({ label, count, color }: { label: string; count: number; color: string }) {
+const tien = (ds: Alert[]) => ds.reduce((t, a) => t + tienLienQuan(a), 0);
+
+function SummaryCard({
+  label,
+  count,
+  tien: soTien,
+  color,
+}: {
+  label: string;
+  count: number;
+  tien: number;
+  color: string;
+}) {
   const bg =
     color === "red"
       ? "bg-red-50 ring-red-200 text-red-800"
@@ -75,6 +99,9 @@ function SummaryCard({ label, count, color }: { label: string; count: number; co
     <Card className={cn("px-4", bg)}>
       <div className="text-xs uppercase font-semibold">{label}</div>
       <div className="text-3xl font-bold tabular-nums mt-1">{count}</div>
+      {soTien > 0 && (
+        <div className="text-xs tabular-nums mt-0.5 opacity-80">{fmt(soTien)} đồng</div>
+      )}
     </Card>
   );
 }
@@ -143,7 +170,7 @@ function AlertDetail({ alert }: { alert: Alert }) {
       <ul className="list-disc list-inside text-xs mt-2 space-y-0.5">
         {alert.emps.slice(0, 10).map((e) => (
           <li key={e.name}>
-            <b>{e.name}</b> — lần đối chiếu hoa hồng cuối: {e.lastSale ?? "chưa có"}
+            <b>{e.name}</b>, lần đối chiếu hoa hồng cuối: {e.lastSale ?? "chưa có"}
           </li>
         ))}
         {alert.emps.length > 10 && (
@@ -298,7 +325,7 @@ function AlertDetail({ alert }: { alert: Alert }) {
           {ds.length > 10 && (
             <tr className="border-t border-slate-200">
               <td colSpan={3} className="p-1 text-slate-500">
-                còn {ds.length - 10} căn nữa, xem đủ ở trang Soát dữ liệu
+                còn {ds.length - 10} căn nữa, xem đủ ở trang Tra soát dữ liệu
               </td>
             </tr>
           )}
