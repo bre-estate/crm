@@ -305,6 +305,21 @@ export async function soatDuLieu(): Promise<PhatHien[]> {
       const daGhi = ds.reduce((s, r) => s + Number(r.amountPayableThisTime ?? 0), 0);
       if (!(tran > 0 && daGhi > tran * (1 + DUNG_SAI) && daGhi - tran > NGUONG_BO_QUA)) continue;
       const lech = daGhi - tran;
+
+      // Vượt trần theo tiến độ HIỆN TẠI và vượt trần KHI THU ĐỦ là hai chuyện
+      // khác hẳn nhau, gộp chung thì không biết khoản nào phải đòi lại.
+      //
+      //   chi trước tiến độ  còn nằm trong trần lúc khách đóng đủ 100%. Công
+      //                      ty ứng trước, tới đợt cuối là khớp. Không mất tiền.
+      //   chi dư thật        vượt cả trần khi thu đủ. Đợt nào cũng không bù
+      //                      được, phải thu lại.
+      //
+      // Nguồn của loại thứ nhất: ô "số tiền" trên form KPI gợi ý sẵn phần còn
+      // lại của target ĐỦ (computeLuyKe với N = 1, xem targetForType ở
+      // app/costs/CostForm.tsx), trong khi trần ở đây tính theo tiến độ thật.
+      const tran100 = computeLuyKe(cfg, loai as CostType, 1);
+      const duThat = daGhi - tran100 > NGUONG_BO_QUA;
+      const lechCuoi = daGhi - tran100;
       const phep: DongTinh[] = [
         { nhan: "Giá tính PMG", giaTri: tien(base) },
         { nhan: "%PMG sale (cơ sở giá vốn)", giaTri: `× ${pct(cfg.pmgSaleRate)}` },
@@ -320,19 +335,32 @@ export async function soatDuLieu(): Promise<PhatHien[]> {
         });
       }
       phep.push({ nhan: "Đã ghi", giaTri: tien(daGhi), chot: true });
-      phep.push({ nhan: "Vượt trần", giaTri: tien(lech), chot: true });
+      phep.push({ nhan: `Vượt trần ở tiến độ ${pct(tienDoHienTai)}`, giaTri: tien(lech), chot: true });
+      phep.push({ nhan: "Trần khi khách đóng đủ 100%", giaTri: tien(tran100) });
+      phep.push({
+        nhan: duThat ? "Vượt cả trần khi thu đủ" : "So trần khi thu đủ thì còn thiếu",
+        giaTri: tien(Math.abs(lechCuoi)),
+        chot: true,
+      });
 
       ra.push({
         ...nen,
         id: `gv-${p.id}-${loai}`,
-        nhom: "gia_von_vuot",
-        tieuDe: `${TEN_CHI_PHI[loai] ?? loai} vượt trần`,
-        lech,
+        nhom: duThat ? "gia_von_vuot" : "gia_von_chi_truoc",
+        tieuDe: duThat
+          ? `${TEN_CHI_PHI[loai] ?? loai} chi dư ${tien(lechCuoi)}`
+          : `${TEN_CHI_PHI[loai] ?? loai} chi trước tiến độ`,
+        lech: duThat ? lechCuoi : lech,
         phepTinh: phep,
-        ketLuan:
-          `Cộng các đợt đã vượt trần hợp đồng ${tien(lech)}. Tỷ lệ trên từng dòng ` +
-          `đúng hay sai xem ở nhóm bên dưới, nếu tỷ lệ đúng thì số tiền của một ` +
-          `trong các đợt bị nhập cao hơn tiến độ thực tế.`,
+        ketLuan: duThat
+          ? `Đã chi ${tien(daGhi)}, vượt cả trần khi khách đóng đủ 100% là ` +
+            `${tien(tran100)}. Không đợt nào bù được nữa, phải thu lại ` +
+            `${tien(lechCuoi)}.`
+          : `Đã chi ${tien(daGhi)}, vượt trần ở tiến độ ${pct(tienDoHienTai)} ` +
+            `là ${tien(lech)}. Nhưng khi khách đóng đủ 100% thì trần lên ` +
+            `${tien(tran100)}, vẫn còn chỗ ${tien(-lechCuoi)}. Đây là công ty ` +
+            `ỨNG TRƯỚC chứ không mất tiền, tới đợt cuối là khớp. Muốn thu lại ` +
+            `thì là quyết định về dòng tiền, không phải sửa số sai.`,
         lienKet: [
           { nhan: "Mở căn", href: `/products/${p.id}` },
           ...ds.map((r) => ({ nhan: `Sửa đợt ${r.reconciliationDate ?? r.id}`, href: `/costs/${r.id}/edit${VE_SOAT}` })),
@@ -470,7 +498,7 @@ export async function soatDuLieu(): Promise<PhatHien[]> {
     });
   }
 
-  const thuTu: NhomLoi[] = ["doanh_thu_vuot", "doanh_thu_lech_tien_do", "gia_von_vuot", "thuong_nong_lech", "sai_ty_le", "tien_do_qua", "thieu_ten", "da_giai_thich"];
+  const thuTu: NhomLoi[] = ["doanh_thu_vuot", "doanh_thu_lech_tien_do", "gia_von_vuot", "gia_von_chi_truoc", "thuong_nong_lech", "sai_ty_le", "tien_do_qua", "thieu_ten", "da_giai_thich"];
   return ra.sort(
     (a, b) => thuTu.indexOf(a.nhom) - thuTu.indexOf(b.nhom) || b.lech - a.lech || a.canMa.localeCompare(b.canMa),
   );
